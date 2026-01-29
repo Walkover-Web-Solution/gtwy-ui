@@ -25,7 +25,12 @@ const NonImageModelConfig = memo(() => {
 
   const tabs = useMemo(() => {
     const baseTabs = [
-      { id: "prompt", label: "Prompt", icon: SparklesIcon, content: <PromptTab isPublished={isPublished} isEmbedUser={isEmbedUser}/> },
+      {
+        id: "prompt",
+        label: "Prompt",
+        icon: SparklesIcon,
+        content: <PromptTab isPublished={isPublished} isEmbedUser={isEmbedUser} />,
+      },
       { id: "model", label: "Model", icon: BotIcon, content: <ModelTab isPublished={isPublished} /> },
       { id: "connectors", label: "Connectors", icon: LinkIcon, content: <ConnectorsTab isPublished={isPublished} /> },
       { id: "memory", label: "Memory", icon: BrainIcon, content: <MemoryTab isPublished={isPublished} /> },
