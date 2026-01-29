@@ -574,6 +574,7 @@ export const updateBridgeVersionAction =
         // Don't update again - the optimistic update is already correct
         // Only update the status to show success
         dispatch(setSavingStatus({ status: "saved" }));
+        dispatch(updateBridgeVersionReducer({ bridges: updatedVersion }));
 
         // Clear the status after 3 seconds
       } else {
