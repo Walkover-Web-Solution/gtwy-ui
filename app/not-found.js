@@ -1,33 +1,75 @@
-import Image from "next/image";
+"use client";
 import React from "react";
+import { Home, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-function ErrorPage() {
+export default function NotFound() {
+  const router = useRouter();
+  const isProd = process.env.NEXT_PUBLIC_ENV === "PROD";
+
+  const handleTryAgain = () => {
+    window.location.reload();
+  };
+
+  const handleGoHome = () => {
+    const isEmbedContext =
+      window.location.pathname.includes("/embed") ||
+      sessionStorage.getItem("embedUser") === "true" ||
+      window.location.hostname.includes("embed");
+
+    if (isEmbedContext) {
+      router.replace("/session-expired");
+    } else {
+      router.replace(isProd ? "/login" : "/org");
+    }
+  };
+
   return (
-    <div className="h-screen w-screen bg-gray-50 flex flex-col items-center justify-center">
-      <div className="container flex flex-col md:flex-row items-center justify-center px-5 text-gray-700">
-        <div className="w-full lg:w-1/2 mx-8 text-center">
-          <div className="text-7xl text-green-500 font-dark font-extrabold mb-8">404</div>
-          <p className="text-2xl md:text-3xl font-light leading-normal mb-8">
-            Sorry we couldn't find the page you're looking for
+    <div className="min-h-screen bg-base-100 flex items-center justify-center relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="opacity-[0.03] absolute top-20 right-20 w-96 h-96 border-2 border-base-content rounded-full" />
+        <div className="opacity-[0.03] absolute bottom-40 left-20 w-64 h-64 border-2 border-base-content rotate-[15deg]" />
+        <div
+          className="opacity-[0.03] absolute top-1/2 left-1/4 w-48 h-48"
+          style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
+        >
+          <div className="w-full h-full border-2 border-base-content" />
+        </div>
+      </div>
+
+      <div className="relative z-10 text-center px-6 max-w-2xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-base-content text-[120px] md:text-[180px] leading-none tracking-tight font-mono font-light">
+            404
+          </h1>
+        </div>
+
+        <div className="mb-12">
+          <h2 className="text-base-content text-2xl md:text-3xl mb-4 tracking-tight">Page Not Found</h2>
+          <p className="text-base-content/60 max-w-md mx-auto leading-relaxed">
+            The page you're looking for doesn't exist or has been moved. Let's get you back on track.
           </p>
-          <a
-            href="javascript:history.back()"
-            className="px-5 inline py-3 text-sm font-medium leading-5 shadow-2xl text-white transition-all duration-400 border border-transparent rounded-lg focus:outline-none bg-green-600"
-          >
-            Go back
-          </a>
         </div>
-        <div className="w-full lg:w-1/2 mx-5 my-12 flex justify-center">
-          <Image
-            src="https://user-images.githubusercontent.com/43953425/166269493-acd08ccb-4df3-4474-95c7-ad1034d3c070.svg"
-            alt="Page not found"
-            width={500} // Adjust width as needed
-            height={300} // Adjust height as needed
-          />
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button onClick={handleGoHome} className="btn btn-outline gap-2">
+            <Home className="w-5 h-5" />
+            <span>Go Home</span>
+          </button>
+          <button onClick={handleTryAgain} className="btn btn-primary gap-2 group">
+            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+            <span>Try Again</span>
+          </button>
         </div>
+
+        <div className="mt-16 pt-8 border-t border-base-content/10">
+          <p className="font-mono text-xs text-base-content/40 tracking-wider">ERROR_CODE: 404_PAGE_NOT_FOUND</p>
+        </div>
+      </div>
+
+      <div className="absolute bottom-8 left-8 font-mono text-sm text-base-content/30">
+        gtwy<span className="animate-[blink_1s_infinite]">|</span>
       </div>
     </div>
   );
 }
-
-export default ErrorPage;
