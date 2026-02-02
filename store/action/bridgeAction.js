@@ -139,7 +139,7 @@ export const createBridgeWithAiAction =
   };
 
 export const createEmbedAgentAction =
-  ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent }) =>
+  ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent, meta }) =>
   async (dispatch, getState) => {
     try {
       dispatch(isPending());
@@ -160,6 +160,7 @@ export const createEmbedAgentAction =
             purpose: purpose.trim(),
             bridgeType: "api",
             name: agent_name?.trim() || null,
+            meta: meta,
           };
 
           response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
@@ -201,6 +202,7 @@ export const createEmbedAgentAction =
         slugName: slugName,
         bridgeType: "api",
         type: "chat",
+        meta: meta,
       };
 
       response = await new Promise((resolve, reject) => {
