@@ -149,41 +149,32 @@ const GTWYEmbedTester = () => {
     }
   };
 
-  const createAgentWithPurpose = () => {
+  const createAgent = () => {
     if (!isEmbedLoaded) {
       return;
     }
-    openModal(MODAL_TYPE.GTWY_CREATE_AGENT_PURPOSE_MODAL);
+    openModal(MODAL_TYPE.GTWY_CREATE_AGENT_MODAL);
   };
 
   const handleCreateAgent = () => {
-    if (!agentPurpose.trim()) {
+    if (!agentNameInput.trim() && !agentPurpose.trim()) {
       return;
     }
-    if (window.GtwyEmbed?.sendDataToGtwy) {
-      window.GtwyEmbed.sendDataToGtwy({ agent_purpose: agentPurpose });
-      addLog("action", `Called: sendDataToGtwy({ agent_purpose: "${agentPurpose}" })`);
-      closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_PURPOSE_MODAL);
-      setAgentPurpose("");
-    }
-  };
 
-  const createAgentWithName = () => {
-    if (!isEmbedLoaded) {
-      return;
+    const params = {};
+    if (agentNameInput.trim()) {
+      params.agent_name = agentNameInput.trim();
     }
-    openModal(MODAL_TYPE.GTWY_CREATE_AGENT_NAME_MODAL);
-  };
+    if (agentPurpose.trim()) {
+      params.agent_purpose = agentPurpose.trim();
+    }
 
-  const handleCreateAgentWithName = () => {
-    if (!agentNameInput.trim()) {
-      return;
-    }
     if (window.openGtwy) {
-      window.openGtwy({ agent_name: agentNameInput.trim() });
-      addLog("action", `Called: window.openGtwy({ agent_name: "${agentNameInput}" })`);
-      closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_NAME_MODAL);
+      window.openGtwy(params);
+      addLog("action", "Called: window.openGtwy() with params", params);
+      closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_MODAL);
       setAgentNameInput("");
+      setAgentPurpose("");
     }
   };
 
@@ -329,18 +320,11 @@ const GTWYEmbedTester = () => {
                 <h2 className="card-title text-lg mb-3">3. Agent Creation</h2>
                 <div className="space-y-2">
                   <button
-                    onClick={createAgentWithName}
+                    onClick={createAgent}
                     disabled={!isEmbedLoaded}
                     className="btn btn-outline btn-sm w-full"
                   >
-                    Create Agent with Name
-                  </button>
-                  <button
-                    onClick={createAgentWithPurpose}
-                    disabled={!isEmbedLoaded}
-                    className="btn btn-outline btn-sm w-full"
-                  >
-                    Create Agent with Purpose
+                    Create Agent
                   </button>
                   <button
                     onClick={openSendDataModal}
@@ -488,25 +472,45 @@ const GTWYEmbedTester = () => {
         </div>
       </Modal>
 
-      <Modal MODAL_ID={MODAL_TYPE.GTWY_CREATE_AGENT_NAME_MODAL}>
+      <Modal MODAL_ID={MODAL_TYPE.GTWY_CREATE_AGENT_MODAL}>
         <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4">Create Agent with Name</h3>
-          <input
-            type="text"
-            className="input input-bordered w-full"
-            placeholder="Enter agent name"
-            value={agentNameInput}
-            onChange={(e) => setAgentNameInput(e.target.value)}
-            autoFocus
-          />
+          <h3 className="font-bold text-lg mb-4">Create Agent</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Agent Name - Optional</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="e.g., Customer Support Bot"
+                value={agentNameInput}
+                onChange={(e) => setAgentNameInput(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Agent Purpose - Optional</span>
+              </label>
+              <textarea
+                className="textarea textarea-bordered w-full resize-none"
+                rows="4"
+                placeholder="e.g., Help customers with product inquiries"
+                value={agentPurpose}
+                onChange={(e) => setAgentPurpose(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="modal-action">
-            <button onClick={handleCreateAgentWithName} className="btn btn-outline">
+            <button onClick={handleCreateAgent} className="btn btn-outline">
               Create
             </button>
             <button
               onClick={() => {
-                closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_NAME_MODAL);
+                closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_MODAL);
                 setAgentNameInput("");
+                setAgentPurpose("");
               }}
               className="btn btn-ghost"
             >
@@ -591,34 +595,6 @@ const GTWYEmbedTester = () => {
               onClick={() => {
                 closeModal(MODAL_TYPE.GTWY_GET_AGENTS_MODAL);
                 setGetAgentIdInput("");
-              }}
-              className="btn btn-ghost"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal MODAL_ID={MODAL_TYPE.GTWY_CREATE_AGENT_PURPOSE_MODAL}>
-        <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4">Create Agent with Purpose</h3>
-          <textarea
-            className="textarea textarea-bordered w-full resize-none"
-            rows="4"
-            placeholder="Enter the purpose of the agent..."
-            value={agentPurpose}
-            onChange={(e) => setAgentPurpose(e.target.value)}
-            autoFocus
-          />
-          <div className="modal-action">
-            <button onClick={handleCreateAgent} className="btn btn-outline">
-              Create
-            </button>
-            <button
-              onClick={() => {
-                closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_PURPOSE_MODAL);
-                setAgentPurpose("");
               }}
               className="btn btn-ghost"
             >
