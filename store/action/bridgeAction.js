@@ -121,13 +121,14 @@ export const createEmbedAgentAction =
 
         let response;
 
-        if (purpose && purpose.trim()) {
-          // Try AI creation with purpose first
-          try {
-            const aiDataToSend = {
-              purpose: purpose.trim(),
-              bridgeType: "api",
-            };
+      if (purpose && purpose.trim()) {
+        // Try AI creation with purpose first
+        try {
+          const aiDataToSend = {
+            purpose: purpose.trim(),
+            bridgeType: "api",
+            name: agent_name?.trim() || null,
+          };
 
             response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
 
