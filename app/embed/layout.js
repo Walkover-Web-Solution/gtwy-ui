@@ -54,7 +54,7 @@ const Layout = ({ children }) => {
   }, [])
 
   const createNewAgent = useCallback(
-    async (agent_name, orgId, agent_purpose) => {
+    async (agent_name, orgId, agent_purpose, meta) => {
       try {
         setIsLoading(true);
 
@@ -66,6 +66,7 @@ const Layout = ({ children }) => {
             isEmbedUser: true,
             router: router,
             sendDataToParent: sendDataToParent,
+            meta: meta,
           })
         );
 
@@ -94,7 +95,7 @@ const Layout = ({ children }) => {
   }, [router]);
 
   const handleAgentNavigation = useCallback(
-    async (agentName, orgId, agentPurpose) => {
+    async (agentName, orgId, agentPurpose, meta) => {
       setIsLoading(true);
       const trimmedAgentName = agentName.trim();
 
@@ -125,11 +126,10 @@ const Layout = ({ children }) => {
         if (existingAgent) {
           navigateToExistingAgent(existingAgent, orgId);
         } else {
-          createNewAgent(agentName, orgId, agentPurpose);
+          createNewAgent(agentName, orgId, agentPurpose, meta);
         }
       } catch (error) {
         console.error("Error fetching bridges, falling back to create a new agent:", error);
-        createNewAgent(agentName, orgId);
       }
     },
     [processedAgentName, dispatch, createNewAgent, navigateToExistingAgent, allBridges, openGtwyReceived]
@@ -238,8 +238,25 @@ const Layout = ({ children }) => {
 
       if (messageData?.agent_name) {
         setIsLoading(true);
-        handleAgentNavigation(messageData.agent_name || null, orgId, messageData.agent_purpose || null);
+        handleAgentNavigation(
+          messageData.agent_name || null,
+          orgId,
+          messageData.agent_purpose || null,
+          messageData.meta || null
+        );
       } else if (messageData?.agent_id && orgId) {
+        if (messageData?.meta && messageData?.agent_id && orgId) {
+          const bridge = bridges.find((bridge) => bridge._id === messageData.agent_id);
+          if (!bridge) {
+            return;
+          }
+          dispatch(
+            updateBridgeAction({
+              dataToSend: { meta: messageData.meta },
+              bridgeId: messageData.agent_id,
+            })
+          );
+        }
         setIsLoading(true);
         const bridgeData = bridges.find((bridge) => bridge._id === messageData.agent_id);
         const history = messageData?.history;
@@ -259,20 +276,6 @@ const Layout = ({ children }) => {
       } else if (messageData?.agent_purpose) {
         setIsLoading(true);
         createNewAgent("", orgId, messageData.agent_purpose);
-      }
-
-      if (messageData?.meta?.length > 0 && messageData?.agent_id && orgId) {
-        const bridge = bridges.find((bridge) => bridge._id === messageData.agent_id);
-        if (!bridge) {
-          return;
-        }
-        dispatch(updateBridgeAction({
-          dataToSend: { meta: messageData.meta },
-          bridgeId: messageData.agent_id
-        }))
-          .then(() => {
-            router.push(`/org/${orgId}/agents/configure/${messageData.agent_id}`);
-          })
       }
 
       const uiUpdates = {};

@@ -107,10 +107,10 @@ export const createBridgeWithAiAction = ({ dataToSend, orgId }, onSuccess) => as
 };
 
 export const createEmbedAgentAction =
-  ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent }) =>
-    async (dispatch, getState) => {
-      try {
-        dispatch(isPending());
+  ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent, meta }) =>
+  async (dispatch, getState) => {
+    try {
+      dispatch(isPending());
 
         // Generate unique name if not provided
         const generateUniqueName = () => {
@@ -128,6 +128,7 @@ export const createEmbedAgentAction =
             purpose: purpose.trim(),
             bridgeType: "api",
             name: agent_name?.trim() || null,
+            meta: meta,
           };
 
             response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
@@ -162,14 +163,15 @@ export const createEmbedAgentAction =
         const name = agent_name?.trim() || generateUniqueName();
         const slugName = generateUniqueName();
 
-        const fallbackDataToSend = {
-          service: "openai",
-          model: "gpt-4o",
-          name,
-          slugName: slugName,
-          bridgeType: "api",
-          type: "chat",
-        };
+      const fallbackDataToSend = {
+        service: "openai",
+        model: "gpt-4o",
+        name,
+        slugName: slugName,
+        bridgeType: "api",
+        type: "chat",
+        meta: meta,
+      };
 
         response = await new Promise((resolve, reject) => {
           dispatch(
