@@ -415,6 +415,14 @@ const CONFIG_SCHEMA = [
     defaultValue: false,
     section: "Interface Options",
   },
+  {
+    key: "showAgentName",
+    type: "toggle",
+    label: "Show Agent Name",
+    description: "Show agent name",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 const cloneTheme = (theme) => JSON.parse(JSON.stringify(theme || defaultUserTheme));
