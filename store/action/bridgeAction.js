@@ -159,6 +159,7 @@ export const createEmbedAgentAction =
           const aiDataToSend = {
             purpose: purpose.trim(),
             bridgeType: "api",
+            name: agent_name?.trim() || null,
           };
 
           response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));

@@ -94,12 +94,7 @@ const Layout = ({ children }) => {
   );
 
   const handleAgentNavigation = useCallback(
-    async (agentName, orgId) => {
-      if (!agentName || !orgId || processedAgentName === agentName || !openGtwyReceived) {
-        if (processedAgentName === agentName) setIsLoading(false);
-        return;
-      }
-
+    async (agentName, orgId, agentPurpose) => {
       setIsLoading(true);
       const trimmedAgentName = agentName.trim();
 
@@ -128,7 +123,7 @@ const Layout = ({ children }) => {
         if (existingAgent) {
           navigateToExistingAgent(existingAgent, orgId);
         } else {
-          createNewAgent(agentName, orgId);
+          createNewAgent(agentName, orgId, agentPurpose);
         }
       } catch (error) {
         console.error("Error fetching bridges, falling back to create a new agent:", error);
@@ -221,16 +216,7 @@ const Layout = ({ children }) => {
     };
 
     handleNavigation();
-  }, [openGtwyReceived, urlParamsObj, currentAgentName, handleAgentNavigation, router, createNewAgent]);
-
-  useEffect(() => {
-    if (currentAgentName) {
-      const orgId = urlParamsObj.org_id || sessionStorage.getItem("gtwy_org_id");
-      if (orgId) {
-        handleAgentNavigation(currentAgentName, orgId);
-      }
-    }
-  }, [currentAgentName, urlParamsObj.org_id]);
+  }, [openGtwyReceived, urlParamsObj, currentAgentName, handleAgentNavigation, router, createNewAgent, allBridges]);
 
   useEffect(() => {
     const handleMessage = async (event) => {
@@ -251,7 +237,7 @@ const Layout = ({ children }) => {
 
       if (messageData?.agent_name) {
         setIsLoading(true);
-        handleAgentNavigation(messageData.agent_name, orgId);
+        handleAgentNavigation(messageData.agent_name || null, orgId, messageData.agent_purpose || null);
       } else if (messageData?.agent_id && orgId) {
         setIsLoading(true);
         const bridgeData = bridges.find((bridge) => bridge._id === messageData.agent_id);
