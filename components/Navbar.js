@@ -39,26 +39,51 @@ const Navbar = ({ isEmbedUser, params }) => {
   const bridgeId = params?.id || pathParts[5];
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
-  const versionId = useMemo(() => searchParams?.get('version'), [searchParams]);
-  const isPublished = useMemo(() => searchParams?.get('isPublished') === 'true', [searchParams]);
-  const { bridgeData, bridge, publishedVersion, isDrafted, bridgeStatus, bridgeType, isPublishing, isUpdatingBridge, activeTab, isArchived, hideHomeButton, showHistory, bridgeName, savingStatus , publishedVersionId } = useCustomSelector(state => {
+  const versionId = useMemo(() => searchParams?.get("version"), [searchParams]);
+  const isPublished = useMemo(() => searchParams?.get("isPublished") === "true", [searchParams]);
+  const {
+    bridgeData,
+    bridge,
+    publishedVersion,
+    isDrafted,
+    bridgeStatus,
+    bridgeType,
+    isPublishing,
+    isUpdatingBridge,
+    activeTab,
+    isArchived,
+    hideHomeButton,
+    showHistory,
+    bridgeName,
+    savingStatus,
+    publishedVersionId,
+    showAgentName,
+  } = useCustomSelector((state) => {
     return {
-    bridgeData: state?.bridgeReducer?.org?.[orgId]?.orgs?.find((bridge) => bridge._id === bridgeId) || {},
-    bridge: state.bridgeReducer.allBridgesMap[bridgeId] || {},
-    publishedVersion: state.bridgeReducer.allBridgesMap?.[bridgeId]?.published_version_id ?? null,
-    isDrafted: state.bridgeReducer.bridgeVersionMapping?.[bridgeId]?.[versionId]?.is_drafted ?? false,
-    bridgeStatus: state.bridgeReducer.allBridgesMap?.[bridgeId]?.bridge_status ?? BRIDGE_STATUS.ACTIVE,
-    bridgeType: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.bridgeType,
-    isArchived: state.bridgeReducer.allBridgesMap?.[bridgeId]?.status ?? false,
-    isPublishing: state.bridgeReducer.isPublishing ?? false,
-    isUpdatingBridge: state.bridgeReducer.isUpdatingBridge ?? false,
-    activeTab: pathname.includes('configure') ? 'configure' : pathname.includes('history') ? 'history' : pathname.includes('testcase') ? 'testcase' : 'configure',
-    hideHomeButton: state.appInfoReducer?.embedUserDetails?.hideHomeButton || false,
-    showHistory: state.appInfoReducer?.embedUserDetails?.showHistory,
-    bridgeName: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.name || "",
-    publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.published_version_id || null,
-    savingStatus: state?.bridgeReducer?.savingStatus || { status: null, timestamp: null },
-  }});
+      bridgeData: state?.bridgeReducer?.org?.[orgId]?.orgs?.find((bridge) => bridge._id === bridgeId) || {},
+      bridge: state.bridgeReducer.allBridgesMap[bridgeId] || {},
+      publishedVersion: state.bridgeReducer.allBridgesMap?.[bridgeId]?.published_version_id ?? null,
+      isDrafted: state.bridgeReducer.bridgeVersionMapping?.[bridgeId]?.[versionId]?.is_drafted ?? false,
+      bridgeStatus: state.bridgeReducer.allBridgesMap?.[bridgeId]?.bridge_status ?? BRIDGE_STATUS.ACTIVE,
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.bridgeType,
+      isArchived: state.bridgeReducer.allBridgesMap?.[bridgeId]?.status ?? false,
+      isPublishing: state.bridgeReducer.isPublishing ?? false,
+      isUpdatingBridge: state.bridgeReducer.isUpdatingBridge ?? false,
+      activeTab: pathname.includes("configure")
+        ? "configure"
+        : pathname.includes("history")
+          ? "history"
+          : pathname.includes("testcase")
+            ? "testcase"
+            : "configure",
+      hideHomeButton: state.appInfoReducer?.embedUserDetails?.hideHomeButton || false,
+      showHistory: state.appInfoReducer?.embedUserDetails?.showHistory,
+      bridgeName: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.name || "",
+      publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.published_version_id || null,
+      savingStatus: state?.bridgeReducer?.savingStatus || { status: null, timestamp: null },
+      showAgentName: state?.appInfoReducer?.embedUserDetails?.showAgentName,
+    };
+  });
   // Define tabs based on user type
   const TABS = useMemo(() => {
     const baseTabs = [
@@ -429,34 +454,37 @@ const Navbar = ({ isEmbedUser, params }) => {
             
             {/* Simple Agent Name Display */}
             <div className="hidden sm:flex items-center ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-1">
-              <div className="flex items-center px-1 sm:px-2 py-1 sm:py-2 rounded-lg min-w-0 max-w-[120px] sm:max-w-fit cursor-pointer group hover:bg-base-200/50 transition-colors">
-                {!isEditingName ? (
-                  <div className="flex items-center gap-1.5" onClick={handleNameEdit}>
-                    <span 
-                      className="font-semibold text-sm text-base-content truncate flex-shrink" 
-                      title={`${agentName} - Click to edit`}
-                    >
-                      {agentName}
-                    </span>
-                    <Edit2 
-                      size={12} 
-                      className="text-base-content/40 group-hover:text-base-content/60 transition-colors flex-shrink-0" 
+              {((showAgentName && isEmbedUser) || !isEmbedUser) && (
+                <div className="flex items-center px-1 sm:px-2 py-1 sm:py-2 rounded-lg min-w-0 max-w-[120px] sm:max-w-fit cursor-pointer group hover:bg-base-200/50 transition-colors">
+                  {!isEditingName ? (
+                    <div className="flex items-center gap-1.5" onClick={handleNameEdit}>
+                      <span
+                        id="navbar-agent-name-display"
+                        className="font-semibold text-sm text-base-content truncate flex-shrink"
+                        title={`${agentName} - Click to edit`}
+                      >
+                        {agentName}
+                      </span>
+                      <Edit2
+                        size={12}
+                        className="text-base-content/40 group-hover:text-base-content/60 transition-colors flex-shrink-0"
+                      />
+                    </div>
+                  ) : (
+                    <input
+                      id="navbar-agent-name-input"
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      onBlur={handleNameSave}
+                      onKeyDown={handleNameKeyDown}
+                      className="input input-xs text-sm text-base-content"
+                      autoFocus
+                      maxLength={50}
                     />
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onBlur={handleNameSave}
-                    onKeyDown={handleNameKeyDown}
-                    className="input input-xs text-sm text-base-content"
-                    autoFocus
-                    maxLength={50}
-                  />
-                )}
-              </div>
-              
+                  )}
+                </div>
+              )}
               {/* Divider */}
               <div className="mx-1 sm:mx-2 h-4 w-px bg-base-300 flex-shrink-0"></div>
               

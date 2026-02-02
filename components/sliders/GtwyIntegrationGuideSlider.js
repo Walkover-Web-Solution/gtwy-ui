@@ -444,13 +444,21 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key:"showVariables",
-    type:"toggle",
-    label:"Show Variables",
-    description:"Show variables",
-    defaultValue:false,
-    section:"Interface Options",
-  }
+    key: "showVariables",
+    type: "toggle",
+    label: "Show Variables",
+    description: "Show variables",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
+    key: "showAgentName",
+    type: "toggle",
+    label: "Show Agent Name",
+    description: "Show agent name",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 const cloneTheme = (theme) =>
