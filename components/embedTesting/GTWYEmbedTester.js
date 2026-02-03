@@ -18,6 +18,7 @@ const GTWYEmbedTester = () => {
   const [agentNameInput, setAgentNameInput] = useState("");
   const [sendDataAgentName, setSendDataAgentName] = useState("");
   const [sendDataAgentId, setSendDataAgentId] = useState("");
+  const [sendDataAgentPurpose, setSendDataAgentPurpose] = useState("");
   const [sendDataMetadata, setSendDataMetadata] = useState("");
   const [getAgentIdInput, setGetAgentIdInput] = useState("");
 
@@ -54,7 +55,7 @@ const GTWYEmbedTester = () => {
 
     const script = document.createElement("script");
     script.id = "gtwy-main-script";
-    script.src = "http://localhost:3000/gtwy_embed_local.js";
+    script.src = "https://dev.gtwy.ai/gtwy_dev.js";
     script.setAttribute("embedToken", embedToken);
     script.setAttribute("parentId", "gtwy-parent-container");
 
@@ -102,12 +103,48 @@ const GTWYEmbedTester = () => {
     };
   }, []);
 
-  const openGtwy = () => {
-    if (!isEmbedLoaded || !window.openGtwy) {
+  const openGtwyModal = () => {
+    if (!isEmbedLoaded) {
       return;
     }
-    window.openGtwy();
-    addLog("action", "Called: window.openGtwy()");
+    openModal(MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL);
+  };
+
+  const handleOpenGtwy = () => {
+    const params = {};
+
+    if (agentIdInput.trim()) {
+      params.agent_id = agentIdInput.trim();
+    }
+    if (agentNameInput.trim()) {
+      params.agent_name = agentNameInput.trim();
+    }
+    if (agentPurpose.trim()) {
+      params.agent_purpose = agentPurpose.trim();
+    }
+    if (metaInput.trim()) {
+      try {
+        params.meta = JSON.parse(metaInput);
+      } catch {
+        addLog("error", "Invalid JSON in meta field");
+        return;
+      }
+    }
+
+    if (window.openGtwy) {
+      if (Object.keys(params).length === 0) {
+        window.openGtwy();
+        addLog("action", "Called: window.openGtwy()");
+      } else {
+        window.openGtwy(params);
+        addLog("action", "Called: window.openGtwy() with params", params);
+      }
+      closeModal(MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL);
+      setAgentIdInput("");
+      setAgentNameInput("");
+      setAgentPurpose("");
+      setMetaInput("");
+    }
   };
 
   const closeGtwy = () => {
@@ -118,66 +155,6 @@ const GTWYEmbedTester = () => {
     addLog("action", "Called: window.closeGtwy()");
   };
 
-  const openWithAgent = () => {
-    if (!isEmbedLoaded) {
-      return;
-    }
-    openModal(MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL);
-  };
-
-  const handleOpenAgent = () => {
-    if (!agentIdInput.trim()) {
-      return;
-    }
-
-    const params = { agent_id: agentIdInput.trim() };
-
-    if (metaInput.trim()) {
-      try {
-        params.meta = JSON.parse(metaInput);
-      } catch {
-        return;
-      }
-    }
-
-    if (window.openGtwy) {
-      window.openGtwy(params);
-      addLog("action", "Called: window.openGtwy() with params", params);
-      closeModal(MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL);
-      setAgentIdInput("");
-      setMetaInput("");
-    }
-  };
-
-  const createAgent = () => {
-    if (!isEmbedLoaded) {
-      return;
-    }
-    openModal(MODAL_TYPE.GTWY_CREATE_AGENT_MODAL);
-  };
-
-  const handleCreateAgent = () => {
-    if (!agentNameInput.trim() && !agentPurpose.trim()) {
-      return;
-    }
-
-    const params = {};
-    if (agentNameInput.trim()) {
-      params.agent_name = agentNameInput.trim();
-    }
-    if (agentPurpose.trim()) {
-      params.agent_purpose = agentPurpose.trim();
-    }
-
-    if (window.openGtwy) {
-      window.openGtwy(params);
-      addLog("action", "Called: window.openGtwy() with params", params);
-      closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_MODAL);
-      setAgentNameInput("");
-      setAgentPurpose("");
-    }
-  };
-
   const openSendDataModal = () => {
     if (!isEmbedLoaded) {
       return;
@@ -186,22 +163,22 @@ const GTWYEmbedTester = () => {
   };
 
   const handleSendData = () => {
-    if (!sendDataAgentName.trim() && !sendDataAgentId.trim() && !sendDataMetadata.trim()) {
-      return;
-    }
-
     const dataToSend = {};
-    if (sendDataAgentName.trim()) {
-      dataToSend.agent_name = sendDataAgentName.trim();
-    }
+
     if (sendDataAgentId.trim()) {
       dataToSend.agent_id = sendDataAgentId.trim();
     }
+    if (sendDataAgentName.trim()) {
+      dataToSend.agent_name = sendDataAgentName.trim();
+    }
+    if (sendDataAgentPurpose.trim()) {
+      dataToSend.agent_purpose = sendDataAgentPurpose.trim();
+    }
     if (sendDataMetadata.trim()) {
       try {
-        const metadata = JSON.parse(sendDataMetadata);
-        Object.assign(dataToSend, metadata);
+        dataToSend.meta = JSON.parse(sendDataMetadata);
       } catch {
+        addLog("error", "Invalid JSON in meta field");
         return;
       }
     }
@@ -210,8 +187,9 @@ const GTWYEmbedTester = () => {
       window.GtwyEmbed.sendDataToGtwy(dataToSend);
       addLog("action", "Called: window.GtwyEmbed.sendDataToGtwy()", dataToSend);
       closeModal(MODAL_TYPE.GTWY_SEND_DATA_MODAL);
-      setSendDataAgentName("");
       setSendDataAgentId("");
+      setSendDataAgentName("");
+      setSendDataAgentPurpose("");
       setSendDataMetadata("");
     }
   };
@@ -301,33 +279,18 @@ const GTWYEmbedTester = () => {
               <div className="card-body p-4">
                 <h2 className="card-title text-lg mb-3">2. Window Controls</h2>
                 <div className="space-y-2">
-                  <button onClick={openGtwy} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full">
-                    Open GTWY
+                  <button onClick={openGtwyModal} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full justify-start">
+                    <span className="font-mono text-xs">window.openGtwy()</span>
                   </button>
-                  <button onClick={closeGtwy} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full">
-                    Close GTWY
-                  </button>
-                  <button onClick={openWithAgent} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full">
-                    Open with Agent ID
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Agent Creation */}
-            <div className="card bg-base-100 shadow-lg">
-              <div className="card-body p-4">
-                <h2 className="card-title text-lg mb-3">3. Agent Creation</h2>
-                <div className="space-y-2">
-                  <button onClick={createAgent} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full">
-                    Create Agent
+                  <button onClick={closeGtwy} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full justify-start">
+                    <span className="font-mono text-xs">window.closeGtwy()</span>
                   </button>
                   <button
                     onClick={openSendDataModal}
                     disabled={!isEmbedLoaded}
-                    className="btn btn-outline btn-sm w-full"
+                    className="btn btn-outline btn-sm w-full justify-start"
                   >
-                    Send Data to GTWY
+                    <span className="font-mono text-xs">window.GtwyEmbed.sendDataToGtwy()</span>
                   </button>
                 </div>
               </div>
@@ -434,7 +397,8 @@ const GTWYEmbedTester = () => {
       {/* Modals */}
       <Modal MODAL_ID={MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL}>
         <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4">Open with Agent ID</h3>
+          <h3 className="font-bold text-lg mb-4">window.openGtwy() - Parameters</h3>
+          <p className="text-sm text-base-content/70 mb-4">All fields are optional. Leave empty to call without parameters.</p>
           <div className="space-y-3">
             <div>
               <label className="label">
@@ -449,32 +413,9 @@ const GTWYEmbedTester = () => {
                 autoFocus
               />
             </div>
-          </div>
-          <div className="modal-action">
-            <button onClick={handleOpenAgent} className="btn btn-outline">
-              Open
-            </button>
-            <button
-              onClick={() => {
-                closeModal(MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL);
-                setAgentIdInput("");
-                setMetaInput("");
-              }}
-              className="btn btn-ghost"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal MODAL_ID={MODAL_TYPE.GTWY_CREATE_AGENT_MODAL}>
-        <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4">Create Agent</h3>
-          <div className="space-y-3">
             <div>
               <label className="label">
-                <span className="label-text font-semibold">Agent Name - Optional</span>
+                <span className="label-text font-semibold">Agent Name</span>
               </label>
               <input
                 type="text"
@@ -482,31 +423,44 @@ const GTWYEmbedTester = () => {
                 placeholder="e.g., Customer Support Bot"
                 value={agentNameInput}
                 onChange={(e) => setAgentNameInput(e.target.value)}
-                autoFocus
               />
             </div>
             <div>
               <label className="label">
-                <span className="label-text font-semibold">Agent Purpose - Optional</span>
+                <span className="label-text font-semibold">Agent Purpose</span>
               </label>
               <textarea
                 className="textarea textarea-bordered w-full resize-none"
-                rows="4"
+                rows="3"
                 placeholder="e.g., Help customers with product inquiries"
                 value={agentPurpose}
                 onChange={(e) => setAgentPurpose(e.target.value)}
               />
             </div>
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Meta (JSON)</span>
+              </label>
+              <textarea
+                className="textarea textarea-bordered w-full resize-none font-mono text-sm"
+                rows="3"
+                placeholder='{"key": "value"}'
+                value={metaInput}
+                onChange={(e) => setMetaInput(e.target.value)}
+              />
+            </div>
           </div>
           <div className="modal-action">
-            <button onClick={handleCreateAgent} className="btn btn-outline">
-              Create
+            <button onClick={handleOpenGtwy} className="btn btn-outline">
+              Call Function
             </button>
             <button
               onClick={() => {
-                closeModal(MODAL_TYPE.GTWY_CREATE_AGENT_MODAL);
+                closeModal(MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL);
+                setAgentIdInput("");
                 setAgentNameInput("");
                 setAgentPurpose("");
+                setMetaInput("");
               }}
               className="btn btn-ghost"
             >
@@ -518,24 +472,12 @@ const GTWYEmbedTester = () => {
 
       <Modal MODAL_ID={MODAL_TYPE.GTWY_SEND_DATA_MODAL}>
         <div className="modal-box">
-          <h3 className="font-bold text-lg mb-4">Send Data to GTWY</h3>
+          <h3 className="font-bold text-lg mb-4">window.GtwyEmbed.sendDataToGtwy() - Parameters</h3>
+          <p className="text-sm text-base-content/70 mb-4">All fields are optional.</p>
           <div className="space-y-3">
             <div>
               <label className="label">
-                <span className="label-text font-semibold">Agent Name - Optional</span>
-              </label>
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder="e.g., New Agent"
-                value={sendDataAgentName}
-                onChange={(e) => setSendDataAgentName(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="label">
-                <span className="label-text font-semibold">Agent ID - Optional</span>
+                <span className="label-text font-semibold">Agent ID</span>
               </label>
               <input
                 type="text"
@@ -543,18 +485,56 @@ const GTWYEmbedTester = () => {
                 placeholder="e.g., 697355123bcf08ee26fa36bf"
                 value={sendDataAgentId}
                 onChange={(e) => setSendDataAgentId(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Agent Name</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="e.g., Customer Support Bot"
+                value={sendDataAgentName}
+                onChange={(e) => setSendDataAgentName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Agent Purpose</span>
+              </label>
+              <textarea
+                className="textarea textarea-bordered w-full resize-none"
+                rows="3"
+                placeholder="e.g., Help customers with product inquiries"
+                value={sendDataAgentPurpose}
+                onChange={(e) => setSendDataAgentPurpose(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Meta (JSON)</span>
+              </label>
+              <textarea
+                className="textarea textarea-bordered w-full resize-none font-mono text-sm"
+                rows="3"
+                placeholder='{"key": "value"}'
+                value={sendDataMetadata}
+                onChange={(e) => setSendDataMetadata(e.target.value)}
               />
             </div>
           </div>
           <div className="modal-action">
             <button onClick={handleSendData} className="btn btn-outline">
-              Send
+              Call Function
             </button>
             <button
               onClick={() => {
                 closeModal(MODAL_TYPE.GTWY_SEND_DATA_MODAL);
-                setSendDataAgentName("");
                 setSendDataAgentId("");
+                setSendDataAgentName("");
+                setSendDataAgentPurpose("");
                 setSendDataMetadata("");
               }}
               className="btn btn-ghost"
