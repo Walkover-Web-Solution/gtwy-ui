@@ -145,11 +145,6 @@ export const createEmbedAgentAction =
       dispatch(isPending());
 
       // Generate unique name if not provided
-      const generateUniqueName = () => {
-        const timestamp = Date.now();
-        const randomNum = Math.floor(Math.random() * 1000);
-        return `Agent_${timestamp}_${randomNum}`;
-      };
 
       let response;
 
@@ -160,8 +155,10 @@ export const createEmbedAgentAction =
             purpose: purpose.trim(),
             bridgeType: "api",
             name: agent_name?.trim() || null,
-            meta: meta,
           };
+          if(meta){
+            aiDataToSend.meta = meta;
+          }
 
           response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
 
@@ -192,18 +189,17 @@ export const createEmbedAgentAction =
       }
 
       // Manual creation fallback
-      const name = agent_name?.trim() || generateUniqueName();
-      const slugName = generateUniqueName();
-
       const fallbackDataToSend = {
         service: "openai",
         model: "gpt-4o",
-        name,
-        slugName: slugName,
+        name:agent_name?.trim() || null,
+        slugName: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
-        meta: meta,
       };
+      if(meta){
+        fallbackDataToSend.meta = meta;
+      }
 
       response = await new Promise((resolve, reject) => {
         dispatch(
