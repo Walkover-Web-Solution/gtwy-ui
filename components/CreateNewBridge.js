@@ -116,16 +116,12 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
         })
         .catch((error) => {
           updateState({ isAiLoading: false });
-          const name = generateUniqueName();
-          const slugname = generateUniqueName();
 
-          if (name.length > 0 && state.selectedModel) {
+          if (state.selectedModel) {
             updateState({ isLoading: true });
             const fallbackDataToSend = {
               service: state.selectedService,
               model: state.selectedModel,
-              name,
-              slugName: slugname,
               bridgeType: resolvedBridgeType,
               type: state.selectedType,
             };
@@ -152,17 +148,12 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
           }
         });
     } else {
-      const name = generateUniqueName();
-      const slugname = generateUniqueName();
-
-      if (name.length > 0 && state.selectedModel) {
+      if (state.selectedModel) {
         updateState({ isLoading: true });
         
         const dataToSend = {
           service: state.selectedService,
           model: state.selectedModel,
-          name,
-          slugName: slugname,
           bridgeType: resolvedBridgeType,
           type: state.selectedType,
         };
