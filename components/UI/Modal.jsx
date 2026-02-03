@@ -1,7 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
+import ReactDOM from "react-dom";
 
 const Modal = ({ MODAL_ID, children, onClose }) => {
-  React.useEffect(() => {
+  const [mounted, setMounted] = React.useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     const modalElement = document.getElementById(MODAL_ID);
 
     const handleDialogClose = (event) => {
@@ -20,12 +30,15 @@ const Modal = ({ MODAL_ID, children, onClose }) => {
         modalElement.removeEventListener("close", handleDialogClose);
       }
     };
-  }, [MODAL_ID, onClose]);
+  }, [MODAL_ID, onClose, mounted]);
 
-  return (
+  if (!mounted || typeof window === "undefined") return null;
+
+  return ReactDOM.createPortal(
     <dialog id={MODAL_ID} className="modal">
       {children}
-    </dialog>
+    </dialog>,
+    document.body
   );
 };
 
