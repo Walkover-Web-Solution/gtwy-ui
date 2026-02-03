@@ -279,10 +279,18 @@ const GTWYEmbedTester = () => {
               <div className="card-body p-4">
                 <h2 className="card-title text-lg mb-3">2. Window Controls</h2>
                 <div className="space-y-2">
-                  <button onClick={openGtwyModal} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full justify-start">
+                  <button
+                    onClick={openGtwyModal}
+                    disabled={!isEmbedLoaded}
+                    className="btn btn-outline btn-sm w-full justify-start"
+                  >
                     <span className="font-mono text-xs">window.openGtwy()</span>
                   </button>
-                  <button onClick={closeGtwy} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full justify-start">
+                  <button
+                    onClick={closeGtwy}
+                    disabled={!isEmbedLoaded}
+                    className="btn btn-outline btn-sm w-full justify-start"
+                  >
                     <span className="font-mono text-xs">window.closeGtwy()</span>
                   </button>
                   <button
@@ -398,7 +406,9 @@ const GTWYEmbedTester = () => {
       <Modal MODAL_ID={MODAL_TYPE.GTWY_OPEN_WITH_AGENT_MODAL}>
         <div className="modal-box">
           <h3 className="font-bold text-lg mb-4">window.openGtwy() - Parameters</h3>
-          <p className="text-sm text-base-content/70 mb-4">All fields are optional. Leave empty to call without parameters.</p>
+          <p className="text-sm text-base-content/70 mb-4">
+            All fields are optional. Leave empty to call without parameters.
+          </p>
           <div className="space-y-3">
             <div>
               <label className="label">
