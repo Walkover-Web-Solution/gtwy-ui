@@ -319,11 +319,7 @@ const GTWYEmbedTester = () => {
               <div className="card-body p-4">
                 <h2 className="card-title text-lg mb-3">3. Agent Creation</h2>
                 <div className="space-y-2">
-                  <button
-                    onClick={createAgent}
-                    disabled={!isEmbedLoaded}
-                    className="btn btn-outline btn-sm w-full"
-                  >
+                  <button onClick={createAgent} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm w-full">
                     Create Agent
                   </button>
                   <button
