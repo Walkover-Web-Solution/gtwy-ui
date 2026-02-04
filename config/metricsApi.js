@@ -51,19 +51,19 @@ export const getMetricsDataApi = async ({
 };
 
 // User Feedback and Analytics APIs
-// export const userFeedbackCount = async ({ bridge_id, user_feedback }) => {
-//   try {
-//     const response = await axios.get(`${URL}/api/v1/agentConfig/userfeedbackcount/${bridge_id}`, {
-//       params: {
-//         user_feedback
-//       }
-//     });
-//     return response
-//   } catch (error) {
-//     console.error(error);
-//     return error
-//   }
-// }
+export const userFeedbackCount = async ({ bridge_id, user_feedback }) => {
+  try {
+    const response = await axios.get(`${URL}/api/v1/agentConfig/userfeedbackcount/${bridge_id}`, {
+      params: {
+        user_feedback
+      }
+    });
+    return response
+  } catch (error) {
+    console.error(error);
+    return error
+  }
+}
 
 // Fine-tuning Data APIs
 export const downloadFineTuneData = async (bridge_id, threadIds, status = [0]) => {

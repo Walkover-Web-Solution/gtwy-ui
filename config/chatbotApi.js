@@ -14,15 +14,15 @@ export const getAllChatBot = async (orgId) => {
   }
 };
 
-// export const createChatBot = async (dataToSend) => {
-//   try {
-//     const response = await axios.post(`${URL}/chatbot/`, dataToSend);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const createChatBot = async (dataToSend) => {
+  try {
+    const response = await axios.post(`${URL}/chatbot/`, dataToSend);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+}
 
 export const getChatBotDetails = async (botId) => {
   try {
@@ -44,15 +44,15 @@ export const getChatBotDetails = async (botId) => {
 //   }
 // }
 
-// export const updateChatBot = async (botId, dataToSend) => {
-//   try {
-//     const response = await axios.put(`${URL}/chatbot/${botId}`, dataToSend);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const updateChatBot = async (botId, dataToSend) => {
+  try {
+    const response = await axios.put(`${URL}/chatbot/${botId}`, dataToSend);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+}
 
 export const updateChatBotConfig = async (botId, dataToSend) => {
   try {
