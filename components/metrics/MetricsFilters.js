@@ -20,7 +20,7 @@ const MetricsFilters = memo(
     onBridgeChange,
     getDisplayRangeText,
   }) => {
-    const FACTOR_OPTIONS = ["Bridges", "API Keys", "Models"];
+    const FACTOR_OPTIONS = ["Agents", "API Keys", "Models"];
 
     return (
       <div className="bg-base-100 shadow-md rounded-lg p-6 mb-6">
@@ -91,7 +91,7 @@ const MetricsFilters = memo(
                 <ChevronDownIcon className="w-3 h-3 ml-2" />
               </summary>
 
-              <ul className="menu dropdown-content bg-base-100 rounded-box z-high w-52 p-2 shadow-sm flex-row overflow-y-auto overflow-x-hidden min-w-72 max-w-72 scrollbar-hide max-h-[70vh]">
+              <ul className="menu dropdown-content bg-base-100 rounded-box z-high w-52 p-2 shadow-xl flex-row overflow-y-auto overflow-x-hidden min-w-72 max-w-72 scrollbar-hide max-h-[70vh]">
                 <div className="search-container">
                   <SearchItems setFilterItems={setFilterBridges} data={allBridges} item="Agent" />
                 </div>
