@@ -20,6 +20,21 @@ export const logoutUserFromMsg91 = async (headers) => {
   return User;
 };
 
+export const logoutUser = async (token) => {
+  try {
+    const response = await axios.post(
+      `${URL}/api/auth/logout`, 
+      {}, 
+      {
+        headers: { Authorization: token }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const loginUser = async (dataToSend) => {
   try {
     const response = await axios.post(`${URL}/api/user/localToken`, dataToSend);
