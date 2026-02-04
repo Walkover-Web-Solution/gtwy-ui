@@ -1,6 +1,6 @@
 import { allAuthKey, createAuthKey, deleteAuthkey } from "@/config/index";
 import { fetchAllAuthData, addAuthData, removeAuthData } from "../reducer/authkeyReducer";
-
+import { trackUserAction } from "@/utils/posthog";
 
 /**
  * Action to fetch all auth keys from the server
@@ -19,7 +19,6 @@ export const getAllAuthData = () => async (dispatch, getState) => {
   }
 };
 
-
 /**
  * Action creator to create a new auth key
  * @param {object} dataToSend - the data to be sent to the server
@@ -33,14 +32,17 @@ export const createNewAuthData = (dataToSend) => async (dispatch, getState) => {
 
     // Update the authkey reducer with the new auth key data
     dispatch(addAuthData(data));
-    return data
+    trackUserAction("auth_key_created", {
+      auth_key_id: data._id,
+      org_id: data.org_id,
+    });
+    return data;
   } catch (error) {
     // Log the error if any
     console.error(error);
     throw error;
   }
 };
-
 
 /**
  * Action creator to delete an auth key
@@ -56,6 +58,10 @@ export const deleteAuthData = (data) => async (dispatch, getState) => {
 
     // Make a request to the server to delete the auth key
     await deleteAuthkey(data.id);
+    trackUserAction("auth_key_deleted", {
+      auth_key_id: data.id,
+      org_id: data.org_id,
+    });
   } catch (error) {
     // Log the error if any
     console.error(error);

@@ -14,7 +14,7 @@ export const orchetralFlowReducer = createSlice({
     },
     setConnectedAgentFlowData: (state, action) => {
       const { orgId, bridgeId, versionId, data } = action.payload;
-      
+
       // Ensure root object exists (in case of corrupted or partial rehydrated state)
       if (!state.connectedAgentFlowByBridge) {
         state.connectedAgentFlowByBridge = {};
@@ -27,7 +27,7 @@ export const orchetralFlowReducer = createSlice({
       if (!state.connectedAgentFlowByBridge[orgId][bridgeId]) {
         state.connectedAgentFlowByBridge[orgId][bridgeId] = {};
       }
-      
+
       // Store data at orgId > bridgeId > versionId
       state.connectedAgentFlowByBridge[orgId][bridgeId][versionId] = data || {};
       state.connectedAgentFlowLoading = false;
@@ -41,14 +41,14 @@ export const orchetralFlowReducer = createSlice({
         delete state.connectedAgentFlowByBridge[orgId][bridgeId][versionId];
       }
     },
-  }
+  },
 });
 
 export const {
   setConnectedAgentFlowLoading,
   setConnectedAgentFlowData,
   setConnectedAgentFlowError,
-  clearConnectedAgentFlowData
+  clearConnectedAgentFlowData,
 } = orchetralFlowReducer.actions;
 
 export default orchetralFlowReducer.reducer;

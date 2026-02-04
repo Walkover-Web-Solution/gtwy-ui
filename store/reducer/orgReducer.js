@@ -1,14 +1,15 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   organizations: [],
   currentOrgId: null,
   loading: false,
   error: null,
+  users: [],
 };
 
 const orgReducer = createSlice({
-  name: 'organization',
+  name: "organization",
   initialState,
   reducers: {
     organizationCreated: (state, action) => {
@@ -20,7 +21,7 @@ const orgReducer = createSlice({
     },
     organizationsFetched: (state, action) => {
       state.organizations = action.payload.data.data;
-      const allOrgMap = {}
+      const allOrgMap = {};
 
       action.payload.data.data?.map((singleOrg) => {
         allOrgMap[singleOrg?._id] = singleOrg;
@@ -33,10 +34,13 @@ const orgReducer = createSlice({
     clearCurrentOrgId: (state) => {
       state.currentOrgId = null;
     },
+    usersFetched: (state, action) => {
+      state.users = action.payload.data;
+    },
   },
 });
 
-
-export const { organizationCreated, organizationsFetched, setCurrentOrgId, clearCurrentOrgId } = orgReducer.actions;
+export const { organizationCreated, organizationsFetched, setCurrentOrgId, clearCurrentOrgId, usersFetched } =
+  orgReducer.actions;
 
 export default orgReducer.reducer;

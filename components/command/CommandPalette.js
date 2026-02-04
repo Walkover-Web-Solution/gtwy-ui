@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { usePathname, useRouter } from "next/navigation";
-import { Search, X, ChevronDown, ChevronRight } from "lucide-react";
-import { formatRelativeTime, formatDate } from "@/utils/utility";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Search, X, ChevronDown, ChevronRight, Filter } from "lucide-react";
+import { formatRelativeTime, formatDate, openModal, closeModal } from "@/utils/utility";
+import { MODAL_TYPE } from "@/utils/enums";
 import Protected from "../Protected";
 
 function getOrgIdFromPath(pathname) {
@@ -15,26 +16,30 @@ function getOrgIdFromPath(pathname) {
 
 function getCurrentCategoryGroup(currentCategory) {
   const categoryGroupMap = {
-    'agents': 'Agents',
-    'apikeys': 'API Keys',
-    'Auths': 'Auth Keys',
-    'docs': 'Knowledge Base',
-    'integrations': 'Integrations'
+    agents: "Agents",
+    apikeys: "API Keys",
+    Auths: "Auth Keys",
+    docs: "Knowledge Base",
+    integrations: "Integrations",
+    rag_embed: "RAG Embeds",
   };
   return categoryGroupMap[currentCategory] || null;
 }
 
-const CommandPalette = ({isEmbedUser}) => {
+const CommandPalette = ({ isEmbedUser }) => {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [collapsedLandingCategories, setCollapsedLandingCategories] = useState(new Set());
   const [collapsedSearchCategories, setCollapsedSearchCategories] = useState(new Set());
 
+  const filterParam = searchParams.get("filter");
+
   const orgId = useMemo(() => getOrgIdFromPath(pathname), [pathname]);
-  
+
   const currentCategory = useMemo(() => {
     if (!pathname) return null;
     const parts = pathname.split("/").filter(Boolean);
@@ -43,6 +48,7 @@ const CommandPalette = ({isEmbedUser}) => {
     if (parts.includes("pauthkey")) return "Auths";
     if (parts.includes("knowledge_base")) return "docs";
     if (parts.includes("integration")) return "integrations";
+    if (parts.includes("RAG_embed")) return "rag_embed";
     if (parts.includes("orchestratal_model")) return "flows";
     return null;
   }, [pathname]);
@@ -56,186 +62,255 @@ const CommandPalette = ({isEmbedUser}) => {
     authData: state?.authDataReducer?.authData || [],
   }));
 
+  const apiAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "api");
+  const chatbotAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "chatbot");
+
   const functions = useMemo(() => Object.values(functionData || {}), [functionData]);
 
   // Build category items with proper formatting
-  const buildCategoryItems = useCallback((categoryKey) => {
-    switch(categoryKey) {
-      case 'agents':
-        return agentList.filter(agent => !agent.deletedAt).map((a) => ({
-          id: a._id,
-          title: a.name || a.slugName || a._id,
-          subtitle: (
-            <div className="flex items-center gap-2">
-              <span>{a.service || ""}{a.configuration?.model ? " · " + a.configuration?.model : ""}{a.total_tokens ? " · " + a.total_tokens + " tokens" : ""}</span>
-              {a.last_used && (
-                <>
-                  <span>•</span>
-                  <span className="text-xs opacity-70">Last used:</span>
-                  <div className="group cursor-help inline-flex">
-                    <span className="group-hover:hidden">{formatRelativeTime(a.last_used)}</span>
-                    <span className="hidden group-hover:inline text-xs">{formatDate(a.last_used)}</span>
-                  </div>
-                </>
-              )}
-            </div>
-          ),
-          type: "agents",
-          published_version_id: a.published_version_id,
-          versions: a.versions
-        }));
-      case 'apikeys':
-        return apikeys.map((k) => ({
-          id: k._id,
-          title: k.name || k._id,
-          subtitle: (
-            <div className="flex items-center gap-2">
-              <span>{k.service || "API Key"}</span>
-              {k.last_used && (
-                <>
-                  <span>•</span>
-                  <span className="text-xs opacity-70">Last used:</span>
-                  <div className="group cursor-help inline-flex">
-                    <span className="group-hover:hidden">{formatRelativeTime(k.last_used)}</span>
-                    <span className="hidden group-hover:inline text-xs">{formatDate(k.last_used)}</span>
-                  </div>
-                </>
-              )}
-            </div>
-          ),
-          type: "apikeys",
-        }));
-      case 'docs':
-        return knowledgeBase.map((d) => ({
-          id: d._id,
-          title: d.name || d._id,
-          subtitle: "Knowledge Base",
-          type: "docs",
-        }));
-      case 'integrations':
-        return integrationData.map((d) => ({
-          id: d._id,
-          title: d.name || d._id,
-          subtitle: "Integration",
-          type: "integrations",
-        }));
-      case 'Auths':
-        return authData.map((d) => ({
-          id: d.id,
-          title: d.name || d.id,
-          subtitle: "Auth Key",
-          type: "Auths",
-        }));
-      default:
-        return [];
-    }
-  }, [agentList, apikeys, knowledgeBase, integrationData, authData]);
+  const buildCategoryItems = useCallback(
+    (categoryKey) => {
+      switch (categoryKey) {
+        case "api-agents":
+          return apiAgents.map((a) => ({
+            id: a._id,
+            title: a.name || a.slugName || a._id,
+            subtitle: "API Agent",
+            type: "agents",
+            bridgeType: "api",
+            published_version_id: a.published_version_id,
+            versions: a.versions,
+          }));
 
-  const items = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filterBy = (list, fields) => {
-      if (!q) return [];
-      return list.filter((it) =>
-        fields.some((f) => String(it?.[f] || "").toLowerCase().includes(q))
-      );
-    };
+        case "chatbot-agents":
+          return chatbotAgents.map((a) => ({
+            id: a._id,
+            title: a.name || a.slugName || a._id,
+            subtitle: "Chatbot Agent",
+            type: "agents",
+            bridgeType: "chatbot",
+            published_version_id: a.published_version_id,
+            versions: a.versions,
+          }));
 
-    const agentsGroup = filterBy(agentList.filter(agent => !agent.deletedAt), ["name", "slugName", "service", "_id","last_used","total_tokens"]).map((a) => ({
-      id: a._id,
-      title: a.name || a.slugName || a._id,
-      subtitle: (
-        <div className="flex items-center gap-2">
-          <span>{a.service || ""}{a.configuration?.model ? " · " + a.configuration?.model : ""}{a.total_tokens ? " · " + a.total_tokens + " tokens" : ""}</span>
-          {a.last_used && (
-            <>
-              <span>•</span>
-              <span className="text-xs opacity-70">Last used:</span>
-              <div className="group cursor-help inline-flex">
-                <span className="group-hover:hidden">{formatRelativeTime(a.last_used)}</span>
-                <span className="hidden group-hover:inline text-xs">{formatDate(a.last_used)}</span>
+        case "apikeys":
+          return apikeys.map((k) => ({
+            id: k._id,
+            title: k.name || k._id,
+            subtitle: (
+              <div className="flex items-center gap-2">
+                <span>{k.service || "API Key"}</span>
+                {k.last_used && (
+                  <>
+                    <span>•</span>
+                    <span className="text-xs opacity-70">Last used:</span>
+                    <div className="group cursor-help inline-flex">
+                      <span className="group-hover:hidden">{formatRelativeTime(k.last_used)}</span>
+                      <span className="hidden group-hover:inline text-xs">{formatDate(k.last_used)}</span>
+                    </div>
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      ),
-      type: "agents",
-      published_version_id: a.published_version_id,
-      versions: a.versions
-    }));
+            ),
+            type: "apikeys",
+          }));
 
-    const agentsVersionMatches = !q ? [] : (agentList || []).filter(agent => !agent.deletedAt).flatMap((a) => {
-      const versionsArr = Array.isArray(a?.versions) ? a.versions : [];
-      const published = a?.published_version_id ? [a.published_version_id] : [];
-      const candidates = [...versionsArr, ...published].map((v) => String(v || ""));
-      const matches = candidates.filter((v) => v.toLowerCase() === q.toLowerCase());
-      const unique = Array.from(new Set(matches));
-      return unique.map((v) => ({
-        id: a._id,
-        title: a.name || a.slugName || a._id,
-        subtitle: `Version ${v}`,
-        type: "agents",
-        versionId: v,
-      }));
-    });
+        case "docs":
+          return knowledgeBase.map((d) => ({
+            id: d._id,
+            title: d.name || d._id,
+            subtitle: "Knowledge Base",
+            type: "docs",
+          }));
 
-    const apikeysGroup = filterBy(apikeys, ["name", "service", "_id"]).map((k) => ({
-      id: k._id,
-      title: k.name || k._id,
-      subtitle: (
-        <div className="flex items-center gap-2">
-          <span>{k.service || "API Key"}</span>
-          {k.last_used && (
-            <>
-              <span>•</span>
-              <span className="text-xs opacity-70">Last used:</span>
-              <div className="group cursor-help inline-flex">
-                <span className="group-hover:hidden">{formatRelativeTime(k.last_used)}</span>
-                <span className="hidden group-hover:inline text-xs">{formatDate(k.last_used)}</span>
-              </div>
-            </>
-          )}
-        </div>
-      ),
-      type: "apikeys",
-    }));
+        case "integrations":
+          return integrationData
+            .filter((d) => d.type === "embed")
+            .map((d) => ({
+              id: d._id,
+              title: d.name || d._id,
+              subtitle: "Integration",
+              type: "integrations",
+            }));
 
-    const kbGroup = filterBy(knowledgeBase, ["name", "_id"]).map((d) => ({
-      id: d._id,
-      title: d.name || d._id,
-      subtitle: "Knowledge Base",
-      type: "docs",
-    }));
+        case "rag_embed":
+          return integrationData
+            .filter((d) => d.type === "rag_embed")
+            .map((d) => ({
+              id: d._id,
+              title: d.name || d._id,
+              subtitle: "RAG Embed",
+              type: "rag_embed",
+            }));
+        case "Auths":
+          return authData.map((d) => ({
+            id: d.id,
+            title: d.name || d.id,
+            subtitle: "Auth Key",
+            type: "Auths",
+          }));
 
-    const integrationGroup = filterBy(integrationData, ["name", "service", "_id"]).map((d) => ({
-      id: d._id,
-      title: d.name || d._id,
-      subtitle: "Integration",
-      type: "integrations",
-    }));
+        default:
+          return [];
+      }
+    },
+    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData]
+  );
 
-    const authGroup = filterBy(authData, ["name", "service", "_id"]).map((d) => ({
-      id: d._id,
-      title: d.name || d._id,
-      subtitle: "Auth Key",
-      type: "Auths",
-    }));
+  const createAgentItem = (a, type) => ({
+    id: a._id,
+    title: a.name || a.slugName || a._id,
+    subtitle: (
+      <div className="flex items-center gap-2">
+        <span>
+          {a.service || ""}
+          {a.configuration?.model ? " · " + a.configuration?.model : ""}
+          {a.total_tokens ? " · " + a.total_tokens + " tokens" : ""}
+        </span>
+        {a.last_used && (
+          <>
+            <span>•</span>
+            <span className="text-xs opacity-70">Last used:</span>
+            <div className="group cursor-help inline-flex">
+              <span className="group-hover:hidden">{formatRelativeTime(a.last_used)}</span>
+              <span className="hidden group-hover:inline text-xs">{formatDate(a.last_used)}</span>
+            </div>
+          </>
+        )}
+      </div>
+    ),
+    type: "agents",
+    bridgeType: type,
+    published_version_id: a.published_version_id,
+    versions: a.versions,
+  });
 
-    return {
-      agents: [...new Set([...agentsGroup, ...agentsVersionMatches])],
+  const filterBy = (list, fields) => {
+    if (!query) return [];
+    const lowerQuery = query.toLowerCase();
+    return list.filter((it) =>
+      fields.some((f) =>
+        String(it?.[f] || "")
+          .toLowerCase()
+          .includes(lowerQuery)
+      )
+    );
+  };
+
+  const apiAgentsGroup = filterBy(apiAgents, ["name", "slugName", "service", "_id", "last_used", "total_tokens"]).map(
+    (a) => createAgentItem(a, "api")
+  );
+
+  const chatbotAgentsGroup = filterBy(chatbotAgents, [
+    "name",
+    "slugName",
+    "service",
+    "_id",
+    "last_used",
+    "total_tokens",
+  ]).map((a) => createAgentItem(a, "chatbot"));
+
+  const agentsVersionMatches = !query
+    ? []
+    : (agentList || [])
+        .filter((agent) => !agent.deletedAt)
+        .flatMap((a) => {
+          const versionsArr = Array.isArray(a?.versions) ? a.versions : [];
+          const published = a?.published_version_id ? [a.published_version_id] : [];
+          const candidates = [...versionsArr, ...published].map((v) => String(v || ""));
+          const matches = candidates.filter((v) => v.toLowerCase() === query.toLowerCase());
+          const unique = Array.from(new Set(matches));
+          return unique.map((v) => ({
+            id: a._id,
+            title: a.name || a.slugName || a._id,
+            subtitle: `Version ${v}`,
+            type: "agents",
+            versionId: v,
+          }));
+        });
+
+  const apikeysGroup = filterBy(apikeys, ["name", "service", "_id"]).map((k) => ({
+    id: k._id,
+    title: k.name || k._id,
+    subtitle: (
+      <div className="flex items-center gap-2">
+        <span>{k.service || "API Key"}</span>
+        {k.last_used && (
+          <>
+            <span>•</span>
+            <span className="text-xs opacity-70">Last used:</span>
+            <div className="group cursor-help inline-flex">
+              <span className="group-hover:hidden">{formatRelativeTime(k.last_used)}</span>
+              <span className="hidden group-hover:inline text-xs">{formatDate(k.last_used)}</span>
+            </div>
+          </>
+        )}
+      </div>
+    ),
+    type: "apikeys",
+  }));
+
+  const kbGroup = filterBy(knowledgeBase, ["name", "_id"]).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "Knowledge Base",
+    type: "docs",
+  }));
+
+  const integrationGroup = filterBy(
+    integrationData.filter((d) => d.type === "embed"),
+    ["name", "service", "_id"]
+  ).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "Integration",
+    type: "integrations",
+  }));
+
+  const authGroup = filterBy(authData, ["name", "service", "_id"]).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "Auth Key",
+    type: "Auths",
+  }));
+
+  const ragEmbedGroup = filterBy(
+    integrationData.filter((d) => d.type === "rag_embed"),
+    ["name", "_id"]
+  ).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "RAG Embed",
+    type: "rag_embed",
+  }));
+
+  const items = useMemo(
+    () => ({
+      agents: [...apiAgentsGroup, ...chatbotAgentsGroup, ...agentsVersionMatches],
+      chatbotAgents: chatbotAgentsGroup,
       apikeys: apikeysGroup,
       docs: kbGroup,
       integrations: integrationGroup,
       auths: authGroup,
-    };
-  }, [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData]);
+      rag_embed: ragEmbedGroup,
+    }),
+    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData]
+  );
 
-  const allResults = useMemo(() => [
-    ...items.agents.map((it) => ({ group: "Agents", ...it })),
-    ...items.apikeys.map((it) => ({ group: "API Keys", ...it })),
-    ...items.docs.map((it) => ({ group: "Knowledge Base", ...it })),
-    ...items.integrations.map((it) => ({ group: "Integrations", ...it })),
-    ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
-  ], [items]);
+  const allResults = useMemo(
+    () => [
+      ...items.agents.map((it) => ({
+        group: it.bridgeType === "api" ? "API Agents" : "Chatbot Agents",
+        ...it,
+      })),
+      ...items.apikeys.map((it) => ({ group: "API Keys", ...it })),
+      ...items.docs.map((it) => ({ group: "Knowledge Base", ...it })),
+      ...items.integrations.map((it) => ({ group: "Integrations", ...it })),
+      ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
+      ...items.rag_embed.map((it) => ({ group: "RAG Embeds", ...it })),
+    ],
+    [items]
+  );
 
   const groupedResults = useMemo(() => {
     const groups = {};
@@ -243,21 +318,21 @@ const CommandPalette = ({isEmbedUser}) => {
       if (!groups[r.group]) groups[r.group] = [];
       groups[r.group].push(r);
     });
-    
+
     const sortedGroups = {};
     const currentCategoryGroup = getCurrentCategoryGroup(currentCategory);
-    
+
     if (currentCategoryGroup && groups[currentCategoryGroup]) {
       sortedGroups[currentCategoryGroup] = groups[currentCategoryGroup];
     }
-    
+
     Object.keys(groups)
-      .filter(group => group !== currentCategoryGroup)
+      .filter((group) => group !== currentCategoryGroup)
       .sort()
-      .forEach(group => {
+      .forEach((group) => {
         sortedGroups[group] = groups[group];
       });
-    
+
     return sortedGroups;
   }, [allResults, currentCategory]);
 
@@ -275,20 +350,34 @@ const CommandPalette = ({isEmbedUser}) => {
   // Categories array for landing navigation
   const categories = useMemo(() => {
     const allCategories = [
-      { key: 'agents', label: 'Agents', desc: 'Manage and configure agents' },
-      { key: 'apikeys', label: 'API Keys', desc: 'Credentials and providers' },
-      { key: 'Auths', label: 'Auth Keys', desc: 'Configure Auth Keys' },
-      { key: 'docs', label: 'Knowledge Base', desc: 'Documents and sources' },
-      { key: 'integrations', label: 'Gtwy as Embed', desc: 'Configure integrations' },
+      {
+        key: "api-agents",
+        label: "API Agents",
+        desc: "Manage API-based agents",
+        type: "agents",
+        filter: "api",
+      },
+      {
+        key: "chatbot-agents",
+        label: "Chatbot Agents",
+        desc: "Manage chatbot agents",
+        type: "agents",
+        filter: "chatbot",
+      },
+      { key: "apikeys", label: "API Keys", desc: "Credentials and providers" },
+      { key: "Auths", label: "Auth Keys", desc: "Configure Auth Keys" },
+      { key: "docs", label: "Knowledge Base", desc: "Documents and sources" },
+      { key: "integrations", label: "Gtwy as Embed", desc: "Configure integrations" },
+      { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
     ];
-    
-    const currentCategoryIndex = allCategories.findIndex(cat => cat.key === currentCategory);
+
+    const currentCategoryIndex = allCategories.findIndex((cat) => cat.key === currentCategory);
     if (currentCategoryIndex > -1) {
       const currentCat = allCategories[currentCategoryIndex];
       const otherCats = allCategories.filter((_, index) => index !== currentCategoryIndex);
       return [currentCat, ...otherCats];
     }
-    
+
     return allCategories;
   }, [currentCategory]);
 
@@ -296,13 +385,13 @@ const CommandPalette = ({isEmbedUser}) => {
   const landingFlatList = useMemo(() => {
     const list = [];
     categories.forEach((cat) => {
-      list.push({ type: 'category', key: cat.key, data: cat });
-      
+      list.push({ type: "category", key: cat.key, data: cat });
+
       // Only add items if category is not collapsed
       if (!collapsedLandingCategories.has(cat.key)) {
         const items = buildCategoryItems(cat.key);
-        items.forEach(item => {
-          list.push({ type: 'item', key: cat.key, data: item });
+        items.forEach((item) => {
+          list.push({ type: "item", key: cat.key, data: item });
         });
       }
     });
@@ -310,28 +399,35 @@ const CommandPalette = ({isEmbedUser}) => {
   }, [categories, buildCategoryItems, collapsedLandingCategories]);
 
   const openPalette = useCallback(() => {
-    const openModals = document.querySelectorAll('.modal-open, dialog[open]');
+    const openModals = document.querySelectorAll(".modal-open, dialog[open]");
     if (openModals.length > 0) return;
-    
+
     setOpen(true);
     setQuery("");
     setActiveIndex(0);
-    
+
     // Collapse all categories except the first one (current category)
-    const allCategoryKeys = categories.map(c => c.key);
+    const allCategoryKeys = categories.map((c) => c.key);
     const firstCategoryKey = allCategoryKeys[0];
-    const collapsedSet = new Set(allCategoryKeys.filter(key => key !== firstCategoryKey));
+    const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== firstCategoryKey));
     setCollapsedLandingCategories(collapsedSet);
-    
+
     // For search mode, collapse all except first group
     setCollapsedSearchCategories(new Set());
   }, [categories]);
 
   const closePalette = useCallback(() => setOpen(false), []);
 
+  const clearCurrentFilter = useCallback(() => {
+    const url = new URL(window.location);
+    url.searchParams.delete("filter");
+    router.push(url.pathname + url.search);
+    closePalette();
+  }, [router, closePalette]);
+
   const toggleLandingCategory = useCallback((categoryKey) => {
-    lastNavigationMethod.current = 'click';
-    setCollapsedLandingCategories(prev => {
+    lastNavigationMethod.current = "click";
+    setCollapsedLandingCategories((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(categoryKey)) {
         newSet.delete(categoryKey);
@@ -342,12 +438,12 @@ const CommandPalette = ({isEmbedUser}) => {
     });
     // Reset to keyboard mode after a short delay
     setTimeout(() => {
-      lastNavigationMethod.current = 'keyboard';
+      lastNavigationMethod.current = "keyboard";
     }, 100);
   }, []);
 
   const toggleSearchCategory = useCallback((categoryGroup) => {
-    setCollapsedSearchCategories(prev => {
+    setCollapsedSearchCategories((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(categoryGroup)) {
         newSet.delete(categoryGroup);
@@ -358,111 +454,145 @@ const CommandPalette = ({isEmbedUser}) => {
     });
   }, []);
 
-  const navigateTo = useCallback((item) => {
-    if (!orgId) {
-      router.push("/");
-      return;
-    }
-    switch (item.type) {
-      case "agents":
-        if (item.versionId) {
-          router.push(`/org/${orgId}/agents/configure/${item.id}?version=${item.versionId}`);
-        } else {
-          router.push(`/org/${orgId}/agents/configure/${item.id}?version=${item.published_version_id || item.versions?.[0]}`);
-        }
-        break;
-      case "apikeys":
-        router.push(`/org/${orgId}/apikeys`);
-        break;
-      case "docs":
-        router.push(`/org/${orgId}/knowledge_base`);
-        break;
-      case "integrations":
-        router.push(`/org/${orgId}/integration`);
-        break;
-      case "Auths":
-        router.push(`/org/${orgId}/pauthkey`);
-        break;
-      default:
+  const navigateTo = useCallback(
+    (item) => {
+      if (!orgId) {
         router.push("/");
-    }
-    closePalette();
-  }, [router, orgId, closePalette]);
+        return;
+      }
+      switch (item.type) {
+        case "agents":
+          if (item.versionId) {
+            router.push(`/org/${orgId}/agents/configure/${item.id}?version=${item.versionId}`);
+          } else {
+            router.push(
+              `/org/${orgId}/agents/configure/${item.id}?version=${item.published_version_id || item.versions?.[0]}`
+            );
+          }
+          break;
+        case "apikeys":
+          // Always navigate to apikeys page with filter parameter
+          router.push(`/org/${orgId}/apikeys?filter=${item.id}`);
+          break;
+        case "docs":
+          // Always navigate to knowledge base page with filter parameter
+          router.push(`/org/${orgId}/knowledge_base?filter=${item.id}`);
+          break;
+        case "integrations":
+          // Always navigate to integrations page with filter parameter
+          router.push(`/org/${orgId}/integration?filter=${item.id}`);
+          break;
+        case "rag_embed":
+          // Always navigate to RAG embed page with filter parameter
+          router.push(`/org/${orgId}/RAG_embed?filter=${item.id}`);
+          break;
+        case "Auths":
+          // Always navigate to auth keys page with filter parameter
+          router.push(`/org/${orgId}/pauthkey?filter=${item.id}`);
+          break;
+        default:
+          router.push("/");
+      }
+      closePalette();
+    },
+    [router, orgId, closePalette, currentCategory]
+  );
 
-  const navigateCategory = useCallback((key) => {
-    if (!orgId) {
-      router.push("/");
-      return;
-    }
-    const routes = {
-      'agents': `/org/${orgId}/agents`,
-      'apikeys': `/org/${orgId}/apikeys`,
-      'docs': `/org/${orgId}/knowledge_base`,
-      'integrations': `/org/${orgId}/integration`,
-      'Auths': `/org/${orgId}/pauthkey`,
-      'flows': `/org/${orgId}/orchestratal_model`,
-    };
-    router.push(routes[key] || "/");
-    closePalette();
-  }, [orgId, router, closePalette]);
+  const navigateCategory = useCallback(
+    (key) => {
+      if (!orgId) {
+        router.push("/");
+        return;
+      }
+      const routes = {
+        "api-agents": `/org/${orgId}/agents?type=api`,
+        "chatbot-agents": `/org/${orgId}/agents?type=chatbot`,
+        apikeys: `/org/${orgId}/apikeys`,
+        docs: `/org/${orgId}/knowledge_base`,
+        integrations: `/org/${orgId}/integration`,
+        rag_embed: `/org/${orgId}/RAG_embed`,
+        Auths: `/org/${orgId}/pauthkey`,
+        flows: `/org/${orgId}/orchestratal_model`,
+      };
+      router.push(routes[key] || "/");
+      closePalette();
+    },
+    [orgId, router, closePalette]
+  );
 
   useEffect(() => {
     const handler = (e) => {
-      if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k" && !isEmbedUser && !pathname.endsWith("/org") && !pathname.endsWith('/login'))) {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key.toLowerCase() === "k" &&
+        !isEmbedUser &&
+        !pathname.endsWith("/org") &&
+        !pathname.endsWith("/login")
+      ) {
         e.preventDefault();
         openPalette();
+      }
+      // Check for Ctrl+/ or Cmd+/ to toggle keyboard shortcuts modal
+      if ((e.ctrlKey || e.metaKey) && e.key === "/" && !isEmbedUser) {
+        e.preventDefault();
+        const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+        if (modal && modal.hasAttribute("open")) {
+          closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+        } else {
+          openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+        }
       }
       if (e.key === "Escape") {
         closePalette();
       }
-      
+
       if (open) {
         if (query === "") {
           // Landing mode - navigate through flat list
           if (e.key === "ArrowDown") {
             e.preventDefault();
-            lastNavigationMethod.current = 'keyboard';
+            lastNavigationMethod.current = "keyboard";
 
             // Ctrl/Cmd + ArrowDown: jump to next category header
             if (e.ctrlKey || e.metaKey) {
-              setActiveIndex(prev => {
+              setActiveIndex((prev) => {
                 if (landingFlatList.length === 0) return prev;
                 const currentIdx = prev;
                 for (let offset = 1; offset < landingFlatList.length; offset++) {
                   const idx = (currentIdx + offset) % landingFlatList.length;
-                  if (landingFlatList[idx]?.type === 'category') return idx;
+                  if (landingFlatList[idx]?.type === "category") return idx;
                 }
                 return prev;
               });
             } else {
               // Normal ArrowDown: linear navigation over categories + items
-              setActiveIndex(prev => (prev < landingFlatList.length - 1 ? prev + 1 : 0));
+              setActiveIndex((prev) => (prev < landingFlatList.length - 1 ? prev + 1 : 0));
             }
           } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            lastNavigationMethod.current = 'keyboard';
+            lastNavigationMethod.current = "keyboard";
 
             // Ctrl/Cmd + ArrowUp: jump to previous category header
             if (e.ctrlKey || e.metaKey) {
-              setActiveIndex(prev => {
+              setActiveIndex((prev) => {
                 if (landingFlatList.length === 0) return prev;
                 const currentIdx = prev;
                 for (let offset = 1; offset < landingFlatList.length; offset++) {
                   const idx = (currentIdx - offset + landingFlatList.length) % landingFlatList.length;
-                  if (landingFlatList[idx]?.type === 'category') return idx;
+                  if (landingFlatList[idx]?.type === "category") return idx;
                 }
                 return prev;
               });
             } else {
               // Normal ArrowUp: linear navigation over categories + items
-              setActiveIndex(prev => (prev > 0 ? prev - 1 : landingFlatList.length - 1));
+              setActiveIndex((prev) => (prev > 0 ? prev - 1 : landingFlatList.length - 1));
             }
           } else if (e.key === "Enter") {
             e.preventDefault();
             const current = landingFlatList[activeIndex];
-            if (current?.type === 'category') {
+            if (current?.type === "category") {
               navigateCategory(current.key);
-            } else if (current?.type === 'item') {
+            } else if (current?.type === "item") {
               navigateTo(current.data);
             }
           }
@@ -470,10 +600,10 @@ const CommandPalette = ({isEmbedUser}) => {
           // Search mode - navigate through search results
           if (e.key === "ArrowDown") {
             e.preventDefault();
-            setActiveIndex(prev => (prev < flatResults.length - 1 ? prev + 1 : 0));
+            setActiveIndex((prev) => (prev < flatResults.length - 1 ? prev + 1 : 0));
           } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            setActiveIndex(prev => (prev > 0 ? prev - 1 : flatResults.length - 1));
+            setActiveIndex((prev) => (prev > 0 ? prev - 1 : flatResults.length - 1));
           } else if (e.key === "Enter" && flatResults[activeIndex]) {
             e.preventDefault();
             navigateTo(flatResults[activeIndex]);
@@ -483,25 +613,37 @@ const CommandPalette = ({isEmbedUser}) => {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, query, activeIndex, landingFlatList, flatResults, navigateCategory, navigateTo, openPalette, closePalette, pathname, isEmbedUser]);
+  }, [
+    open,
+    query,
+    activeIndex,
+    landingFlatList,
+    flatResults,
+    navigateCategory,
+    navigateTo,
+    openPalette,
+    closePalette,
+    pathname,
+    isEmbedUser,
+  ]);
 
   // Auto-expand category when navigating to it with keyboard
-  const lastNavigationMethod = React.useRef('keyboard');
-  
+  const lastNavigationMethod = React.useRef("keyboard");
+
   useEffect(() => {
-    if (!open || query !== "" || lastNavigationMethod.current !== 'keyboard') return;
-    
+    if (!open || query !== "" || lastNavigationMethod.current !== "keyboard") return;
+
     const current = landingFlatList[activeIndex];
-    if (current?.type === 'category') {
+    if (current?.type === "category") {
       const categoryKey = current.key;
       // Collapse all categories except the current one
-      const allCategoryKeys = categories.map(c => c.key);
-      const collapsedSet = new Set(allCategoryKeys.filter(key => key !== categoryKey));
+      const allCategoryKeys = categories.map((c) => c.key);
+      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== categoryKey));
       setCollapsedLandingCategories(collapsedSet);
-    } else if (current?.type === 'item') {
+    } else if (current?.type === "item") {
       // If navigating to an item, ensure its category is expanded
       const categoryKey = current.key;
-      setCollapsedLandingCategories(prev => {
+      setCollapsedLandingCategories((prev) => {
         const newSet = new Set(prev);
         newSet.delete(categoryKey);
         return newSet;
@@ -512,14 +654,14 @@ const CommandPalette = ({isEmbedUser}) => {
   // Scroll active item into view
   useEffect(() => {
     if (!open) return;
-    
+
     setTimeout(() => {
       const activeElement = document.querySelector(`[data-nav-index="${activeIndex}"]`);
       if (activeElement) {
         activeElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'nearest'
+          behavior: "smooth",
+          block: "nearest",
+          inline: "nearest",
         });
       }
     }, 0);
@@ -531,7 +673,7 @@ const CommandPalette = ({isEmbedUser}) => {
       const groupKeys = Object.keys(groupedResults);
       if (groupKeys.length > 0) {
         const firstGroup = groupKeys[0];
-        const collapsedSet = new Set(groupKeys.filter(group => group !== firstGroup));
+        const collapsedSet = new Set(groupKeys.filter((group) => group !== firstGroup));
         setCollapsedSearchCategories(collapsedSet);
       }
     }
@@ -541,18 +683,48 @@ const CommandPalette = ({isEmbedUser}) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4" onClick={closePalette} style={{zIndex: 999999}}>
-      <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2 border-b border-base-300 p-3">
-          <Search className="w-4 h-4 opacity-70" />
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search agents, bridges, API keys, docs, functions..."
-            className="flex-1 bg-transparent outline-none"
-          />
-          <button className="btn btn-sm" onClick={closePalette}><X className="w-4 h-4" /></button>
+    <div
+      id="command-palette-backdrop"
+      className="fixed inset-0 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={closePalette}
+      style={{ zIndex: 999999 }}
+    >
+      <div
+        id="command-palette-modal"
+        className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-base-300">
+          {filterParam && (
+            <div className="flex items-center justify-between bg-warning/10 px-3 py-2 text-sm">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-warning" />
+                <span>Filter active on current page</span>
+              </div>
+              <button
+                id="command-palette-clear-filter"
+                onClick={clearCurrentFilter}
+                className="btn btn-xs btn-ghost hover:bg-error hover:text-error-content"
+                title="Clear filter"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-2 p-3">
+            <Search className="w-4 h-4 opacity-70" />
+            <input
+              id="command-palette-search-input"
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search agents, bridges, API keys, docs..."
+              className="flex-1 bg-transparent outline-none"
+            />
+            <button id="command-palette-close-button" className="btn btn-sm" onClick={closePalette}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="max-h-[60vh] overflow-auto p-2">
           {showLanding ? (
@@ -560,17 +732,20 @@ const CommandPalette = ({isEmbedUser}) => {
               {categories.map((cat, catIndex) => {
                 const categoryItems = buildCategoryItems(cat.key);
                 const isCategoryCollapsed = collapsedLandingCategories.has(cat.key);
-                const categoryNavIndex = landingFlatList.findIndex(item => item.type === 'category' && item.key === cat.key);
+                const categoryNavIndex = landingFlatList.findIndex(
+                  (item) => item.type === "category" && item.key === cat.key
+                );
                 const isCategoryActive = activeIndex === categoryNavIndex;
 
                 return (
                   <div key={cat.key} className="mb-1">
                     <div
                       className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
-                        isCategoryActive ? 'bg-primary text-primary-content' : 'bg-base-200 hover:bg-base-300'
+                        isCategoryActive ? "bg-primary text-primary-content" : "bg-base-200 hover:bg-base-300"
                       }`}
                     >
                       <button
+                        id={`command-palette-category-${cat.key}`}
                         data-nav-index={categoryNavIndex}
                         onClick={() => navigateCategory(cat.key)}
                         className="flex-1 flex items-center justify-between"
@@ -578,9 +753,10 @@ const CommandPalette = ({isEmbedUser}) => {
                         <div className="font-medium truncate">{cat.label}</div>
                         <span className="text-xs opacity-70 truncate">{cat.desc}</span>
                       </button>
-                      
+
                       {categoryItems.length > 0 && (
                         <button
+                          id={`command-palette-toggle-${cat.key}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleLandingCategory(cat.key);
@@ -601,17 +777,19 @@ const CommandPalette = ({isEmbedUser}) => {
                         <ul className="pb-1">
                           {categoryItems.map((item, itemIndex) => {
                             const itemNavIndex = landingFlatList.findIndex(
-                              navItem => navItem.type === 'item' && navItem.key === cat.key && navItem.data.id === item.id
+                              (navItem) =>
+                                navItem.type === "item" && navItem.key === cat.key && navItem.data.id === item.id
                             );
                             const isItemActive = activeIndex === itemNavIndex;
 
                             return (
                               <li
+                                id={`command-palette-item-${item.type}-${item.id}`}
                                 key={`${item.type}-${item.id}`}
                                 data-nav-index={itemNavIndex}
                                 onClick={() => navigateTo(item)}
                                 className={`cursor-pointer px-3 py-2 flex items-center w-full justify-between text-sm rounded-md ${
-                                  isItemActive ? 'bg-primary/20 border border-primary/40' : 'hover:bg-base-200'
+                                  isItemActive ? "bg-primary/20 border border-primary/40" : "hover:bg-base-200"
                                 }`}
                               >
                                 <div className="font-medium truncate">{item.title}</div>
@@ -635,13 +813,11 @@ const CommandPalette = ({isEmbedUser}) => {
                   {Object.entries(groupedResults).map(([group, rows]) => {
                     const isCollapsed = collapsedSearchCategories.has(group);
                     if (rows.length === 0) return null;
-                    
+
                     return (
                       <div key={group} className="mb-1">
-                        <div 
-                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between cursor-pointer ${
-                            'bg-base-200 hover:bg-base-300'
-                          }`}
+                        <div
+                          className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between cursor-pointer ${"bg-base-200 hover:bg-base-300"}`}
                           onClick={() => toggleSearchCategory(group)}
                         >
                           <div className="flex items-center gap-2">
@@ -649,14 +825,10 @@ const CommandPalette = ({isEmbedUser}) => {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs opacity-70">{rows.length} results</span>
-                            {isCollapsed ? (
-                              <ChevronRight className="w-4 h-4" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4" />
-                            )}
+                            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </div>
                         </div>
-                        
+
                         {!isCollapsed && (
                           <div className="mt-1 ml-2 border border-base-300 rounded-md bg-base-200/40">
                             <ul className="pb-1">
@@ -665,6 +837,7 @@ const CommandPalette = ({isEmbedUser}) => {
                                 const active = globalIdx === activeIndex;
                                 return (
                                   <li
+                                    id={`command-palette-result-${row.type}-${row.id}`}
                                     key={`${row.type}-${row.id}`}
                                     data-nav-index={globalIdx}
                                     onClick={() => navigateTo(row)}
@@ -695,7 +868,6 @@ const CommandPalette = ({isEmbedUser}) => {
       </div>
     </div>
   );
-
 };
 
 export default Protected(CommandPalette);

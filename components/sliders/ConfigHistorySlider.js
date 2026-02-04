@@ -16,15 +16,15 @@ function ConfigHistorySlider({ versionId }) {
     // Check if slider is actually open before making API call
     const sliderElement = document.getElementById("default-config-history-slider");
     const isSliderOpen = sliderElement && !sliderElement.classList.contains("translate-x-full");
-    
+
     if (!versionId || !isSliderOpen) return;
-    
+
     setLoading(true);
     try {
       const response = await getBridgeConfigHistory(versionId, page, pageSize);
       if (response?.success) {
         const newData = response?.userData?.updates ?? [];
-        setHistoryData(prev => page === 1 ? newData : [...prev, ...newData]);
+        setHistoryData((prev) => (page === 1 ? newData : [...prev, ...newData]));
         setHasMore(newData.length === pageSize);
       }
     } catch (error) {
@@ -41,7 +41,7 @@ function ConfigHistorySlider({ versionId }) {
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+        if (mutation.type === "attributes" && mutation.attributeName === "class") {
           const isOpen = !sliderElement.classList.contains("translate-x-full");
           if (isOpen && versionId) {
             // Slider just opened, fetch history
@@ -55,7 +55,7 @@ function ConfigHistorySlider({ versionId }) {
 
     observer.observe(sliderElement, {
       attributes: true,
-      attributeFilter: ['class']
+      attributeFilter: ["class"],
     });
 
     return () => observer.disconnect();
@@ -68,7 +68,7 @@ function ConfigHistorySlider({ versionId }) {
   }, [page, fetchHistory]);
 
   const loadMore = () => {
-    setPage(prev => prev + 1);
+    setPage((prev) => prev + 1);
   };
 
   const formatTime = (time) => {
@@ -102,6 +102,7 @@ function ConfigHistorySlider({ versionId }) {
             <p className="text-xl font-semibold">Updates History</p>
           </div>
           <CloseIcon
+            id="config-history-slider-close-icon"
             className="cursor-pointer hover:text-error transition-colors"
             onClick={handleCloseConfigHistorySlider}
           />
@@ -134,15 +135,14 @@ function ConfigHistorySlider({ versionId }) {
                 {historyData?.length > 0 ? (
                   historyData.map((item, index) => (
                     <li
+                      id={`config-history-item-${index}`}
                       key={item?.id ?? index}
                       className="p-3 rounded-lg bg-base-100 shadow-sm hover:shadow-md transition duration-200"
                     >
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-2">
                           <SecurityIcon className="h-5 w-5 text-success" />
-                          <span className="text-lg font-medium">
-                            {item?.type}
-                          </span>
+                          <span className="text-lg font-medium">{item?.type}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-base-content">
                           <UserIcon className="w-4 h-4" />

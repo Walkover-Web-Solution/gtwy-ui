@@ -3,13 +3,12 @@ import { useDispatch } from "react-redux";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import InfoTooltip from "@/components/InfoTooltip";
-import { CircleQuestionMark } from 'lucide-react';
+import { CircleQuestionMark } from "lucide-react";
 
 const TONES = [
   {
     value: "authoritative",
-    prompt:
-      "Generate a strong, commanding response with authoritative guidance.",
+    prompt: "Generate a strong, commanding response with authoritative guidance.",
   },
   {
     value: "casual",
@@ -37,8 +36,7 @@ const TONES = [
   },
   {
     value: "formal",
-    prompt:
-      "Generate a response in a professional, respectful, and clear tone suitable for official communication.",
+    prompt: "Generate a response in a professional, respectful, and clear tone suitable for official communication.",
   },
   {
     value: "humorous",
@@ -46,8 +44,7 @@ const TONES = [
   },
   {
     value: "inspiring",
-    prompt:
-      "Generate a response that uplifts and inspires the reader toward a higher purpose or goal.",
+    prompt: "Generate a response that uplifts and inspires the reader toward a higher purpose or goal.",
   },
   {
     value: "motivational",
@@ -55,8 +52,7 @@ const TONES = [
   },
   {
     value: "neutral",
-    prompt:
-      "Generate an objective and balanced response without emotional engagement.",
+    prompt: "Generate an objective and balanced response without emotional engagement.",
   },
   {
     value: "polite",
@@ -68,12 +64,12 @@ const TONES = [
   },
 ];
 
-const ToneDropdown = ({ params, searchParams ,isPublished }) => {
+const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) => {
+  // Determine if content is read-only (either published or user is not an editor)
+  const isReadOnly = isPublished || !isEditor;
   const { reduxTone } = useCustomSelector((state) => ({
     reduxTone:
-      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[
-        searchParams?.version
-      ]?.configuration?.tone || null,
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.tone || null,
   }));
   const dispatch = useDispatch();
 
@@ -88,7 +84,7 @@ const ToneDropdown = ({ params, searchParams ,isPublished }) => {
 
     if (toneValue !== reduxTone?.value) {
       setSelectedTone(toneValue);
-      
+
       // Handle "None" option - send empty string
       if (toneValue === "") {
         dispatch(
@@ -131,10 +127,11 @@ const ToneDropdown = ({ params, searchParams ,isPublished }) => {
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
       </div>
-      
+
       {/* Tone Dropdown */}
       <select
-        disabled={isPublished}
+        id="tone-select"
+        disabled={isReadOnly}
         value={selectedTone}
         onChange={handleToneChange}
         className="select select-sm select-bordered capitalize w-full"
@@ -142,9 +139,7 @@ const ToneDropdown = ({ params, searchParams ,isPublished }) => {
         <option value="" disabled>
           Select a tone
         </option>
-        <option value="">
-          None
-        </option>
+        <option value="">None</option>
         {TONES.map((tone) => (
           <option key={tone.value} value={tone.value}>
             {tone.value}

@@ -1,9 +1,7 @@
-import React from 'react'
+import React from "react";
 
 const page = async () => {
-  return (
-    <div>GTWY Embed</div>
-  )
-}
+  return <div>GTWY Embed</div>;
+};
 
-export default page
+export default page;

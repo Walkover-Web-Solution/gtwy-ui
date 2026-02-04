@@ -12,98 +12,92 @@ export const getAllChatBot = async (orgId) => {
     console.error(error);
     return error;
   }
-}
+};
 
-// export const createChatBot = async (dataToSend) => {
-//   try {
-//     const response = await axios.post(`${URL}/chatbot/`, dataToSend);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const createChatBot = async (dataToSend) => {
+  try {
+    const response = await axios.post(`${URL}/chatbot/`, dataToSend);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
 
-// export const getChatBotDetails = async (botId) => {
-//   try {
-//     const response = await axios.get(`${URL}/chatbot/${botId}`);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const getChatBotDetails = async (botId) => {
+  try {
+    const response = await axios.get(`${URL}/api/chatbot/${botId}`);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
 
-// export const getChatBotOfBridge = async (orgId, bridgeId) => {
-//   try {
-//     const response = await axios.get(`${URL}/chatbot/${orgId}/${bridgeId}`);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const updateChatBot = async (botId, dataToSend) => {
+  try {
+    const response = await axios.put(`${URL}/chatbot/${botId}`, dataToSend);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
 
-// export const updateChatBot = async (botId, dataToSend) => {
-//   try {
-//     const response = await axios.put(`${URL}/chatbot/${botId}`, dataToSend);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const updateChatBotConfig = async (botId, dataToSend) => {
+  try {
+    const response = await axios.post(`${URL}/api/chatbot/${botId}/updateconfig`, dataToSend);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
 
-// export const updateChatBotConfig = async (botId, dataToSend) => {
-//   try {
-//     const response = await axios.post(`${URL}/chatbot/${botId}/updateconfig`, dataToSend);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
-
-// export const addorRemoveBridgeInChatBot = async (orgId, botId, bridgeId, type) => {
-//   try {
-//     const response = await axios.put(`${URL}/chatbot/${orgId}/${botId}/bridge/${bridgeId}?type=${type}`);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
+export const addorRemoveBridgeInChatBot = async (orgId, botId, bridgeId, type) => {
+  try {
+    const response = await axios.put(`${URL}/api/chatbot/agent`, {
+      botId,
+      agentId: bridgeId,
+      action: type,
+    });
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
 
 // Chatbot Response Management APIs
 export const getAllResponseTypesApi = async (orgId) => {
   try {
-    const data = await axios.get(`${URL}/chatbot/${orgId}/getAllResponse`)
+    const data = await axios.get(`${URL}/chatbot/${orgId}/getAllResponse`);
     return data;
   } catch (error) {
-    console.error(error)
-    throw new Error(error)
+    console.error(error);
+    throw new Error(error);
   }
-}
+};
 
 export const createReponseTypeInOrg = async (orgId) => {
   try {
-    const data = await axios.post(`${URL}/chatbot/${orgId}/createResponse`)
+    const data = await axios.post(`${URL}/chatbot/${orgId}/createResponse`);
     return data;
   } catch (error) {
-    toast.error(error.response.data.error)
+    toast.error(error.response.data.error);
   }
-}
+};
 
 export const createOrgToken = async (orgId) => {
   try {
     const data = await axios.post(`${URL}/api/utils/token`, {
-      type: 'org_token'
+      type: "org",
     });
     return data;
   } catch (error) {
-    toast.error(error.response.data.error)
+    toast.error(error.response.data.error);
   }
-}
+};
 
 export const addorRemoveResponseIdInBridge = async (bridge_id, orgId, responseObj) => {
   try {
@@ -113,15 +107,18 @@ export const addorRemoveResponseIdInBridge = async (bridge_id, orgId, responseOb
     console.error(error);
     return error;
   }
-}
+};
 
 // Chatbot Action Management APIs
-export const createOrRemoveAction = async ({ orgId, bridgeId, versionId, type, dataToSend }) => {
+export const createOrRemoveAction = async ({ bridgeId, versionId, type, dataToSend }) => {
   try {
-    const response = await axios.post(`${URL}/chatbot/${orgId}/bridge/${bridgeId}/action?type=${type}`, { ...dataToSend, version_id: versionId });
+    const response = await axios.post(`${URL}/api/chatbot/agent/${bridgeId}/action?type=${type}`, {
+      ...dataToSend,
+      version_id: versionId,
+    });
     return response.data;
   } catch (error) {
     console.error(error);
     return error;
   }
-}
+};

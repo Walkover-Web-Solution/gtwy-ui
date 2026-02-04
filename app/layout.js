@@ -1,8 +1,9 @@
 import "./globals.css";
 import "../styles/performance-optimizations.css";
 import Wrapper from "@/wrapper/Wrapper";
-import Script from "next/script";
+import { GoogleTagManager } from "@next/third-parties/google";
 import { DM_Sans } from "next/font/google";
+import NetworkStatus from "@/components/NetworkStatus";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -12,41 +13,24 @@ const dmSans = DM_Sans({
 export const metadata = {
   title: "GTWY AI | Connect 5000+ apps in just 1 click",
   description: "Simplified AI & chatbot integration",
-  category: 'technology',
-  generator: 'GTWY AI',
-  keywords: "gtwy ai, ai middleware, ai integration platform, ai chatbot service, openai integration, anthropic api, groq ai, o1 ai, ai automation tools, ai api gateway, large language model integration, llm api, ai software solutions, ai-powered chatbot, ai model deployment, machine learning api, enterprise ai solutions, ai infrastructure, artificial intelligence services, custom ai development, ai orchestration, ai cloud services, multi-ai platform, ai business solutions, ai developer tools, ai framework, gpt integration, ai tools for business, llm deployment, ai model hosting, ai tech stack, ai-powered applications, smart ai assistant, best ai middleware, chatbot development platform, ai-powered automation",
+  category: "technology",
+  generator: "GTWY AI",
+  keywords:
+    "gtwy ai, ai middleware, ai integration platform, ai chatbot service, openai integration, anthropic api, groq ai, o1 ai, ai automation tools, ai api gateway, large language model integration, llm api, ai software solutions, ai-powered chatbot, ai model deployment, machine learning api, enterprise ai solutions, ai infrastructure, artificial intelligence services, custom ai development, ai orchestration, ai cloud services, multi-ai platform, ai business solutions, ai developer tools, ai framework, gpt integration, ai tools for business, llm deployment, ai model hosting, ai tech stack, ai-powered applications, smart ai assistant, best ai middleware, chatbot development platform, ai-powered automation",
   alternates: {
     canonical: "https://gtwy.ai",
   },
 };
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
-export default async function RootLayout({ children }) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en" data-theme="light">
+      <GoogleTagManager gtmId="GTM-PXRN8T45" />
       <body suppressHydrationWarning className={dmSans.className}>
-        {/* Google Tag Manager */}
-        <Script id="gtm-script" strategy="afterInteractive">
-          {`
-            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','GTM-PXRN8T45');
-          `}
-        </Script>
-
-        {/* Google Tag Manager (noscript) */}
-        <noscript>
-          <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-PXRN8T45"
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
-        </noscript>
         <Wrapper>{children}</Wrapper>
+        <NetworkStatus />
       </body>
     </html>
   );

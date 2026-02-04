@@ -13,11 +13,11 @@
             };
             this.urls = {
                 gtwyUrl: 'https://dev-embed.gtwy.ai/embed',
-                login: 'https://dev-db.gtwy.ai/gtwyEmbed/login'
+                login: 'https://dev-db.gtwy.ai/api/embed/login'
             };
             this.state = {
                 bodyLoaded: false, fullscreen: false, isInitialized: false, hasParentContainer: false,
-                tempDataToSend: { hideHomeButton: true, showHistory: true, showConfigType: false }
+                tempDataToSend: {}
             };
             this.initializeEventListeners();
         }
@@ -197,7 +197,17 @@
                 this.initializeGtwyEmbed().then(() => this.openGtwy());
                 return;
             }
-            [(agent_id, {agent_id,history}, { agent_id, meta }, { agent_name }, { agent_purpose })]?.filter(data => data && Object.values(data).some(v => v))?.forEach(data => SendDataToGtwyEmbed(data))||[];
+            
+            const dataToSend = {};
+            if (agent_id) dataToSend.agent_id = agent_id;
+            if (meta && Object.keys(meta).length > 0) dataToSend.meta = meta;
+            if (agent_name) dataToSend.agent_name = agent_name;
+            if (agent_purpose) dataToSend.agent_purpose = agent_purpose;
+            if (history) dataToSend.history = history;
+            
+            if (Object.keys(dataToSend).length > 0) {
+                SendDataToGtwyEmbed(dataToSend);
+            }
 
             const container = document.getElementById('gtwy-iframe-parent-container');
             const iframe = document.getElementById('gtwyInterfaceEmbed');
@@ -211,17 +221,18 @@
                     this.applySlideStyles(slideType);
                     requestAnimationFrame(() => container.classList.add('open'));
                 }
-
-                window.parent?.postMessage?.({ type: 'open', data: {} }, '*');
-                document.getElementById('iframe-component-gtwyInterfaceEmbed')?.contentWindow?.postMessage({ type: 'open', data: {} }, '*');
+                window.parent?.postMessage?.({ type: 'openGtwy', data: {} }, '*');
             }
+            setTimeout(()=>{
+                sendMessageToGtwy({ type: 'openGtwy', data: {} })
+            },4000)
         }
 
         closeGtwy() {
             const container = document.getElementById('gtwy-iframe-parent-container');
             if (container?.style?.display === 'block') {
                 if (!this.state.hasParentContainer) container.classList.remove('open');
-                
+                window.parent?.postMessage?.({ type: 'closeGtwy', data: {} }, '*');
                 const delay = this.state.hasParentContainer ? 0 : 300;
                 setTimeout(() => {
                     window.parent?.postMessage?.({ type: 'close', data: {} }, '*');
@@ -374,9 +385,15 @@
         async loadGtwyEmbed() {
             try {
                 const response = await this.fetchGtwyDetails();
+                if (!response || response.error || !response.data) {
+                    console.error('Login failed, not loading embed:', response);
+                    this.handleLoginFailure();
+                    return;
+                }
                 this.processGtwyDetails(response);
             } catch (error) {
                 console.error('GTWY embed loading error:', error);
+                this.handleLoginFailure();
             }
         }
 
@@ -384,13 +401,24 @@
             try {
                 const embedToken = document.getElementById('gtwy-main-script')?.getAttribute('embedToken');
                 const options = embedToken ? {
-                    method: 'GET',
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: embedToken }
                 } : undefined;
-                return (await fetch(this.urls.login, options)).json();
+                const response = await fetch(this.urls.login, options);
+                if (!response.ok) {
+                    throw new Error(`Login API failed with status: ${response.status}`);
+                }
+                return response.json();
             } catch (error) {
                 console.error('Fetch login user error:', error);
+                throw error; // Re-throw to be caught by loadGtwyEmbed
             }
+        }
+        handleLoginFailure() {
+            console.error('Login failed, preventing embed from opening');
+            this.cleanupGtwyEmbed();
+            this.state.isInitialized = false;
+            this.state.bodyLoaded = false;
         }
 
         processGtwyDetails(data) {
@@ -467,13 +495,15 @@
         }
 
         sendInitialData() {
-            if (this.state.tempDataToSend) {
-                sendMessageToGtwy({ type: 'gtwyInterfaceData', data: this.state.tempDataToSend });
-                const shouldOpen = [this.state.tempDataToSend?.defaultOpen, this.state.config?.defaultOpen, this.config.defaultOpen]
-                    .some(val => [true, 'true'].includes(val));
-                if (shouldOpen) this.openGtwy();
-                this.state.tempDataToSend = null;
-            }
+            setTimeout(() => {
+                if (this.state.tempDataToSend) {
+                    sendMessageToGtwy({ type: 'gtwyInterfaceData', data: this.state.tempDataToSend });
+                    const shouldOpen = [this.state.tempDataToSend?.defaultOpen, this.state.config?.defaultOpen, this.config.defaultOpen]
+                        .some(val => [true, 'true'].includes(val));
+                    if (shouldOpen) this.openGtwy();
+                    this.state.tempDataToSend = null;
+                }
+            }, 1000);
         }
     }
 

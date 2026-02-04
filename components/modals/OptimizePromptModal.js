@@ -1,24 +1,25 @@
 // OptimizePromptModal.jsx
-import { optimizePromptApi } from '@/config/index';
-import { useCustomSelector } from '@/customHooks/customSelector';
-import { optimizePromptReducer } from '@/store/reducer/bridgeReducer';
-import { MODAL_TYPE } from '@/utils/enums';
-import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import OptimiseBaseModal from './OptimiseBaseModal';
+import { optimizePromptApi } from "@/config/index";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { optimizePromptReducer } from "@/store/reducer/bridgeReducer";
+import { MODAL_TYPE } from "@/utils/enums";
+import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import OptimiseBaseModal from "./OptimiseBaseModal";
 
-function OptimizePromptModal({ savePrompt, setPrompt, params, searchParams, messages, setMessages, thread_id}) { 
+function OptimizePromptModal({ savePrompt, setPrompt, params, searchParams, messages, setMessages, thread_id }) {
   const dispatch = useDispatch();
   const { prompt, optimizePromptHistory } = useCustomSelector((state) => ({
-    prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.prompt || "",
+    prompt:
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.prompt || "",
     optimizePromptHistory: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.optimizePromptHistory || [],
   }));
   const [promptHistory, setPromptHistory] = useState(optimizePromptHistory);
-  const [currentIndex, setCurrentIndex] = useState(optimizePromptHistory.length-1);
+  const [currentIndex, setCurrentIndex] = useState(optimizePromptHistory.length - 1);
 
   useEffect(() => {
     setPromptHistory(optimizePromptHistory);
-    setCurrentIndex(optimizePromptHistory.length-1);
+    setCurrentIndex(optimizePromptHistory.length - 1);
   }, [optimizePromptHistory]);
 
   const handleOptimizeApi = async (instructionText, params, searchParams) => {
@@ -29,7 +30,7 @@ function OptimizePromptModal({ savePrompt, setPrompt, params, searchParams, mess
       version_id: searchParams?.version,
     });
 
-    const result = typeof response === 'string' ? JSON.parse(response) : response?.data ?? response;
+    const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
     dispatch(optimizePromptReducer({ bridgeId: params.id, prompt: result?.updated }));
     return result;
   };

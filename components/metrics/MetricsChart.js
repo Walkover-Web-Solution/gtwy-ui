@@ -1,24 +1,26 @@
-import { memo } from 'react';
-import Chart from '@/components/LazyApexChart';
+import { memo } from "react";
+import Chart from "@/components/LazyApexChart";
 
 const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
-  const FACTOR_OPTIONS = ['Bridges', 'API Keys', 'Models'];
+  const FACTOR_OPTIONS = ["Bridges", "API Keys", "Models"];
 
   const chartData = {
-    series: [{
-      name: 'Total Cost',
-      data: rawData.map(item => item.totalCost)
-    }],
-    categories: rawData.map(item => item.period)
+    series: [
+      {
+        name: "Total Cost",
+        data: rawData.map((item) => item.totalCost),
+      },
+    ],
+    categories: rawData.map((item) => item.period),
   };
 
   const chartOptions = {
     chart: {
-      type: 'bar',
+      type: "bar",
       height: 350,
-      width: '100%',
-      background: 'transparent',
-      foreColor: 'oklch(var(--bc))',
+      width: "100%",
+      background: "transparent",
+      foreColor: "oklch(var(--bc))",
       toolbar: {
         show: true,
         tools: {
@@ -28,33 +30,33 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
           zoomin: true,
           zoomout: true,
           pan: true,
-        }
+        },
       },
       animations: {
         enabled: true,
-        easing: 'easeinout',
+        easing: "easeinout",
         speed: 800,
       },
     },
     theme: {
-      mode: currentTheme
+      mode: currentTheme,
     },
     plotOptions: {
       bar: {
         horizontal: false,
-        columnWidth: '40px',
+        columnWidth: "40px",
         borderRadius: 4,
-        borderRadiusApplication: 'end',
-        distributed: false
+        borderRadiusApplication: "end",
+        distributed: false,
       },
     },
     dataLabels: {
-      enabled: false
+      enabled: false,
     },
     stroke: {
       show: true,
       width: 2,
-      colors: ['transparent']
+      colors: ["transparent"],
     },
     xaxis: {
       categories: chartData.categories,
@@ -63,50 +65,50 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
         hideOverlappingLabels: false,
         trim: false,
         style: {
-          fontSize: '11px',
-          colors: 'oklch(var(--bc))'
-        }
+          fontSize: "11px",
+          colors: "oklch(var(--bc))",
+        },
       },
       axisBorder: {
         show: true,
-        color: 'oklch(var(--bc))'
+        color: "oklch(var(--bc))",
       },
       axisTicks: {
         show: true,
-      }
+      },
     },
     yaxis: {
       title: {
-        text: 'Cost ( in $ )',
+        text: "Cost ( in $ )",
         style: {
-          color: 'oklch(var(--bc))'
-        }
+          color: "oklch(var(--bc))",
+        },
       },
       labels: {
         style: {
-          colors: 'oklch(var(--bc))'
+          colors: "oklch(var(--bc))",
         },
         formatter: function (value) {
-          return '$' + (value?.toFixed(2) || '0.00');
-        }
+          return "$" + (value?.toFixed(2) || "0.00");
+        },
       },
     },
     fill: {
-      opacity: 0.9
+      opacity: 0.9,
     },
-    colors: ['#4ade80'],
+    colors: ["#4ade80"],
     grid: {
-      borderColor: 'oklch(var(--bc) / 0.2)',
-      strokeDashArray: 3
+      borderColor: "oklch(var(--bc) / 0.2)",
+      strokeDashArray: 3,
     },
     tooltip: {
-      theme: 'dark',
+      theme: "dark",
       style: {
-        fontSize: '12px',
+        fontSize: "12px",
       },
       custom: function ({ series, seriesIndex, dataPointIndex, w }) {
         const periodData = rawData[dataPointIndex];
-        if (!periodData) return '';
+        if (!periodData) return "";
 
         const totalCost = series[seriesIndex][dataPointIndex];
 
@@ -146,7 +148,9 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
               ${FACTOR_OPTIONS[factor]} Breakdown:
             </div>
             
-            ${periodData.items.map(item => `
+            ${periodData.items
+              .map(
+                (item) => `
               <div style="
                 display: flex;
                 justify-content: space-between;
@@ -175,16 +179,18 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
                   $${item.cost.toFixed(3)}
                 </div>
               </div>
-            `).join('')}
+            `
+              )
+              .join("")}
           </div>
         `;
-      }
+      },
     },
     legend: {
       labels: {
-        colors: 'oklch(var(--bc))'
-      }
-    }
+        colors: "oklch(var(--bc))",
+      },
+    },
   };
 
   if (rawData.length === 0) {
@@ -198,26 +204,25 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
   }
 
   return (
-    <div style={{
-      width: '100%',
-      overflowX: 'auto',
-      overflowY: 'hidden'
-    }}>
-      <div style={{
-        minWidth: Math.max(800, rawData.length * 60) + 'px',
-        height: '400px'
-      }}>
-        <Chart
-          options={chartOptions}
-          series={chartData.series}
-          type="bar"
-          height={350}
-        />
+    <div
+      style={{
+        width: "100%",
+        overflowX: "auto",
+        overflowY: "hidden",
+      }}
+    >
+      <div
+        style={{
+          minWidth: Math.max(800, rawData.length * 60) + "px",
+          height: "400px",
+        }}
+      >
+        <Chart options={chartOptions} series={chartData.series} type="bar" height={350} />
       </div>
     </div>
   );
 });
 
-MetricsChart.displayName = 'MetricsChart';
+MetricsChart.displayName = "MetricsChart";
 
 export default MetricsChart;

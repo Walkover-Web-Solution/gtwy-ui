@@ -1,3 +1,25 @@
+const defaultTheme = require("./public/themes/default-user-theme.json");
+
+const shapeTokens = {
+  "--rounded-box": "0.3rem",
+  "--rounded-btn": "0.1rem",
+  "--rounded-badge": "0.3rem",
+  "--border-btn": "0.3px",
+  "--tab-radius": "0.3rem",
+  "--btn-text-case": "none",
+};
+
+const shapeTokensDark = {
+  ...shapeTokens,
+  "--border-select": "0.3px",
+};
+
+const buildTheme = (tokens, colorScheme = "light") => ({
+  "color-scheme": colorScheme,
+  ...tokens,
+  ...(colorScheme === "dark" ? shapeTokensDark : shapeTokens),
+});
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -19,110 +41,87 @@ module.exports = {
           "0%": { opacity: 0, transform: "scale(0.98)" },
           "100%": { opacity: 1, transform: "scale(1)" },
         },
-        "fadeIn": {
+        fadeIn: {
           "0%": { opacity: 0 },
           "100%": { opacity: 1 },
         },
-        "scaleIn": {
+        scaleIn: {
           "0%": { opacity: 0, transform: "scale(0.95)" },
           "100%": { opacity: 1, transform: "scale(1)" },
         },
       },
       animation: {
         "fade-in-scale": "fade-in-scale 300ms ease-out",
-        "fadeIn": "fadeIn 300ms ease-out",
-        "scaleIn": "scaleIn 300ms ease-out",
+        fadeIn: "fadeIn 300ms ease-out",
+        scaleIn: "scaleIn 300ms ease-out",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic":
-          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
     },
   },
-  plugins: [require("daisyui")],
+  plugins: [
+    require("daisyui"),
+    function ({ addBase }) {
+      addBase({
+        /* Light Theme Scrollbar */
+        '[data-theme="light"] ::-webkit-scrollbar': {
+          width: "8px",
+        },
+        '[data-theme="light"] ::-webkit-scrollbar-thumb': {
+          background: "rgba(200, 200, 200, 0.7)",
+          borderRadius: "4px",
+          border: "2px solid transparent",
+          backgroundClip: "padding-box",
+          transition: "background 0.3s ease-in-out",
+        },
+        '[data-theme="light"] ::-webkit-scrollbar-thumb:hover': {
+          background: "rgba(180, 180, 180, 0.9)",
+        },
+        '[data-theme="light"] ::-webkit-scrollbar-track': {
+          background: "rgba(240, 240, 240, 0.6)",
+          borderRadius: "4px",
+        },
+        /* Dark Theme Scrollbar */
+        '[data-theme="dark"] ::-webkit-scrollbar': {
+          width: "8px",
+        },
+        '[data-theme="dark"] ::-webkit-scrollbar-thumb': {
+          background: "rgba(80, 80, 80, 0.7)",
+          borderRadius: "4px",
+          border: "2px solid transparent",
+          backgroundClip: "padding-box",
+          transition: "background 0.3s ease-in-out",
+        },
+        '[data-theme="dark"] ::-webkit-scrollbar-thumb:hover': {
+          background: "rgba(100, 100, 100, 0.9)",
+        },
+        '[data-theme="dark"] ::-webkit-scrollbar-track': {
+          background: "rgba(34, 34, 34, 0.6)",
+          borderRadius: "4px",
+        },
+        /* Firefox support */
+        '[data-theme="light"] *': {
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(200, 200, 200, 0.4) rgba(240, 240, 240, 0.3)",
+        },
+        '[data-theme="dark"] *': {
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(80, 80, 80, 0.6) rgba(34, 34, 34, 0.3)",
+        },
+      });
+    },
+  ],
 
   daisyui: {
     themes: [
       {
-        light: {
-          "color-scheme": "light",
-
-          /* Light: canvas soft warm gray, cards white, borders gentle gray */
-           "base-100": "oklch(99% 0.005 95)",  // canvas (very soft gray)
-          "base-200": "oklch(98% 0 0)",       // cards/panels (white-ish)
-          "base-300": "oklch(93.5% 0 0)",
-          "base-400": "oklch(100% 0 0)",
-          "base-content": "oklch(26% 0 0)",   // soft dark gray text
-
-          /* Neutral brand (no color cast) */
-          "primary": "oklch(0.4912 0.3096 275.75)",
-          "primary-content": "oklch(98% 0 0)",
-          "secondary": "oklch(40% 0 0)",
-          "secondary-content": "oklch(98% 0 0)",
-          "accent": "oklch(34% 0 0)",
-          "accent-content": "oklch(98% 0 0)",
-          "neutral": "oklch(22% 0 0)",
-          "neutral-content": "oklch(96% 0 0)",
-
-          "info": "oklch(58% 0.05 235)",
-          "info-content": "oklch(16% 0 235)",
-          "success": "oklch(56% 0.07 150)",
-          "success-content": "oklch(16% 0 150)",
-          "warning": "oklch(64% 0.08 80)",
-          "warning-content": "oklch(18% 0.05 80)",
-          "error": "oklch(55% 0.12 30)",
-          "error-content": "oklch(16% 0.06 30)",
-
-          "--rounded-box": "0.3rem",
-          "--rounded-btn": "0.3rem",
-          "--rounded-badge": "0.3rem",
-          "--border-btn": "0.3px",
-          "--tab-radius": "0.3rem",
-          "--btn-text-case": "none",
-        },
+        light: buildTheme(defaultTheme.light, "light"),
       },
       {
-        "dark": {
-          "color-scheme": "dark",
-      
-          /* Background layering */
-          "base-100": "oklch(25% 0 0)",   // lighter dark (canvas, main background)
-          "base-200": "oklch(22% 0 0)",   // slightly darker (cards, panels)
-          "base-300": "oklch(18% 0 0)",   // darkest (borders, separators)
-          "base-400": "oklch(16% 0 0)",
-          "base-content": "oklch(85% 0 0)", // dull white text
-      
-          /* Brand neutrals */
-          "primary": "oklch(78% 0 0)",   // light gray for highlights
-          "primary-content": "oklch(14% 0 0)",
-          "secondary": "oklch(60% 0 0)",
-          "secondary-content": "oklch(12% 0 0)",
-          "accent": "oklch(85% 0 0)",
-          "accent-content": "oklch(14% 0 0)",
-          "neutral": "oklch(32% 0 0)",
-          "neutral-content": "oklch(92% 0 0)",
-      
-          /* Status (muted but visible) */
-          "info": "oklch(65% 0.04 240)",
-          "info-content": "oklch(12% 0 240)",
-          "success": "oklch(62% 0.05 150)",
-          "success-content": "oklch(12% 0 150)",
-          "warning": "oklch(68% 0.07 80)",
-          "warning-content": "oklch(12% 0.05 80)",
-          "error": "oklch(60% 0.10 30)",
-          "error-content": "oklch(12% 0.06 30)",
-      
-          /* Shape/borders */
-          "--rounded-box": "0.3rem",
-          "--rounded-btn": "0.3rem",
-          "--rounded-badge": "0.3rem",
-          "--border-btn": "0.3px",
-          "--tab-radius": "0.3rem",
-          "--btn-text-case": "none",
-          "--border-select": "0.3px",
-        }
-      }
+        dark: buildTheme(defaultTheme.dark, "dark"),
+      },
     ],
     darkTheme: "dark",
     base: true,

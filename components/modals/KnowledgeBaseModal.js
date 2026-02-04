@@ -1,418 +1,649 @@
-'use client';
-import { useCallback, useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { KNOWLEDGE_BASE_CUSTOM_SECTION, KNOWLEDGE_BASE_SECTION_TYPES, MODAL_TYPE } from '@/utils/enums';
-import { closeModal, RequiredItem } from '@/utils/utility';
-import { createKnowledgeBaseEntryAction, updateKnowledgeBaseAction } from '@/store/action/knowledgeBaseAction';
-import Modal from '../UI/Modal';
-import { toast } from 'react-toastify';
-import { updateBridgeVersionAction } from '@/store/action/bridgeAction';
-
-const KnowledgeBaseModal = ({ params, selectedKnowledgeBase = null, setSelectedKnowledgeBase = () => { }, knowledgeBaseData = [], knowbaseVersionData = [], searchParams, addToVersion = false }) => {
+"use client";
+import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import Modal from "@/components/UI/Modal";
+import { MODAL_TYPE, MIME_EXTENSION_MAP } from "@/utils/enums";
+import { closeModal, RequiredItem } from "@/utils/utility";
+import { createResourceAction, updateResourceAction } from "@/store/action/knowledgeBaseAction";
+import { uploadImage } from "@/config/utilityApi";
+import { toast } from "react-toastify";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
+const KnowledgeBaseModal = ({
+  params,
+  selectedResource,
+  setSelectedResource = () => {},
+  addToVersion = false,
+  knowbaseVersionData = [],
+  searchParams,
+}) => {
   const dispatch = useDispatch();
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedSectionType, setSelectedSectionType] = useState('default');
-  const [chunkingType, setChunkingType] = useState('');
-  const [file, setFile] = useState(null); // State to hold the uploaded file
-  const [isUpload, setIsUpload] = useState(false); // State to toggle between link and upload
-  const [ischanged, setischanged] = useState({
-    isAdd: false,
-    isUpdate: false
-  });
+  const [isCreatingResource, setIsCreatingResource] = useState(false);
+  const [inputType, setInputType] = useState("url"); // 'url', 'file', 'content'
+  const [chunkingType, setChunkingType] = useState("recursive");
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showQuerySettings, setShowQuerySettings] = useState(false);
+  React.useEffect(() => {
+    if (selectedResource?.settings?.chunkingType) {
+      setChunkingType(selectedResource.settings.chunkingType);
+    } else {
+      setChunkingType("recursive");
+    }
 
-  const resetModal = useCallback(() => {
-    setSelectedSectionType('default');
-    setChunkingType('');
-    setFile(null);
-    setIsUpload(false);
-    setIsLoading(false);
-    setSelectedKnowledgeBase(null);
-    setischanged({
-      isAdd: false,
-      isUpdate: false
-    });
-  }, [selectedKnowledgeBase]);
-
-  // Reset ischanged state when modal opens/closes
-  useEffect(() => {
-    setischanged({
-      isAdd: false,
-      isUpdate: false
-    });
-  }, [selectedKnowledgeBase]);
-
-  // Handle form input changes
-  const handleFormChange = useCallback((event, selectedFile = null) => {
-    const form = event.target.form;
-    const formData = new FormData(form);
-    
-    const currentData = {
-      name: formData.get('name') || '',
-      description: formData.get('description') || '',
-      url: formData.get('url') || '',
-      chunk_size: formData.get('chunk_size') || '',
-      chunk_overlap: formData.get('chunk_overlap') || ''
-    };
-
-    // Check if all required fields are filled for Add mode
-    const requiredFields = ['name', 'description'];
-    let allRequiredFilled = requiredFields.every(field => 
-      currentData[field] && currentData[field].trim().length > 0
-    );
-
-    // Use selectedFile parameter if provided, otherwise use state
-    const currentFile = selectedFile || file;
-
-    // Additional validation for add mode
-    if (!selectedKnowledgeBase) {
-      if (!isUpload || !currentFile) {
-        // Link mode or invalid upload mode: URL is required
-        allRequiredFilled = allRequiredFilled && currentData.url && currentData.url.trim().length > 0;
+    // Detect input type based on existing resource data
+    if (selectedResource) {
+      if (selectedResource.url) {
+        setInputType("url");
+      } else if (selectedResource.content && selectedResource.url === "") {
+        setInputType("content");
       } else {
-        // Valid upload mode: file is required
-        allRequiredFilled = allRequiredFilled && currentFile !== null && currentFile.size > 0;
+        setInputType("url"); // Default for edit mode
       }
-    }
-
-    if (selectedKnowledgeBase) {
-      // For update mode: check if any field has changed
-      const hasChanges = 
-        currentData.name !== (selectedKnowledgeBase.name || '') ||
-        currentData.description !== (selectedKnowledgeBase.description || '');
-      
-      setischanged(prev => ({
-        ...prev,
-        isUpdate: hasChanges
-      }));
     } else {
-      // For add mode: check if all required fields are filled
-      setischanged(prev => ({
-        ...prev,
-        isAdd: allRequiredFilled
-      }));
+      setInputType("url"); // Default for create mode
     }
-  }, [selectedKnowledgeBase, isUpload, file]);
+  }, [selectedResource]);
 
-  const handleSubmit = useCallback(async (event) => {
-    event.preventDefault();
-    setIsLoading(true);
-    const formData = new FormData(event.target);
-    const newName = formData.get("name").trim();
-    if (!newName) {
-      toast.error('Please enter a valid name.');
-      setIsLoading(false);
-      return;
+  const isAllowedFile = (file) => {
+    if (!file || typeof file.name !== "string") {
+      return false;
     }
-    const newDescription = formData.get("description").trim();
-    if (!newDescription) {
-      toast.error('Please enter a valid description.');
-      setIsLoading(false);
-      return;
-    }
-    const isDuplicate = knowledgeBaseData.some(kb =>
-      kb.name?.trim().toLowerCase() === newName.toLowerCase()?.trim() && kb._id !== selectedKnowledgeBase?._id
-    );
 
-    if (isDuplicate) {
-      toast.error('Knowledge Base name already exists. Please choose a different name.');
-      setIsLoading(false);
-      return;
-    }
-    // Create payload object
-    const payload = {
-      orgId: params?.org_id,
-      name: newName,
-      description: newDescription,
-    };
+    const nameParts = file.name.split(".");
+    let ext = "";
 
-    if (selectedKnowledgeBase?._id) {
-      payload.id = selectedKnowledgeBase._id;
-    } else {
-      payload.chunking_type = formData.get('chunking_type');
-      payload.chunk_size = Number(formData.get('chunk_size')) || null;
-      payload.chunk_overlap = Number(formData.get('chunk_overlap')) || null;
-
-      if (payload.sectionType === 'default') {
-        payload.chunking_type = null;
-        payload.chunk_size = null;
-        payload.chunk_overlap = null;
+    if (nameParts.length > 1) {
+      const lastPart = nameParts[nameParts.length - 1];
+      if (lastPart) {
+        ext = "." + lastPart.toLowerCase();
       }
     }
 
-    // Convert payload to FormData
-    const payloadFormData = new FormData();
-    for (const key in payload) {
-      if (payload[key] !== null) {
-        payloadFormData.append(key, payload[key]);
-      }
+    const mimeType = typeof file.type === "string" ? file.type.toLowerCase() : "";
+    const expectedExt = MIME_EXTENSION_MAP[mimeType];
+    // Both MIME type and file extension must be allowed and consistent
+    return Boolean(expectedExt) && ext === expectedExt;
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // ✅ Only PDF + TXT allowed
+    if (!isAllowedFile(file)) {
+      toast.error("Only PDF or TXT files are allowed.");
+      event.target.value = "";
+      return;
     }
 
-    // Add file to FormData if present and not updating
-    if (!selectedKnowledgeBase && isUpload && file) {
-      payloadFormData.append('file', file);
-    } else if (!selectedKnowledgeBase) {
-      payloadFormData.append('url', formData.get('url'));
-    }
-
+    setIsUploading(true);
     try {
-      if (selectedKnowledgeBase) {
-        await dispatch(updateKnowledgeBaseAction({ data: { data: payload, id: selectedKnowledgeBase?._id } }, params?.org_id))
-      }
-      else {
-        const data = await dispatch(createKnowledgeBaseEntryAction(payloadFormData, params?.org_id));
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await uploadImage(formData, true);
+      const fileUrl = response.url || response.file_url || response.data?.url;
 
-        {
-          addToVersion &&
-          dispatch(updateBridgeVersionAction({
-            versionId: searchParams?.version,
-            dataToSend: { doc_ids: [...(knowbaseVersionData || []), data._id] }
-          }));
-        }
-      }
-      closeModal(MODAL_TYPE.KNOWLEDGE_BASE_MODAL);
-      event.target.reset();
-      resetModal();
-      setFile(null); // Reset the file state after submission
+      setUploadedFile({
+        name: file.name,
+        url: fileUrl,
+        type: file.type,
+        size: file.size,
+      });
+
+      toast.success(`Successfully uploaded ${file.name}`);
+    } catch (error) {
+      toast.error(`Failed to upload ${file.name}: ${error.message}`);
     } finally {
-      setSelectedSectionType("default");
-      setChunkingType("");
-      setIsLoading(false);
-    }
-  }, [dispatch, params.org_id, file, isUpload, selectedKnowledgeBase, knowledgeBaseData]);
-
-  const handleClose = useCallback(() => {
-    closeModal(MODAL_TYPE.KNOWLEDGE_BASE_MODAL);
-    resetModal();
-  }, []);
-
-  const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
-    const validFileTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'csv'];
-
-    if (selectedFile && validFileTypes.includes(selectedFile.type)) {
-      setFile(selectedFile);
-      // Pass the selected file directly to validation to avoid state timing issues
-      handleFormChange(event, selectedFile);
-    } else {
-      alert('Please upload a valid file (PDF, Word, or CSV).');
-      setFile(null);
-      // Trigger validation with null file
-      handleFormChange(event, null);
+      setIsUploading(false);
+      // Reset file input
+      event.target.value = "";
     }
   };
 
+  const removeUploadedFile = () => {
+    setUploadedFile(null);
+  };
+
+  const handleChunkSizeInput = (e) => {
+    const value = parseInt(e.target.value);
+    if (value > 4000) {
+      e.target.value = 4000;
+      toast.warning("Chunk size cannot exceed 4000");
+    } else if (value < 1 && e.target.value !== "") {
+      e.target.value = 1;
+    }
+  };
+
+  const handleChunkOverlapInput = (e) => {
+    const value = parseInt(e.target.value);
+    if (value > 200) {
+      e.target.value = 200;
+      toast.warning("Chunk overlap cannot exceed 200");
+    } else if (value < 0 && e.target.value !== "") {
+      e.target.value = 0;
+    }
+  };
+
+  const handleCreateResource = async (event) => {
+    event.preventDefault();
+    setIsCreatingResource(true);
+    const formData = new FormData(event.target);
+
+    // Get query access type from form
+    const collection_details = formData.get("queryAccessType") || "fastest";
+    let settings = {};
+    let content = "";
+    let resourceUrl = "";
+
+    settings.strategy = chunkingType;
+    if (formData?.get("chunkSize")) {
+      settings.chunkSize = formData?.get("chunkSize");
+    }
+    if (formData?.get("chunkingOverlap") && chunkingType === "semantic") {
+      settings.chunkOverlap = formData?.get("chunkingOverlap");
+    }
+    if (inputType === "file") {
+      if (uploadedFile) {
+        // Use uploaded file URL
+        resourceUrl = uploadedFile.url;
+        content = uploadedFile.url;
+      } else {
+        // Fallback to local file reading (existing behavior)
+        const file = formData.get("file");
+        if (file) {
+          try {
+            content = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target.result);
+              reader.onerror = (e) => reject(e);
+              reader.readAsText(file);
+            });
+            resourceUrl = file.name;
+          } catch (error) {
+            console.error("Error reading file:", error);
+            setIsCreatingResource(false);
+            return;
+          }
+        }
+      }
+    } else if (inputType === "content") {
+      content = (formData.get("content") || "").trim();
+      // No resourceUrl needed for content input
+    } else {
+      resourceUrl = (formData.get("url") || "").trim();
+      content = resourceUrl;
+    }
+
+    const payload = {
+      title: (formData.get("title") || "").trim(),
+      description: (formData.get("description") || "").trim(),
+      settings: settings,
+    };
+
+    // Only add content if there's actual content data (not just URL)
+    if (content && content !== resourceUrl && content.trim() !== "") {
+      payload.content = content;
+    } else {
+      payload.url = resourceUrl;
+    }
+    payload.collection_details = collection_details;
+    const result = await dispatch(createResourceAction(payload, params?.org_id));
+    if (result) {
+      closeModal(MODAL_TYPE.KNOWLEDGE_BASE_MODAL);
+      event.target.reset();
+      setInputType("url");
+      setUploadedFile(null);
+      setIsUploading(false);
+      if (params?.org_id && searchParams?.version && addToVersion) {
+        dispatch(
+          updateBridgeVersionAction({
+            orgId: params?.org_id,
+            bridgeId: params?.bridge_id,
+            versionId: searchParams?.version,
+            dataToSend: {
+              doc_ids: [
+                ...(knowbaseVersionData || {}),
+                { resource_id: result._id, collection_id: result.collectionId, description: result.description },
+              ],
+            },
+          })
+        );
+      }
+    }
+    setIsCreatingResource(false);
+  };
+
+  const handleUpdateResource = async (event) => {
+    event.preventDefault();
+    if (!selectedResource?._id) return;
+
+    setIsCreatingResource(true);
+    const formData = new FormData(event.target);
+
+    const payload = {
+      title: (formData.get("title") || "").trim(),
+      description: (formData.get("description") || "").trim(),
+    };
+
+    // Add content if the resource has content and it's being updated
+    const updatedContent = (formData.get("content") || "").trim();
+    if (selectedResource?.content && updatedContent) {
+      payload.content = updatedContent;
+    }
+
+    const result = await dispatch(updateResourceAction(selectedResource._id, payload, params?.org_id));
+    if (result) {
+      closeModal(MODAL_TYPE.KNOWLEDGE_BASE_MODAL);
+      setSelectedResource(null);
+      event.target.reset();
+    }
+    setIsCreatingResource(false);
+  };
+
+  const handleClose = () => {
+    closeModal(MODAL_TYPE.KNOWLEDGE_BASE_MODAL);
+    setSelectedResource(null);
+    setInputType("url");
+    setChunkingType("recursive");
+    setUploadedFile(null);
+    setShowQuerySettings(false);
+    setIsUploading(false);
+  };
+  const formatFileSize = (bytes = 0) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  };
+
   return (
-    <Modal MODAL_ID={MODAL_TYPE.KNOWLEDGE_BASE_MODAL}>
-      <div className="modal-box w-11/12 max-w-3xl border-2 border-base-300">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-base-300">
-          <h3 className="font-bold text-xl">{selectedKnowledgeBase ? 'Update' : 'New'} Knowledge Base Configuration</h3>
+    <Modal MODAL_ID={MODAL_TYPE.KNOWLEDGE_BASE_MODAL} onClose={handleClose}>
+      <div className="modal-box w-11/12 max-w-xl border-2 border-base-300">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-base-300">
+          <h3 className="font-bold text-lg">{selectedResource ? "Edit" : "Create"} Knowledge Base</h3>
           <button
+            id="knowledgebase-modal-close-button"
             onClick={handleClose}
             className="btn btn-circle btn-ghost btn-sm"
-            disabled={isLoading}
+            disabled={isCreatingResource}
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 rounded-lg">
-            <div className="space-y-2">
-              <div className="form-control">
-                <div className="label">
-                  <span className="label-text font-medium text-md">Knowledge Base Name{RequiredItem()}</span>
-                </div>
-                <input
-                  type="text"
-                  name="name"
-                  className="input input-bordered input-sm focus:ring-1 ring-primary/40"
-                  placeholder="Enter knowledge Base name"
-                  required
-                  maxLength={50}
-                  disabled={isLoading}
-                  key={selectedKnowledgeBase?._id}
-                  defaultValue={selectedKnowledgeBase?.name || ''}
-                  onChange={handleFormChange}
-                />
-              </div>
+        <form onSubmit={selectedResource ? handleUpdateResource : handleCreateResource} className="space-y-4">
+          {/* Name Field */}
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text text-sm font-medium">
+                Name <RequiredItem />
+              </span>
+            </label>
+            <input
+              id="knowledgebase-name-input"
+              type="text"
+              name="title"
+              className="input input-bordered input-sm"
+              placeholder="Knowledge Base name"
+              defaultValue={selectedResource?.title || ""}
+              key={selectedResource?._id || "new"}
+              required
+              disabled={isCreatingResource}
+            />
+          </div>
 
+          {/* Description Field */}
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text text-sm font-medium">
+                Description <RequiredItem />
+              </span>
+            </label>
+            <textarea
+              id="knowledgebase-description-textarea"
+              name="description"
+              className="textarea textarea-bordered textarea-sm"
+              placeholder="Brief description of the knowledge base content"
+              defaultValue={selectedResource?.description || ""}
+              key={`desc-${selectedResource?._id || "new"}`}
+              rows="3"
+              required
+              disabled={isCreatingResource}
+            />
+          </div>
+          {!selectedResource && (
+            <div className="flex gap-4 mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  id="knowledgebase-input-type-url"
+                  type="radio"
+                  name="inputType"
+                  className="radio radio-primary radio-sm"
+                  checked={inputType === "url"}
+                  onChange={() => setInputType("url")}
+                />
+                <span className="text-sm font-medium">URL</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  id="knowledgebase-input-type-file"
+                  type="radio"
+                  name="inputType"
+                  className="radio radio-primary radio-sm"
+                  checked={inputType === "file"}
+                  onChange={() => setInputType("file")}
+                />
+                <span className="text-sm font-medium">Upload File</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  id="knowledgebase-input-type-content"
+                  type="radio"
+                  name="inputType"
+                  className="radio radio-primary radio-sm"
+                  checked={inputType === "content"}
+                  onChange={() => setInputType("content")}
+                />
+                <span className="text-sm font-medium">Content</span>
+              </label>
+            </div>
+          )}
+          {/* Content Input Based on Type */}
+          {inputType === "file" && !selectedResource ? (
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">
+                  File <RequiredItem />
+                </span>
+              </label>
+
+              {/* Show upload button only if no file is uploaded */}
+              {!uploadedFile && (
+                <>
+                  <input
+                    id="knowledgebase-file-upload"
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="file-input file-input-bordered file-input-sm w-full"
+                    disabled={isCreatingResource || isUploading}
+                    accept=".pdf,.txt"
+                  />
+                  {isUploading && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="loading loading-spinner loading-sm"></span>
+                      <span className="text-sm text-gray-600">Uploading file...</span>
+                    </div>
+                  )}
+                  <span className="label-text-alt text-gray-400 mt-1">Supported formats: .pdf, .txt</span>
+                </>
+              )}
+
+              {/* Display uploaded file only */}
+              {uploadedFile && (
+                <div className="mt-1">
+                  <div className="flex items-center justify-between bg-base-200 p-3 rounded text-sm">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="truncate font-medium">{uploadedFile.name}</span>
+                      <span className="text-xs text-gray-500">({formatFileSize(uploadedFile.size)})</span>
+                    </div>
+                    <button
+                      id="knowledgebase-remove-file-button"
+                      type="button"
+                      onClick={removeUploadedFile}
+                      className="btn btn-ghost btn-xs text-error hover:bg-error hover:text-white"
+                      disabled={isCreatingResource}
+                      title="Remove file"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : inputType === "content" && !selectedResource ? (
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">
+                  Content <RequiredItem />
+                </span>
+              </label>
+              <textarea
+                id="knowledgebase-content-textarea-create"
+                name="content"
+                className="textarea textarea-bordered textarea-sm w-full h-32"
+                placeholder="Enter content here..."
+                key={selectedResource?._id || "new-content"}
+                required
+                disabled={isCreatingResource}
+              ></textarea>
+            </div>
+          ) : selectedResource ? (
+            // Edit mode - only show content field if content key exists, otherwise show disabled URL
+            selectedResource?.content && !selectedResource?.url ? (
               <div className="form-control">
-                <label className="label !px-0">
-                  <span className="label-text text-sm font-medium">Description{RequiredItem()}</span>
+                <label className="label">
+                  <span className="label-text text-sm font-medium">
+                    Content <RequiredItem />
+                  </span>
                 </label>
                 <textarea
-                  name="description"
-                  className="textarea bg-white dark:bg-black/15 textarea-bordered h-14 focus:ring-1 ring-primary/40"
-                  placeholder="Describe the purpose and content of this Knowledge Base"
+                  id="knowledgebase-content-textarea-edit"
+                  name="content"
+                  className="textarea textarea-bordered textarea-sm w-full h-32"
+                  placeholder="Enter content here..."
                   required
-                  disabled={isLoading}
-                  key={selectedKnowledgeBase?._id}
-                  defaultValue={selectedKnowledgeBase?.description || ''}
-                  onChange={handleFormChange}
-                />
+                  disabled={isCreatingResource}
+                  defaultValue={selectedResource.content}
+                  key={selectedResource._id}
+                ></textarea>
               </div>
-
+            ) : selectedResource?.url ? (
               <div className="form-control">
-                <label className="label !px-0">
-                  <span className="label-text text-sm font-medium">Choose Upload Method </span>
+                <label className="label">
+                  <span className="label-text text-sm font-medium">URL</span>
                 </label>
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    name="uploadMethod"
-                    value="link"
-                    checked={!isUpload}
-                    onChange={() => setIsUpload(false)}
-                    className="radio mr-2"
-                    disabled={selectedKnowledgeBase}
-                  />
-                  <span className="label-text">Link</span>
-                  <input
-                    type="radio"
-                    name="uploadMethod"
-                    value="upload"
-                    checked={isUpload}
-                    onChange={() => setIsUpload(true)}
-                    className="radio ml-4 mr-2"
-                    disabled={selectedKnowledgeBase}
-                  />
-                  <span className="label-text">Upload</span>
-                </div>
+                <input
+                  id="knowledgebase-url-input-edit"
+                  type="url"
+                  name="url"
+                  className="input input-bordered input-sm bg-gray-100"
+                  placeholder="https://example.com/resource"
+                  disabled={true}
+                  defaultValue={selectedResource.url}
+                  key={selectedResource._id}
+                  readOnly
+                />
+                <span className="label-text-alt text-gray-400 mt-1">URL cannot be edited</span>
+              </div>
+            ) : null
+          ) : (
+            // Create mode - URL input
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium">
+                  URL <RequiredItem />
+                </span>
+              </label>
+              <input
+                id="knowledgebase-url-input-create"
+                type="url"
+                name="url"
+                className="input input-bordered input-sm"
+                placeholder="https://example.com/resource"
+                key={selectedResource?._id || "new-url"}
+                required={inputType === "url"}
+                disabled={isCreatingResource}
+              />
+            </div>
+          )}
+          {/* Chunking Settings Section */}
+          {!selectedResource && (
+            <div className="space-y-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text text-sm font-medium">Chunking Type</span>
+                </label>
+                <select
+                  id="knowledgebase-chunking-type-select"
+                  name="chunkingType"
+                  className="select select-bordered select-sm"
+                  value={chunkingType}
+                  onChange={(e) => setChunkingType(e.target.value)}
+                  disabled={isCreatingResource}
+                >
+                  <option value="agentic">Agentic</option>
+                  <option value="recursive">Recursive</option>
+                  <option value="semantic">Semantic</option>
+                  <option value="custom">Custom</option>
+                </select>
               </div>
 
-              {!isUpload ? (
+              {chunkingType === "custom" ? (
                 <div className="form-control">
-                  <label className="label !px-0">
-                    <span className="label-text text-sm font-medium">Google Documentation URL{RequiredItem()}</span>
+                  <label className="label">
+                    <span className="label-text text-sm font-medium">Chunking URL</span>
                   </label>
                   <input
+                    id="knowledgebase-chunking-url-input"
                     type="url"
-                    name="url"
-                    className="input input-bordered input-sm focus:ring-1 ring-primary/40"
-                    placeholder="https://example.com/documentation"
-                    key={selectedKnowledgeBase?._id}
-                    required={!selectedKnowledgeBase}
-                    disabled={isLoading || selectedKnowledgeBase}
-                    defaultValue={selectedKnowledgeBase?.source?.data?.url || ''}
-                    onChange={handleFormChange}
+                    name="chunkingUrl"
+                    className="input input-bordered input-sm"
+                    placeholder="https://example.com/chunking-service"
+                    disabled={isCreatingResource}
+                    required
                   />
                 </div>
               ) : (
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text text-sm font-medium">Upload Document (PDF, Word, CSV)</span>
-                  </label>
-                  <input
-                    type="file"
-                    name="file"
-                    accept=".pdf, .doc, .docx, .csv"
-                    className="file-input file-input-bordered file-input-sm w-full max-w-xs"
-                    onChange={handleFileChange}
-                    disabled={isLoading || selectedKnowledgeBase}
-                  />
-                </div>
+                <>
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text text-sm font-medium">Chunk Size</span>
+                    </label>
+                    <input
+                      id="knowledgebase-chunk-size-input"
+                      type="number"
+                      name="chunkSize"
+                      className="input input-bordered input-sm"
+                      min={1}
+                      max={4000}
+                      required
+                      defaultValue={
+                        selectedResource?.settings?.chunkSize
+                          ? Math.min(selectedResource.settings.chunkSize, 4000)
+                          : 4000
+                      }
+                      onInput={handleChunkSizeInput}
+                      disabled={isCreatingResource}
+                    />
+                  </div>
+
+                  {chunkingType === "semantic" && (
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text text-sm font-medium">Chunk Overlap</span>
+                      </label>
+                      <input
+                        id="knowledgebase-chunk-overlap-input"
+                        type="number"
+                        name="chunkingOverlap"
+                        className="input input-bordered input-sm"
+                        min={0}
+                        max={200}
+                        defaultValue={
+                          selectedResource?.settings?.chunkOverlap
+                            ? Math.min(selectedResource.settings.chunkOverlap, 200)
+                            : 200
+                        }
+                        onInput={handleChunkOverlapInput}
+                        disabled={isCreatingResource}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-4 rounded-lg">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label !px-0">
-                    <span className="label-text text-sm font-medium">Processing Method </span>
-                  </label>
-                  <select
-                    name="sectionType"
-                    value={selectedSectionType}
-                    className="select select-bordered select-sm focus:ring-1 ring-primary/40"
-                    required={!selectedKnowledgeBase}
-                    disabled={isLoading || selectedKnowledgeBase}
-                    onChange={(e) => setSelectedSectionType(e.target.value)}
-                  >
-                    {KNOWLEDGE_BASE_SECTION_TYPES?.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedSectionType === 'custom' && (
+          {/* Query Settings Accordion */}
+          {!selectedResource && (
+            <div className="collapse collapse-arrow border border-base-300 bg-base-100">
+              <input
+                id="knowledgebase-advanced-settings-toggle"
+                type="checkbox"
+                checked={showQuerySettings}
+                onChange={(e) => setShowQuerySettings(e.target.checked)}
+                disabled={isCreatingResource}
+              />
+              <div className="collapse-title text-sm font-medium">Advanced Settings</div>
+              <div className="collapse-content">
+                <div className="">
                   <div className="form-control">
-                    <label className="label !px-0">
-                      <span className="label-text text-sm font-medium">Chunking Type</span>
+                    <label className="label">
+                      <span className="label-text text-sm font-medium">Query Access Type</span>
                     </label>
-                    <select
-                      name="chunking_type"
-                      className="select select-bordered select-sm focus:ring-1 ring-primary/40"
-                      required={selectedSectionType === 'custom' && !selectedKnowledgeBase}
-                      disabled={isLoading || selectedKnowledgeBase}
-                      value={chunkingType}
-                      onChange={(e) => setChunkingType(e.target.value)}
-                    >
-                      <option value="" disabled>Select strategy</option>
-                      {KNOWLEDGE_BASE_CUSTOM_SECTION?.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          id="knowledgebase-query-type-fastest"
+                          type="radio"
+                          name="queryAccessType"
+                          value="fastest"
+                          className="radio radio-primary radio-sm"
+                          defaultChecked
+                          disabled={isCreatingResource}
+                        />
+                        <span className="text-sm">Fastest</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          id="knowledgebase-query-type-moderate"
+                          type="radio"
+                          name="queryAccessType"
+                          value="moderate"
+                          className="radio radio-primary radio-sm"
+                          disabled={isCreatingResource}
+                        />
+                        <span className="text-sm">Moderate</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          id="knowledgebase-query-type-high-accuracy"
+                          type="radio"
+                          name="queryAccessType"
+                          value="high_accuracy"
+                          className="radio radio-primary radio-sm"
+                          disabled={isCreatingResource}
+                        />
+                        <span className="text-sm">High Accuracy</span>
+                      </label>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-
-              {selectedSectionType === 'custom' && chunkingType !== 'semantic' && chunkingType && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="form-control">
-                    <label className="label !px-0">
-                      <span className="label-text text-sm font-medium text-base-content/70">Chunk Size{RequiredItem()}</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="chunk_size"
-                      className="input input-bordered input-sm focus:ring-1 ring-primary/40"
-                      required={selectedSectionType === 'custom' && !selectedKnowledgeBase}
-                      min="100"
-                      disabled={isLoading || selectedKnowledgeBase}
-                      defaultValue={selectedKnowledgeBase?.chunk_size || ''}
-                    />
-                  </div>
-
-                  <div className="form-control">
-                    <label className="label !px-0">
-                      <span className="label-text text-sm font-medium text-base-content/70">Chunk Overlap{RequiredItem()}</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="chunk_overlap"
-                      className="input input-bordered input-sm focus:ring-1 ring-primary/40"
-                      required={selectedSectionType === 'custom' && !selectedKnowledgeBase}
-                      min="0"
-                      disabled={isLoading || selectedKnowledgeBase}
-                      defaultValue={selectedKnowledgeBase?.chunk_overlap || ''}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
+          )}
+          <div className="flex justify-end gap-2">
             <button
+              id="knowledgebase-cancel-button"
               type="button"
-              className="btn btn-sm hover:text-base-content"
+              className="btn btn-ghost btn-sm"
               onClick={handleClose}
-              disabled={isLoading}
+              disabled={isCreatingResource}
             >
               Cancel
             </button>
             <button
+              id="knowledgebase-submit-button"
               type="submit"
-              className={`btn btn-sm btn-primary hover:bg-primary-focus ${
-                (selectedKnowledgeBase && !ischanged.isUpdate) || (!selectedKnowledgeBase && !ischanged.isAdd) 
-                  ? 'btn-disabled' 
-                  : ''
-              }`}
-              disabled={isLoading || (selectedKnowledgeBase && !ischanged.isUpdate) || (!selectedKnowledgeBase && !ischanged.isAdd)}
+              className="btn btn-primary btn-sm"
+              disabled={isCreatingResource}
             >
-              {isLoading ? (selectedKnowledgeBase ? 'Updating...' : 'Creating...') : (selectedKnowledgeBase ? 'Update' : 'Create') + ' Knowledge Base'}
+              {isCreatingResource
+                ? selectedResource
+                  ? "Updating..."
+                  : "Adding..."
+                : selectedResource
+                  ? "Update Resource"
+                  : "Add Resource"}
             </button>
           </div>
         </form>

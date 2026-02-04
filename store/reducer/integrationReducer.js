@@ -2,8 +2,8 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   integrationData: {},
-  gtwyAccessToken: '',
-  loading: false
+  gtwyAccessToken: "",
+  loading: false,
 };
 
 export const integrationReducer = createSlice({
@@ -25,21 +25,18 @@ export const integrationReducer = createSlice({
     updateIntegrationDataReducer: (state, action) => {
       const { orgId, data } = action.payload;
       if (state.integrationData[orgId]) {
-        state.integrationData[orgId] = state.integrationData[orgId].map(entry => {
+        state.integrationData[orgId] = state.integrationData[orgId].map((entry) => {
           if (entry._id === data._id) {
             return { ...entry, ...data };
           }
           return entry;
         });
       }
-    }
-  }
+    },
+  },
 });
 
-export const {
-  fetchAllIntegrationData,
-  addIntegrationDataReducer,
-  updateIntegrationDataReducer,
-} = integrationReducer.actions;
+export const { fetchAllIntegrationData, addIntegrationDataReducer, updateIntegrationDataReducer } =
+  integrationReducer.actions;
 
 export default integrationReducer.reducer;
