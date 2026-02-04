@@ -131,6 +131,12 @@ const InputConfigComponent = memo(
 
     // Memoized values to prevent recalculation
     const isDisabled = useMemo(() => !promptState.hasUnsavedChanges, [promptState.hasUnsavedChanges]);
+    
+    // Determine if diff button should be shown (hide when old and new content are the same)
+    const showDiffButton = useMemo(() => {
+      const currentValue = textareaRef.current?.value || reduxPrompt;
+      return oldContent.trim() !== currentValue.trim();
+    }, [oldContent, reduxPrompt]);
 
     // Early return for unsupported service types
     const handleKeyDown = useCallback(
@@ -168,6 +174,7 @@ const InputConfigComponent = memo(
           prompt={reduxPrompt}
           setIsTextareaFocused={setIsTextareaFocused}
           isFocused={isTextareaFocused}
+          showDiffButton={showDiffButton}
         />
 
         <div className="form-control relative">
@@ -188,7 +195,7 @@ const InputConfigComponent = memo(
           )}
         </div>
 
-        <Diff_Modal oldContent={oldContentRef.current} newContent={textareaRef.current?.value || reduxPrompt} />
+        <Diff_Modal oldContent={oldContent} newContent={textareaRef.current?.value || reduxPrompt} />
         <PromptSummaryModal modalType={MODAL_TYPE.PROMPT_SUMMARY} params={params} searchParams={searchParams} />
       </div>
     );
