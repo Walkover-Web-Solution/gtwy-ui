@@ -19,7 +19,7 @@ const ChatbotEmbedTester = () => {
   const [askAiInput, setAskAiInput] = useState("");
   const [eventLogs, setEventLogs] = useState([]);
 
-  const scriptSrc = "https://chatbot-embed.viasocket.com/chatbot-prod.js";
+  const scriptSrc = process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC;
 
   const handleInitialize = () => {
     if (embedToken.trim() && bridgeName.trim() && threadId.trim()) {
@@ -191,11 +191,11 @@ const ChatbotEmbedTester = () => {
 
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text font-semibold">Bridge Name</span>
+                        <span className="label-text font-semibold">Slug Name</span>
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter bridge/agent slug name"
+                        placeholder="Enter agent slug name"
                         className="input input-bordered w-full input-sm"
                         value={bridgeName}
                         onChange={(e) => setBridgeName(e.target.value.trim())}
@@ -244,7 +244,7 @@ const ChatbotEmbedTester = () => {
 
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text font-semibold">Bridge Name</span>
+                        <span className="label-text font-semibold">Slug Name</span>
                       </label>
                       <input
                         type="text"
