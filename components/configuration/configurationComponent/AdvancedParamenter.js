@@ -70,7 +70,7 @@ const AdvancedParameters = ({
     modelInfoData,
     bridge,
     richUiWidgets,
-    showResponseType
+    showResponseType,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];

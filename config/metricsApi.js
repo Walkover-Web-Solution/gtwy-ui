@@ -2,22 +2,6 @@ import axios from "@/utils/interceptor";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 
-// Metrics and Analytics APIs
-// export const getMetricsData = async (org_id, startDate, endDate) => {
-//   try {
-//     const response = await axios.get(`${URL}/api/v1/metrics/${org_id}`, {
-//       params: {
-//         startTime: startDate,
-//         endTime: endDate
-//       }
-//     });
-//     return response.data;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
-
 export const getMetricsDataApi = async ({
   apikey_id,
   service,
@@ -55,15 +39,15 @@ export const userFeedbackCount = async ({ bridge_id, user_feedback }) => {
   try {
     const response = await axios.get(`${URL}/api/v1/agentConfig/userfeedbackcount/${bridge_id}`, {
       params: {
-        user_feedback
-      }
+        user_feedback,
+      },
     });
-    return response
+    return response;
   } catch (error) {
     console.error(error);
-    return error
+    return error;
   }
-}
+};
 
 // Fine-tuning Data APIs
 export const downloadFineTuneData = async (bridge_id, threadIds, status = [0]) => {

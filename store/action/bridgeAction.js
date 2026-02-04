@@ -156,7 +156,7 @@ export const createEmbedAgentAction =
             bridgeType: "api",
             name: agent_name?.trim() || null,
           };
-          if(meta){
+          if (meta) {
             aiDataToSend.meta = meta;
           }
 
@@ -192,12 +192,12 @@ export const createEmbedAgentAction =
       const fallbackDataToSend = {
         service: "openai",
         model: "gpt-4o",
-        name:agent_name?.trim() || null,
+        name: agent_name?.trim() || null,
         slugName: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
       };
-      if(meta){
+      if (meta) {
         fallbackDataToSend.meta = meta;
       }
 
