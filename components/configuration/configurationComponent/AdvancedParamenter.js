@@ -70,6 +70,7 @@ const AdvancedParameters = ({
     modelInfoData,
     bridge,
     richUiWidgets,
+    showResponseType
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -93,6 +94,7 @@ const AdvancedParameters = ({
       modelInfoData,
       bridge: activeData,
       richUiWidgets: state?.richUiTemplateReducer?.templates || [],
+      showResponseType: state.appInfoReducer.embedUserDetails.showResponseType,
     };
   });
   const [inputConfiguration, setInputConfiguration] = useState(configuration);
@@ -489,20 +491,6 @@ const AdvancedParameters = ({
                 }}
                 disabled={isReadOnly}
               />
-            )}
-          </div>
-          <div className="w-[110px] flex justify-end flex-shrink-0 min-h-[32px]">
-            {!isDefaultValue && (
-              <button
-                id={`advanced-param-reset-${key}`}
-                type="button"
-                className="text-xs text-base-content/60 hover:text-base-content cursor-pointer px-3 py-1 rounded hover:bg-base-200 transition-colors whitespace-nowrap inline-block"
-                onClick={() => setSliderValue("default", key, isDeafaultObject)}
-                disabled={isReadOnly}
-                title="Reset to default value"
-              >
-                Set Default
-              </button>
             )}
           </div>
         </div>

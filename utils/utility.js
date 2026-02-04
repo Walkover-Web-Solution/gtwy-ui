@@ -2,6 +2,7 @@ import { BuildingIcon, CheckCircleIcon, LinkIcon } from "@/components/Icons";
 import AIMLIcon from "@/icons/AIMLIcon";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
+import FavIcon from "@/icons/FavIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";

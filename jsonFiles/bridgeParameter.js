@@ -92,7 +92,6 @@ export function getDefaultValues(additionalParams, bridgeParams) {
   return defaults;
 }
 
-// eslint-disable-next-line import/no-unused-modules
 export const parameterTypes = ["string", "number", "boolean", "object", "array"];
 
 export const KEYS_TO_COMPARE = [

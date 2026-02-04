@@ -17,6 +17,19 @@ export const ChatBot = createSlice({
     isError: (state) => {
       state.loading = false;
     },
+    // addorRemoveResponseIdInChatBot: (state, action) => {
+    //   const { response } = action.payload;
+    //   state.allBridgesMap[response.bridge_id] = { ...state.allBridgesMap[response.bridge_id], ...response }
+    // },
+    // fetchSingleChatBot: (state, action) => {
+    //   const { bridges, integrationData } = action.payload;
+    //   const { _id, configuration: { model: { default: modelDefault } }, service, type } = bridges;
+    //   const obj2 = modelInfo[service][modelDefault];
+    //   const response = updatedData(bridges, obj2, type);
+    //   state.allBridgesMap[_id] = { ...state.allBridgesMap[_id], ...response, integrationData, responseFormat: handleResponseFormat(bridges) };
+    //   state.loading = false;
+    // },
+
     getAllChatBotReducer: (state, action) => {
       state.org = { ...state.org, [action.payload.orgId]: [...action.payload.chatbots] };
       state.chatbot_token = action.payload.chatbot_token;

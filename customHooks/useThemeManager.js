@@ -4,7 +4,7 @@ import { applyThemeObject } from "@/utils/themeLoader";
 
 const useThemeVariables = (userType = "default", customThemePath = null, customTheme = null) => {
   useEffect(() => {
-    let _cancelled = false;
+    let cancelled = false;
 
     const loadTheme = async () => {
       try {

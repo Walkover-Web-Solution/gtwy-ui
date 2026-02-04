@@ -132,3 +132,25 @@ if (typeof document !== "undefined") {
     document.head.appendChild(style);
   }
 }
+
+// Add CSS animation for the gradient border
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes gradientMove {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+  `;
+  if (!document.head.querySelector("style[data-gradient-animation]")) {
+    style.setAttribute("data-gradient-animation", "true");
+    document.head.appendChild(style);
+  }
+}

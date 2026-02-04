@@ -220,19 +220,6 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   };
 
   // Opens the embedded chatbot panel and sends any necessary data beforehand
-  const _handleOpenChatbot = () => {
-    // Send data first (if host page exposes the bridge functions)
-    if (typeof window !== "undefined" && typeof window.sendDataToChatbot === "function") {
-      window.sendDataToChatbot({ parentId: "parentChatbot" });
-    }
-
-    // Then open after a short delay to ensure data is processed
-    setTimeout(() => {
-      if (typeof window !== "undefined" && typeof window.openChatbot === "function") {
-        window.openChatbot();
-      }
-    }, 200);
-  };
 
   // ----------------- RICH UI ACTIONS -----------------
   const handleRichUIActions = (event) => {

@@ -25,10 +25,21 @@ export const getAllChatBotAction = (orgId) => async (dispatch) => {
   }
 };
 
+// export const createNewChatbot = (dataToSend, onSuccess) => async (dispatch, getState) => {
+//     try {
+//         const response = await createChatBot(dataToSend);
+//         onSuccess(response);
+//         dispatch(createNewBotReducer({ chatbot: response.data.chatBot, orgId: dataToSend.orgId }));
+//     } catch (error) {
+//         console.error(error);
+//     }
+// };
+
 export const getChatBotDetailsAction = (botId) => async (dispatch, getState) => {
   try {
     const response = await getChatBotDetails(botId);
     dispatch(getChatBotDetailsReducer({ botId, data: response.data }));
+    // dispatch(getAllChatBotReducer({ bridges: response, orgId }));
   } catch (error) {
     console.error(error);
   }

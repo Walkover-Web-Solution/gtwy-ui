@@ -1,4 +1,5 @@
 import {
+  getHistory,
   getSingleThreadData,
   getSubThreadIds,
   getThreads,
