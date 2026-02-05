@@ -61,7 +61,8 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
                         {line.oldLine || (line.type === "added" ? " " : "")}
                       </span>
                     </div>
-                  ))}                  {diffData.length === 0 && (
+                  ))}{" "}
+                  {diffData.length === 0 && (
                     <div className="p-4 text-base-content text-center">Generate a new prompt to see differences</div>
                   )}
                 </div>
@@ -118,10 +119,10 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
                 <div className="flex items-center gap-2">
                   <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: "#0c8d39ff" }}></span>Added
                 </div>
-                 <div className="flex items-center gap-2">
-                  <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: "#419cacff" }}></span>Modified
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: "#419cacff" }}></span>
+                  Modified
                 </div>
-                
               </div>
             </div>
           )}

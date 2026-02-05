@@ -131,7 +131,7 @@ const InputConfigComponent = memo(
 
     // Memoized values to prevent recalculation
     const isDisabled = useMemo(() => !promptState.hasUnsavedChanges, [promptState.hasUnsavedChanges]);
-    
+
     // Determine if diff button should be shown (hide when old and new content are the same)
     const showDiffButton = useMemo(() => {
       const currentValue = textareaRef.current?.value || reduxPrompt;

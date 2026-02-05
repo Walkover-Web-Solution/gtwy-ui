@@ -379,7 +379,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       const apiAgentsCat = allCategories[apiAgentsIndex];
       const chatbotAgentsCat = allCategories[chatbotAgentsIndex];
       const otherCats = allCategories.filter((_, index) => index !== apiAgentsIndex && index !== chatbotAgentsIndex);
-      
+
       // If type=chatbot, show Chatbot agents first, otherwise show API agents first
       if (typeParam === "chatbot") {
         return [chatbotAgentsCat, apiAgentsCat, ...otherCats];
@@ -396,7 +396,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     }
 
     return allCategories;
-  }, [currentCategory,typeParam]);
+  }, [currentCategory, typeParam]);
 
   // Build flat navigation list for landing mode (categories + visible items)
   const landingFlatList = useMemo(() => {
@@ -426,7 +426,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     // Collapse all categories except the first one (current category)
     const allCategoryKeys = categories.map((c) => c.key);
     const firstCategoryKey = allCategoryKeys[0];
-    
+
     // Special handling for agents page: keep both API agents and Chatbot agents expanded
     if (currentCategory === "agents") {
       const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== "api-agents" && key !== "chatbot-agents"));
@@ -662,13 +662,13 @@ const CommandPalette = ({ isEmbedUser }) => {
       const categoryKey = current.key;
       // Collapse all categories except the current one
       const allCategoryKeys = categories.map((c) => c.key);
-      
+
       // Special handling for agents page: keep both API agents and Chatbot agents expanded
       if (currentCategory === "agents" && (categoryKey === "api-agents" || categoryKey === "chatbot-agents")) {
         const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== "api-agents" && key !== "chatbot-agents"));
         setCollapsedLandingCategories((prev) => {
           // Only update if the set actually changed
-          if (prev.size !== collapsedSet.size || [...prev].some(key => !collapsedSet.has(key))) {
+          if (prev.size !== collapsedSet.size || [...prev].some((key) => !collapsedSet.has(key))) {
             return collapsedSet;
           }
           return prev;
@@ -677,7 +677,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== categoryKey));
         setCollapsedLandingCategories((prev) => {
           // Only update if the set actually changed
-          if (prev.size !== collapsedSet.size || [...prev].some(key => !collapsedSet.has(key))) {
+          if (prev.size !== collapsedSet.size || [...prev].some((key) => !collapsedSet.has(key))) {
             return collapsedSet;
           }
           return prev;
@@ -686,7 +686,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     } else if (current?.type === "item") {
       // If navigating to an item, ensure its category is expanded
       const categoryKey = current.key;
-      
+
       // Special handling for agents page: keep both agent categories expanded
       if (currentCategory === "agents" && (categoryKey === "api-agents" || categoryKey === "chatbot-agents")) {
         setCollapsedLandingCategories((prev) => {

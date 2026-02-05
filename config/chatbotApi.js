@@ -22,7 +22,7 @@ export const createChatBot = async (dataToSend) => {
     console.error(error);
     return error;
   }
-}
+};
 
 export const getChatBotDetails = async (botId) => {
   try {
@@ -52,7 +52,7 @@ export const updateChatBot = async (botId, dataToSend) => {
     console.error(error);
     return error;
   }
-}
+};
 
 export const updateChatBotConfig = async (botId, dataToSend) => {
   try {
