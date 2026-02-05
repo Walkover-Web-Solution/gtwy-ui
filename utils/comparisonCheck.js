@@ -61,7 +61,7 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
                         {line.oldLine || (line.type === "added" ? " " : "")}
                       </span>
                     </div>
-                  ))}{" "}
+                  ))}
                   {diffData.length === 0 && (
                     <div className="p-4 text-base-content text-center">Generate a new prompt to see differences</div>
                   )}

@@ -94,8 +94,7 @@ function EmbedListSuggestionDropdownMenu({
                           key={index}
                           src={icon}
                           alt={`${title} icon ${index + 1}`}
-                          className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5"
-                          style={{ zIndex: 5 - index }}
+                          className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5 z-very-low"
                           onError={(e) => {
                             e.target.style.display = "none";
                           }}
