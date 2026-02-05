@@ -7,7 +7,8 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
   const searchParams = useSearchParams();
   const router = useRouter();
   const filterParam = searchParams.get("filter");
-  const isWorkspaceItem = item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser);
+  const isWorkspaceItem =
+    item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser) || item === "metrics";
   const itemLabel = item === "Organizations" ? "Workspaces" : item;
   const userClearedSearch = useRef(false);
   const searchInputRef = useRef(null);
@@ -111,7 +112,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
           aria-label={`Search ${itemLabel} by Name, SlugName, Service, or ID`}
           placeholder={filterParam ? "Filtered - Click X to clear" : "Search"}
           value={searchTerm}
-          className={inputClasses}
+          className={`${inputClasses} mb-2`}
           data-allow-org-nav={isWorkspaceItem ? "true" : "false"}
           onChange={(e) => {
             const newValue = e.target.value;
@@ -138,7 +139,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
             )}
             {!filterParam && (
               <kbd
-                className={`kbd kbd-xs bg-base-200 text-base-content/70 border border-base-content/20 ${isMac ? "px-1.5" : "px-1"}`}
+                className={`kbd kbd-xs bg-base-200 text-base-content/70 border border-base-content/20 mb-2 ${isMac ? "px-1.5" : "px-1"}`}
               >
                 {shortcutText}
               </kbd>

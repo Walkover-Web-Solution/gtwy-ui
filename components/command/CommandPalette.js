@@ -37,6 +37,7 @@ const CommandPalette = ({ isEmbedUser }) => {
   const [collapsedSearchCategories, setCollapsedSearchCategories] = useState(new Set());
 
   const filterParam = searchParams.get("filter");
+  const typeParam = searchParams.get("type");
 
   const orgId = useMemo(() => getOrgIdFromPath(pathname), [pathname]);
 
@@ -61,8 +62,10 @@ const CommandPalette = ({ isEmbedUser }) => {
     integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
     authData: state?.authDataReducer?.authData || [],
   }));
-
-  const apiAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "api");
+  const apiAgents = agentList.filter(
+    (agent) =>
+      (!agent.deletedAt && agent.bridgeType === "api") || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
+  );
   const chatbotAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "chatbot");
 
   const functions = useMemo(() => Object.values(functionData || {}), [functionData]);
@@ -371,6 +374,22 @@ const CommandPalette = ({ isEmbedUser }) => {
       { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
     ];
 
+    // When on agents page, order based on type query parameter
+    if (currentCategory === "agents") {
+      const apiAgentsIndex = allCategories.findIndex((cat) => cat.key === "api-agents");
+      const chatbotAgentsIndex = allCategories.findIndex((cat) => cat.key === "chatbot-agents");
+      const apiAgentsCat = allCategories[apiAgentsIndex];
+      const chatbotAgentsCat = allCategories[chatbotAgentsIndex];
+      const otherCats = allCategories.filter((_, index) => index !== apiAgentsIndex && index !== chatbotAgentsIndex);
+
+      // If type=chatbot, show Chatbot agents first, otherwise show API agents first
+      if (typeParam === "chatbot") {
+        return [chatbotAgentsCat, apiAgentsCat, ...otherCats];
+      } else {
+        return [apiAgentsCat, chatbotAgentsCat, ...otherCats];
+      }
+    }
+
     const currentCategoryIndex = allCategories.findIndex((cat) => cat.key === currentCategory);
     if (currentCategoryIndex > -1) {
       const currentCat = allCategories[currentCategoryIndex];
@@ -379,7 +398,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     }
 
     return allCategories;
-  }, [currentCategory]);
+  }, [currentCategory, typeParam]);
 
   // Build flat navigation list for landing mode (categories + visible items)
   const landingFlatList = useMemo(() => {
@@ -409,12 +428,19 @@ const CommandPalette = ({ isEmbedUser }) => {
     // Collapse all categories except the first one (current category)
     const allCategoryKeys = categories.map((c) => c.key);
     const firstCategoryKey = allCategoryKeys[0];
-    const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== firstCategoryKey));
-    setCollapsedLandingCategories(collapsedSet);
+
+    // Special handling for agents page: keep both API agents and Chatbot agents expanded
+    if (currentCategory === "agents") {
+      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== "api-agents" && key !== "chatbot-agents"));
+      setCollapsedLandingCategories(collapsedSet);
+    } else {
+      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== firstCategoryKey));
+      setCollapsedLandingCategories(collapsedSet);
+    }
 
     // For search mode, collapse all except first group
     setCollapsedSearchCategories(new Set());
-  }, [categories]);
+  }, [categories, currentCategory]);
 
   const closePalette = useCallback(() => setOpen(false), []);
 
@@ -638,18 +664,56 @@ const CommandPalette = ({ isEmbedUser }) => {
       const categoryKey = current.key;
       // Collapse all categories except the current one
       const allCategoryKeys = categories.map((c) => c.key);
-      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== categoryKey));
-      setCollapsedLandingCategories(collapsedSet);
+
+      // Special handling for agents page: keep both API agents and Chatbot agents expanded
+      if (currentCategory === "agents" && (categoryKey === "api-agents" || categoryKey === "chatbot-agents")) {
+        const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== "api-agents" && key !== "chatbot-agents"));
+        setCollapsedLandingCategories((prev) => {
+          // Only update if the set actually changed
+          if (prev.size !== collapsedSet.size || [...prev].some((key) => !collapsedSet.has(key))) {
+            return collapsedSet;
+          }
+          return prev;
+        });
+      } else {
+        const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== categoryKey));
+        setCollapsedLandingCategories((prev) => {
+          // Only update if the set actually changed
+          if (prev.size !== collapsedSet.size || [...prev].some((key) => !collapsedSet.has(key))) {
+            return collapsedSet;
+          }
+          return prev;
+        });
+      }
     } else if (current?.type === "item") {
       // If navigating to an item, ensure its category is expanded
       const categoryKey = current.key;
-      setCollapsedLandingCategories((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(categoryKey);
-        return newSet;
-      });
+
+      // Special handling for agents page: keep both agent categories expanded
+      if (currentCategory === "agents" && (categoryKey === "api-agents" || categoryKey === "chatbot-agents")) {
+        setCollapsedLandingCategories((prev) => {
+          // Only update if these keys are actually in the set
+          if (prev.has("api-agents") || prev.has("chatbot-agents")) {
+            const newSet = new Set(prev);
+            newSet.delete("api-agents");
+            newSet.delete("chatbot-agents");
+            return newSet;
+          }
+          return prev;
+        });
+      } else {
+        setCollapsedLandingCategories((prev) => {
+          // Only update if this key is actually in the set
+          if (prev.has(categoryKey)) {
+            const newSet = new Set(prev);
+            newSet.delete(categoryKey);
+            return newSet;
+          }
+          return prev;
+        });
+      }
     }
-  }, [activeIndex, open, query, landingFlatList, categories]);
+  }, [activeIndex, open, query, landingFlatList, currentCategory]);
 
   // Scroll active item into view
   useEffect(() => {

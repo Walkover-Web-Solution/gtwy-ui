@@ -283,14 +283,6 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key: "showGuide",
-    type: "toggle",
-    label: "Show Guide",
-    description: "Display helpful user guides",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
     key: "showAgentTypeOnCreateAgent",
     type: "toggle",
     label: "Show Agent Type on Create Agent",

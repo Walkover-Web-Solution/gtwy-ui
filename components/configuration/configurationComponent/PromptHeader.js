@@ -18,6 +18,7 @@ const PromptHeader = memo(
     prompt = "",
     isFocused = false,
     setIsTextareaFocused = () => {},
+    showDiffButton = true,
   }) => {
     const handleOpenDiff = useCallback(() => {
       onOpenDiff?.();
@@ -35,7 +36,7 @@ const PromptHeader = memo(
           </div>
 
           <div className="flex items-center gap-4">
-            {prompt && (
+            {prompt && showDiffButton && (
               <span
                 id="prompt-header-diff-button-open"
                 className="text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 cursor-pointer px-2 py-1 rounded transition-colors"
@@ -70,7 +71,7 @@ const PromptHeader = memo(
         </div>
 
         <div className="label gap-6 sm:gap-4">
-          {prompt && !isPromptHelperOpen && (
+          {prompt && !isPromptHelperOpen && showDiffButton && (
             <span
               id="prompt-header-diff-button"
               className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${

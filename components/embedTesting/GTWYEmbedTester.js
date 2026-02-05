@@ -53,7 +53,7 @@ const GTWYEmbedTester = () => {
       scriptRef.current = null;
     }
     const env = process.env.NEXT_PUBLIC_ENV;
-    const URL = `${process.env.NEXT_PUBLIC_FRONTEND_URL}${env == "LOCAL" ? "/gtwy_embed_local.js" : evn == "DEV" ? "/gtwy_dev.js" : "/gtwy.js"}`;
+    const URL = `${process.env.NEXT_PUBLIC_FRONTEND_URL}${env == "LOCAL" ? "/gtwy_embed_local.js" : env == "DEV" ? "/gtwy_dev.js" : "/gtwy.js"}`;
     const script = document.createElement("script");
     script.id = "gtwy-main-script";
     script.src = URL;

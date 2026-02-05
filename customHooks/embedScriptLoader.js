@@ -36,13 +36,6 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
     script.setAttribute("configurationJson", JSON.stringify(configurationJson));
 
     document.body.appendChild(script);
-    script.onload = () => {
-      setTimeout(() => {
-        if (activeElement && "focus" in activeElement) {
-          activeElement.focus();
-        }
-      }, 2000);
-    };
   }
   useEffect(() => {
     // Ensure embedToken is a valid string before proceeding
