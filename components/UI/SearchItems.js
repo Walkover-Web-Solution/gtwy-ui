@@ -7,7 +7,8 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
   const searchParams = useSearchParams();
   const router = useRouter();
   const filterParam = searchParams.get("filter");
-  const isWorkspaceItem = item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser) || item==="metrics";
+  const isWorkspaceItem =
+    item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser) || item === "metrics";
   const itemLabel = item === "Organizations" ? "Workspaces" : item;
   const userClearedSearch = useRef(false);
   const searchInputRef = useRef(null);

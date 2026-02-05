@@ -62,7 +62,10 @@ const CommandPalette = ({ isEmbedUser }) => {
     integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
     authData: state?.authDataReducer?.authData || [],
   }));
-  const apiAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "api" || agent.bridgeType === "trigger" || agent.bridgeType === "batch");
+  const apiAgents = agentList.filter(
+    (agent) =>
+      (!agent.deletedAt && agent.bridgeType === "api") || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
+  );
   const chatbotAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "chatbot");
 
   const functions = useMemo(() => Object.values(functionData || {}), [functionData]);
