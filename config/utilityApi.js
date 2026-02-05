@@ -358,3 +358,13 @@ export const generateRichUITemplate = async (data) => {
     throw new Error(error);
   }
 };
+
+export const createRichUiTemplateApi = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/rich-ui-templates`, data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};

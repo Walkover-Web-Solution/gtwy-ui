@@ -3,17 +3,14 @@ import MainLayout from "@/components/layoutComponents/MainLayout";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { MODAL_TYPE } from "@/utils/enums";
-import { openModal, formatRelativeTime, RequiredItem } from "@/utils/utility";
-import { TrashIcon, PlayIcon, Plus, Sparkles, X, ArrowLeft, SendHorizontal, Send, PencilIcon } from "lucide-react";
+import { openModal, formatRelativeTime } from "@/utils/utility";
+import { PlayIcon, Plus, Sparkles, X, SendHorizontal, Send } from "lucide-react";
 import React, { useEffect, useState, use, useRef } from "react";
-import { useDispatch } from "react-redux";
-import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
-import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import TemplatePlayground from "@/components/modals/TemplatePlayground";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
-import { generateRichUITemplate } from "@/config/utilityApi";
+import { generateRichUITemplate, createRichUiTemplateApi } from "@/config/utilityApi";
 import ReactMarkdown from "@/components/LazyMarkdown";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
 
@@ -25,21 +22,17 @@ const TemplatesPage = ({ params }) => {
   const searchParams = useSearchParams();
   const createParam = searchParams.get("create");
 
-  const _dispatch = useDispatch();
-
   const { widgetsData } = useCustomSelector((state) => ({
     widgetsData: state?.richUiTemplateReducer?.templates || [],
   }));
 
   // State for Navigation/View Mode
-  // Modes: 'list' | 'create_prompt' | 'editor'
+  // Modes: 'list' | 'create_prompt'
   const [viewMode, setViewMode] = useState("list");
 
   // Data States
   const [filterWidgets, setFilterWidgets] = useState(widgetsData || []);
-  const [selectedDataToDelete, setSelectedDataToDelete] = useState(null);
   const [playgroundWidget, setPlaygroundWidget] = useState(null);
-  const { isDeleting, executeDelete } = useDeleteOperation();
 
   // Chat State
   const [messages, setMessages] = useState([]);
@@ -49,12 +42,8 @@ const TemplatesPage = ({ params }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
-
-  // Editor State
-  const [editorWidget, setEditorWidget] = useState(null); // The widget being edited (or new data)
-  const [schemaValue, setSchemaValue] = useState("");
-  const [htmlValue, setHtmlValue] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingMessageId, setSavingMessageId] = useState(null);
+  const [savedMessageIds, setSavedMessageIds] = useState(new Set());
 
   useEffect(() => {
     setFilterWidgets(widgetsData || []);
@@ -84,43 +73,24 @@ const TemplatesPage = ({ params }) => {
 
   // --- Actions ---
 
-  const handleUpdateWidget = (item) => {
-    const originalItem = widgetsData.find((widget) => widget._id === item._id);
-    setEditorWidget(originalItem);
-    setSchemaValue(JSON.stringify(originalItem?.json_schema?.schema || {}, null, 2));
-    setHtmlValue(originalItem?.html || "");
-    setViewMode("editor");
-  };
-
-  const handleDeleteWidget = async (item) => {
-    await executeDelete(async () => {
-      // Add delete widget action here
-      console.log("Delete widget:", item?._id);
-      return Promise.resolve();
-    });
-  };
-
   const handleOpenPlayground = (item) => {
     const originalItem = widgetsData.find((widget) => widget._id === item._id);
     setPlaygroundWidget(originalItem);
-    // Playground still uses a modal
     openModal(MODAL_TYPE?.TEMPLATE_PLAYGROUND);
   };
 
   const handleCreateNew = () => {
     router.push(`?create=true`);
-    // viewMode will update via useEffect or we can force it for faster UI
     setViewMode("create_prompt");
   };
 
   const handleBackToList = () => {
-    router.replace(`/org/${resolvedParams.org_id}/templates`);
+    router.replace(`/org/${resolvedParams.org_id}/widgets`);
     setViewMode("list");
     setMessages([]);
     setCurrentInput("");
     setChatStarted(false);
     setIsAnimating(false);
-    setEditorWidget(null);
   };
 
   const handleSendMessage = async () => {
@@ -163,6 +133,7 @@ const TemplatesPage = ({ params }) => {
         type: "assistant",
         content: data.result || data.response || "Sorry, I could not generate a response.",
         html: data.html || null,
+        template_format: data.result || data.card_json || null,
         timestamp: new Date(),
       };
 
@@ -180,45 +151,45 @@ const TemplatesPage = ({ params }) => {
       setIsGenerating(false);
     }
   };
-  const handleSaveWidget = async (event) => {
-    event.preventDefault();
-    setIsSaving(true);
 
-    const formData = new FormData(event.target);
+  const handleSaveFromChat = async (message) => {
+    if (!message.template_format && !message.html) {
+      toast.error("No template data to save");
+      return;
+    }
+
+    setSavingMessageId(message.id);
+
+    // Attempt to extract name/description from content or use defaults
+    // Since the prompt mainly gives us code, we might use a generic name or ask,
+    // but the requirement says "from ui only the name and description... will come"
+    // For now, let's use a default or parse if possible, or maybe the AI provides metadata.
+    // If not provided, we'll use a placeholder.
+    const name = "AI Generated Widget " + new Date().toLocaleString();
+    const description = "Generated from chat prompt: " + message.content.substring(0, 50) + "...";
+    const template_format = JSON.parse(message.template_format) || {};
 
     try {
-      const schema = JSON.parse(schemaValue);
       const payload = {
-        name: (formData.get("name") || "").trim(),
-        description: (formData.get("description") || "").trim(),
-        html: htmlValue.trim(),
-        json_schema: { schema: schema },
+        name,
+        description,
+        html: message.html || "",
+        template_format: template_format,
+        // json_schema will be generated by backend
       };
 
-      if (editorWidget?._isNew) {
-        console.log("Creating widget:", payload);
-        toast.success("Widget created successfully");
-      } else {
-        console.log("Updating widget:", editorWidget._id, payload);
-        toast.success("Widget updated successfully");
-      }
+      await createRichUiTemplateApi(payload);
 
-      // Return to list
-      handleBackToList();
-    } catch (err) {
-      console.error(err);
-      toast.error("Invalid JSON schema format or error saving");
+      toast.success("Widget saved successfully!");
+      setSavedMessageIds((prev) => new Set(prev).add(message.id));
+
+      // Optionally refresh list if needed, though we are in chat mode
+      // router.refresh();
+    } catch (error) {
+      console.error("Error saving widget:", error);
+      toast.error("Failed to save widget: " + (error.message || "Unknown error"));
     } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const validateJSON = (value) => {
-    try {
-      JSON.parse(value);
-      return true;
-    } catch {
-      return false;
+      setSavingMessageId(null);
     }
   };
 
@@ -256,16 +227,22 @@ const TemplatesPage = ({ params }) => {
                           <div className="bg-base-200 rounded-lg p-4 border border-base-300 overflow-auto max-h-96 mb-4">
                             <div dangerouslySetInnerHTML={{ __html: message.html }} />
                           </div>
-                          <button
-                            className="btn btn-sm w-full"
-                            onClick={() => {
-                              // Handle save widget logic
-                              console.log("Save widget:", message);
-                              toast.success("Widget saved successfully!");
-                            }}
-                          >
-                            Save Widget
-                          </button>
+                          {!savedMessageIds.has(message.id) && (
+                            <button
+                              className="btn btn-sm w-full"
+                              onClick={() => handleSaveFromChat(message)}
+                              disabled={savingMessageId === message.id}
+                            >
+                              {savingMessageId === message.id ? (
+                                <>
+                                  <span className="loading loading-spinner loading-xs"></span>
+                                  Saving...
+                                </>
+                              ) : (
+                                "Save Widget"
+                              )}
+                            </button>
+                          )}
                         </div>
                       ) : (
                         /* Show markdown for user messages or assistant messages without HTML */
@@ -437,136 +414,6 @@ const TemplatesPage = ({ params }) => {
     );
   }
 
-  if (viewMode === "editor") {
-    return (
-      <div className="w-full h-full p-4 animate-fade-in">
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => {
-              // If new, go back to prompt? Or list?
-              // Usually back to List if Editing, back to Prompt if Creating?
-              // Let's go to list for safety/simplicity
-              handleBackToList();
-            }}
-            className="btn btn-circle btn-ghost btn-sm"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h2 className="text-2xl font-bold">{editorWidget?._isNew ? "Create New Widget" : "Edit Widget"}</h2>
-        </div>
-
-        <form onSubmit={handleSaveWidget} className="space-y-6 max-w-5xl mx-auto pb-20">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium">
-                  Name <RequiredItem />
-                </span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                className="input input-bordered w-full"
-                placeholder="Widget name"
-                defaultValue={editorWidget?.name || ""}
-                required
-                disabled={isSaving}
-              />
-            </div>
-
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium">
-                  Description <RequiredItem />
-                </span>
-              </label>
-              <input
-                type="text"
-                name="description"
-                className="input input-bordered w-full"
-                placeholder="Brief description"
-                defaultValue={editorWidget?.description || ""}
-                required
-                disabled={isSaving}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">
-                  JSON Schema (defines variables) <RequiredItem />
-                </span>
-              </label>
-              <textarea
-                value={schemaValue}
-                onChange={(e) => setSchemaValue(e.target.value)}
-                className={`textarea textarea-bordered font-mono text-xs min-h-[400px] leading-relaxed ${!validateJSON(schemaValue) ? "textarea-error" : ""}`}
-                placeholder="Enter JSON schema..."
-                disabled={isSaving}
-              />
-              {!validateJSON(schemaValue) && (
-                <label className="label">
-                  <span className="label-text-alt text-error">Invalid JSON</span>
-                </label>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-6">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    HTML Widget <RequiredItem />
-                  </span>
-                </label>
-                <textarea
-                  value={htmlValue}
-                  onChange={(e) => setHtmlValue(e.target.value)}
-                  className="textarea textarea-bordered font-mono text-xs min-h-[300px] leading-relaxed"
-                  placeholder="HTML content with {{variable}} placeholders"
-                  disabled={isSaving}
-                />
-              </div>
-
-              <div className="bg-base-200 rounded-lg p-4">
-                <label className="label p-0 mb-2">
-                  <span className="label-text font-medium">Preview</span>
-                </label>
-                <div className="bg-white rounded border border-gray-200 p-2 min-h-[100px] max-h-[200px] overflow-auto">
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: htmlValue.replace(
-                        /\{\{(\w+)\}\}/g,
-                        '<span class="bg-yellow-200 px-1 rounded mx-0.5 text-xs font-mono">$1</span>'
-                      ),
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-base-200">
-            <button type="button" onClick={handleBackToList} className="btn btn-ghost" disabled={isSaving}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary px-8" disabled={isSaving || !validateJSON(schemaValue)}>
-              {isSaving ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  Saving...
-                </>
-              ) : (
-                "Save Widget"
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
   // Render List View (Default)
   return (
     <div className="w-full">
@@ -625,20 +472,6 @@ const TemplatesPage = ({ params }) => {
                   >
                     <PlayIcon size={16} />
                   </button>
-                  <button
-                    onClick={() => handleUpdateWidget(widget)}
-                    className="btn btn-sm btn-circle btn-ghost text-white hover:bg-white/20"
-                    title="Edit"
-                  >
-                    <PencilIcon size={16} />
-                  </button>
-                  <button
-                    onClick={() => setSelectedDataToDelete(widget)}
-                    className="btn btn-sm btn-circle btn-ghost text-white hover:bg-white/20"
-                    title="Delete"
-                  >
-                    <TrashIcon size={16} />
-                  </button>
                 </div>
               </div>
 
@@ -672,17 +505,7 @@ const TemplatesPage = ({ params }) => {
         </div>
       )}
 
-      {/* No TemplateModal here anymore! */}
-
       <TemplatePlayground template={playgroundWidget} setTemplate={setPlaygroundWidget} />
-
-      <DeleteModal
-        onConfirm={() => handleDeleteWidget(selectedDataToDelete)}
-        title="Delete Widget"
-        description={`Are you sure you want to delete the widget "${selectedDataToDelete?.name}"? This action cannot be undone.`}
-        loading={isDeleting}
-        isAsync={true}
-      />
     </div>
   );
 };

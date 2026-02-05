@@ -233,14 +233,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     const elementId = target.getAttribute("id");
     try {
       const actionPayload = JSON.parse(actionDataStr);
-      console.log("Action payload", actionPayload);
-
       // 1. Show loading state
       target.classList.add("loading", "loading-spinner", "btn-disabled"); // DaisyUI classes
 
       // 2. Send to parent
       if (typeof window !== "undefined") {
-        console.log("Sending action to parent", actionPayload);
         window.parent.postMessage(
           {
             type: "GTWY_ACTION",
@@ -254,55 +251,6 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       console.error("Failed to parse action data", e);
     }
   };
-
-  window.addEventListener("message", (event) => {
-    const data = event.data;
-    if (data.type === "GTWY_ACTION") {
-      console.log(data);
-    }
-    if (data && data.type === "GTWY_ACTION_ACK" && data.elementId) {
-      const element = document.getElementById(data.elementId);
-      if (element) {
-        // Remove loading
-        element.classList.remove("loading", "loading-spinner", "btn-disabled");
-
-        // Optional: visual success feedback
-        const checkIcon = document.createElement("span");
-        checkIcon.innerHTML = "✔";
-        checkIcon.className = "ml-2 text-success font-bold";
-        element.appendChild(checkIcon);
-
-        // Optional: Disable after success?
-        // element.setAttribute('disabled', 'true');
-      }
-    }
-  });
-
-  // Listen for ACK from parent to update UI
-  useEffect(() => {
-    const handleMessage = (event) => {
-      const data = event.data;
-      if (data && data.type === "GTWY_ACTION_ACK" && data.elementId) {
-        const element = document.getElementById(data.elementId);
-        if (element) {
-          // Remove loading
-          element.classList.remove("loading", "loading-spinner", "btn-disabled");
-
-          // Optional: visual success feedback
-          const checkIcon = document.createElement("span");
-          checkIcon.innerHTML = "✔";
-          checkIcon.className = "ml-2 text-success font-bold";
-          element.appendChild(checkIcon);
-
-          // Optional: Disable after success?
-          // element.setAttribute('disabled', 'true');
-        }
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
 
   const _renderMessageAttachments = (message) => {
     // Check for both image_urls (user images) and llm_urls (assistant images)

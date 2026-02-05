@@ -644,139 +644,152 @@ const AdvancedParameters = ({
                     )}
                 </select>
 
-                {/* Widget UI - Only show if mode is widget */}
+                {/* Widget UI - Only show if response_type is widget (is_template = true) */}
                 {key === "response_type" && configuration?.[key]?.is_template && (
-                  <>
-                    <div className="mb-3 p-3 bg-base-200 rounded-lg mt-2">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-medium">Available Widgets:</div>
-                          <button
-                            type="button"
-                            className="btn btn-xs btn-ghost gap-1 text-primary"
-                            onClick={() => router.push(`/org/${params?.org_id}/templates`)}
-                            title="Manage Widgets"
-                          >
-                            <ExternalLink size={12} />
-                            Manage
-                          </button>
-                        </div>
-                        {selectedWidgets.length > 0 && (
-                          <button
-                            type="button"
-                            className="btn btn-xs btn-primary"
-                            onClick={handleApplyWidgets}
-                            disabled={isReadOnly || !hasWidgetChanges}
-                          >
-                            Apply Selected ({selectedWidgets.length})
-                          </button>
-                        )}
+                  <div className="mb-3 p-3 bg-base-200 rounded-lg mt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">Available Widgets:</div>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-ghost gap-1 text-primary"
+                          onClick={() => router.push(`/org/${params?.org_id}/widgets`)}
+                          title="Manage Widgets"
+                        >
+                          <ExternalLink size={12} />
+                          Manage
+                        </button>
                       </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {richUiWidgets.map((widgetObj) => {
-                          const widgetName = widgetObj.name || `Widget`;
-                          const isSelected = selectedWidgets.includes(widgetObj._id);
+                      {selectedWidgets.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-primary"
+                          onClick={handleApplyWidgets}
+                          disabled={isReadOnly || !hasWidgetChanges}
+                        >
+                          Apply Selected ({selectedWidgets.length})
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {richUiWidgets.map((widgetObj) => {
+                        const widgetName = widgetObj.name || `Widget`;
+                        const isSelected = selectedWidgets.includes(widgetObj._id);
 
-                          return (
-                            <div
-                              key={widgetObj._id}
-                              className={`flex flex-col gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-primary" : "bg-base-100 border-base-200 hover:bg-base-200"}`}
-                              onClick={() => {
-                                if (isReadOnly) return;
-                                setSelectedWidgets((prev) => {
-                                  if (prev.includes(widgetObj._id)) {
-                                    return prev.filter((id) => id !== widgetObj._id);
-                                  }
-                                  return [...prev, widgetObj._id];
-                                });
-                              }}
-                            >
-                              {/* Content Preview */}
-                              {widgetObj.html && (
-                                <div className="relative w-full h-40 bg-base-100 rounded border border-base-300 overflow-hidden pointer-events-none mb-2">
-                                  <div className="absolute inset-0 w-full h-full overflow-hidden">
-                                    <div
-                                      className="transform scale-[0.5] origin-top-left w-[200%]"
-                                      dangerouslySetInnerHTML={{ __html: widgetObj.html }}
-                                    />
-                                  </div>
+                        return (
+                          <div
+                            key={widgetObj._id}
+                            className={`flex flex-col gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? "bg-primary/10 border-primary" : "bg-base-100 border-base-200 hover:bg-base-200"}`}
+                            onClick={() => {
+                              if (isReadOnly) return;
+                              setSelectedWidgets((prev) => {
+                                if (prev.includes(widgetObj._id)) {
+                                  return prev.filter((id) => id !== widgetObj._id);
+                                }
+                                return [...prev, widgetObj._id];
+                              });
+                            }}
+                          >
+                            {/* Content Preview */}
+                            {widgetObj.html && (
+                              <div className="relative w-full h-40 bg-base-100 rounded border border-base-300 overflow-hidden pointer-events-none mb-2">
+                                <div className="absolute inset-0 w-full h-full overflow-hidden">
+                                  <div
+                                    className="transform scale-[0.5] origin-top-left w-[200%]"
+                                    dangerouslySetInnerHTML={{ __html: widgetObj.html }}
+                                  />
                                 </div>
-                              )}
-
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-sm font-medium capitalize truncate">{widgetName}</span>
-                                {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
                               </div>
+                            )}
+
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-sm font-medium capitalize truncate">{widgetName}</span>
+                              {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </>
+                  </div>
                 )}
-
-                {/* JSON Schema UI - Only show if mode is json_schema AND NOT template */}
-                {configuration?.[key]?.type === "json_schema" && !configuration?.[key]?.is_template && (
-                  <>
-                    <div className="flex justify-between items-center mb-2 mt-2">
-                      <span
-                        className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => {
-                          openModal(MODAL_TYPE.JSON_SCHEMA);
-                        }}
+                {/* JSON Schema textarea and modal - positioned below the key/label */}
+                {field === "select" &&
+                  !isDefaultValue &&
+                  configuration?.[key]?.type === "json_schema" &&
+                  !configuration?.[key]?.is_template && (
+                    <div id={`advanced-param-json-schema-${key}`} className="mt-3 space-y-2">
+                      <div
+                        id={`advanced-param-json-schema-header-${key}`}
+                        className="flex justify-between items-center"
                       >
-                        Response Builder
-                      </span>
-                    </div>
+                        <div className="flex gap-2 mt-4 ml-auto">
+                          <span
+                            className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                            onClick={() => {
+                              openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
+                            }}
+                          >
+                            Build Visually
+                          </span>
+                          <span className="text-xs text-base-content/50">|</span>
+                          <span
+                            className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                            onClick={() => {
+                              openModal(MODAL_TYPE.JSON_SCHEMA);
+                            }}
+                          >
+                            Build with AI
+                          </span>
+                        </div>
+                      </div>
 
-                    <textarea
-                      key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
-                      type="input"
-                      defaultValue={
-                        objectFieldValue ||
-                        JSON.stringify(configuration?.[key]?.value || configuration?.[key] || {}, null, 2)
-                      }
-                      onBlur={(e) => {
-                        setObjectFieldValue(e.target.value);
-                        try {
-                          const parsedValue = JSON.parse(e.target.value);
-                          handleSelectChange(
-                            { target: { value: "json_schema" } },
-                            key,
-                            defaultValue,
-                            parsedValue,
-                            true
-                          );
-                        } catch (error) {
-                          console.error(error);
-                          toast.error("Invalid JSON schema");
-                        }
-                      }}
-                      className="textarea textarea-bordered w-full h-32 font-mono text-xs"
-                      placeholder="Enter JSON schema..."
-                      disabled={isReadOnly}
-                    />
-                    <JsonSchemaModal
-                      params={params}
-                      searchParams={searchParams}
-                      messages={messages}
-                      setMessages={setMessages}
-                      thread_id={thread_id}
-                      onResetThreadId={() => {
-                        const newId = generateRandomID();
-                        setThreadId(newId);
-                        setThreadIdForVersionReducer &&
-                          dispatch(
-                            setThreadIdForVersionReducer({
-                              bridgeId: params?.id,
-                              versionId: searchParams?.version,
-                              thread_id: newId,
-                            })
-                          );
-                      }}
-                    />
-                  </>
-                )}
+                      <textarea
+                        id={`advanced-param-json-schema-textarea-${key}`}
+                        key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
+                        type="input"
+                        defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
+                        onBlur={(e) => {
+                          setObjectFieldValue(e.target.value);
+                          try {
+                            const parsedValue = JSON.parse(e.target.value);
+                            handleSelectChange(
+                              { target: { value: "json_schema" } },
+                              key,
+                              defaultValue,
+                              parsedValue,
+                              true
+                            );
+                          } catch (error) {
+                            console.error(error);
+                            toast.error("Invalid JSON schema");
+                          }
+                        }}
+                        className="textarea textarea-bordered w-full h-32 font-mono text-xs"
+                        placeholder="Enter JSON schema..."
+                        disabled={isReadOnly}
+                      />
+                      <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
+                      <JsonSchemaModal
+                        params={params}
+                        searchParams={searchParams}
+                        messages={messages}
+                        setMessages={setMessages}
+                        thread_id={thread_id}
+                        onResetThreadId={() => {
+                          const newId = generateRandomID();
+                          setThreadId(newId);
+                          setThreadIdForVersionReducer &&
+                            dispatch(
+                              setThreadIdForVersionReducer({
+                                bridgeId: params?.id,
+                                versionId: searchParams?.version,
+                                thread_id: newId,
+                              })
+                            );
+                        }}
+                      />
+                    </div>
+                  )}
               </div>
             )}
             {/* Slider input */}
@@ -1003,73 +1016,6 @@ const AdvancedParameters = ({
                 )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* JSON Schema textarea and modal - positioned below the key/label */}
-        {field === "select" && !isDefaultValue && configuration?.[key]?.type === "json_schema" && (
-          <div id={`advanced-param-json-schema-${key}`} className="mt-3 space-y-2">
-            <div id={`advanced-param-json-schema-header-${key}`} className="flex justify-between items-center">
-              <div className="flex gap-2 mt-4 ml-auto">
-                <span
-                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                  onClick={() => {
-                    openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
-                  }}
-                >
-                  Build Visually
-                </span>
-                <span className="text-xs text-base-content/50">|</span>
-                <span
-                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                  onClick={() => {
-                    openModal(MODAL_TYPE.JSON_SCHEMA);
-                  }}
-                >
-                  Build with AI
-                </span>
-              </div>
-            </div>
-
-            <textarea
-              id={`advanced-param-json-schema-textarea-${key}`}
-              key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
-              type="input"
-              defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
-              onBlur={(e) => {
-                setObjectFieldValue(e.target.value);
-                try {
-                  const parsedValue = JSON.parse(e.target.value);
-                  handleSelectChange({ target: { value: "json_schema" } }, key, defaultValue, parsedValue, true);
-                } catch (error) {
-                  console.error(error);
-                  toast.error("Invalid JSON schema");
-                }
-              }}
-              className="textarea textarea-bordered w-full h-32 font-mono text-xs"
-              placeholder="Enter JSON schema..."
-              disabled={isReadOnly}
-            />
-            <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
-            <JsonSchemaModal
-              params={params}
-              searchParams={searchParams}
-              messages={messages}
-              setMessages={setMessages}
-              thread_id={thread_id}
-              onResetThreadId={() => {
-                const newId = generateRandomID();
-                setThreadId(newId);
-                setThreadIdForVersionReducer &&
-                  dispatch(
-                    setThreadIdForVersionReducer({
-                      bridgeId: params?.id,
-                      versionId: searchParams?.version,
-                      thread_id: newId,
-                    })
-                  );
-              }}
-            />
           </div>
         )}
       </div>
