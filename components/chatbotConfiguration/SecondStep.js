@@ -3,19 +3,34 @@ import CopyButton from "../copyButton/CopyButton";
 import GenericTable from "../table/Table";
 import { extractPromptVariables } from "@/utils/utility";
 
-const DataObject = {
-  script: `<script\n      id="chatbot-main-script"\n      embedToken=" <embed token here> "\n      bridgeName="<slugName_of_bridge>"\n      threadId="<thread_id>"\n     src="https://chatbot-embed.viasocket.com/chatbot-prod.js"\n     ></script>`,
+const generateDataObject = (slugName) => ({
+  script: `<script
+      id="chatbot-main-script"
+      embedToken="<embed token here>"
+      bridgeName="${slugName}"
+      threadId="<thread_id>"
+      src="${process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC || "https://chatbot-embed.viasocket.com/chatbot-prod.js"}"
+    ></script>`,
   event: `window.addEventListener('message', (event) => {
         const receivedData = event.data;
      });`,
-  sendData: `window.Chatbot.sendData({ \n      bridgeName: '<slugName_of_bridge>',\n      threadId: '<thread_id>',\n      subthreadId: '<subthread_id>',\n      parentId: '<parent_container_id>',\n      fullScreen: 'true/false',\n      hideCloseButton: 'true/false',\n      hideIcon: 'true/false',\n      variables: {}\n    });`,
+  sendData: `window.Chatbot.sendData({ 
+      bridgeName: '${slugName}',
+      threadId: '<thread_id>',
+      subthreadId: '<subthread_id>',
+      parentId: '<parent_container_id>',
+      fullScreen: 'true/false',
+      hideCloseButton: 'true/false',
+      hideIcon: 'true/false',
+      variables: {}
+    });`,
   openChatbot: `window.Chatbot.open();`,
   closeChatbot: `window.Chatbot.close();`,
   showIcon: `window.Chatbot.show();`,
   hideIcon: `window.Chatbot.hide();`,
   reloadChats: `window.Chatbot.reloadChats();`,
   askAi: `window.Chatbot.askAi(data);`,
-};
+});
 const headers = ["Parameter", "Type", "Description", "Required"];
 const data = [
   ["bridgeName", "string", "The slug name of the agent.", "true"],
@@ -52,8 +67,10 @@ const Section = ({ title, caption, children }) => (
 );
 
 const SecondStep = ({ slugName, prompt = "" }) => {
+  const DataObject = generateDataObject(slugName);
+
   // Generate dynamic sendData code with variables from prompt
-  const generateSendDataCode = (prompt) => {
+  const generateSendDataCode = (prompt, slugName) => {
     const usedVariables = extractPromptVariables(prompt);
 
     const variablesObject =
@@ -62,7 +79,7 @@ const SecondStep = ({ slugName, prompt = "" }) => {
         : "        // No variables found in prompt";
 
     return `window.Chatbot.sendData({ 
-      bridgeName: '<slugName_of_bridge>',
+      bridgeName: '${slugName}',
       threadId: '<thread_id>',
       subthreadId: '<subthread_id>',
       parentId: '<parent_container_id>',
@@ -76,7 +93,7 @@ ${variablesObject}
   };
 
   const methods = [
-    { label: "1. Use This method to send data when needed", code: generateSendDataCode(prompt) },
+    { label: "1. Use This method to send data when needed", code: generateSendDataCode(prompt, slugName) },
     { label: "2. Use this method to open chatbot explicitly", code: DataObject.openChatbot },
     { label: "3. Use this method to close chatbot explicitly", code: DataObject.closeChatbot },
     { label: "4. Use this method to show chatbot icon explicitly", code: DataObject.showIcon },
@@ -103,7 +120,7 @@ ${variablesObject}
         </pre>
         <pre data-prefix=">" className="text-error">
           <code> src=</code>
-          <code className="text-warning">"https://chatbot-embed.viasocket.com/chatbot-prod.js"</code>
+          <code className="text-warning">"{process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC}"</code>
           <code className="text-error">&gt;</code>
         </pre>
         <pre data-prefix=">" className="text-error">
@@ -112,7 +129,7 @@ ${variablesObject}
         </pre>
         <pre data-prefix=">" className="text-error">
           <code> bridgeName=</code>
-          <code className="text-warning"> {slugName} </code>
+          <code className="text-warning"> "{slugName}"</code>
         </pre>
         <pre data-prefix=">" className="text-error">
           <code>&lt;/script&gt;</code>

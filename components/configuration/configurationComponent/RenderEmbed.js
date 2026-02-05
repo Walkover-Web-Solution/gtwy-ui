@@ -85,7 +85,7 @@ const RenderEmbed = ({
               {title?.length > 24 ? (
                 <div className="tooltip tooltip-top min-w-0" data-tip={title}>
                   <span className="min-w-0 text-sm truncate text-left">
-                    <span className="truncate text-sm font-normal block w-[300px]">{title}</span>
+                    <span className="truncate text-sm font-normal w-[300px]">{title}</span>
                   </span>
                 </div>
               ) : (

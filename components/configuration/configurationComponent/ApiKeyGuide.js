@@ -151,7 +151,7 @@ function ApiKeyGuideSlider() {
                 onClick={() => setSelectedModel(model.id)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedModel === model.id
-                    ? `${model.color} text-white shadow-lg`
+                    ? `${model.color} text-base-100 shadow-lg`
                     : "bg-base-200 text-base-content hover:bg-base-300"
                 }`}
                 aria-pressed={selectedModel === model.id}
