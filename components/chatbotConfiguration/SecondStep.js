@@ -112,7 +112,7 @@ ${variablesObject}
         </pre>
         <pre data-prefix=">" className="text-error">
           <code> bridgeName=</code>
-          <code className="text-warning"> {slugName} </code>
+          <code className="text-warning">"{slugName}" </code>
         </pre>
         <pre data-prefix=">" className="text-error">
           <code>&lt;/script&gt;</code>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CloseIcon } from "@/components/Icons";
 import { Save, ChevronDown, AlertTriangle } from "lucide-react";
 import ConfirmationModal from "../UI/ConfirmationModal";
@@ -12,6 +12,7 @@ import CopyButton from "../copyButton/CopyButton";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import { closeModal, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
+import { SignJWT } from "jose";
 
 const COLOR_LABEL_MAP = {
   "base-100": "Page Background",
@@ -586,6 +587,8 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedConfig, setLastSavedConfig] = useState(null);
+  const [viewMode, setViewMode] = useState("configuration");
+  const previewFrameRef = useRef(null);
 
   // Get config and root-level data from Redux store
   const integrationData = useCustomSelector((state) =>
@@ -682,6 +685,40 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
     (state) => state?.userDetailsReducer?.organizations?.[data?.org_id]?.meta?.gtwyAccessToken || ""
   );
 
+  // Generate embed token by signing payload with gtwyAccessToken using jose
+  // WARNING: This exposes the signing key in the frontend - not recommended for production
+  const [embedToken, setEmbedToken] = useState("");
+
+  useEffect(() => {
+    const generateEmbedToken = async () => {
+      if (!gtwyAccessToken || !data?.org_id || !data?.embed_id) {
+        setEmbedToken("");
+        return;
+      }
+
+      try {
+        const payload = {
+          org_id: data.org_id,
+          folder_id: data.embed_id,
+          user_id: "demo_user_id", // Replace with actual user_id if available
+        };
+
+        // Convert secret to Uint8Array for jose
+        const secret = new TextEncoder().encode(gtwyAccessToken);
+
+        // Sign with HS256 using jose
+        const token = await new SignJWT(payload).setProtectedHeader({ alg: "HS256", typ: "JWT" }).sign(secret);
+
+        setEmbedToken(token);
+      } catch (error) {
+        console.error("Failed to generate embed token:", error);
+        setEmbedToken("");
+      }
+    };
+
+    generateEmbedToken();
+  }, [gtwyAccessToken, data?.org_id, data?.embed_id]);
+
   useEffect(() => {
     if (data) {
       setIsOpen(true);
@@ -694,12 +731,25 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
 
   // Update the data-unsaved-changes attribute whenever configChanged or themeEditorDiffers changes
 
+  const closeEmbedInIframe = () => {
+    // Close GTWY embed inside the preview iframe
+    try {
+      const iframe = previewFrameRef.current;
+      if (iframe?.contentWindow?.closeGtwy) {
+        iframe.contentWindow.closeGtwy();
+      }
+    } catch (error) {
+      console.error("Failed to close embed:", error);
+    }
+  };
+
   const handleClose = () => {
     // Check if there are unsaved changes
     if (configChanged || themeEditorDiffers) {
       openModal(MODAL_TYPE.UNSAVED_CHANGES_MODAL);
     } else {
       // No changes, close directly
+      closeEmbedInIframe();
       setIsOpen(false);
       handleCloseSlider();
     }
@@ -730,6 +780,7 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
     }
 
     // Close modal and slider
+    closeEmbedInIframe();
     closeModal(MODAL_TYPE.UNSAVED_CHANGES_MODAL);
     setIsOpen(false);
     handleCloseSlider();
@@ -737,6 +788,7 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
   const handleSaveAndClose = async () => {
     // Save changes then close
     await handleConfigurationSave();
+    closeEmbedInIframe();
     closeModal(MODAL_TYPE.UNSAVED_CHANGES_MODAL);
     setIsOpen(false);
     handleCloseSlider();
@@ -977,6 +1029,55 @@ window.openGtwy({
 });
 `;
 
+  // Generate preview HTML with dynamic data from current configuration
+  const previewHtml = useMemo(() => {
+    const scriptSrc =
+      process.env.NEXT_PUBLIC_ENV !== "PROD"
+        ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_dev.js`
+        : `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy.js`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; }
+      body { font-family: Arial, sans-serif; background: #ffffff; }
+      #gtwy-container { width: 100%; height: 100%; position: relative; }
+    </style>
+  </head>
+  <body>
+    <div id="gtwy-container"></div>
+    <script
+      id="gtwy-main-script"
+      embedToken="${embedToken || ""}"
+      src="${scriptSrc}"
+    ></script>
+    <script>
+      window.addEventListener("message", (event) => {
+        if (event.data?.type === "gtwy") {
+          console.log("✅ Preview GTWY event:", event.data);
+        }
+      });
+
+      // Auto-open GTWY when script loads
+      function tryOpenGtwy() {
+        if (window.openGtwy) {
+          window.openGtwy();
+        } else {
+          setTimeout(tryOpenGtwy, 100);
+        }
+      }
+      
+      // Wait for script to load then open
+      setTimeout(tryOpenGtwy, 500);
+    </script>
+  </body>
+</html>`;
+  }, [embedToken]);
+
   const getDataUsingUserId = () => {
     return `curl --location ${process.env.NEXT_PUBLIC_SERVER_URL}/api/embed/getAgents \\
 -H 'Authorization: your_embed_token'`;
@@ -993,394 +1094,423 @@ window.openGtwy({
     <>
       <aside
         id="gtwy-integration-slider"
-        className={`sidebar-container fixed z-very-high flex flex-col top-0 right-0 p-4 w-full md:w-[60%] lg:w-[70%] xl:w-[80%] 2xl:w-[70%] opacity-100 h-screen bg-base-200 transition-all overflow-auto duration-300  ${
-          isOpen ? "" : "translate-x-full"
+        className={`sidebar-container fixed z-very-high flex flex-col top-0 right-0 p-4 w-full md:w-[60%] lg:w-[70%] xl:w-[80%] 2xl:w-[70%] opacity-100 h-screen bg-base-200 transition-all overflow-auto duration-300 ${
+          isOpen ? "" : "translate-x-full pointer-events-none"
         }`}
         aria-label="Integration Guide Slider"
       >
         <div className="flex flex-col w-full gap-4">
           <div className="flex justify-between items-center border-b border-base-300 pb-4">
             <h3 className="font-bold text-lg">Embed Setup</h3>
-            <CloseIcon
-              id="gtwy-integration-slider-close-icon"
-              className="cursor-pointer hover:text-error transition-colors"
-              onClick={handleClose}
-            />
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="join gap-2">
+                <button
+                  className={`btn btn-sm join-item cursor-pointer ${viewMode === "configuration" ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => setViewMode("configuration")}
+                  type="button"
+                >
+                  Configuration
+                </button>
+                <button
+                  className={`btn btn-sm join-item cursor-pointer ${viewMode === "preview" ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => setViewMode("preview")}
+                  type="button"
+                >
+                  Preview
+                </button>
+              </div>
+              <CloseIcon
+                id="gtwy-integration-slider-close-icon"
+                className="cursor-pointer hover:text-error transition-colors"
+                onClick={handleClose}
+              />
+            </div>
           </div>
+          {viewMode === "configuration" ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Left Column - Configuration Form */}
+              <div className="space-y-2 overflow-y-auto h-[calc(100vh-100px)] scrollbar-hide mb-4">
+                <div className="card bg-base-100 shadow-sm">
+                  <div className="card-body p-3">
+                    <h4 className="card-title text-primary text-base mb-0">Configuration Settings</h4>
+                    <p className="text-xs text-base-content/70">
+                      Customize how GTWY appears and behaves in your application
+                    </p>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Left Column - Configuration Form */}
-            <div className="space-y-2 overflow-y-auto h-[calc(100vh-100px)] scrollbar-hide mb-4">
-              <div className="card bg-base-100 shadow-sm">
-                <div className="card-body p-3">
-                  <h4 className="card-title text-primary text-base mb-0">Configuration Settings</h4>
-                  <p className="text-xs text-base-content/70">
-                    Customize how GTWY appears and behaves in your application
-                  </p>
-
-                  <div className="space-y-4 mt-2">
-                    {/* Dynamically render sections */}
-                    {Object.entries(groupedConfigs).map(([sectionName, configs]) => (
-                      <div key={sectionName}>
-                        <ConfigSection
-                          title={sectionName}
-                          configs={configs}
-                          configuration={configuration}
-                          onChange={handleConfigChange}
-                          orgId={data?.org_id}
-                        />
-                        {sectionName !== Object.keys(groupedConfigs)[Object.keys(groupedConfigs).length - 1] && (
-                          <div className="divider my-2"></div>
-                        )}
-                      </div>
-                    ))}
+                    <div className="space-y-4 mt-2">
+                      {/* Dynamically render sections */}
+                      {Object.entries(groupedConfigs).map(([sectionName, configs]) => (
+                        <div key={sectionName}>
+                          <ConfigSection
+                            title={sectionName}
+                            configs={configs}
+                            configuration={configuration}
+                            onChange={handleConfigChange}
+                            orgId={data?.org_id}
+                          />
+                          {sectionName !== Object.keys(groupedConfigs)[Object.keys(groupedConfigs).length - 1] && (
+                            <div className="divider my-2"></div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="card bg-base-100 shadow-sm">
-                <div className="card-body p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="card-title text-primary text-base mb-0">Theme Palette</h4>
-                      <p className="text-xs text-base-content/70">
-                        Customize the colors of GTWY to match your application's design.
-                      </p>
+                <div className="card bg-base-100 shadow-sm">
+                  <div className="card-body p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="card-title text-primary text-base mb-0">Theme Palette</h4>
+                        <p className="text-xs text-base-content/70">
+                          Customize the colors of GTWY to match your application's design.
+                        </p>
+                      </div>
+                      <button
+                        id="gtwy-integration-theme-reset-button"
+                        className="btn btn-outline btn-xs"
+                        onClick={handleThemeReset}
+                        type="button"
+                      >
+                        Reset
+                      </button>
                     </div>
+
+                    <ThemePaletteEditor theme={configuration?.theme_config} onColorChange={handlePaletteColorChange} />
+                    <div className="divider my-4"></div>
                     <button
-                      id="gtwy-integration-theme-reset-button"
-                      className="btn btn-outline btn-xs"
-                      onClick={handleThemeReset}
+                      id="gtwy-integration-save-config-button"
+                      className={`btn btn-primary btn-sm w-full gap-2 ${themeSaveDisabled ? "btn-disabled" : ""}`}
                       type="button"
+                      onClick={handleConfigurationSave}
+                      disabled={themeSaveDisabled}
                     >
-                      Reset
+                      <Save size={14} />
+                      {isSaving ? "Saving..." : "Save Configuration"}
                     </button>
                   </div>
-
-                  <ThemePaletteEditor theme={configuration?.theme_config} onColorChange={handlePaletteColorChange} />
-                  <div className="divider my-4"></div>
-                  <button
-                    id="gtwy-integration-save-config-button"
-                    className={`btn btn-primary btn-sm w-full gap-2 ${themeSaveDisabled ? "btn-disabled" : ""}`}
-                    type="button"
-                    onClick={handleConfigurationSave}
-                    disabled={themeSaveDisabled}
-                  >
-                    <Save size={14} />
-                    {isSaving ? "Saving..." : "Save Configuration"}
-                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Right Column - Generated Scripts */}
-            <div className="space-y-6 overflow-y-auto h-[calc(100vh-100px)] scrollbar-hide mb-4">
-              {/* Script Integration */}
-              <div className="card bg-base-100 border border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Step 1: Generate Embed Token</h4>
-                  <div className="space-y-6">
-                    {/* JWT Payload */}
+              {/* Right Column - Generated Scripts */}
+              <div className="space-y-6 overflow-y-auto h-[calc(100vh-100px)] scrollbar-hide mb-4">
+                {/* Script Integration */}
+                <div className="card bg-base-100 border border-base-300">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Step 1: Generate Embed Token</h4>
+                    <div className="space-y-6">
+                      {/* JWT Payload */}
+                      <div className="form-control">
+                        <label className="label">
+                          <span className="label-text font-medium">JWT Payload</span>
+                        </label>
+                        <div className="relative">
+                          <div className="mockup-code">
+                            <pre data-prefix=">">
+                              <code className="text-error">org_id=</code>
+                              <code className="text-warning">{data?.org_id}</code>
+                            </pre>
+                            <pre data-prefix=">">
+                              <code className="text-error">folder_id=</code>
+                              <code className="text-warning">{data?.embed_id}</code>
+                            </pre>
+                            <pre data-prefix=">">
+                              <code className="text-error">user_id=</code>
+                              <code className="text-warning">"Your_user_id"</code>
+                            </pre>
+                          </div>
+                          <CopyButton
+                            data={jwtPayload}
+                            onCopy={() => handleCopy(jwtPayload, "jwtToken")}
+                            copied={copied.jwtToken}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Access Token */}
+                      <div className="form-control">
+                        <label className="label flex flex-col items-start space-y-1">
+                          <span className="label-text font-medium">Access Token (Signed with RS256)</span>
+                        </label>
+
+                        <div className="text-sm text-base-content/70 leading-relaxed ml-1">
+                          RS256 is an asymmetric signing algorithm defined in
+                          <a
+                            id="gtwy-integration-rfc-link"
+                            href="https://datatracker.ietf.org/doc/html/rfc7518#section-3.1"
+                            className="text-blue-600 underline ml-1"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            RFC 7518
+                          </a>
+                        </div>
+
+                        {gtwyAccessToken ? (
+                          <div className="relative mt-3">
+                            <div className="mockup-code">
+                              <pre data-prefix=">">
+                                <code className="text-error">Access Token: </code>
+                                <code className="text-warning">{gtwyAccessToken}</code>
+                              </pre>
+                            </div>
+                            <CopyButton
+                              data={gtwyAccessToken}
+                              onCopy={() => handleCopy(gtwyAccessToken, "accessKey")}
+                              copied={copied.accessKey}
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            id="gtwy-integration-generate-access-key-button"
+                            onClick={handleGenerateAccessKey}
+                            className="btn btn-primary btn-sm w-56 mt-3"
+                          >
+                            Show Access Key
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card bg-base-100 border border-base-300">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Step 2: Add Script</h4>
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text font-medium">JWT Payload</span>
+                        <span className="label-text">Add this script tag to your HTML</span>
                       </label>
                       <div className="relative">
                         <div className="mockup-code">
                           <pre data-prefix=">">
-                            <code className="text-error">org_id=</code>
-                            <code className="text-warning">{data?.org_id}</code>
+                            <code className="text-error">&lt;script</code>
                           </pre>
                           <pre data-prefix=">">
-                            <code className="text-error">folder_id=</code>
-                            <code className="text-warning">{data?.embed_id}</code>
+                            <code className="text-error"> id=</code>
+                            <code className="text-warning">"gtwy-main-script"</code>
                           </pre>
                           <pre data-prefix=">">
-                            <code className="text-error">user_id=</code>
-                            <code className="text-warning">"Your_user_id"</code>
+                            <code className="text-error"> embedToken=</code>
+                            <code className="text-warning">"Your embed token"</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> src=</code>
+                            <code className="text-warning">
+                              {process.env.NEXT_PUBLIC_ENV !== "PROD"
+                                ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_dev.js`
+                                : `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy.js`}
+                            </code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> parentId=</code>
+                            <code className="text-warning">"{"Your_parent_id"}"</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> agent_id=</code>
+                            <code className="text-warning">"{"Your_agent_id"}"</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> agent_name=</code>
+                            <code className="text-warning">"{"Your_agent_name"}"</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error">&gt;&lt;/script&gt;</code>
                           </pre>
                         </div>
                         <CopyButton
-                          data={jwtPayload}
-                          onCopy={() => handleCopy(jwtPayload, "jwtToken")}
-                          copied={copied.jwtToken}
+                          data={integrationScript}
+                          onCopy={() => handleCopy(integrationScript, "script")}
+                          copied={copied.script}
                         />
                       </div>
                     </div>
+                    <GenericTable data={tableData} headers={tableHeaders} />
+                  </div>
+                </div>
 
-                    {/* Access Token */}
+                {/* Interface Configuration */}
+                <div className="card bg-base-100 border border-base-300">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Configure Interface</h4>
                     <div className="form-control">
-                      <label className="label flex flex-col items-start space-y-1">
-                        <span className="label-text font-medium">Access Token (Signed with RS256)</span>
+                      <label className="label">
+                        <span className="label-text">Send Data to GTWY</span>
                       </label>
-
-                      <div className="text-sm text-base-content/70 leading-relaxed ml-1">
-                        RS256 is an asymmetric signing algorithm defined in
-                        <a
-                          id="gtwy-integration-rfc-link"
-                          href="https://datatracker.ietf.org/doc/html/rfc7518#section-3.1"
-                          className="text-blue-600 underline ml-1"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          RFC 7518
-                        </a>
-                      </div>
-
-                      {gtwyAccessToken ? (
-                        <div className="relative mt-3">
-                          <div className="mockup-code">
-                            <pre data-prefix=">">
-                              <code className="text-error">Access Token: </code>
-                              <code className="text-warning">{gtwyAccessToken}</code>
-                            </pre>
-                          </div>
-                          <CopyButton
-                            data={gtwyAccessToken}
-                            onCopy={() => handleCopy(gtwyAccessToken, "accessKey")}
-                            copied={copied.accessKey}
-                          />
+                      <div className="relative">
+                        <div className="mockup-code">
+                          <pre data-prefix=">">
+                            <code className="text-error"> window.GtwyEmbed.sendDataToGtwy({`{`}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> agent_name: </code>
+                            <code className="text-warning">"New Agent"</code>
+                            <code>{", // Create bridge with agent name"}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> agent_id: </code>
+                            <code className="text-warning">"your_agent_id"</code>
+                            <code>{" // Redirect to specific agent"}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> {`});`}</code>
+                          </pre>
                         </div>
-                      ) : (
-                        <button
-                          id="gtwy-integration-generate-access-key-button"
-                          onClick={handleGenerateAccessKey}
-                          className="btn btn-primary btn-sm w-56 mt-3"
-                        >
-                          Show Access Key
-                        </button>
-                      )}
+                        <CopyButton
+                          data={interfaceData}
+                          onCopy={() => handleCopy(interfaceData, "interfaceData")}
+                          copied={copied.interfaceData}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="card bg-base-100 border border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Step 2: Add Script</h4>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Add this script tag to your HTML</span>
-                    </label>
-                    <div className="relative">
-                      <div className="mockup-code">
-                        <pre data-prefix=">">
-                          <code className="text-error">&lt;script</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> id=</code>
-                          <code className="text-warning">"gtwy-main-script"</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> embedToken=</code>
-                          <code className="text-warning">"Your embed token"</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> src=</code>
-                          <code className="text-warning">
-                            {process.env.NEXT_PUBLIC_ENV !== "PROD"
-                              ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_dev.js`
-                              : `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy.js`}
-                          </code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> parentId=</code>
-                          <code className="text-warning">"{"Your_parent_id"}"</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> agent_id=</code>
-                          <code className="text-warning">"{"Your_agent_id"}"</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> agent_name=</code>
-                          <code className="text-warning">"{"Your_agent_name"}"</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error">&gt;&lt;/script&gt;</code>
-                        </pre>
+                {/* Helper Functions */}
+                <div className="card bg-base-100 border border-base-300">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Step 3: Integration Functions</h4>
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">Available Functions</span>
+                      </label>
+                      <div className="relative">
+                        <div className="mockup-code">
+                          <pre data-prefix=">">
+                            <code className="text-warning"> window.openGtwy()</code>
+                            <code>{" //To open GTWY"}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-warning"> window.closeGtwy()</code>
+                            <code>{" //To Close GTWY"}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-warning"> window.openGtwy({`{"agent_id":"your gtwy agentid"}`})</code>
+                            <code>{" // Open GTWY with specific agent"}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-warning"> window.openGtwy({`{"agent_name":"your agent name"}`})</code>
+                            <code>{" // Create agent with specific name"}</code>
+                          </pre>
+                        </div>
+                        <CopyButton
+                          data={helperFunctions}
+                          onCopy={() => handleCopy(helperFunctions, "functions")}
+                          copied={copied.functions}
+                        />
                       </div>
-                      <CopyButton
-                        data={integrationScript}
-                        onCopy={() => handleCopy(integrationScript, "script")}
-                        copied={copied.script}
-                      />
-                    </div>
-                  </div>
-                  <GenericTable data={tableData} headers={tableHeaders} />
-                </div>
-              </div>
-
-              {/* Interface Configuration */}
-              <div className="card bg-base-100 border border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Configure Interface</h4>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Send Data to GTWY</span>
-                    </label>
-                    <div className="relative">
-                      <div className="mockup-code">
-                        <pre data-prefix=">">
-                          <code className="text-error"> window.GtwyEmbed.sendDataToGtwy({`{`}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> agent_name: </code>
-                          <code className="text-warning">"New Agent"</code>
-                          <code>{", // Create bridge with agent name"}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> agent_id: </code>
-                          <code className="text-warning">"your_agent_id"</code>
-                          <code>{" // Redirect to specific agent"}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> {`});`}</code>
-                        </pre>
-                      </div>
-                      <CopyButton
-                        data={interfaceData}
-                        onCopy={() => handleCopy(interfaceData, "interfaceData")}
-                        copied={copied.interfaceData}
-                      />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Helper Functions */}
-              <div className="card bg-base-100 border border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Step 3: Integration Functions</h4>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Available Functions</span>
-                    </label>
-                    <div className="relative">
-                      <div className="mockup-code">
-                        <pre data-prefix=">">
-                          <code className="text-warning"> window.openGtwy()</code>
-                          <code>{" //To open GTWY"}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-warning"> window.closeGtwy()</code>
-                          <code>{" //To Close GTWY"}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-warning"> window.openGtwy({`{"agent_id":"your gtwy agentid"}`})</code>
-                          <code>{" // Open GTWY with specific agent"}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-warning"> window.openGtwy({`{"agent_name":"your agent name"}`})</code>
-                          <code>{" // Create agent with specific name"}</code>
-                        </pre>
+                <div className="card bg-base-100 border mt-4 border-base-300">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Add Meta Data</h4>
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">Use this script to add meta data to GTWY </span>
+                      </label>
+                      <div className="relative">
+                        <div className="mockup-code">
+                          <pre data-prefix=">">
+                            <code className="text-error">
+                              {" "}
+                              window.GtwyEmbed.openGtwy(
+                              {`{"agent_id":"your gtwy agentid" , "meta": {"meta_data": "your_meta_data"}}`})
+                            </code>
+                          </pre>
+                        </div>
+                        <CopyButton
+                          data={metaUpdateScript}
+                          onCopy={() => handleCopy(metaUpdateScript, "metaUpdate")}
+                          copied={copied.metaUpdate}
+                        />
                       </div>
-                      <CopyButton
-                        data={helperFunctions}
-                        onCopy={() => handleCopy(helperFunctions, "functions")}
-                        copied={copied.functions}
-                      />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="card bg-base-100 border mt-4 border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Add Meta Data</h4>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Use this script to add meta data to GTWY </span>
-                    </label>
-                    <div className="relative">
-                      <div className="mockup-code">
-                        <pre data-prefix=">">
-                          <code className="text-error">
-                            {" "}
-                            window.GtwyEmbed.openGtwy(
-                            {`{"agent_id":"your gtwy agentid" , "meta": {"meta_data": "your_meta_data"}}`})
-                          </code>
-                        </pre>
+                <div className="card bg-base-100  mt-4">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Get Agent Data Using User ID</h4>
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">Use this script to get data using user id</span>
+                      </label>
+                      <div className="relative">
+                        <div className="mockup-code">
+                          <pre data-prefix=">">
+                            <code className="text-error"> {getDataUsingUserId()}</code>
+                          </pre>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-4">
+                          Note: Pass <code>agent_id="your_agent_id"</code> in the params if you want to get the data of
+                          specific agent.
+                        </p>
+                        <CopyButton
+                          data={getDataUsingUserId()}
+                          onCopy={() => handleCopy(getDataUsingUserId(), "getDataUsingUserId")}
+                          copied={copied.getDataUsingUserId}
+                        />
                       </div>
-                      <CopyButton
-                        data={metaUpdateScript}
-                        onCopy={() => handleCopy(metaUpdateScript, "metaUpdate")}
-                        copied={copied.metaUpdate}
-                      />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="card bg-base-100  mt-4">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Get Agent Data Using User ID</h4>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Use this script to get data using user id</span>
-                    </label>
-                    <div className="relative">
-                      <div className="mockup-code">
-                        <pre data-prefix=">">
-                          <code className="text-error"> {getDataUsingUserId()}</code>
-                        </pre>
+                {/* Event Listener */}
+                <div className="card bg-base-100 border border-base-300">
+                  <div className="card-body">
+                    <h4 className="card-title text-base">Add Event Listener</h4>
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">Add this script to receive GTWY events</span>
+                      </label>
+                      <div className="relative">
+                        <div className="mockup-code">
+                          <pre data-prefix=">">
+                            <code className="text-error">&lt;script&gt;</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> window.addEventListener('message', (event) =&gt; {`{`}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> if (event.data.type === 'gtwy') {`{`}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> console.log('Received gtwy event:', event.data);</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> {`}`}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error"> {`});`}</code>
+                          </pre>
+                          <pre data-prefix=">">
+                            <code className="text-error">&lt;/script&gt;</code>
+                          </pre>
+                        </div>
+                        <CopyButton
+                          data={eventListenerScript}
+                          onCopy={() => handleCopy(eventListenerScript, "eventListener")}
+                          copied={copied.eventListener}
+                        />
                       </div>
-                      <p className="text-sm text-gray-600 mt-4">
-                        Note: Pass <code>agent_id="your_agent_id"</code> in the params if you want to get the data of
-                        specific agent.
-                      </p>
-                      <CopyButton
-                        data={getDataUsingUserId()}
-                        onCopy={() => handleCopy(getDataUsingUserId(), "getDataUsingUserId")}
-                        copied={copied.getDataUsingUserId}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Event Listener */}
-              <div className="card bg-base-100 border border-base-300">
-                <div className="card-body">
-                  <h4 className="card-title text-base">Add Event Listener</h4>
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Add this script to receive GTWY events</span>
-                    </label>
-                    <div className="relative">
-                      <div className="mockup-code">
-                        <pre data-prefix=">">
-                          <code className="text-error">&lt;script&gt;</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> window.addEventListener('message', (event) =&gt; {`{`}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> if (event.data.type === 'gtwy') {`{`}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> console.log('Received gtwy event:', event.data);</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> {`}`}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error"> {`});`}</code>
-                        </pre>
-                        <pre data-prefix=">">
-                          <code className="text-error">&lt;/script&gt;</code>
-                        </pre>
-                      </div>
-                      <CopyButton
-                        data={eventListenerScript}
-                        onCopy={() => handleCopy(eventListenerScript, "eventListener")}
-                        copied={copied.eventListener}
-                      />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="w-full h-[calc(100vh-140px)] max-w-full overflow-hidden">
+              <iframe
+                ref={previewFrameRef}
+                title="GTWY Embed Preview"
+                srcDoc={previewHtml}
+                className="w-full h-full bg-white border-0"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              />
+            </div>
+          )}
         </div>
       </aside>
 
