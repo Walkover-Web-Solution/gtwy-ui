@@ -57,12 +57,17 @@ const AccessManagementModal = ({ agent }) => {
         };
       });
       
-      setAgentMembers(enrichedMembers);
+      // Only update if the content actually changed (prevent infinite loop)
+      setAgentMembers(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(enrichedMembers)) {
+          return prev;
+        }
+        return enrichedMembers;
+      });
     } else {
-      // Use empty array if no agent users
-      setAgentMembers([]);
+      setAgentMembers(prev => prev.length === 0 ? prev : []);
     }
-  }, [agent, users]);
+  }, [agent?.users, users]);
 
   const handleClose = () => {
     setEmailInput('');
@@ -205,8 +210,8 @@ const AccessManagementModal = ({ agent }) => {
           name: userInfo.name || foundUser?.name || 'Unknown User',
           email: userInfo.email || foundUser?.email || `ID: ${userId}`,
         };
-        setAgentMembers(prev => [...prev, newMember]);
         
+        setAgentMembers(prev => [...prev, newMember]);
         setEmailInput('');
         setFoundUser(null);
       } else {
