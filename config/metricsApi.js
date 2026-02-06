@@ -2,22 +2,6 @@ import axios from "@/utils/interceptor";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 
-// Metrics and Analytics APIs
-// export const getMetricsData = async (org_id, startDate, endDate) => {
-//   try {
-//     const response = await axios.get(`${URL}/api/v1/metrics/${org_id}`, {
-//       params: {
-//         startTime: startDate,
-//         endTime: endDate
-//       }
-//     });
-//     return response.data;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
-
 export const getMetricsDataApi = async ({
   apikey_id,
   service,

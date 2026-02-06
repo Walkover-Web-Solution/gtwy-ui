@@ -207,6 +207,7 @@ function useRtLayerEventHandler(channelIdentifier = "") {
               annotations: response.data.annotations,
               fromRTLayer: true,
               usage: parsedData.response?.usage, // Include usage data if available
+              type: response?.type,
             };
             if (channelId) {
               // Dispatch to chat reducer - this will clear loading

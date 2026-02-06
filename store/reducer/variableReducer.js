@@ -42,7 +42,7 @@ const inferType = (value, fallback) => {
     const parsed = JSON.parse(sample);
     if (Array.isArray(parsed)) return "array";
     if (typeof parsed === "object") return "object";
-  } catch (_err) {
+  } catch {
     /* ignore */
   }
   return "string";
@@ -103,7 +103,7 @@ const sanitizeValueForType = (rawValue, type, { allowEmpty } = {}) => {
           return { ok: false, error: "Value must be a JSON object" };
         }
         return { ok: true, value: JSON.stringify(parsed, null, 2) };
-      } catch (_err) {
+      } catch {
         return { ok: false, error: "Value must be valid JSON" };
       }
     }

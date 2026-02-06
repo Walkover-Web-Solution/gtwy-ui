@@ -81,6 +81,7 @@ export const KEYS_NOT_TO_DISPLAY = [
   "vision",
 ];
 
+// eslint-disable-next-line import/no-unused-modules
 export function getDefaultValues(additionalParams, bridgeParams) {
   const defaults = {};
   for (const key in bridgeParams) {

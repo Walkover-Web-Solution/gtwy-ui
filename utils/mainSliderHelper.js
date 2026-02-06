@@ -17,6 +17,7 @@ import {
   MessageSquareMoreIcon,
   Cog,
   Code2,
+  LayoutTemplate,
 } from "lucide-react";
 import { AddIcon, KeyIcon } from "@/components/Icons";
 import GiftIcon from "@/icons/GiftIcon";
@@ -49,6 +50,7 @@ export const ITEM_ICONS = {
   auth: <KeyIcon size={15} />,
   addModel: <AddIcon size={15} />,
   prebuiltPrompts: <Bot size={15} />,
+  widgets: <LayoutTemplate size={15} />,
 };
 
 export const DISPLAY_NAMES = (key) => {
@@ -83,6 +85,8 @@ export const DISPLAY_NAMES = (key) => {
       return "Auth Key";
     case "apikeys":
       return "API Keys";
+    case "widgets":
+      return "Widgets";
     default:
       return key;
   }
@@ -90,7 +94,7 @@ export const DISPLAY_NAMES = (key) => {
 
 export const NAV_SECTIONS = [
   { title: "AGENT TYPES", items: ["api", "chatbot"] },
-  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base"] },
+  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets"] },
   { title: "SECURITY & ACCESS", items: ["pauthkey", "apikeys"] },
   { title: "MONITORING & SUPPORT", items: ["alerts", "metrics"] },
   { title: "Developer", items: ["integration", "RAG_embed"] },
@@ -106,6 +110,28 @@ export const HRCollapsed = React.memo(() => <hr className="my-2 w-6 border-base-
 export const BetaBadge = React.memo(() => (
   <span className="badge badge-success rounded-md mb-1 text-base-100 text-xs">Beta</span>
 ));
+
+// Add CSS animation for the gradient border
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes gradientMove {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+  `;
+  if (!document.head.querySelector("style[data-gradient-animation]")) {
+    style.setAttribute("data-gradient-animation", "true");
+    document.head.appendChild(style);
+  }
+}
 
 // Add CSS animation for the gradient border
 if (typeof document !== "undefined") {
