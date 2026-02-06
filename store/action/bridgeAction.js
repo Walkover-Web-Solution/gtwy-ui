@@ -129,7 +129,7 @@ export const createBridgeWithAiAction =
       return data;
     } catch (error) {
       if (error?.response?.data?.message?.includes("duplicate key")) {
-        toast.error("Agent Name can't be duplicate fallBack to manual bridge creation");
+        console.error("Agent Name can't be duplicate fallBack to manual bridge creation");
       } else {
         toast.error("Something went wrong");
       }
