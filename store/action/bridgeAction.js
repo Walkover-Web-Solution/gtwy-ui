@@ -89,22 +89,24 @@ export const createBridgeAction = (dataToSend, onSuccess) => async (dispatch, ge
   }
 };
 
-export const createBridgeWithAiAction = ({ dataToSend, orgId }, onSuccess) => async (dispatch, getState) => {
-  try {
-    dispatch(clearPreviousBridgeDataReducer())
-    const data = await createBridge(dataToSend)
-    dispatch(createBridgeReducer({ data, orgId: orgId }));
-    return data;
-  } catch (error) {
-    if (error?.response?.data?.message?.includes("duplicate key")) {
-      toast.error("Agent Name can't be duplicate fallBack to manual bridge creation");
-    } else {
-      toast.error("Something went wrong");
+export const createBridgeWithAiAction =
+  ({ dataToSend, orgId }, onSuccess) =>
+  async (dispatch, getState) => {
+    try {
+      dispatch(clearPreviousBridgeDataReducer());
+      const data = await createBridge(dataToSend);
+      dispatch(createBridgeReducer({ data, orgId: orgId }));
+      return data;
+    } catch (error) {
+      if (error?.response?.data?.message?.includes("duplicate key")) {
+        console.error("Agent Name can't be duplicate fallBack to manual bridge creation");
+      } else {
+        toast.error("Something went wrong");
+      }
+      console.error(error);
+      throw error;
     }
-    console.error(error);
-    throw error
-  }
-};
+  };
 
 export const createEmbedAgentAction =
   ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent, meta }) =>

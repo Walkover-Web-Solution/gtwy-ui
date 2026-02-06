@@ -104,27 +104,29 @@ const ModelTab = () => {
         )}
         
         {/* Parameters Section with Border */}
-        <div className="border-t border-base-200 pt-6">
-          <div className="mb-4">
-            <h2 className="text-base-content text-md font-medium">Parameters</h2>
+        {((!hideAdvancedParameters && isEmbedUser) || !isEmbedUser) && (
+          <div id="model-tab-parameters-section" className="border-t border-base-200 pt-6">
+            <div className="mb-4">
+              <h2 className="text-base-content text-md font-medium">Parameters</h2>
+            </div>
+            <div className="max-w-2xl">
+              <AdvancedParameters
+                params={params}
+                searchParams={searchParams}
+                isEmbedUser={isEmbedUser}
+                hideAdvancedParameters={hideAdvancedParameters}
+                level={1}
+                className="mt-0"
+                defaultExpanded
+                showAccordion={false}
+                compact
+                isPublished={isPublished}
+                isEditor={isEditor}
+              />
+            </div>
           </div>
-          <div className="max-w-2xl">
-          <AdvancedParameters
-            params={params}
-            searchParams={searchParams}
-            isEmbedUser={isEmbedUser}
-            hideAdvancedParameters={hideAdvancedParameters}
-            level={1}
-            className="mt-0"
-            defaultExpanded
-            showAccordion={false}
-            compact
-            isPublished={isPublished}
-            isEditor={isEditor}
-          />
-        </div>
-        </div>
-         {/* Fallback Model Section */}
+        )}
+        {/* Fallback Model Section */}
         {((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && (
           <div className="space-y-2">
             <FallbackModel
