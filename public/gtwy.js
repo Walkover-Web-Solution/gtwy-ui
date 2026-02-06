@@ -81,6 +81,13 @@
         }
 
         cleanupGtwyEmbed() {
+            // Force iframe to stop loading and clear src to prevent caching
+            const iframe = document.getElementById('iframe-component-gtwyInterfaceEmbed');
+            if (iframe) {
+                iframe.src = 'about:blank';
+                iframe.remove();
+            }
+            
             ['gtwy-iframe-parent-container', 'gtwyInterfaceEmbed', 'gtwyEmbed-style', 'gtwy-embed-header']
                 .forEach(id => document.getElementById(id)?.remove());
         }
@@ -312,7 +319,11 @@
             }
 
             const customId = this.scriptIds.customIframeId || this.props.customIframeId;
-            iframe.src = customId || `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(this.state.tempDataToSend))}`;
+            const cacheBuster = `_cb=${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const separator = customId ? (customId.includes('?') ? '&' : '?') : '&';
+            iframe.src = customId 
+                ? `${customId}${separator}${cacheBuster}`
+                : `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(this.state.tempDataToSend))}&${cacheBuster}`;
             
             this.applyConfig(this.config);
             if (this.state.isInitialized) {
@@ -345,10 +356,14 @@
             Object.assign(iframe, {
                 id: iframeId,
                 title: 'iframe',
-                sandbox: 'allow-scripts allow-same-origin allow-popups allow-forms',
+                sandbox: 'allow-scripts allow-popups allow-forms allow-top-navigation-by-user-activation',
                 allow: 'clipboard-read *; clipboard-write *; microphone *; camera *; midi *; encrypted-media *'
             });
             Object.assign(iframe.style, { width: '100%', height: '100%', border: 'none' });
+            
+            // Add cache control attributes to prevent iframe caching
+            iframe.setAttribute('loading', 'eager');
+            iframe.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
 
             if (!this.state.hasParentContainer) {
                 const hideHeader = ['true', true].includes(this.config.hideHeader);
@@ -427,7 +442,8 @@
             if (this.state.tempDataToSend?.agent_id) tempData.agent_id = this.state.tempDataToSend.agent_id;
             if (this.state.tempDataToSend?.agent_name) tempData.agent_name = this.state.tempDataToSend.agent_name;
             
-            iframe.src = `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(tempData))}`;
+            const cacheBuster = `_cb=${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            iframe.src = `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(tempData))}&${cacheBuster}`;
             this.config = { ...this.config, ...(data?.data?.config || {}) };
             this.applyConfig(this.config);
             
