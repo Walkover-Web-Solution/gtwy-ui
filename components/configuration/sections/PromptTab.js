@@ -5,6 +5,7 @@ import InputSection from "../InputSection";
 import { useConfigurationContext } from "../ConfigurationContext";
 import AdvancedParameters from "../configurationComponent/AdvancedParamenter";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import Protected from "@/components/Protected";
 
 const PromptTab = ({ isPublished, isEmbedUser }) => {
   const { params, searchParams, isEditor } = useConfigurationContext();
@@ -31,4 +32,4 @@ const PromptTab = ({ isPublished, isEmbedUser }) => {
   );
 };
 
-export default PromptTab;
+export default Protected(PromptTab);
