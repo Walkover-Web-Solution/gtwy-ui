@@ -2,7 +2,7 @@ import axios from "@/utils/interceptor";
 import { toast } from "react-toastify";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
-
+const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 // Knowledge Base Management APIs
 export const createKnowledgeBaseEntry = async (data) => {
   try {
@@ -102,6 +102,17 @@ export const getResourceChunks = async (resourceId) => {
     return response?.data;
   } catch (error) {
     toast.error(error?.response?.data?.message || "Failed to fetch resource chunks");
+    console.error(error);
+    throw error;
+  }
+};
+
+export const queryKnowledgeBase = async (data) => {
+  try {
+    const response = await axios.post(`${PYTHON_URL}/rag/query`, data);
+    return response?.data;
+  } catch (error) {
+    toast.error(error?.response?.data?.message || "Failed to query knowledge base");
     console.error(error);
     throw error;
   }
