@@ -6,7 +6,7 @@ import CreateNewBridge from "./CreateNewBridge";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import Protected from "./Protected";
 
-const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = 'api' }) => {
+const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title, description, docLink }) => {
   const { tutorialData } = useCustomSelector((state) => ({
     tutorialData: state.flowDataReducer?.flowData?.tutorialData || []
   }))
@@ -20,16 +20,26 @@ const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = 'api' }) => {
         {/* Header Section with Overlapping Layout */}
         <div className="relative w-full">
           {/* Full Width - Heading and Description */}
-         {!isEmbedUser ?  <PageHeader
-            title="Welcome To GTWY AI"
-            description="Build and manage AI agents for your workflows. Agents help automate tasks, answer queries, and deliver intelligent assistance."
-            docLink="https://gtwy.ai/blogs/features/bridge"
-          /> : <PageHeader
-                        title="Agents"
-                        description={"Build and manage AI agents for your workflows. Agents help automate tasks, answer queries, and deliver intelligent assistance."}
-                        docLink="https://gtwy.ai/blogs/features/bridge"
-                        isEmbedUser={isEmbedUser}
-                      />}
+          {!isEmbedUser ? (
+            <PageHeader
+              title={title || "Welcome To GTWY AI"}
+              description={
+                description ||
+                "Build and manage AI agents for your workflows. Agents help automate tasks, answer queries, and deliver intelligent assistance."
+              }
+              docLink={docLink || "https://gtwy.ai/blogs/features/bridge"}
+            />
+          ) : (
+            <PageHeader
+              title={title || "Agents"}
+              description={
+                description ||
+                "Build and manage AI agents for your workflows. Agents help automate tasks, answer queries, and deliver intelligent assistance."
+              }
+              docLink={docLink || "https://gtwy.ai/blogs/features/bridge"}
+              isEmbedUser={isEmbedUser}
+            />
+          )}
 
           {/* Floating Right - Create Agent Buttons */}
           <div className="absolute top-0 right-0">
