@@ -1306,6 +1306,9 @@ function Home({ params, searchParams, isEmbedUser }) {
                   orgid={resolvedParams.org_id}
                   isEmbedUser={isEmbedUser}
                   defaultBridgeType={bridgeTypeFilter}
+                  title={pageHeaderContent.title}
+                  description={pageHeaderContent.description}
+                  docLink={linksData?.find((link) => link.title === "Agents")?.blog_link}
                 />
               ) : (
                 <div className="flex flex-col lg:mx-0">
