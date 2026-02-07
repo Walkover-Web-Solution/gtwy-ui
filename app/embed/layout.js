@@ -7,10 +7,11 @@ import { getAllBridgesAction, updateBridgeAction, createEmbedAgentAction } from 
 import { sendDataToParent, toBoolean } from "@/utils/utility";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
-import { ThemeManager } from "@/customHooks/useThemeManager";
+import { ThemeManager, useThemeManager } from "@/customHooks/useThemeManager";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
+import Protected from "@/components/Protected";
 
-const Layout = ({ children }) => {
+const Layout = ({ children, isEmbedUser }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -26,10 +27,20 @@ const Layout = ({ children }) => {
     return decodedParam ? JSON.parse(decodedParam) : {};
   }, [searchParams]);
 
-  const { allBridges, embedThemeConfig } = useCustomSelector((state) => ({
+  const { allBridges, embedThemeConfig, themeMode } = useCustomSelector((state) => ({
     allBridges: state.bridgeReducer?.orgs?.[urlParamsObj.org_id]?.orgs || [],
     embedThemeConfig: state.appInfoReducer?.embedUserDetails?.theme_config || null,
+    themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
   }));
+
+  const { changeTheme } = useThemeManager();
+
+  useEffect(() => {
+    if (isEmbedUser && themeMode && urlParamsObj.folder_id) {
+      changeTheme(themeMode);
+    }
+  }, [isEmbedUser, themeMode, changeTheme, urlParamsObj.folder_id]);
+
   const resolvedEmbedTheme = useMemo(() => embedThemeConfig || defaultUserTheme, [embedThemeConfig]);
   // Reset embed theme config to ensure fresh state for new embeds
   const resetEmbedThemeConfig = useCallback(() => {
@@ -168,6 +179,11 @@ const Layout = ({ children }) => {
               dispatch(setEmbedUserDetailsAction({ theme_config: parsedTheme }));
               return;
             }
+            if (key === "themeMode") {
+              dispatch(setEmbedUserDetailsAction({ themeMode: value }));
+              return;
+            }
+
             dispatch(setEmbedUserDetailsAction({ [key]: toBoolean(value) }));
           });
         }
@@ -347,4 +363,4 @@ const Layout = ({ children }) => {
   );
 };
 
-export default Layout;
+export default Protected(Layout);

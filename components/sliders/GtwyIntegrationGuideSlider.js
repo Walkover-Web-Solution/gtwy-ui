@@ -360,6 +360,19 @@ const CONFIG_SCHEMA = [
     section: "Display Settings",
   },
   {
+  key: "themeMode",
+  type: "select",
+  label: "Theme Mode",
+  description: "Choose the color theme for the embedded GTWY interface",
+  defaultValue: "system",
+  options: [
+    { value: "system", label: "System" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+  ],
+  section: "Display Settings",
+},
+  {
     key: "hideFullScreenButton",
     type: "toggle",
     label: "Hide Full Screen",
@@ -826,8 +839,7 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
         delete dataToSend.apikey_object_id;
         dataToSend.config.addDefaultApiKeys = false;
       }
-      // If addDefaultApiKeys is false, don't send apikey_object_id at all (will be removed from backend)
-
+      
       await dispatch(updateIntegrationDataAction(data?.org_id, dataToSend));
 
       // Store the saved configuration for change detection
