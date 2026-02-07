@@ -88,11 +88,37 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
           </div>
         </form>
 
-        {results && (
+        {results !== null && (
           <div className="mt-6">
             <div className="divider">Results</div>
             <div className="bg-base-200 rounded-lg p-4 max-h-96 overflow-y-auto">
-              <pre className="text-sm whitespace-pre-wrap break-words">{JSON.stringify(results, null, 2)}</pre>
+              {results && (typeof results === "string" ? results.trim() : JSON.stringify(results, null, 2).trim()) ? (
+                <pre className="text-sm whitespace-pre-wrap break-words">
+                  {typeof results === "string" ? results : JSON.stringify(results, null, 2)}
+                </pre>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="text-base-content/60 mb-2">
+                    <svg
+                      className="w-16 h-16 mx-auto mb-3 text-base-content/30"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <p className="text-lg font-medium">No Results Found</p>
+                    <p className="text-sm mt-1">
+                      Your query was executed successfully, but no matching data was found in the knowledge base.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
