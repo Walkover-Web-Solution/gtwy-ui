@@ -83,6 +83,8 @@ export const DISPLAY_NAMES = (key) => {
       return "Auth Key";
     case "apikeys":
       return "API Keys";
+    case "keyboard-shortcuts":
+      return "Keyboard Shortcuts";
     default:
       return key;
   }

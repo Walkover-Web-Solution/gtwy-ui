@@ -2,7 +2,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
-import { ChevronDown, LogOut, ChevronRight, ChevronLeft, User, AlignJustify, ArrowLeft } from "lucide-react";
+import { ChevronDown, LogOut, ChevronRight, ChevronLeft, User, AlignJustify, ArrowLeft, Keyboard } from "lucide-react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { logoutUserFromMsg91, switchOrg, switchUser } from "@/config/index";
@@ -893,6 +893,30 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   {showSidebarContent && <span className="text-xs truncate">Feedback</span>}
                 </a>
               </div>
+            </div>
+
+            {/* Keyboard Shortcuts Section */}
+            <div className="border-t border-base-content/20 p-2">
+              <button
+                id="main-slider-keyboard-shortcuts-button"
+                onClick={() => {
+                  openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+                  if (isMobile) setIsMobileVisible(false);
+                }}
+                onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
+                onMouseLeave={onItemLeave}
+                className={`w-full flex items-center gap-3 p-2.5 hover:bg-base-200 transition-colors rounded-lg ${!showSidebarContent ? "justify-center" : ""}`}
+              >
+                <Keyboard size={18} className="text-base-content/70" />
+                {showSidebarContent && (
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="text-xs truncate">Keyboard Shortcuts</span>
+                    <span className="text-[10px] text-base-content/50 truncate">
+                      {typeof navigator !== "undefined" && navigator.platform.includes("Mac") ? "⌘" : "Ctrl"} + /
+                    </span>
+                  </div>
+                )}
+              </button>
             </div>
 
             {/* GTWY Label Section */}
