@@ -1342,6 +1342,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                         </button>
 
                         <button
+                          data-testid="create-new-agent-button"
                           className="btn btn-primary btn-sm"
                           onClick={() => openModal(MODAL_TYPE?.CREATE_BRIDGE_MODAL)}
                         >
