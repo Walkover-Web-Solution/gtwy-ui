@@ -9,12 +9,13 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { deleteResourceAction, getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import { KNOWLEDGE_BASE_COLUMNS, MODAL_TYPE } from "@/utils/enums";
 import { openModal, formatRelativeTime, formatDate, GetFileTypeIcon } from "@/utils/utility";
-import { SquarePenIcon, TrashIcon, TestTubeIcon } from "@/components/Icons";
+import { SquarePenIcon, TrashIcon } from "@/components/Icons";
 import React, { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
 import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { FileSearch } from "lucide-react";
 
 export const runtime = "edge";
 
@@ -106,7 +107,7 @@ const Page = ({ params }) => {
             openModal(MODAL_TYPE.QUERY_KNOWLEDGE_BASE_MODAL);
           }}
         >
-          <TestTubeIcon strokeWidth={2} size={20} className="cursor-pointer hover:text-primary transition-colors" />
+          <FileSearch strokeWidth={2} size={20} className="cursor-pointer hover:text-primary transition-colors" />
         </div>
         <div
           className="tooltip tooltip-primary"
