@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { aggregateDataByFactor } from '@/customHooks/useMetricsData';
+import { memo } from "react";
+import { aggregateDataByFactor } from "@/customHooks/useMetricsData";
 
 const TokenUsageOverview = memo(({ rawData }) => {
   const aggregatedData = aggregateDataByFactor(rawData);
@@ -15,7 +15,7 @@ const TokenUsageOverview = memo(({ rawData }) => {
     );
   }
 
-  const maxTokens = Math.max(...aggregatedData.map(i => i.tokens));
+  const maxTokens = Math.max(...aggregatedData.map((i) => i.tokens));
 
   return (
     <div className="bg-base-100 shadow-md rounded-lg p-6">
@@ -33,17 +33,11 @@ const TokenUsageOverview = memo(({ rawData }) => {
 
               <div className="relative flex items-center justify-between p-2 z-10">
                 <div className="flex-grow overflow-hidden text-ellipsis">
-                  <div className="text-base-content font-medium text-sm">
-                    {item.name || `Item ${index + 1}`}
-                  </div>
+                  <div className="text-base-content font-medium text-sm">{item.name || `Item ${index + 1}`}</div>
                 </div>
                 <div className="ml-3 text-right flex-shrink-0">
-                  <div className="font-bold text-xs text-base-content">
-                    tokens: {item.tokens.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-base-content opacity-60">
-                    cost: ${item.cost.toFixed(3)}
-                  </div>
+                  <div className="font-bold text-xs text-base-content">tokens: {item.tokens.toLocaleString()}</div>
+                  <div className="text-xs text-base-content opacity-60">cost: ${item.cost.toFixed(3)}</div>
                 </div>
               </div>
             </div>
@@ -54,6 +48,6 @@ const TokenUsageOverview = memo(({ rawData }) => {
   );
 });
 
-TokenUsageOverview.displayName = 'TokenUsageOverview';
+TokenUsageOverview.displayName = "TokenUsageOverview";
 
 export default TokenUsageOverview;

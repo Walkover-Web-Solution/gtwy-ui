@@ -31,7 +31,7 @@ export const useHandleClickOutside = (sidebarRef, setIsSliderOpen) => {
     };
   }, [sidebarRef, setIsSliderOpen]);
 };
- 
+
 export const scrollToBottom = (historyRef) => {
   if (historyRef.current) {
     historyRef.current.scrollTo({
@@ -41,7 +41,7 @@ export const scrollToBottom = (historyRef) => {
   }
 };
 
-export const scrollToTop = (historyRef,searchMessageId) => {
+export const scrollToTop = (historyRef, searchMessageId) => {
   if (historyRef.current && searchMessageId) {
     historyRef.current.scrollTo({
       top: -historyRef.current.scrollHeight,
@@ -61,7 +61,5 @@ export const debounce = (func, delay) => {
 };
 
 export const truncate = (string = "", maxLength) => {
-  return string.length > maxLength
-    ? `${string.substring(0, maxLength - 3)}...`
-    : string;
+  return string.length > maxLength ? `${string.substring(0, maxLength - 3)}...` : string;
 };

@@ -4,11 +4,7 @@ import { useThemeManager } from "@/customHooks/useThemeManager";
 
 export default function ThemeToggle() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const { 
-    theme, 
-    changeTheme, 
-    getThemeLabel 
-  } = useThemeManager();
+  const { theme, changeTheme, getThemeLabel } = useThemeManager();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -19,9 +15,9 @@ export default function ThemeToggle() {
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
     };
   }, [isDropdownOpen]);
 
@@ -44,29 +40,25 @@ export default function ThemeToggle() {
   return (
     <>
       <div className="w-full" data-dropdown="theme-toggle">
-        <button 
+        <button
+          id="theme-toggle-button"
           onClick={toggleDropdown}
           className="btn btn-ghost btn-sm w-full justify-between normal-case font-normal text-xs h-8"
         >
           <div className="flex items-center gap-2">
             {getThemeIcon()}
-            {theme === "system" && (
-              <div className="badge badge-xs badge-primary opacity-70">Auto</div>
-            )}
-            <span className="hidden sm:block">
-              {getThemeLabel()}
-            </span>
+            {theme === "system" && <div className="badge badge-xs badge-primary opacity-70">Auto</div>}
+            <span className="hidden sm:block">{getThemeLabel()}</span>
           </div>
-          <ChevronDownIcon 
-            className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} 
-          />
+          <ChevronDownIcon className={`w-3 h-3 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
         </button>
-        
+
         {isDropdownOpen && (
           <div className="menu bg-base-200 w-full rounded-lg mt-1 p-1 shadow border border-base-300">
             <li>
               <button
-                className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "light" ? 'bg-base-300' : ''}`}
+                id="theme-light-button"
+                className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "light" ? "bg-base-300" : ""}`}
                 onClick={() => handleThemeChange("light")}
                 disabled={theme === "light"}
               >
@@ -75,10 +67,11 @@ export default function ThemeToggle() {
                 {theme === "light" && <div className="badge badge-xs badge-success">✓</div>}
               </button>
             </li>
-            
+
             <li>
               <button
-                className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "dark" ? 'bg-base-300' : ''}`}
+                id="theme-dark-button"
+                className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "dark" ? "bg-base-300" : ""}`}
                 onClick={() => handleThemeChange("dark")}
                 disabled={theme === "dark"}
               >
@@ -87,10 +80,11 @@ export default function ThemeToggle() {
                 {theme === "dark" && <div className="badge badge-xs badge-success">✓</div>}
               </button>
             </li>
-            
+
             <li>
               <button
-                className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "system" ? 'bg-base-300' : ''}`}
+                id="theme-system-button"
+                className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "system" ? "bg-base-300" : ""}`}
                 onClick={() => handleThemeChange("system")}
                 disabled={theme === "system"}
               >

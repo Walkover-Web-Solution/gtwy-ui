@@ -2,8 +2,8 @@
 import { persistor, store } from "@/store/store";
 import React, { useEffect } from "react";
 import { Provider } from "react-redux";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { PersistGate } from "redux-persist/integration/react";
 import CommandPalette from "@/components/command/CommandPalette";
 import { usePathname } from "next/navigation";
@@ -20,17 +20,17 @@ const Wrapper = ({ children }) => {
   const { actualTheme } = useThemeManager();
 
   useEffect(() => {
-    const pathSegments = pathname.split('/').filter(Boolean);
+    const pathSegments = pathname.split("/").filter(Boolean);
     let title = "GTWY AI";
     if (pathSegments.length > 0) {
       const lastSegment = pathSegments[pathSegments.length - 1];
       // Check if last segment is a number (like an ID), if so, use the second to last segment
       const segmentToUse = isNaN(lastSegment) ? lastSegment : pathSegments[pathSegments.length - 2] || lastSegment;
-      const pageName = segmentToUse.replace(/[_-]/g, ' ');
+      const pageName = segmentToUse.replace(/[_-]/g, " ");
       const capitalizedPageName = pageName
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
       title = `GTWY AI | ${capitalizedPageName}`;
     }
     document.title = title;
@@ -51,10 +51,7 @@ const Wrapper = ({ children }) => {
               {/* Global Command Palette */}
               <CommandPalette />
               {/* Notification toast container */}
-              <ToastContainer 
-                position="bottom-left" 
-                theme={actualTheme === 'dark' ? 'dark' : 'light'}
-              />
+              <ToastContainer position="bottom-left" theme={actualTheme === "dark" ? "dark" : "light"} />
             </div>
           </PostHogProvider>
         </PersistGate>

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRouter, usePathname } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRouter, usePathname } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 const LoginButton = () => {
   const router = useRouter();
@@ -12,14 +12,13 @@ const LoginButton = () => {
   const handleLogin = () => {
     setIsLoading(true);
     // Store the current path to redirect back after login
-    const redirectPath = pathname.startsWith('/publicAgent') 
-      ? '/publicAgent/login' 
-      : '/login';
+    const redirectPath = pathname.startsWith("/publicAgent") ? "/publicAgent/login" : "/login";
     router.push(redirectPath);
   };
 
   return (
-    <button 
+    <button
+      id="login-button"
       onClick={handleLogin}
       disabled={isLoading}
       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors flex items-center"
@@ -30,10 +29,10 @@ const LoginButton = () => {
           Redirecting...
         </>
       ) : (
-        'Login'
+        "Login"
       )}
     </button>
   );
 };
 
-export default (LoginButton);
+export default LoginButton;

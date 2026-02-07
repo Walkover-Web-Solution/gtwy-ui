@@ -1,30 +1,26 @@
-'use client';
-import { useCustomSelector } from '@/customHooks/customSelector';
-import { updateOrgTimeZone } from '@/store/action/orgAction';
-import timezoneData from '@/utils/timezoneData';
-import { PencilIcon, GlobeIcon, MailIcon, BuildingIcon } from '@/components/Icons';
-import React, { useMemo, useState, useCallback, use } from 'react';
-import { useDispatch } from 'react-redux';
+"use client";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { updateOrgTimeZone } from "@/store/action/orgAction";
+import timezoneData from "@/utils/timezoneData";
+import { PencilIcon, GlobeIcon, MailIcon, BuildingIcon } from "@/components/Icons";
+import React, { useMemo, useState, useCallback, use } from "react";
+import { useDispatch } from "react-redux";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 
 export default function SettingsPage({ params }) {
   const resolvedParams = use(params);
   const dispatch = useDispatch();
-  const userDetails = useCustomSelector((state) =>
-    state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]
-  );
+  const userDetails = useCustomSelector((state) => state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]);
 
   const [isContentOpen, setIsContentOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedTimezone, setSelectedTimezone] = useState(() =>
     timezoneData.find((tz) => tz.identifier === userDetails?.meta?.identifier)
   );
 
   const filteredTimezones = useMemo(() => {
-    return timezoneData.filter((timezone) =>
-      timezone.identifier.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return timezoneData.filter((timezone) => timezone.identifier.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [searchQuery]);
 
   const handleContentOpen = useCallback(() => {
@@ -45,7 +41,7 @@ export default function SettingsPage({ params }) {
       await dispatch(updateOrgTimeZone(resolvedParams.org_id, updatedOrgDetails));
       setIsContentOpen(false);
     } catch (error) {
-      console.error('Failed to update timezone:', error);
+      console.error("Failed to update timezone:", error);
     }
   }, [dispatch, resolvedParams.org_id, selectedTimezone, userDetails]);
 
@@ -69,7 +65,7 @@ export default function SettingsPage({ params }) {
                 <GlobeIcon className="h-4 w-4 text-primary" />
                 <span className="text-sm text-gray-500">Domain</span>
               </div>
-              <p className="mt-1">{userDetails?.domain || 'gtwy.ai'}</p>
+              <p className="mt-1">{userDetails?.domain || "gtwy.ai"}</p>
             </div>
 
             <div className="p-3 bg-base-100 rounded">
@@ -77,7 +73,7 @@ export default function SettingsPage({ params }) {
                 <BuildingIcon className="h-4 w-4 text-primary" />
                 <span className="text-sm text-gray-500">Organization Name</span>
               </div>
-              <p className="mt-1">{userDetails?.name || 'N/A'}</p>
+              <p className="mt-1">{userDetails?.name || "N/A"}</p>
             </div>
 
             <div className="p-3 bg-base-100 rounded">
@@ -85,18 +81,20 @@ export default function SettingsPage({ params }) {
                 <MailIcon className="h-4 w-4 text-primary" />
                 <span className="text-sm text-gray-500">Email Address</span>
               </div>
-              <p className="mt-1">{userDetails?.email || 'N/A'}</p>
+              <p className="mt-1">{userDetails?.email || "N/A"}</p>
             </div>
 
             <div className="p-3 bg-base-100 rounded cursor-pointer" onClick={handleContentOpen}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <GlobeIcon  className="h-4 w-4 text-primary" />
+                  <GlobeIcon className="h-4 w-4 text-primary" />
                   <span className="text-sm text-gray-500">Timezone</span>
                 </div>
                 <PencilIcon size={14} className="text-primary" />
               </div>
-              <p className="mt-1">{selectedTimezone?.identifier} ({selectedTimezone?.offSet})</p>
+              <p className="mt-1">
+                {selectedTimezone?.identifier} ({selectedTimezone?.offSet})
+              </p>
             </div>
           </div>
 
@@ -114,20 +112,18 @@ export default function SettingsPage({ params }) {
                   <div
                     key={timezone.identifier}
                     onClick={() => handleTimezoneChange(timezone)}
-                    className={`p-2 text-sm cursor-pointer ${timezone.identifier === selectedTimezone?.identifier
-                      ? 'bg-primary text-white'
-                      : 'hover:bg-gray-50'
-                      }`}
+                    className={`p-2 text-sm cursor-pointer ${
+                      timezone.identifier === selectedTimezone?.identifier
+                        ? "bg-primary text-white"
+                        : "hover:bg-gray-50"
+                    }`}
                   >
-                    {timezone.identifier} {timezone.offSet ? `(${timezone.offSet})` : ''}
+                    {timezone.identifier} {timezone.offSet ? `(${timezone.offSet})` : ""}
                   </div>
                 ))}
               </div>
               <div className="flex justify-end gap-2 mt-3">
-                <button
-                  className="px-3 py-1.5 text-sm rounded bg-base-100 hover:bg-base-200"
-                  onClick={handleCancel}
-                >
+                <button className="px-3 py-1.5 text-sm rounded bg-base-100 hover:bg-base-200" onClick={handleCancel}>
                   Cancel
                 </button>
                 <button

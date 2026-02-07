@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Canvas from '@/components/Canvas';
-import { useDispatch } from 'react-redux';
-import { optimizePromptReducer } from '@/store/reducer/bridgeReducer';
-import { optimizePromptApi } from '@/config/index';
-import Protected from './Protected';
+import React, { useState, useEffect, useCallback } from "react";
+import Canvas from "@/components/Canvas";
+import { useDispatch } from "react-redux";
+import { optimizePromptReducer } from "@/store/reducer/bridgeReducer";
+import { optimizePromptApi } from "@/config/index";
+import Protected from "./Protected";
 
 const PromptHelper = ({
   isVisible,
@@ -20,32 +20,35 @@ const PromptHelper = ({
   setHasUnsavedChanges,
   setNewContent,
   isEmbedUser,
-  savePrompt
+  savePrompt,
 }) => {
   const dispatch = useDispatch();
-  const [optimizedPrompt, setOptimizedPrompt] = useState('');
+  const [optimizedPrompt, setOptimizedPrompt] = useState("");
 
-  const handleOptimizePrompt = useCallback(async (instructionText) => {
-    try {
-      const response = await optimizePromptApi({
-        query: instructionText,
-        thread_id,
-        bridge_id: params.id,
-        version_id: searchParams.version,
-      });
+  const handleOptimizePrompt = useCallback(
+    async (instructionText) => {
+      try {
+        const response = await optimizePromptApi({
+          query: instructionText,
+          thread_id,
+          bridge_id: params.id,
+          version_id: searchParams.version,
+        });
 
-      const result = typeof response === 'string' ? JSON.parse(response) : response?.data ?? response;
-      if (result?.updated) {
-        setOptimizedPrompt(result.updated);
-        dispatch(optimizePromptReducer({ bridgeId: params.id, prompt: result.updated }));
+        const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
+        if (result?.updated) {
+          setOptimizedPrompt(result.updated);
+          dispatch(optimizePromptReducer({ bridgeId: params.id, prompt: result.updated }));
+        }
+
+        return result;
+      } catch (error) {
+        console.error("Error optimizing prompt:", error);
+        return { description: "Failed to optimize prompt. Please try again." };
       }
-
-      return result;
-    } catch (error) {
-      console.error("Error optimizing prompt:", error);
-      return { description: "Failed to optimize prompt. Please try again." };
-    }
-  }, [params.id, searchParams.version, thread_id]);
+    },
+    [params.id, searchParams.version, thread_id]
+  );
 
   // Apply optimized prompt and save immediately
   const handleApplyOptimizedPrompt = (promptToApply) => {
@@ -54,16 +57,13 @@ const PromptHelper = ({
       setPrompt(promptContent);
       setHasUnsavedChanges(true);
       setNewContent(promptContent);
-      
+
       // Save the prompt immediately after applying
       if (savePrompt) {
         savePrompt(promptContent);
       }
     }
   };
-
-
-
 
   const modalRef = React.createRef();
 
@@ -72,8 +72,7 @@ const PromptHelper = ({
 
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
-        const isBackdrop = event.target.classList.contains('modal-backdrop') ||
-          event.target.closest('.modal-backdrop');
+        const isBackdrop = event.target.classList.contains("modal-backdrop") || event.target.closest(".modal-backdrop");
 
         if (isBackdrop) {
           onClose();
@@ -82,17 +81,17 @@ const PromptHelper = ({
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [autoCloseOnBlur, onClose]);
 
@@ -113,6 +112,7 @@ const PromptHelper = ({
 
   return (
     <div
+      id="prompt-helper-container"
       ref={modalRef}
       className=" z-very-high w-full bottom-2 bg-base-100 h-full rounded-l-md shadow-lg transition-all duration-300 ease-in-out z-30"
       onBlur={handleModalBlur}
@@ -123,9 +123,10 @@ const PromptHelper = ({
         <div className="flex items-center gap-2">
           <h3 className="text-base font-semibold text-base-content">Prompt Helper</h3>
         </div>
-        
+
         {showCloseButton && (
           <button
+            id="prompt-helper-close-button"
             onClick={onClose}
             className="btn btn-xs btn-error"
             title="Close Prompt Helper"

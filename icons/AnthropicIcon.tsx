@@ -1,13 +1,20 @@
-import React from 'react'
-import withSize from './SvgHoc'
+import React from "react";
+import withSize from "./SvgHoc";
 
 const AnthropicIcon = ({ height, width }) => {
-    return (
-        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 1040.000000 1040.000000" preserveAspectRatio="xMidYMid meet" transform="matrix(1,-1.2246467991473532e-16,1.2246467991473532e-16,1,0,0)">
-
-<g transform="translate(0.000000,1040.000000) scale(0.100000,-0.100000)" fill="#000000" stroke="none">
-
-<path d="M2865 8788 c-21 -51 -38 -98 -39 -104 -1 -7 -7 -18 -13 -25 -5 -8
+  return (
+    <svg
+      version="1.1"
+      xmlns="http://www.w3.org/2000/svg"
+      width={width}
+      height={height}
+      viewBox="0 0 1040.000000 1040.000000"
+      preserveAspectRatio="xMidYMid meet"
+      transform="matrix(1,-1.2246467991473532e-16,1.2246467991473532e-16,1,0,0)"
+    >
+      <g transform="translate(0.000000,1040.000000) scale(0.100000,-0.100000)" fill="#000000" stroke="none">
+        <path
+          d="M2865 8788 c-21 -51 -38 -98 -39 -104 -1 -7 -7 -18 -13 -25 -5 -8
 
 -14 -27 -18 -44 -10 -37 -10 -35 -22 -65 -41 -98 -63 -155 -63 -167 0 -7 -3
 
@@ -129,9 +136,12 @@ c19 50 35 94 35 97 1 3 9 22 18 44 9 21 17 41 17 43 0 5 44 119 64 168 7 17
 
 5 20 20 61 35 95 9 22 33 83 53 135 20 52 56 147 81 210 95 244 300 780 322
 
-840 5 14 32 -36 49 -91z" fill="currentColor"></path>
+840 5 14 32 -36 49 -91z"
+          fill="currentColor"
+        ></path>
 
-<path d="M5910 8866 c0 -8 4 -17 9 -20 4 -3 14 -26 21 -51 7 -25 17 -45 21
+        <path
+          d="M5910 8866 c0 -8 4 -17 9 -20 4 -3 14 -26 21 -51 7 -25 17 -45 21
 
 -45 5 0 9 -9 9 -20 0 -11 4 -28 9 -38 5 -9 17 -37 27 -62 10 -25 25 -63 34
 
@@ -193,12 +203,12 @@ l800 0 -19 48 c-10 26 -40 101 -66 167 -26 66 -55 138 -65 160 -9 22 -23 57
 
 100 -4 11 -38 97 -75 190 -89 229 -155 396 -165 420 -5 11 -18 43 -28 70 -11
 
-28 -32 80 -47 118 l-27 67 -794 0 c-685 0 -794 -2 -794 -14z" fill="currentColor"></path>
+28 -32 80 -47 118 l-27 67 -794 0 c-685 0 -794 -2 -794 -14z"
+          fill="currentColor"
+        ></path>
+      </g>
+    </svg>
+  );
+};
 
-</g>
-
-</svg>
-    )
-}
-
-export default withSize(AnthropicIcon)
+export default withSize(AnthropicIcon);

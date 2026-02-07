@@ -93,8 +93,9 @@ import {
   Shield,
   ExternalLink,
   Upload,
-  Link
-} from 'lucide-react';
+  Link,
+  Keyboard,
+} from "lucide-react";
 
 /**
  * Monitor play icon showing a monitor with play button
@@ -781,9 +782,24 @@ export const DatabaseIcon = (props) => <Database {...props} />;
 
 export const ShieldIcon = (props) => <Shield {...props} />;
 
-export const ExternalLinkIcon=(props)=> <ExternalLink  {...props} />
+export const ExternalLinkIcon = (props) => <ExternalLink {...props} />;
 
 export const UploadIcon = (props) => <Upload {...props} />;
 
 export const LinkIcon = (props) => <Link {...props} />;
 
+/**
+ * Keyboard icon showing keyboard
+ * Used for keyboard shortcuts and input features
+ * Style: Blue or gray for neutral indicators
+ * Context: Keyboard shortcuts, input methods
+ */
+export const KeyboardIcon = (props) => <Keyboard {...props} />;
+
+/**
+ * X icon showing close/cancel symbol
+ * Used for closing and canceling actions
+ * Style: Red for destructive actions, gray for neutral
+ * Context: Close buttons, cancel actions
+ */
+export const XIcon = (props) => <X {...props} />;
