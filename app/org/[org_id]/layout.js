@@ -5,7 +5,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import Protected from "@/components/Protected";
 import { getSingleMessage, switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { ThemeManager } from "@/customHooks/useThemeManager";
+import { ThemeManager, useThemeManager } from "@/customHooks/useThemeManager";
 import { getAllApikeyAction } from "@/store/action/apiKeyAction";
 import {
   createApiAction,
@@ -75,6 +75,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     SERVICES,
     doctstar_embed_token,
     currrentOrgDetail,
+    themeMode,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -87,6 +88,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     currentUser: state.userDetailsReducer.userDetails,
     doctstar_embed_token: state?.bridgeReducer?.org?.[resolvedParams.org_id]?.doctstar_embed_token || "",
     currrentOrgDetail: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id],
+    themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
   }));
   useEffect(() => {
     if (!isEmbedUser) {
@@ -106,6 +108,15 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(getApiKeyGuideAction());
     }
   }, [pathName]);
+
+  const { changeTheme } = useThemeManager();
+
+  useEffect(() => {
+    if (isEmbedUser && themeMode) {
+      changeTheme(themeMode);
+    }
+  }, [isEmbedUser, themeMode]);
+
   useEffect(() => {
     const updateUserMeta = async () => {
       // Skip user meta updates for embed users
