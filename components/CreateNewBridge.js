@@ -319,6 +319,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
             </button>
 
             <button
+              data-testid="create-new-bridge-submit-button"
               id="create-new-bridge-submit-button"
               className="btn btn-sm btn-primary"
               onClick={handleCreateAgent}
