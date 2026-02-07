@@ -6,7 +6,6 @@ import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 
 const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
-  console.log(resource);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
