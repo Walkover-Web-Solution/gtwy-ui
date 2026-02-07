@@ -2,7 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   gwtyAgent: {},
-  loading: false
+  loading: false,
 };
 
 export const gtwyAgentReducer = createSlice({
@@ -11,8 +11,8 @@ export const gtwyAgentReducer = createSlice({
   reducers: {
     getAllAgentReducer: (state, action) => {
       const agent = action.payload.data?.data;
-      state.gwtyAgent.publicAgent = agent.filter(item => item.page_config.availability === 'public');
-      state.gwtyAgent.privateAgent = agent.filter(item => item.page_config.availability === 'private');
+      state.gwtyAgent.publicAgent = agent.filter((item) => item.page_config.availability === "public");
+      state.gwtyAgent.privateAgent = agent.filter((item) => item.page_config.availability === "private");
       state.loading = false;
     },
     getPublicAgentDataReducer: (state, action) => {
@@ -29,15 +29,11 @@ export const gtwyAgentReducer = createSlice({
       state.gwtyAgent.publicAgentData = {};
       state.gwtyAgent.privateAgentData = {};
       state.loading = false;
-    }
-  }
+    },
+  },
 });
 
-export const {
-  getAllAgentReducer,
-  getPublicAgentDataReducer,
-  getPrivateAgentDataReducer,
-  clearAgentsData
-} = gtwyAgentReducer.actions;
+export const { getAllAgentReducer, getPublicAgentDataReducer, getPrivateAgentDataReducer, clearAgentsData } =
+  gtwyAgentReducer.actions;
 
 export default gtwyAgentReducer.reducer;

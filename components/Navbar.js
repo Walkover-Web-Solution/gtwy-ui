@@ -1,26 +1,42 @@
-'use client'
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import dynamic from 'next/dynamic';
-import { TestTube, MessageCircleMore, Pause, Play, ClipboardX, BookCheck, MoreVertical, Clock, Home, HistoryIcon, ArchiveRestore, Edit2, BotIcon, ChevronDown, RefreshCcw } from 'lucide-react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useDispatch } from 'react-redux';
-import { useCustomSelector } from '@/customHooks/customSelector';
-import { updateBridgeAction, dicardBridgeVersionAction, archiveBridgeAction } from '@/store/action/bridgeAction';
-import { updateBridgeVersionReducer } from '@/store/reducer/bridgeReducer';
-import { MODAL_TYPE } from '@/utils/enums';
-import { openModal, toggleSidebar, sendDataToParent } from '@/utils/utility';
-import { toast } from 'react-toastify';
-const ChatBotSlider = dynamic(() => import('./sliders/ChatBotSlider'), { ssr: false });
-const ConfigHistorySlider = dynamic(() => import('./sliders/ConfigHistorySlider'), { ssr: false });
-import Protected from './Protected';
-const DeleteModal = dynamic(() => import('./UI/DeleteModal'), { ssr: false });
-import useDeleteOperation from '@/customHooks/useDeleteOperation';
-import BridgeVersionDropdown from './configuration/configurationComponent/BridgeVersionDropdown';
-const VariableCollectionSlider = dynamic(() => import('./sliders/VariableCollectionSlider'), { ssr: false });
+"use client";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
+import {
+  TestTube,
+  MessageCircleMore,
+  Pause,
+  Play,
+  ClipboardX,
+  BookCheck,
+  MoreVertical,
+  Clock,
+  Home,
+  HistoryIcon,
+  ArchiveRestore,
+  Edit2,
+  BotIcon,
+  ChevronDown,
+  RefreshCcw,
+} from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { updateBridgeAction, dicardBridgeVersionAction, archiveBridgeAction } from "@/store/action/bridgeAction";
+import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
+import { MODAL_TYPE } from "@/utils/enums";
+import { openModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
+import { toast } from "react-toastify";
+const ChatBotSlider = dynamic(() => import("./sliders/ChatBotSlider"), { ssr: false });
+const ConfigHistorySlider = dynamic(() => import("./sliders/ConfigHistorySlider"), { ssr: false });
+import Protected from "./Protected";
+const DeleteModal = dynamic(() => import("./UI/DeleteModal"), { ssr: false });
+import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import BridgeVersionDropdown from "./configuration/configurationComponent/BridgeVersionDropdown";
+const VariableCollectionSlider = dynamic(() => import("./sliders/VariableCollectionSlider"), { ssr: false });
 
 const BRIDGE_STATUS = {
   ACTIVE: 1,
-  PAUSED: 0
+  PAUSED: 0,
 };
 
 const Navbar = ({ isEmbedUser, params }) => {
@@ -28,13 +44,13 @@ const Navbar = ({ isEmbedUser, params }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [showEllipsisMenu, setShowEllipsisMenu] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [editedName, setEditedName] = useState('');
+  const [editedName, setEditedName] = useState("");
   const { isDeleting: isDiscardingWithHook, executeDelete } = useDeleteOperation();
   const ellipsisMenuRef = useRef(null);
 
   const router = useRouter();
   const pathname = usePathname();
-  const pathParts = pathname.split('?')[0].split('/');
+  const pathParts = pathname.split("?")[0].split("/");
   const orgId = params?.org_id || pathParts[2];
   const bridgeId = params?.id || pathParts[5];
   const dispatch = useDispatch();
@@ -88,24 +104,24 @@ const Navbar = ({ isEmbedUser, params }) => {
   const TABS = useMemo(() => {
     const baseTabs = [
       {
-        id: 'configure',
-        label: `${bridgeData.bridgeType === 'api' ? 'Agent' : 'Chatbot'} Config`,
+        id: "configure",
+        label: `${bridgeData.bridgeType === "api" ? "Agent" : "Chatbot"} Config`,
         icon: BotIcon,
-        shortLabel: `${bridgeData.bridgeType === 'api' ? 'Agent' : 'Chatbot'} Config`
+        shortLabel: `${bridgeData.bridgeType === "api" ? "Agent" : "Chatbot"} Config`,
       },
-      { id: 'history', label: 'History', icon: MessageCircleMore, shortLabel: 'History' }
+      { id: "history", label: "History", icon: MessageCircleMore, shortLabel: "History" },
     ];
     if (!isEmbedUser) {
-      baseTabs.splice(1, 0, { id: 'testcase', label: 'Test Cases', icon: TestTube, shortLabel: 'Tests' });
+      baseTabs.splice(1, 0, { id: "testcase", label: "Test Cases", icon: TestTube, shortLabel: "Tests" });
     }
     return baseTabs;
   }, [isEmbedUser, bridgeType]);
 
-  const agentName = useMemo(() => bridgeName || bridgeData?.name || 'Agent not Found', [bridgeName, bridgeData?.name]);
+  const agentName = useMemo(() => bridgeName || bridgeData?.name || "Agent not Found", [bridgeName, bridgeData?.name]);
 
   // Calculate active tab index for tab switcher animation
   const activeTabIndex = useMemo(() => {
-    return TABS.findIndex(tab => tab.id === activeTab);
+    return TABS.findIndex((tab) => tab.id === activeTab);
   }, [TABS, activeTab]);
 
   const TAB_WIDTH = useMemo(() => {
@@ -115,7 +131,7 @@ const Navbar = ({ isEmbedUser, params }) => {
   const shouldShowNavbar = useCallback(() => {
     const depth = pathParts.length;
     if (depth === 3) return false;
-    return ['configure', 'history', 'testcase'].some(seg => pathname.includes(seg));
+    return ["configure", "history", "testcase"].some((seg) => pathname.includes(seg));
   }, [pathParts.length, pathname]);
 
   // Close ellipsis menu when clicking outside
@@ -126,8 +142,8 @@ const Navbar = ({ isEmbedUser, params }) => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Scroll detection
@@ -142,16 +158,16 @@ const Navbar = ({ isEmbedUser, params }) => {
         ticking = true;
       }
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Responsive detection
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Agent name editing functions
@@ -167,7 +183,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       setEditedName(agentName);
       return;
     }
-    
+
     // Check for special characters (allow only letters, numbers, spaces, hyphens, and underscores)
     const specialCharRegex = /[^a-zA-Z0-9\s\-_]/;
     if (specialCharRegex.test(trimmed)) {
@@ -175,16 +191,23 @@ const Navbar = ({ isEmbedUser, params }) => {
       setEditedName(agentName);
       return;
     }
-    
+
     if (trimmed !== agentName) {
-      dispatch(updateBridgeAction({
-        bridgeId: bridgeId,
-        dataToSend: { name: trimmed },
-      }));
-      isEmbedUser && sendDataToParent("updated", {
-        name: trimmed,
-        agent_id: bridgeId
-      }, "Agent Name Updated");
+      dispatch(
+        updateBridgeAction({
+          bridgeId: bridgeId,
+          dataToSend: { name: trimmed },
+        })
+      );
+      isEmbedUser &&
+        sendDataToParent(
+          "updated",
+          {
+            name: trimmed,
+            agent_id: bridgeId,
+          },
+          "Agent Name Updated"
+        );
     }
     setIsEditingName(false);
   }, [editedName, agentName, dispatch, bridgeId, isEmbedUser]);
@@ -194,101 +217,109 @@ const Navbar = ({ isEmbedUser, params }) => {
     setEditedName(agentName);
   }, [agentName]);
 
-  const handleNameKeyDown = useCallback((e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleNameSave();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      handleNameCancel();
-    }
-  }, [handleNameSave, handleNameCancel]);
+  const handleNameKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleNameSave();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        handleNameCancel();
+      }
+    },
+    [handleNameSave, handleNameCancel]
+  );
 
   const handlePauseBridge = useCallback(async () => {
-    const newStatus = bridgeStatus === BRIDGE_STATUS.PAUSED
-      ? BRIDGE_STATUS.ACTIVE
-      : BRIDGE_STATUS.PAUSED;
+    const newStatus = bridgeStatus === BRIDGE_STATUS.PAUSED ? BRIDGE_STATUS.ACTIVE : BRIDGE_STATUS.PAUSED;
 
     try {
-      await dispatch(updateBridgeAction({
-        bridgeId,
-        dataToSend: { bridge_status: newStatus }
-      }));
-      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? 'resumed' : 'paused'} successfully`);
+      await dispatch(
+        updateBridgeAction({
+          bridgeId,
+          dataToSend: { bridge_status: newStatus },
+        })
+      );
+      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
       setShowEllipsisMenu(false); // Close menu after action
     } catch (err) {
       console.error(err);
-      toast.error('Failed to update agent status');
+      toast.error("Failed to update agent status");
     }
   }, [dispatch, bridgeId, bridgeStatus]);
 
   const handleDiscardChanges = useCallback(async () => {
     await executeDelete(async () => {
-      dispatch(updateBridgeVersionReducer({
-        bridges: { ...bridge, _id: versionId, parent_id: bridgeId, is_drafted: false }
-      }));
+      dispatch(
+        updateBridgeVersionReducer({
+          bridges: { ...bridge, _id: versionId, parent_id: bridgeId, is_drafted: false },
+        })
+      );
       await dispatch(dicardBridgeVersionAction({ bridgeId, versionId }));
-      toast.success('Changes discarded successfully');
+      toast.success("Changes discarded successfully");
     });
   }, [executeDelete, dispatch, bridge, searchParams, bridgeId]);
 
   const handlePublish = useCallback(async () => {
     if (!isDrafted) {
-      toast.info('Nothing to publish');
+      toast.info("Nothing to publish");
       return;
     }
     try {
-      openModal(MODAL_TYPE?.PUBLISH_BRIDGE_VERSION)
+      openModal(MODAL_TYPE?.PUBLISH_BRIDGE_VERSION);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to publish version');
+      toast.error("Failed to publish version");
     }
   }, [isDrafted]);
 
-  const handleTabChange = useCallback((tabId) => {
-    const base = `/org/${orgId}/agents/${tabId}/${bridgeId}`;
-    
-    // Get bridge type from Redux and determine correct type parameter
-    let typeValue;
-    if (bridgeType && bridgeType.toLowerCase() === 'chatbot') {
-      typeValue = 'chatbot';
-    } else {
-      // For 'api', 'batch', or any other type, default to 'api'
-      typeValue = 'api';
-    }
-    const typeQueryPart = `&type=${typeValue}`;
-    
-    // If currently in published mode and navigating to testcase or history
-    if (isPublished && (tabId === 'testcase' || tabId === 'history')) {
-      // Use published version ID and remove isPublished parameter
-      router.push(base + (publishedVersion ? `?version=${publishedVersion}${typeQueryPart}` : `?type=${typeValue}`));
-    } else {
-      // Normal navigation with current version
-      router.push(base + (versionId ? `?version=${versionId}${typeQueryPart}` : `?type=${typeValue}`));
-    }
-  }, [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType]);
+  const handleTabChange = useCallback(
+    (tabId) => {
+      const base = `/org/${orgId}/agents/${tabId}/${bridgeId}`;
+
+      // Get bridge type from Redux and determine correct type parameter
+      let typeValue;
+      if (bridgeType && bridgeType.toLowerCase() === "chatbot") {
+        typeValue = "chatbot";
+      } else {
+        // For 'api', 'batch', or any other type, default to 'api'
+        typeValue = "api";
+      }
+      const typeQueryPart = `&type=${typeValue}`;
+
+      // If currently in published mode and navigating to testcase or history
+      if (isPublished && (tabId === "testcase" || tabId === "history")) {
+        // Use published version ID and remove isPublished parameter
+        router.push(base + (publishedVersion ? `?version=${publishedVersion}${typeQueryPart}` : `?type=${typeValue}`));
+      } else {
+        // Normal navigation with current version
+        router.push(base + (versionId ? `?version=${versionId}${typeQueryPart}` : `?type=${typeValue}`));
+      }
+    },
+    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType]
+  );
 
   const handlePublishedClick = useCallback(() => {
     if (!publishedVersion) {
-      toast.error('No published version available');
+      toast.error("No published version available");
       return;
     }
-    
+
     const currentUrl = new URL(window.location);
     // Don't push versionId when isPublished=true, just set isPublished flag
-    currentUrl.searchParams.delete('version'); // Remove version parameter
-    currentUrl.searchParams.set('isPublished', 'true');
-    
+    currentUrl.searchParams.delete("version"); // Remove version parameter
+    currentUrl.searchParams.set("isPublished", "true");
+
     // Ensure the type parameter is set based on the bridge type from Redux
     let typeValue;
-    if (bridgeType && bridgeType.toLowerCase() === 'chatbot') {
-      typeValue = 'chatbot';
+    if (bridgeType && bridgeType.toLowerCase() === "chatbot") {
+      typeValue = "chatbot";
     } else {
       // For 'api', 'batch', or any other type, default to 'api'
-      typeValue = 'api';
+      typeValue = "api";
     }
-    currentUrl.searchParams.set('type', typeValue);
-    
+    currentUrl.searchParams.set("type", typeValue);
+
     router.push(currentUrl.pathname + currentUrl.search);
   }, [router, publishedVersion, bridgeType]);
 
@@ -302,73 +333,71 @@ const Navbar = ({ isEmbedUser, params }) => {
 
     const handleKeyDown = (e) => {
       const target = e.target;
-      const isInputField = target.tagName === 'INPUT' || 
-                          target.tagName === 'TEXTAREA' || 
-                          target.isContentEditable;
-      
+      const isInputField = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
       if (isInputField) return;
 
-      if (e.key === 'g' || e.key === 'G') {
+      if (e.key === "g" || e.key === "G") {
         gPressed = true;
         if (timeoutId) clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           gPressed = false;
         }, 1000);
       } else if (gPressed) {
-        if (e.key === 'c' || e.key === 'C') {
+        if (e.key === "c" || e.key === "C") {
           e.preventDefault();
-          handleTabChange('configure');
+          handleTabChange("configure");
           gPressed = false;
           if (timeoutId) clearTimeout(timeoutId);
-        } else if (e.key === 't' || e.key === 'T') {
+        } else if (e.key === "t" || e.key === "T") {
           e.preventDefault();
           if (!isEmbedUser) {
-            handleTabChange('testcase');
+            handleTabChange("testcase");
           }
           gPressed = false;
           if (timeoutId) clearTimeout(timeoutId);
-        } else if (e.key === 'h' || e.key === 'H') {
+        } else if (e.key === "h" || e.key === "H") {
           e.preventDefault();
-          handleTabChange('history');
+          handleTabChange("history");
           gPressed = false;
           if (timeoutId) clearTimeout(timeoutId);
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [handleTabChange, isEmbedUser]);
 
-  const StatusIndicator = ({ status }) => (
+  const StatusIndicator = ({ status }) =>
     status === BRIDGE_STATUS.ACTIVE ? null : (
       <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-sm font-medium bg-warning/10 text-warning border border-warning/20">
         <Clock size={12} />
         <span className="hidden sm:inline">Paused</span>
       </div>
-    )
-  );
+    );
 
   const handleArchiveBridge = async (bridgeId, newStatus = 0) => {
     try {
       const bridgeStatus = await dispatch(archiveBridgeAction(bridgeId, newStatus));
       if (bridgeStatus === 1) {
-        toast.success('Agent Unarchived Successfully');
+        toast.success("Agent Unarchived Successfully");
       } else {
-        toast.success('Agent Archived Successfully');
+        toast.success("Agent Archived Successfully");
       }
     } catch (error) {
-      console.error('Failed to archive/unarchive agents', error);
+      console.error("Failed to archive/unarchive agents", error);
     }
-  }
+  };
 
   // Ellipsis Menu Component
   const EllipsisMenu = () => (
     <div className="relative" ref={ellipsisMenuRef}>
       <button
+        id="navbar-ellipsis-menu-toggle"
         onClick={() => setShowEllipsisMenu(!showEllipsisMenu)}
         className="p-2 hover:bg-base-200 rounded-md transition-colors"
         title="More options"
@@ -380,6 +409,7 @@ const Navbar = ({ isEmbedUser, params }) => {
         <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 border border-base-300 rounded-lg shadow-xl z-very-high">
           <div className="">
             <button
+              id="navbar-pause-resume-button"
               onMouseDown={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -387,8 +417,9 @@ const Navbar = ({ isEmbedUser, params }) => {
                 setShowEllipsisMenu(false);
               }}
               disabled={isUpdatingBridge}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer ${isUpdatingBridge ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer ${
+                isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
               {bridgeStatus === BRIDGE_STATUS.PAUSED ? (
                 <>
@@ -405,6 +436,7 @@ const Navbar = ({ isEmbedUser, params }) => {
           </div>
           <div className="">
             <button
+              id="navbar-pause-resume-button"
               onMouseDown={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -412,15 +444,16 @@ const Navbar = ({ isEmbedUser, params }) => {
                 setShowEllipsisMenu(false);
               }}
               disabled={isUpdatingBridge}
-              className={`w-full px-4 text-left text-sm hover:bg-base-200 flex items-center gap-1 cursor-pointer ${isUpdatingBridge ? 'opacity-50 cursor-not-allowed' : ''
-                } ${isArchived ? 'hidden' : ''}`}
+              className={`w-full px-4 text-left text-sm hover:bg-base-200 flex items-center gap-1 cursor-pointer ${
+                isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""
+              } ${isArchived ? "hidden" : ""}`}
             >
-              {!isArchived ?
+              {!isArchived ? (
                 <>
                   <ArchiveRestore size={14} className="text-red-600" />
                   Unarchive Agent
                 </>
-              : null}
+              ) : null}
             </button>
           </div>
         </div>
@@ -432,26 +465,28 @@ const Navbar = ({ isEmbedUser, params }) => {
   return (
     <div className="bg-base-100 z-medium">
       {/* Main navigation header */}
-      <div className={`sticky top-0 z-high transition-all duration-300 ${isScrolled
-        ? 'bg-base-100/95 backdrop-blur-sm shadow-md border-b border-base-300'
-        : 'bg-base-100 border-b border-base-200 '
-        }`}>
-
+      <div
+        className={`sticky top-0 z-high transition-all duration-300 ${
+          isScrolled
+            ? "bg-base-100/95 backdrop-blur-sm shadow-md border-b border-base-300"
+            : "bg-base-100 border-b border-base-200 "
+        }`}
+      >
         {/* Top bar with breadcrumb/home and actions */}
         <div className="flex w-full items-center justify-between px-2 sm:px-4 lg:px-6 h-10 min-w-0">
           {/* Left: Agent Name and Versions */}
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-5 min-w-0 flex-1">
-            {(isEmbedUser && !hideHomeButton) &&
+            {isEmbedUser && !hideHomeButton && (
               <button
                 onClick={handleHomeClick}
                 className="btn btn-xs sm:btn-sm gap-1 sm:gap-2 hover:bg-base-200 px-2 sm:px-3"
                 title="Go to Home"
               >
-                <Home size={14} className="sm:w-4 sm:h-4" />
+                <Home id="navbar-home-button" size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline text-sm sm:text-sm">Home</span>
               </button>
-            }
-            
+            )}
+
             {/* Simple Agent Name Display */}
             <div className="hidden sm:flex items-center ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-1">
               {((showAgentName && isEmbedUser) || !isEmbedUser) && (
@@ -487,20 +522,21 @@ const Navbar = ({ isEmbedUser, params }) => {
               )}
               {/* Divider */}
               <div className="mx-1 sm:mx-2 h-4 w-px bg-base-300 flex-shrink-0"></div>
-              
+
               {/* Published Button + Bridge Version Dropdown */}
-              {activeTab === 'configure' && (
+              {activeTab === "configure" && (
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {/* Published Button */}
                   {publishedVersion && (
                     <button
+                      id="navbar-published-button"
                       onClick={handlePublishedClick}
                       className={`btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap min-w-fit ${
                         isPublished
-                          ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200'
-                          : 'bg-base-100 text-base-content border border-base-300 hover:bg-green-50 hover:text-green-700 hover:border-green-300'
+                          ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                          : "bg-base-100 text-base-content border border-base-300 hover:bg-green-50 hover:text-green-700 hover:border-green-300"
                       }`}
-                      title={isPublished ? 'Currently viewing published version' : 'Switch to published version'}
+                      title={isPublished ? "Currently viewing published version" : "Switch to published version"}
                     >
                       <span className="hidden sm:inline">Published</span>
                       <span className="sm:hidden">Pub</span>
@@ -513,8 +549,8 @@ const Navbar = ({ isEmbedUser, params }) => {
                   {/* Bridge Version Dropdown - Desktop Only */}
                   <div className="hidden sm:flex min-w-0 flex-1">
                     {orgId && bridgeId ? (
-                      <BridgeVersionDropdown 
-                        params={{ org_id: orgId, id: bridgeId }} 
+                      <BridgeVersionDropdown
+                        params={{ org_id: orgId, id: bridgeId }}
                         searchParams={searchParams}
                         maxVersions={2}
                       />
@@ -527,30 +563,30 @@ const Navbar = ({ isEmbedUser, params }) => {
                   </div>
                 </div>
               )}
-              
+
               {/* Saving Status Indicator */}
               {savingStatus?.status && (
                 <div className="flex-shrink-0 ml-2 mr-2">
                   <div className="px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 text-base-content">
-                    {savingStatus.status === 'saving' && (
+                    {savingStatus.status === "saving" && (
                       <>
                         <div className="loading loading-spinner loading-xs"></div>
                         <span>Saving</span>
                       </>
                     )}
-                    {savingStatus.status === 'saved' && (
+                    {savingStatus.status === "saved" && (
                       <>
                         <BookCheck size={14} />
                         <span>Saved</span>
                       </>
                     )}
-                    {savingStatus.status === 'failed' && (
+                    {savingStatus.status === "failed" && (
                       <>
                         <ClipboardX size={14} />
                         <span>Failed</span>
                       </>
                     )}
-                    {savingStatus.status === 'warning' && (
+                    {savingStatus.status === "warning" && (
                       <>
                         <Clock size={14} />
                         <span>Warning</span>
@@ -559,7 +595,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                   </div>
                 </div>
               )}
-              
+
               {/* Bridge Status Indicator */}
               {bridgeStatus !== BRIDGE_STATUS.ACTIVE && (
                 <div className="flex-shrink-0">
@@ -574,8 +610,7 @@ const Navbar = ({ isEmbedUser, params }) => {
             {/* Navigation Tabs - Fixed Position with Sliding Animation */}
             <div className="flex items-center gap-1 flex-shrink-0">
               {(isEmbedUser && showHistory) || !isEmbedUser ? (
-                <div className="relative flex items-center gap-1"
-                  style={{ width: `${TAB_WIDTH * TABS.length}px` }}>
+                <div className="relative flex items-center gap-1" style={{ width: `${TAB_WIDTH * TABS.length}px` }}>
                   {/* Sliding background indicator */}
                   <span
                     className="absolute top-0 left-0 h-full rounded-lg bg-primary shadow-sm transition-transform duration-300 ease-in-out"
@@ -588,23 +623,18 @@ const Navbar = ({ isEmbedUser, params }) => {
                     const isActive = activeTab === tab.id;
                     return (
                       <button
+                        id={`navbar-tab-${tab.id}`}
                         key={tab.id}
                         onClick={() => handleTabChange(tab.id)}
                         className={`relative z-10 h-8 flex items-center justify-center gap-2 text-sm font-medium transition-colors
-                ${isActive
-                            ? 'text-primary-content'
-                            : 'text-base-content/70 hover:text-base-content'
-                          }`}
+                ${isActive ? "text-primary-content" : "text-base-content/70 hover:text-base-content"}`}
                         style={{ width: `${TAB_WIDTH}px` }} // 🔒 lock tab width
                       >
                         <tab.icon
                           size={14}
-                          className={`w-3.5 h-3.5 transition-opacity ${isActive ? 'opacity-100' : 'opacity-60'
-                            }`}
+                          className={`w-3.5 h-3.5 transition-opacity ${isActive ? "opacity-100" : "opacity-60"}`}
                         />
-                        <span className="truncate text-xs">
-                          {isMobile ? tab.shortLabel : tab.label}
-                        </span>
+                        <span className="truncate text-xs">{isMobile ? tab.shortLabel : tab.label}</span>
                       </button>
                     );
                   })}
@@ -625,6 +655,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 {!isEmbedUser && (
                   <div className="tooltip tooltip-bottom" data-tip="Updates History">
                     <button
+                      id="navbar-history-button"
                       className="p-1 bg-base-300 rounded-md hover:bg-base-200 transition-colors"
                       onClick={toggleConfigHistorySidebar}
                     >
@@ -635,21 +666,26 @@ const Navbar = ({ isEmbedUser, params }) => {
               </div>
 
               {/* Publish/Discard Dropdown - Fixed Position */}
-              {activeTab == 'configure' && (
+              {activeTab == "configure" && (
                 <div className="flex items-center">
                   <div className="dropdown dropdown-end">
                     <button
+                      id="navbar-publish-dropdown-toggle"
                       tabIndex={0}
                       role="button"
-                      className={`inline-flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive hover:bg-primary/90 rounded-md gap-1 lg:gap-1.5 px-2 lg:px-3 has-[>svg]:px-2 lg:has-[>svg]:px-2.5 h-8 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm shadow-lg shadow-emerald-500/20 transition-all duration-200 font-medium min-w-0 ${isPublishing ? 'loading' : ''}`}
+                      className={`inline-flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive hover:bg-primary/90 rounded-md gap-1 lg:gap-1.5 px-2 lg:px-3 has-[>svg]:px-2 lg:has-[>svg]:px-2.5 h-8 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm shadow-lg shadow-emerald-500/20 transition-all duration-200 font-medium min-w-0 ${isPublishing ? "loading" : ""}`}
                       disabled={isPublishing || isPublished}
                     >
-                      <span className="text-white text-sm truncate">{isPublishing ? 'Publishing...' : 'Publish'}</span>
+                      <span className="text-white text-sm truncate">{isPublishing ? "Publishing..." : "Publish"}</span>
                       {!isPublishing && <ChevronDown size={12} className="text-white" />}
                     </button>
-                    <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-very-high w-52 p-2 shadow border border-base-200">
+                    <ul
+                      tabIndex={0}
+                      className="dropdown-content menu bg-base-100 rounded-box z-very-high w-52 p-2 shadow border border-base-200"
+                    >
                       <li>
                         <button
+                          id="navbar-publish-button"
                           onClick={handlePublish}
                           disabled={!isDrafted || isPublishing || isPublished}
                           className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-base-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -661,6 +697,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                       {isDrafted && publishedVersionId != null && (
                         <li>
                           <button
+                            id="navbar-revert-button"
                             onClick={() => openModal(MODAL_TYPE.DELETE_MODAL)}
                             disabled={isUpdatingBridge || isPublishing || isPublished}
                             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-base-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -672,15 +709,10 @@ const Navbar = ({ isEmbedUser, params }) => {
                       )}
                     </ul>
                   </div>
-
                 </div>
               )}
               {/* Ellipsis menu - Fixed Position */}
-              <div className="flex items-center">
-                {!isEmbedUser && (
-                  <EllipsisMenu />
-                )}
-              </div>
+              <div className="flex items-center">{!isEmbedUser && <EllipsisMenu />}</div>
             </div>
 
             {/* Mobile view - compact buttons removed from header for embed users */}
@@ -692,26 +724,31 @@ const Navbar = ({ isEmbedUser, params }) => {
       </div>
 
       {/* Mobile Version Dropdown - Below navbar */}
-      <div className="sm:hidden bg-base-100 border-b border-base-200 px-2 py-2">
+      <div id="navbar-mobile-agent-name-display" className="sm:hidden bg-base-100 border-b border-base-200 px-2 py-2">
         <div className="flex items-center justify-between gap-2">
           {/* Agent Name - Editable */}
           <div className="flex items-center min-w-0 flex-1">
             <div className="flex items-center px-1 py-1 rounded-lg min-w-0 max-w-[120px] cursor-pointer group hover:bg-base-200/50 transition-colors">
               {!isEditingName ? (
-                <div className="flex items-center gap-1.5" onClick={handleNameEdit}>
-                  <span 
-                    className="font-semibold text-sm text-base-content truncate flex-shrink" 
+                <div
+                  id="navbar-mobile-agent-name-display-inner"
+                  className="flex items-center gap-1.5"
+                  onClick={handleNameEdit}
+                >
+                  <span
+                    className="font-semibold text-sm text-base-content truncate flex-shrink"
                     title={`${agentName} - Click to edit`}
                   >
                     {agentName}
                   </span>
-                  <Edit2 
-                    size={10} 
-                    className="text-base-content/40 group-hover:text-base-content/60 transition-colors flex-shrink-0" 
+                  <Edit2
+                    size={10}
+                    className="text-base-content/40 group-hover:text-base-content/60 transition-colors flex-shrink-0"
                   />
                 </div>
               ) : (
                 <input
+                  id="navbar-mobile-agent-name-input"
                   type="text"
                   value={editedName}
                   onChange={(e) => setEditedName(e.target.value)}
@@ -724,20 +761,21 @@ const Navbar = ({ isEmbedUser, params }) => {
               )}
             </div>
           </div>
-          
+
           {/* Published Button and Version Dropdown - Only show on configure tab */}
-          {activeTab === 'configure' && (
+          {activeTab === "configure" && (
             <>
               {/* Published Button */}
               {publishedVersion && (
                 <button
+                  id="navbar-mobile-published-button"
                   onClick={handlePublishedClick}
                   className={`btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
                     isPublished
-                      ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200'
-                      : 'bg-base-100 text-base-content border border-base-300 hover:bg-green-50 hover:text-green-700 hover:border-green-300'
+                      ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                      : "bg-base-100 text-base-content border border-base-300 hover:bg-green-50 hover:text-green-700 hover:border-green-300"
                   }`}
-                  title={isPublished ? 'Currently viewing published version' : 'Switch to published version'}
+                  title={isPublished ? "Currently viewing published version" : "Switch to published version"}
                 >
                   <span>Pub</span>
                   {isPublished && (
@@ -749,8 +787,8 @@ const Navbar = ({ isEmbedUser, params }) => {
               {/* Version Dropdown */}
               <div className="min-w-0">
                 {orgId && bridgeId ? (
-                  <BridgeVersionDropdown 
-                    params={{ org_id: orgId, id: bridgeId }} 
+                  <BridgeVersionDropdown
+                    params={{ org_id: orgId, id: bridgeId }}
                     searchParams={searchParams}
                     maxVersions={2}
                     showDropdownOnly={true}
@@ -764,35 +802,47 @@ const Navbar = ({ isEmbedUser, params }) => {
               </div>
             </>
           )}
-          
+
           {/* Ellipsis Menu */}
           {!isEmbedUser && <EllipsisMenu />}
         </div>
       </div>
 
       {/* Mobile action buttons - for both normal and embed users on configure tab */}
-      {isMobile && activeTab === 'configure' && (
+      {isMobile && activeTab === "configure" && (
         <div className=" p-2">
           <div className="flex gap-1 sm:gap-2">
-            {!isEmbedUser && <button className="tooltip tooltip-left px-2" data-tip="Updates History" onClick={toggleConfigHistorySidebar}>
-              <HistoryIcon size={14} />
-            </button>}
+            {!isEmbedUser && (
+              <button
+                id="navbar-mobile-history-button"
+                className="tooltip tooltip-left px-2"
+                data-tip="Updates History"
+                onClick={toggleConfigHistorySidebar}
+              >
+                <HistoryIcon size={14} />
+              </button>
+            )}
 
             {/* Mobile Publish/Discard Dropdown */}
             <div className="dropdown dropdown-end flex-1">
-              <div 
-                tabIndex={0} 
-                role="button" 
-                className={`btn btn-xs bg-success gap-1 w-full rounded-full ${isPublishing ? 'loading' : ''}`}
+              <div
+                id="navbar-mobile-publish-dropdown-toggle"
+                tabIndex={0}
+                role="button"
+                className={`btn btn-xs bg-success gap-1 w-full rounded-full ${isPublishing ? "loading" : ""}`}
                 disabled={isPublishing}
               >
                 {!isPublishing && <BookCheck size={12} className="text-black" />}
-                <span className="text-black text-xs">{isPublishing ? 'Publishing...' : 'Publish'}</span>
+                <span className="text-black text-xs">{isPublishing ? "Publishing..." : "Publish"}</span>
                 {!isPublishing && <ChevronDown size={10} className="text-black" />}
               </div>
-              <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-very-high w-48 p-2 shadow border border-base-200">
+              <ul
+                tabIndex={0}
+                className="dropdown-content menu bg-base-100 rounded-box z-very-high w-48 p-2 shadow border border-base-200"
+              >
                 <li>
                   <button
+                    id="navbar-mobile-publish-button"
                     onClick={handlePublish}
                     disabled={!isDrafted || isPublishing}
                     className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -804,6 +854,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 {isDrafted && (
                   <li>
                     <button
+                      id="navbar-mobile-revert-button"
                       onClick={() => openModal(MODAL_TYPE.DELETE_MODAL)}
                       disabled={isUpdatingBridge || isPublishing}
                       className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -815,7 +866,6 @@ const Navbar = ({ isEmbedUser, params }) => {
                 )}
               </ul>
             </div>
-
           </div>
         </div>
       )}
@@ -833,9 +883,16 @@ const Navbar = ({ isEmbedUser, params }) => {
         versionId={versionId}
         isEmbedUser={isEmbedUser}
       />
-      
+
       {/* Modals */}
-      <DeleteModal onConfirm={handleDiscardChanges} title="Discard Changes" description={`Are you sure you want to discard the changes? This action cannot be undone.`} buttonTitle="Discard" loading={isDiscardingWithHook} isAsync={true} />
+      <DeleteModal
+        onConfirm={handleDiscardChanges}
+        title="Discard Changes"
+        description={`Are you sure you want to discard the changes? This action cannot be undone.`}
+        buttonTitle="Discard"
+        loading={isDiscardingWithHook}
+        isAsync={true}
+      />
     </div>
   );
 };

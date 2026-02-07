@@ -3,7 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   knowledgeBaseData: {},
   knowledgeBaseBackup: {},
-  loading: false
+  loading: false,
 };
 
 export const knowledgeBaseReducer = createSlice({
@@ -11,19 +11,19 @@ export const knowledgeBaseReducer = createSlice({
   initialState,
   reducers: {
     knowledgeBaseRollBackReducer: (state, action) => {
-      const { orgId } = action.payload;     
+      const { orgId } = action.payload;
       // Only restore if we have a backup
       if (state.knowledgeBaseBackup && state.knowledgeBaseBackup[orgId]) {
         // Restore from backup
         state.knowledgeBaseData[orgId] = [...state.knowledgeBaseBackup[orgId]];
       }
     },
-    
+
     fetchAllKnowlegdeBaseData: (state, action) => {
       state.knowledgeBaseData[action.payload.orgId] = action.payload.data;
       state.loading = false;
-    },  
-    
+    },
+
     addKnowbaseDataReducer: (state, action) => {
       const { orgId, data, docId, _id } = action.payload;
       if (state.knowledgeBaseData[orgId]) {
@@ -36,7 +36,7 @@ export const knowledgeBaseReducer = createSlice({
       const { orgId, id } = action.payload;
       if (state.knowledgeBaseData[orgId]) {
         // Handle both property naming patterns (id and _id)
-        state.knowledgeBaseData[orgId] = state.knowledgeBaseData[orgId].filter(entry => {
+        state.knowledgeBaseData[orgId] = state.knowledgeBaseData[orgId].filter((entry) => {
           // If the entry has _id property, compare with that
           if (entry._id) return entry._id !== id;
           // If the entry has id property, compare with that
@@ -49,12 +49,12 @@ export const knowledgeBaseReducer = createSlice({
     // Create a backup of knowledge base data before making changes
     backupKnowledgeBaseReducer: (state, action) => {
       const { orgId } = action.payload;
-      
+
       // Make sure the backup object exists
       if (!state.knowledgeBaseBackup) {
         state.knowledgeBaseBackup = {};
       }
-      
+
       // Only create backup if data exists for this org
       if (state.knowledgeBaseData && state.knowledgeBaseData[orgId]) {
         // Use deep cloning to avoid reference issues
@@ -63,17 +63,17 @@ export const knowledgeBaseReducer = createSlice({
         state.knowledgeBaseBackup[orgId] = [];
       }
     },
-    
+
     // Restore from backup when API call fails
     updateKnowledgeBaseReducer: (state, action) => {
       const { orgId, data, _id } = action.payload;
       if (state.knowledgeBaseData[orgId]) {
-        state.knowledgeBaseData[orgId] = state.knowledgeBaseData[orgId].map(entry => 
+        state.knowledgeBaseData[orgId] = state.knowledgeBaseData[orgId].map((entry) =>
           entry._id === _id ? { ...data, _id } : entry
         );
       }
-    }
-  }
+    },
+  },
 });
 
 export const {
@@ -82,7 +82,7 @@ export const {
   deleteKnowledgeBaseReducer,
   updateKnowledgeBaseReducer,
   backupKnowledgeBaseReducer,
-  knowledgeBaseRollBackReducer
+  knowledgeBaseRollBackReducer,
 } = knowledgeBaseReducer.actions;
 
 export default knowledgeBaseReducer.reducer;

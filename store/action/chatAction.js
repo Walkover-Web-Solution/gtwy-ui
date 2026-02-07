@@ -16,14 +16,14 @@ import {
   updateRtLayerMessage,
   setChatTestCaseId,
   clearChatTestCaseId,
-  clearChannelData
-} from '../reducer/chatReducer';
-import { haveSameItems, buildUserUrls, buildLlmUrls } from '@/utils/attachmentUtils';
+  clearChannelData,
+} from "../reducer/chatReducer";
+import { haveSameItems, buildUserUrls, buildLlmUrls } from "@/utils/attachmentUtils";
 
 const getVideoIdentifier = (video) => {
   if (!video) return null;
-  if (typeof video === 'string') return video;
-  if (typeof video === 'object') {
+  if (typeof video === "string") return video;
+  if (typeof video === "object") {
     return video?.uri || video?.url || null;
   }
   return null;
@@ -35,50 +35,49 @@ export const initializeChatChannel = (channelId) => (dispatch) => {
 };
 
 // Send user message (for dry run API)
-export const sendUserMessage = (channelId, messageContent, messageId, extraData = {}) => (dispatch) => {
-  const timestamp = Date.now();
+export const sendUserMessage =
+  (channelId, messageContent, messageId, extraData = {}) =>
+  (dispatch) => {
+    const timestamp = Date.now();
 
-  // Prefer canonical user_urls structure if provided
-  const baseUserUrls = Array.isArray(extraData.user_urls)
-    ? extraData.user_urls
-    : buildUserUrls(
-        extraData.image_urls || extraData.images || [],
-        extraData.files || []
-      );
+    // Prefer canonical user_urls structure if provided
+    const baseUserUrls = Array.isArray(extraData.user_urls)
+      ? extraData.user_urls
+      : buildUserUrls(extraData.image_urls || extraData.images || [], extraData.files || []);
 
-  // Derive simple image/file URL arrays for existing UI from user_urls
-  const images = baseUserUrls
-    .filter((item) => item?.type === 'image')
-    .map((item) => item.url)
-    .filter(Boolean);
+    // Derive simple image/file URL arrays for existing UI from user_urls
+    const images = baseUserUrls
+      .filter((item) => item?.type === "image")
+      .map((item) => item.url)
+      .filter(Boolean);
 
-  const files = baseUserUrls
-    .filter((item) => item?.type === 'pdf')
-    .map((item) => item.url)
-    .filter(Boolean);
+    const files = baseUserUrls
+      .filter((item) => item?.type === "pdf")
+      .map((item) => item.url)
+      .filter(Boolean);
 
-  const attachments = {
-    image_urls: images,
-    files,
-    user_urls: baseUserUrls,
-    video_data: extraData.video_data || null,
-    youtube_url: extraData.youtube_url || null,
+    const attachments = {
+      image_urls: images,
+      files,
+      user_urls: baseUserUrls,
+      video_data: extraData.video_data || null,
+      youtube_url: extraData.youtube_url || null,
+    };
+    const userMessage = {
+      id: messageId || `user_${timestamp}`,
+      sender: "user",
+      playground: true,
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      content: messageContent.replace(/\n/g, "  \n"), // Markdown line break
+      ...attachments,
+    };
+
+    dispatch(addUserMessage({ channelId, message: userMessage }));
+    return userMessage;
   };
-  const userMessage = {
-    id: messageId || `user_${timestamp}`,
-    sender: "user",
-    playground: true,
-    time: new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    content: messageContent.replace(/\n/g, "  \n"), // Markdown line break
-    ...attachments,
-  };
-
-  dispatch(addUserMessage({ channelId, message: userMessage }));
-  return userMessage;
-};
 
 // Add loading assistant message
 export const addLoadingAssistantMessage = (channelId, messageId) => (dispatch) => {
@@ -106,15 +105,17 @@ export const updateAssistantMessageWithResponse = (channelId, messageId, respons
     firstAttemptError: responseData?.firstAttemptError,
     model: responseData?.model,
     finish_reason: responseData?.finish_reason,
-    role: responseData?.role || "assistant"
+    role: responseData?.role || "assistant",
   };
 
-  dispatch(updateAssistantMessage({
-    channelId,
-    messageId,
-    content,
-    additionalData
-  }));
+  dispatch(
+    updateAssistantMessage({
+      channelId,
+      messageId,
+      content,
+      additionalData,
+    })
+  );
 };
 
 // Edit message action
@@ -145,12 +146,12 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
   testCaseConversation.forEach((msg, index) => {
     const chatMessage = {
       id: `testcase_${msg.role}_${baseTimestamp}_${index}`,
-      sender: msg.role === 'user' ? 'user' : 'assistant',
+      sender: msg.role === "user" ? "user" : "assistant",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+      content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
     };
     convertedMessages.push(chatMessage);
   });
@@ -158,7 +159,7 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
   if (expected?.response) {
     const expectedMessage = {
       id: `testcase_expected_${baseTimestamp}`,
-      sender: 'expected',
+      sender: "expected",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -170,17 +171,19 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
   }
 
   // Convert to conversation format for the backend
-  const backendConversation = testCaseConversation.map(msg => ({
+  const backendConversation = testCaseConversation.map((msg) => ({
     role: msg.role,
-    content: msg.content
+    content: msg.content,
   }));
 
-  dispatch(loadTestCaseMessages({
-    channelId,
-    messages: convertedMessages,
-    conversation: backendConversation,
-    testCaseId
-  }));
+  dispatch(
+    loadTestCaseMessages({
+      channelId,
+      messages: convertedMessages,
+      conversation: backendConversation,
+      testCaseId,
+    })
+  );
 };
 
 // Set uploaded files
@@ -206,7 +209,7 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
   const timestamp = Date.now();
 
   // Determine message type and create UI message
-  const messageType = socketMessage.role || socketMessage.sender || 'assistant';
+  const messageType = socketMessage.role || socketMessage.sender || "assistant";
 
   let uiMessage = {
     id: socketMessage.id || `rt_${messageType}_${timestamp}`,
@@ -217,7 +220,7 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
     }),
     content: socketMessage.content || "",
     isLoading: socketMessage.isStreaming || false,
-    ...socketMessage
+    ...socketMessage,
   };
 
   const normalizedImages = Array.isArray(socketMessage.image_urls)
@@ -226,16 +229,16 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
       ? socketMessage.images
       : [];
   uiMessage.image_urls = normalizedImages;
-  uiMessage.files = Array.isArray(socketMessage.files) ? socketMessage.files : (uiMessage.files || []);
+  uiMessage.files = Array.isArray(socketMessage.files) ? socketMessage.files : uiMessage.files || [];
   const llmUrls = buildLlmUrls(normalizedImages, uiMessage.files || []);
   uiMessage.llm_urls = llmUrls;
   uiMessage.video_data = socketMessage.video_data || uiMessage.video_data || null;
   uiMessage.youtube_url = socketMessage.youtube_url || uiMessage.youtube_url || null;
 
-  if (messageType === 'assistant' && channelId) {
+  if (messageType === "assistant" && channelId) {
     const state = getState();
     const existingMessages = state?.chatReducer?.messagesByChannel?.[channelId] || [];
-    const lastUserMessage = [...existingMessages].reverse().find((msg) => msg.sender === 'user');
+    const lastUserMessage = [...existingMessages].reverse().find((msg) => msg.sender === "user");
 
     if (lastUserMessage) {
       if (haveSameItems(lastUserMessage.image_urls, uiMessage.image_urls)) {
@@ -259,11 +262,13 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
     }
   }
 
-  dispatch(addRtLayerMessage({
-    channelId,
-    message: uiMessage,
-    messageType
-  }));
+  dispatch(
+    addRtLayerMessage({
+      channelId,
+      message: uiMessage,
+      messageType,
+    })
+  );
 
   // Clear loading state when RT layer message is received
   dispatch(setChatLoading(channelId, false));
@@ -271,19 +276,23 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
 };
 
 // Handle RT layer streaming update
-export const handleRtLayerStreamingUpdate = (channelId, messageId, content, isComplete = false) => (dispatch) => {
-  dispatch(updateRtLayerMessage({
-    channelId,
-    messageId,
-    content,
-    isComplete
-  }));
+export const handleRtLayerStreamingUpdate =
+  (channelId, messageId, content, isComplete = false) =>
+  (dispatch) => {
+    dispatch(
+      updateRtLayerMessage({
+        channelId,
+        messageId,
+        content,
+        isComplete,
+      })
+    );
 
-  // Clear loading state when streaming is complete
-  if (isComplete) {
-    dispatch(setChatLoading(channelId, false));
-  }
-};
+    // Clear loading state when streaming is complete
+    if (isComplete) {
+      dispatch(setChatLoading(channelId, false));
+    }
+  };
 
 // Clear all channel data (when switching agents)
 export const clearChatChannelData = (channelId) => (dispatch) => {
@@ -291,41 +300,43 @@ export const clearChatChannelData = (channelId) => (dispatch) => {
 };
 
 // Combined action for sending message and handling RT response
-export const sendMessageWithRtLayer = (channelId, messageContent, apiCall, isOrchestralModel = false, additionalData = {}) => async (dispatch, getState) => {
-  let userMessage = null;
-  let loadingMessage = null;
+export const sendMessageWithRtLayer =
+  (channelId, messageContent, apiCall, isOrchestralModel = false, additionalData = {}) =>
+  async (dispatch, getState) => {
+    let userMessage = null;
+    let loadingMessage = null;
 
-  try {
-    // Set loading state
-    dispatch(setChatLoading(channelId, true));
+    try {
+      // Set loading state
+      dispatch(setChatLoading(channelId, true));
 
-    // Send user message
-    userMessage = dispatch(sendUserMessage(channelId, messageContent, null, additionalData));
+      // Send user message
+      userMessage = dispatch(sendUserMessage(channelId, messageContent, null, additionalData));
 
-    // Add loading assistant message
-    loadingMessage = dispatch(addLoadingAssistantMessage(channelId));
+      // Add loading assistant message
+      loadingMessage = dispatch(addLoadingAssistantMessage(channelId));
 
-    // Make API call (this should trigger RT layer response)
-    const response = await apiCall({
-      conversation: [], // Will be populated from Redux state
-      user: messageContent
-    });
-    return { userMessage, loadingMessage, response };
-  } catch (error) {
-    // Remove both user message and loading assistant message on error
-    if (userMessage) {
-      dispatch(removeMessage({ channelId, messageId: userMessage.id }));
+      // Make API call (this should trigger RT layer response)
+      const response = await apiCall({
+        conversation: [], // Will be populated from Redux state
+        user: messageContent,
+      });
+      return { userMessage, loadingMessage, response };
+    } catch (error) {
+      // Remove both user message and loading assistant message on error
+      if (userMessage) {
+        dispatch(removeMessage({ channelId, messageId: userMessage.id }));
+      }
+      if (loadingMessage) {
+        dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
+      }
+
+      dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
+      dispatch(setChatLoading(channelId, false)); // Clear loading on error
+      throw error;
     }
-    if (loadingMessage) {
-      dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
-    }
-
-    dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
-    dispatch(setChatLoading(channelId, false)); // Clear loading on error
-    throw error;
-  }
-  // Note: No finally block - loading cleared only when RT response received or on error
-};
+    // Note: No finally block - loading cleared only when RT response received or on error
+  };
 
 // Set testcase_id for channel (persisted until manual clear)
 export const setChatTestCaseIdAction = (channelId, testCaseId) => (dispatch) => {

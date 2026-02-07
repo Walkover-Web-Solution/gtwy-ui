@@ -1,9 +1,9 @@
-import { closeModal, createDiff, simulateStreaming } from '@/utils/utility';
-import { CopyIcon, RedoIcon, UndoIcon } from '@/components/Icons';
-import React, { useEffect, useState, useMemo } from 'react';
-import ComparisonCheck from '@/utils/comparisonCheck';
-import Canvas from '../Canvas';
-import Modal from '../UI/Modal';
+import { closeModal, createDiff, simulateStreaming } from "@/utils/utility";
+import { CopyIcon, RedoIcon, UndoIcon } from "@/components/Icons";
+import React, { useEffect, useState, useMemo } from "react";
+import ComparisonCheck from "@/utils/comparisonCheck";
+import Canvas from "../Canvas";
+import Modal from "../UI/Modal";
 
 function OptimiseBaseModal({
   modalType,
@@ -19,16 +19,15 @@ function OptimiseBaseModal({
   setMessages,
   showHistory = false,
   history = [],
-  setCurrentIndex=()=>{},
+  setCurrentIndex = () => {},
   currentIndex = 0,
   onUndo,
   onRedo,
   additionalValidation,
-  errorMessage="",
-  setErrorMessage=()=>{},
-  textareaProps = {}
+  errorMessage = "",
+  setErrorMessage = () => {},
+  textareaProps = {},
 }) {
-  
   const [diff, setDiff] = useState(false);
   const [loading, setLoading] = useState(false);
   const [newContent, setNewContent] = useState(content);
@@ -62,7 +61,8 @@ function OptimiseBaseModal({
     try {
       const result = await optimizeApi(instructionText, params, searchParams);
       setLoading(false);
-      const updatedContent = typeof result?.updated === 'object' ? JSON.stringify(result?.updated, undefined, 4) : result?.updated;
+      const updatedContent =
+        typeof result?.updated === "object" ? JSON.stringify(result?.updated, undefined, 4) : result?.updated;
       simulateStreaming(updatedContent, setStreamedContent, setIsStreaming, () => {
         setNewContent(updatedContent);
       });
@@ -118,7 +118,7 @@ function OptimiseBaseModal({
   };
 
   const displayContent = isStreaming ? streamedContent : newContent;
-  
+
   // Fixed: Use consistent logic for textarea content
   const getTextareaContent = () => {
     if (isStreaming) {
@@ -135,31 +135,30 @@ function OptimiseBaseModal({
 
   const textareaContent = getTextareaContent();
 
-
   return (
-    <Modal MODAL_ID={modalType}>
-      <div className="modal-box max-w-screen-xl w-[calc(100%-8rem)] mx-auto bg-base-100 overflow-hidden flex flex-col">
+    <Modal MODAL_ID={modalType} onClose={handleCloseModal}>
+      <div
+        id="optimise-base-modal-container"
+        className="modal-box max-w-screen-xl w-[calc(100%-8rem)] mx-auto bg-base-100 overflow-hidden flex flex-col"
+      >
         {/* Fixed Header */}
         <div className="flex justify-between items-center pb-2 pt-2 bg-base-100 z-low">
           <h3 className="font-bold text-lg">{title}</h3>
           <button
+            id="optimise-toggle-diff-button"
             className="btn btn-sm btn-primary"
-            onClick={() => setDiff(prev => !prev)}
+            onClick={() => setDiff((prev) => !prev)}
             type="button"
           >
             {diff ? "Instructions" : "Show Diff"}
           </button>
         </div>
 
-        <div className={`flex h-full ${diff ? 'overflow-auto' : 'overflow-hidden'} gap-3 w-full max-h-[700px]`}>
-          <div className='w-full h-full'>
+        <div className={`flex h-full ${diff ? "overflow-auto" : "overflow-hidden"} gap-3 w-full max-h-[700px]`}>
+          <div className="w-full h-full">
             {!diff ? (
               <div className="flex-1 h-full flex flex-col">
-                <Canvas
-                  OptimizePrompt={handleOptimize}
-                  messages={messages}
-                  setMessages={setMessages}
-                />
+                <Canvas OptimizePrompt={handleOptimize} messages={messages} setMessages={setMessages} />
                 {errorMessage && (
                   <div className="mt-2">
                     <span className="text-red-500">{errorMessage}</span>
@@ -168,17 +167,17 @@ function OptimiseBaseModal({
               </div>
             ) : (
               <div className="flex-1 overflow-auto">
-                <ComparisonCheck 
-                  diffData={diffData} 
-                  isStreaming={isStreaming} 
+                <ComparisonCheck
+                  diffData={diffData}
+                  isStreaming={isStreaming}
                   handleUndo={showHistory ? onUndo : undefined}
                   handleRedo={showHistory ? onRedo : undefined}
-                  copyToClipboard={copyToClipboard} 
-                  copyText={copyText} 
-                  currentIndex={currentIndex} 
-                  promptHistory={history} 
-                  displayPrompt={displayContent} 
-                  errorMessage={errorMessage} 
+                  copyToClipboard={copyToClipboard}
+                  copyText={copyText}
+                  currentIndex={currentIndex}
+                  promptHistory={history}
+                  displayPrompt={displayContent}
+                  errorMessage={errorMessage}
                   key={contentLabel.toLowerCase()}
                 />
               </div>
@@ -186,15 +185,13 @@ function OptimiseBaseModal({
           </div>
 
           {!diff && (
-            <div className='w-full h-full pt-3 overflow-auto'>
-              <div className='flex justify-between'>
+            <div className="w-full h-full pt-3 overflow-auto">
+              <div className="flex justify-between">
                 <div className="label">
                   <span className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text">
                     AI generated {contentLabel.toLowerCase()}
                     {isStreaming && (
-                      <span className="ml-2 text-sm text-base-content animate-pulse">
-                        ✨ Generating...
-                      </span>
+                      <span className="ml-2 text-sm text-base-content animate-pulse">✨ Generating...</span>
                     )}
                   </span>
                 </div>
@@ -204,13 +201,13 @@ function OptimiseBaseModal({
                       <div className="tooltip cursor-pointer" data-tip={`Previous ${contentLabel}`}>
                         <UndoIcon
                           onClick={onUndo}
-                          className={`${(!currentIndex || isStreaming) ? "opacity-50 pointer-events-none" : "hover:text-blue-600"}`}
+                          className={`${!currentIndex || isStreaming ? "opacity-50 pointer-events-none" : "hover:text-blue-600"}`}
                         />
                       </div>
                       <div className="tooltip tooltip-left cursor-pointer" data-tip={`Next ${contentLabel}`}>
                         <RedoIcon
                           onClick={onRedo}
-                          className={`${((currentIndex >= history.length) || isStreaming) ? "opacity-50 pointer-events-none" : "hover:text-blue-600"}`}
+                          className={`${currentIndex >= history.length || isStreaming ? "opacity-50 pointer-events-none" : "hover:text-blue-600"}`}
                         />
                       </div>
                     </>
@@ -219,13 +216,14 @@ function OptimiseBaseModal({
                     <CopyIcon
                       onClick={copyToClipboard}
                       size={20}
-                      className={`${(!displayContent || isStreaming) ? "opacity-50 pointer-events-none" : "hover:text-blue-600"}`}
+                      className={`${!displayContent || isStreaming ? "opacity-50 pointer-events-none" : "hover:text-blue-600"}`}
                     />
                   </div>
                 </div>
               </div>
               <div className="relative">
                 <textarea
+                  id="optimise-content-textarea"
                   className="textarea bg-white dark:bg-black/15 textarea-bordered border focus:border-primary caret-base-content p-2 w-full resize-none flex-grow min-h-[60vh]"
                   value={textareaContent}
                   onChange={(e) => handleContentChange(e.target.value)}
@@ -236,8 +234,14 @@ function OptimiseBaseModal({
                   <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-base-100 px-2 py-1 rounded-md shadow-sm border border-base-300">
                     <div className="flex space-x-1">
                       <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
-                      <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div
+                        className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
                     </div>
                     <span className="text-xs text-gray-600">Streaming</span>
                   </div>
@@ -250,6 +254,7 @@ function OptimiseBaseModal({
         {/* Fixed Footer */}
         <div className="border-t border-base-content/20 mb-2 bg-base-100 pt-1 flex justify-end gap-3">
           <button
+            id="optimise-close-button"
             onClick={handleCloseModal}
             className="btn btn-sm mt-2"
             disabled={isStreaming}
@@ -258,14 +263,13 @@ function OptimiseBaseModal({
             Close
           </button>
           <button
+            id="optimise-apply-button"
             onClick={handleApply}
             className="btn btn-sm btn-primary mt-2"
             disabled={loading || isStreaming || !displayContent}
             type="button"
           >
-            {(loading || isStreaming) && (
-              <span className="loading loading-spinner loading-sm mr-2"></span>
-            )}
+            {(loading || isStreaming) && <span className="loading loading-spinner loading-sm mr-2"></span>}
             Apply
           </button>
         </div>

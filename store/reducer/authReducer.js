@@ -2,7 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   authenticationData: {},
-  loading: false
+  loading: false,
 };
 
 export const authDataReducer = createSlice({
@@ -11,8 +11,7 @@ export const authDataReducer = createSlice({
   reducers: {
     fetchAllAuthenticationData: (state, action) => {
       const { orgId, data } = action.payload;
-     if(data)
-      state.authenticationData[orgId] = [data];
+      if (data) state.authenticationData[orgId] = [data];
     },
     addAuthenticationData: (state, action) => {
       const { orgId, data } = action.payload;
@@ -20,13 +19,10 @@ export const authDataReducer = createSlice({
         state.authenticationData[orgId] = [];
       }
       state.authenticationData[orgId] = [data];
-    }
+    },
   },
 });
 
-export const {
-  fetchAllAuthenticationData,
-  addAuthenticationData
-} = authDataReducer.actions;
+export const { fetchAllAuthenticationData, addAuthenticationData } = authDataReducer.actions;
 
 export default authDataReducer.reducer;

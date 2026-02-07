@@ -1,11 +1,10 @@
-import React from 'react';
+import React from "react";
 
 const ConfigurationSkeleton = () => {
   return (
     <div className="h-screen w-full bg-base-300 text-base-content overflow-hidden">
       {/* Main layout */}
       <div className="h-[calc(100vh-3.5rem)] flex">
-
         {/* Left panel */}
         <div className="w-[44%] min-w-[420px] border-r border-base-200 p-4 space-y-4">
           {/* Section header */}

@@ -3,9 +3,9 @@
 import React from "react";
 import ToolsSection from "../ToolsSection";
 
-const ConnectorsTab = ({isPublished}) => {
+const ConnectorsTab = ({ isPublished }) => {
   return (
-    <div className="w-full">
+    <div id="connectors-tab-container" className="w-full">
       <ToolsSection isPublished={isPublished} />
     </div>
   );

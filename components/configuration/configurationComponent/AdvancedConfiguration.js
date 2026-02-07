@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import ResponseFormatSelector from './ResponseFormatSelector';
-import ToolCallCount from './ToolCallCount';
-import GuardrailSelector from './GuardrailSelector';
+import React, { useEffect, useRef } from "react";
+import ResponseFormatSelector from "./ResponseFormatSelector";
+import ToolCallCount from "./ToolCallCount";
+import GuardrailSelector from "./GuardrailSelector";
 
 const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -9,21 +9,17 @@ const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, is
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        dropdownContainerRef.current &&
-        !dropdownContainerRef.current.contains(event.target)
-      ) {
+      if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(event.target)) {
         const serviceDropdown = document.getElementById("service-dropdown");
         const modelDropdown = document.getElementById("model-dropdown");
         serviceDropdown?.removeAttribute("open");
         modelDropdown?.removeAttribute("open");
       }
     };
-  
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
 
   const renderContent = () => (
     <div className="flex flex-col gap-6">
@@ -31,15 +27,19 @@ const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, is
         <GuardrailSelector params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
       </div>
 
-
-      {bridgeType === 'api' && modelType !== 'image' && modelType !== 'embedding' && (
+      {bridgeType === "api" && modelType !== "image" && modelType !== "embedding" && (
         <div className="">
-          <ResponseFormatSelector isPublished={isPublished} isEditor={isEditor} params={params} searchParams={searchParams} />
+          <ResponseFormatSelector
+            isPublished={isPublished}
+            isEditor={isEditor}
+            params={params}
+            searchParams={searchParams}
+          />
         </div>
       )}
 
       <div className="">
-        <ToolCallCount params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor}/>
+        <ToolCallCount params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
       </div>
     </div>
   );

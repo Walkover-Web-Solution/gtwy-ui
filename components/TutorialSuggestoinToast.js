@@ -13,18 +13,15 @@ const TutorialSuggestionToast = ({ setTutorialState, flagKey, TutorialDetails })
   const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
 
   // Memoize current user selection to prevent unnecessary re-renders
-  const currentUser = useCustomSelector(state => state.userDetailsReducer?.userDetails);
+  const currentUser = useCustomSelector((state) => state.userDetailsReducer?.userDetails);
   // Memoize tutorial lookup
-  const currentTutorial = useMemo(() => 
-    TUTORIALS.find(tutorial => tutorial.title === TutorialDetails),
+  const currentTutorial = useMemo(
+    () => TUTORIALS.find((tutorial) => tutorial.title === TutorialDetails),
     [TutorialDetails]
   );
 
   // Memoize progress calculation
-  const progressPercentage = useMemo(() => 
-    ((TIMER_DURATION - timeLeft) / TIMER_DURATION) * 100,
-    [timeLeft]
-  );
+  const progressPercentage = useMemo(() => ((TIMER_DURATION - timeLeft) / TIMER_DURATION) * 100, [timeLeft]);
   // Memoized handler for updating user meta
   const updateUserMeta = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -48,30 +45,33 @@ const TutorialSuggestionToast = ({ setTutorialState, flagKey, TutorialDetails })
   }, [currentUser, flagKey, dispatch]);
 
   // Unified tutorial handler
-  const handleTutorialAction = useCallback(async (action) => {
-    const shouldShowTutorial = action === 'start';
-    
-    setTutorialState(prev => ({
-      ...prev,
-      showSuggestion: false,
-      showTutorial: shouldShowTutorial
-    }));
+  const handleTutorialAction = useCallback(
+    async (action) => {
+      const shouldShowTutorial = action === "start";
 
-    // Only update user meta when skipping
-    if (action === 'skip') {
-      await updateUserMeta();
-    }
-  }, [setTutorialState, updateUserMeta]);
+      setTutorialState((prev) => ({
+        ...prev,
+        showSuggestion: false,
+        showTutorial: shouldShowTutorial,
+      }));
+
+      // Only update user meta when skipping
+      if (action === "skip") {
+        await updateUserMeta();
+      }
+    },
+    [setTutorialState, updateUserMeta]
+  );
 
   // Timer effect with cleanup
   useEffect(() => {
     if (timeLeft <= 0) {
-      handleTutorialAction('skip');
+      handleTutorialAction("skip");
       return;
     }
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(timer);
@@ -84,57 +84,54 @@ const TutorialSuggestionToast = ({ setTutorialState, flagKey, TutorialDetails })
   }
 
   // Check if we're in the browser environment
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
 
   const toastContent = (
-    <div className="fixed top-1 right-1 z-very-high">
+    <div id="tutorial-suggestion-toast-container" className="fixed top-1 right-1 z-very-high">
       <div className="card w-80 bg-base-100 shadow-xl border border-base-300 animate-in slide-in-from-top-2 duration-300">
         {/* Progress indicator */}
         <div className="w-full h-1 bg-base-300 rounded-t-2xl overflow-hidden">
-          <div 
+          <div
             className="h-full bg-primary transition-all duration-1000 ease-linear"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
-        
-        <div className="card-body p-3"> 
+
+        <div className="card-body p-3">
           {/* Header */}
-          <div className="flex items-start justify-between mb-2"> 
+          <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center"> 
-                <span className="text-sm" role="img" aria-label="target">🎯</span>
+              <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                <span className="text-sm" role="img" aria-label="target">
+                  🎯
+                </span>
               </div>
-              <h3 className="card-title text-sm font-semibold text-base-content"> 
-                Welcome!
-              </h3>
+              <h3 className="card-title text-sm font-semibold text-base-content">Welcome!</h3>
             </div>
-           
           </div>
 
           {/* Content */}
           <div className="space-y-1 mb-2">
-            <h4 className="font-medium text-xs text-base-content">
-              {currentTutorial.title}
-            </h4>
-            <p className="text-xs text-base-content/70 leading-tight"> 
-              {currentTutorial.description}
-            </p>
+            <h4 className="font-medium text-xs text-base-content">{currentTutorial.title}</h4>
+            <p className="text-xs text-base-content/70 leading-tight">{currentTutorial.description}</p>
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2 mb-2"> 
+          <div className="flex items-center gap-2 mb-2">
             <button
-              onClick={() => handleTutorialAction('start')}
-              className="btn btn-primary btn-sm flex-1 gap-1" 
+              id="tutorial-suggestion-start-button"
+              onClick={() => handleTutorialAction("start")}
+              className="btn btn-primary btn-sm flex-1 gap-1"
               aria-label="Start tutorial"
             >
               <PlayIcon className="h-3 w-3" fill="currentColor" />
               Start Tutorial
             </button>
             <button
-              onClick={() => handleTutorialAction('skip')}
+              id="tutorial-suggestion-skip-button"
+              onClick={() => handleTutorialAction("skip")}
               className="btn btn-ghost btn-sm"
               aria-label="Skip tutorial"
             >
@@ -148,9 +145,9 @@ const TutorialSuggestionToast = ({ setTutorialState, flagKey, TutorialDetails })
             <span>Auto-skip in {timeLeft}s</span>
             <div className="flex gap-1" role="presentation">
               {[0, 0.2, 0.4].map((delay, index) => (
-                <div 
+                <div
                   key={index}
-                  className="w-1 h-1 bg-base-content/40 rounded-full animate-pulse" 
+                  className="w-1 h-1 bg-base-content/40 rounded-full animate-pulse"
                   style={{ animationDelay: `${delay}s` }}
                 />
               ))}

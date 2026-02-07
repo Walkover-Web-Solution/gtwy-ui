@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import {
-  initializeVariablesState,
-  updateVariables,
-} from "@/store/reducer/variableReducer";
+import { initializeVariablesState, updateVariables } from "@/store/reducer/variableReducer";
 import { sendDataToParent, toggleSidebar } from "@/utils/utility";
 import { CloseIcon } from "@/components/Icons";
 import { Trash2, Upload, Play } from "lucide-react";
@@ -44,8 +41,7 @@ const inferType = (value, fallback) => {
   return "string";
 };
 
-const createLocalId = () =>
-  `var_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
+const createLocalId = () => `var_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
 
 const validateAndFormatValue = (rawValue, type, { allowEmpty } = {}) => {
   const original = rawValue ?? "";
@@ -85,10 +81,7 @@ const validateAndFormatValue = (rawValue, type, { allowEmpty } = {}) => {
         if (type === "array" && !Array.isArray(parsed)) {
           return { ok: false, error: "Value must be a JSON array" };
         }
-        if (
-          type === "object" &&
-          (parsed === null || Array.isArray(parsed) || typeof parsed !== "object")
-        ) {
+        if (type === "object" && (parsed === null || Array.isArray(parsed) || typeof parsed !== "object")) {
           return { ok: false, error: "Value must be a JSON object" };
         }
         return { ok: true, value: JSON.stringify(parsed, null, 2) };
@@ -152,10 +145,7 @@ const validateVariables = (variables, options = {}) => {
       errors.push(`Row ${index + 1}: Default value ${defaultCheck.error.toLowerCase()}`);
     }
     if (key && normalisedKeys.has(lowerKey) && !suppressErrors) {
-      errors.push(
-        `Duplicate key "${key}" found (rows ${normalisedKeys.get(lowerKey) + 1} and ${index + 1
-        })`
-      );
+      errors.push(`Duplicate key "${key}" found (rows ${normalisedKeys.get(lowerKey) + 1} and ${index + 1})`);
     } else if (key) {
       normalisedKeys.set(lowerKey, index);
     }
@@ -163,8 +153,8 @@ const validateVariables = (variables, options = {}) => {
     return {
       id: variable.id || createLocalId(),
       key,
-      value: valueCheck.ok ? valueCheck.value : variable.value ?? "",
-      defaultValue: defaultCheck.ok ? defaultCheck.value : variable.defaultValue ?? "",
+      value: valueCheck.ok ? valueCheck.value : (variable.value ?? ""),
+      defaultValue: defaultCheck.ok ? defaultCheck.value : (variable.defaultValue ?? ""),
       type,
       required: variable.required !== false,
     };
@@ -180,33 +170,22 @@ const validateVariables = (variables, options = {}) => {
 const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const dispatch = useDispatch();
 
-  const {
-    prompt,
-    bridgeName,
-    variableGroups,
-    activeGroup,
-    variablesKeyValue,
-    variablesPath,
-    variable_state,
-  } = useCustomSelector((state) => {
-    const versionState =
-      state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
-    const groups = versionState?.groups || [];
-    const activeGroupId = versionState?.activeGroupId;
+  const { prompt, bridgeName, variableGroups, activeGroup, variablesKeyValue, variablesPath, variable_state } =
+    useCustomSelector((state) => {
+      const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
+      const groups = versionState?.groups || [];
+      const activeGroupId = versionState?.activeGroupId;
 
-    return {
-      prompt:
-        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]
-          ?.configuration?.prompt || "",
-      bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
-      variableGroups: groups,
-      activeGroup:
-        groups.find((group) => group.id === activeGroupId) || groups[0] || null,
-      variablesKeyValue: versionState?.variables || [],
-      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-      variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
-    };
-  });
+      return {
+        prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
+        bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
+        variableGroups: groups,
+        activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
+        variablesKeyValue: versionState?.variables || [],
+        variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
+        variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
+      };
+    });
   const [draftVariables, setDraftVariables] = useState([]);
   const [error, setError] = useState("");
   const [bulkEditMode, setBulkEditMode] = useState(false);
@@ -238,9 +217,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     if (!matches) {
       return new Set();
     }
-    const keys = matches
-      .map((match) => match.replace(/[{}]/g, "").trim())
-      .filter(Boolean);
+    const keys = matches.map((match) => match.replace(/[{}]/g, "").trim()).filter(Boolean);
     return new Set(keys);
   }, [prompt]);
 
@@ -254,7 +231,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           : [];
 
       // Create a fresh copy to avoid reference issues
-      const allVariables = baseVariables.map(variable => ({
+      const allVariables = baseVariables.map((variable) => ({
         id: variable.id || createLocalId(),
         key: variable.key || "",
         value: variable.value || "",
@@ -264,9 +241,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       }));
 
       // Add variables from variables_path
-      Object.keys(variablesPath || {}).forEach(functionId => {
+      Object.keys(variablesPath || {}).forEach((functionId) => {
         const functionVars = variablesPath[functionId] || {};
-        Object.keys(functionVars).forEach(varName => {
+        Object.keys(functionVars).forEach((varName) => {
           const pathKey = functionVars[varName]; // This is "123" in your example
           const trimmedKey = typeof pathKey === "string" ? pathKey.trim() : "";
           if (!trimmedKey) {
@@ -274,7 +251,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           }
 
           // Check if this variable already exists
-          const existsInSource = allVariables.find(v => v.key === trimmedKey);
+          const existsInSource = allVariables.find((v) => v.key === trimmedKey);
 
           if (!existsInSource) {
             // Check if this variable exists in variable_state
@@ -294,12 +271,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       });
 
       // Also check for variables that exist in variable_state but not in Redux or variables_path
-      Object.keys(variable_state || {}).forEach(stateKey => {
+      Object.keys(variable_state || {}).forEach((stateKey) => {
         const trimmedKey = typeof stateKey === "string" ? stateKey.trim() : "";
         if (!trimmedKey) {
           return;
         }
-        const existsInVariables = allVariables.find(v => v.key === trimmedKey);
+        const existsInVariables = allVariables.find((v) => v.key === trimmedKey);
 
         if (!existsInVariables) {
           const variableStateData = variable_state[trimmedKey];
@@ -351,7 +328,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   useEffect(() => {
     const checkMissingVariables = () => {
       try {
-        const storedMissingVars = sessionStorage.getItem('missingVariables');
+        const storedMissingVars = sessionStorage.getItem("missingVariables");
         if (storedMissingVars) {
           const parsedMissingVars = JSON.parse(storedMissingVars);
           setMissingVariables(parsedMissingVars);
@@ -359,7 +336,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           setMissingVariables([]);
         }
       } catch (error) {
-        console.error('Error parsing missing variables from sessionStorage:', error);
+        console.error("Error parsing missing variables from sessionStorage:", error);
         setMissingVariables([]);
       }
     };
@@ -369,18 +346,18 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
     // Also check when storage changes (in case multiple tabs/components)
     const handleStorageChange = (e) => {
-      if (e.key === 'missingVariables') {
+      if (e.key === "missingVariables") {
         checkMissingVariables();
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
 
     // Also check periodically in case sessionStorage is updated by same tab
     const interval = setInterval(checkMissingVariables, 1000);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
       clearInterval(interval);
     };
   }, []);
@@ -388,28 +365,33 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   // Ensure there's always at least one empty variable for new input
   useEffect(() => {
     if (activeGroup && draftVariables.length === 0) {
-      setDraftVariables([{
-        id: createLocalId(),
-        key: '',
-        value: '',
-        defaultValue: '',
-        type: 'string',
-        required: true,
-      }]);
+      setDraftVariables([
+        {
+          id: createLocalId(),
+          key: "",
+          value: "",
+          defaultValue: "",
+          type: "string",
+          required: true,
+        },
+      ]);
     } else if (activeGroup && draftVariables.length > 0) {
       const lastVariable = draftVariables[draftVariables.length - 1];
       if (lastVariable.key.trim()) {
         // Add empty variable if last one has a key
-        const hasEmptyVariable = draftVariables.some(v => !v.key.trim());
+        const hasEmptyVariable = draftVariables.some((v) => !v.key.trim());
         if (!hasEmptyVariable) {
-          setDraftVariables(prev => [...prev, {
-            id: createLocalId(),
-            key: '',
-            value: '',
-            defaultValue: '',
-            type: 'string',
-            required: true,
-          }]);
+          setDraftVariables((prev) => [
+            ...prev,
+            {
+              id: createLocalId(),
+              key: "",
+              value: "",
+              defaultValue: "",
+              type: "string",
+              required: true,
+            },
+          ]);
         }
       }
     }
@@ -418,9 +400,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   // Function to check if variables have actually changed (only prompt and variables_path variables)
   const hasVariablesChanged = useCallback(
     (currentVariables) => {
-      const dbVariablesMap = new Map(
-        (variablesKeyValue || []).map((variable) => [variable.key, variable])
-      );
+      const dbVariablesMap = new Map((variablesKeyValue || []).map((variable) => [variable.key, variable]));
 
       return currentVariables.some((current) => {
         const key = typeof current?.key === "string" ? current.key.trim() : "";
@@ -463,77 +443,69 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
   const updateVersionVariable = useCallback(
     (updatedPairs) => {
-
-      const filteredPairs = (updatedPairs || variablesKeyValue)
-        ?.filter((pair) => {
-          const key = typeof pair?.key === "string" ? pair.key.trim() : "";
-          if (!key) {
-            return false;
-          }
-          return promptKeySet.has(key) || variablesPathKeySet.has(key);
-        })
-        ?.map((pair) => {
-          const key = typeof pair?.key === "string" ? pair.key.trim() : "";
-          if (!key) {
-            return null;
-          }
-          // Format the value according to its type
-          const originalType = pair?.type;
-          const inferredType = inferType(pair?.value, pair?.defaultValue);
-          const type = originalType || inferredType || "string";
-          const rawValue = pair?.value ?? "";
-          const rawDefaultValue = pair?.defaultValue ?? "";
-
-          // Format the main value
-          const valueCheck = validateAndFormatValue(rawValue, type, { allowEmpty: false });
-          let formattedValue = valueCheck.ok ? valueCheck.value : rawValue;
-
-          // Convert values to proper types for API
-          if (type === "boolean" && valueCheck.ok && typeof formattedValue === "string") {
-            formattedValue = formattedValue === "true";
-          } else if (
-            (type === "object" || type === "array") &&
-            valueCheck.ok &&
-            typeof formattedValue === "string"
-          ) {
-            try {
-              formattedValue = JSON.parse(formattedValue);
-            } catch {
-              // If parsing fails, keep the string value
+      const filteredPairs =
+        (updatedPairs || variablesKeyValue)
+          ?.filter((pair) => {
+            const key = typeof pair?.key === "string" ? pair.key.trim() : "";
+            if (!key) {
+              return false;
             }
-          }
-
-          // Format the default value
-          const defaultCheck = validateAndFormatValue(rawDefaultValue, type, { allowEmpty: true });
-          let formattedDefaultValue = defaultCheck.ok ? defaultCheck.value : rawDefaultValue;
-
-          // Convert default values to proper types for API
-          if (
-            type === "boolean" &&
-            defaultCheck.ok &&
-            typeof formattedDefaultValue === "string"
-          ) {
-            formattedDefaultValue = formattedDefaultValue === "true";
-          } else if (
-            (type === "object" || type === "array") &&
-            defaultCheck.ok &&
-            typeof formattedDefaultValue === "string"
-          ) {
-            try {
-              formattedDefaultValue = JSON.parse(formattedDefaultValue);
-            } catch {
-              // If parsing fails, keep the string value
+            return promptKeySet.has(key) || variablesPathKeySet.has(key);
+          })
+          ?.map((pair) => {
+            const key = typeof pair?.key === "string" ? pair.key.trim() : "";
+            if (!key) {
+              return null;
             }
-          }
+            // Format the value according to its type
+            const originalType = pair?.type;
+            const inferredType = inferType(pair?.value, pair?.defaultValue);
+            const type = originalType || inferredType || "string";
+            const rawValue = pair?.value ?? "";
+            const rawDefaultValue = pair?.defaultValue ?? "";
 
-          return {
-            [key]: {
-              status: pair?.required ? "required" : "optional",
-              default_value: formattedDefaultValue ?? formattedValue ?? "",
-            },
-          };
-        })
-        ?.filter(Boolean) ?? [];
+            // Format the main value
+            const valueCheck = validateAndFormatValue(rawValue, type, { allowEmpty: false });
+            let formattedValue = valueCheck.ok ? valueCheck.value : rawValue;
+
+            // Convert values to proper types for API
+            if (type === "boolean" && valueCheck.ok && typeof formattedValue === "string") {
+              formattedValue = formattedValue === "true";
+            } else if ((type === "object" || type === "array") && valueCheck.ok && typeof formattedValue === "string") {
+              try {
+                formattedValue = JSON.parse(formattedValue);
+              } catch {
+                // If parsing fails, keep the string value
+              }
+            }
+
+            // Format the default value
+            const defaultCheck = validateAndFormatValue(rawDefaultValue, type, { allowEmpty: true });
+            let formattedDefaultValue = defaultCheck.ok ? defaultCheck.value : rawDefaultValue;
+
+            // Convert default values to proper types for API
+            if (type === "boolean" && defaultCheck.ok && typeof formattedDefaultValue === "string") {
+              formattedDefaultValue = formattedDefaultValue === "true";
+            } else if (
+              (type === "object" || type === "array") &&
+              defaultCheck.ok &&
+              typeof formattedDefaultValue === "string"
+            ) {
+              try {
+                formattedDefaultValue = JSON.parse(formattedDefaultValue);
+              } catch {
+                // If parsing fails, keep the string value
+              }
+            }
+
+            return {
+              [key]: {
+                status: pair?.required ? "required" : "optional",
+                default_value: formattedDefaultValue ?? formattedValue ?? "",
+              },
+            };
+          })
+          ?.filter(Boolean) ?? [];
       // Deep check filtered pairs against existing variable_state
       const currentVariableState = Object.assign({}, ...filteredPairs);
 
@@ -544,10 +516,10 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
         // Check if keys are different
         if (existingKeys.length !== currentKeys.length) return true;
-        if (!existingKeys.every(key => currentKeys.includes(key))) return true;
+        if (!existingKeys.every((key) => currentKeys.includes(key))) return true;
 
         // Check if values are different for each key
-        return currentKeys.some(key => {
+        return currentKeys.some((key) => {
           const existing = variable_state[key];
           const current = currentVariableState[key];
 
@@ -566,7 +538,6 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       if (!hasVariableStateChanged()) {
         return;
       }
-     
 
       if (isEmbedUser) {
         sendDataToParent(
@@ -603,8 +574,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         return { success: false };
       }
 
-      const { isValid, errors: validationErrors, normalised } =
-        validateVariables(candidateList);
+      const { isValid, errors: validationErrors, normalised } = validateVariables(candidateList);
 
       if (!isValid) {
         if (!suppressErrors && validationErrors.length) {
@@ -616,7 +586,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       setError("");
 
       // Always save all variables to Redux first (even if not in prompt/variables_path)
-      const allVariables = normalised.filter(v => v.key && v.key.trim());
+      const allVariables = normalised.filter((v) => v.key && v.key.trim());
 
       // Update all variables in Redux
       if (allVariables.length > 0) {
@@ -654,7 +624,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   // Handle Run Anyway button click
   const handleRunAnyway = useCallback(() => {
     // Clear missing variables from sessionStorage
-    sessionStorage.removeItem('missingVariables');
+    sessionStorage.removeItem("missingVariables");
     setMissingVariables([]);
     sessionStorage.setItem(SLIDER_DISABLE_KEY, "true");
 
@@ -664,29 +634,29 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     // Trigger the message send with forceRun = true
     // We need to access the chat input's handleSendMessage function
     // This will be done by dispatching a custom event
-    const runAnywayEvent = new CustomEvent('runAnyway', {
-      detail: { forceRun: true }
+    const runAnywayEvent = new CustomEvent("runAnyway", {
+      detail: { forceRun: true },
     });
     window.dispatchEvent(runAnywayEvent);
 
     // Also clear the validation error from chat input
-    const clearValidationEvent = new CustomEvent('clearValidationError');
+    const clearValidationEvent = new CustomEvent("clearValidationError");
     window.dispatchEvent(clearValidationEvent);
   }, []);
 
-
-  const handleFieldChange = useCallback((index, field, value) => {
-    if (field === "key" && blockedDeleteKey && value.trim() !== blockedDeleteKey) {
-      setBlockedDeleteKey("");
-      setBlockedDeleteMessage("");
-    }
-    setDraftVariables((prev) =>
-      prev.map((variable, idx) =>
-        idx === index ? { ...variable, [field]: value } : variable
-      )
-    );
-    setError("");
-  }, [blockedDeleteKey]);
+  const handleFieldChange = useCallback(
+    (index, field, value) => {
+      if (field === "key" && blockedDeleteKey && value.trim() !== blockedDeleteKey) {
+        setBlockedDeleteKey("");
+        setBlockedDeleteMessage("");
+      }
+      setDraftVariables((prev) =>
+        prev.map((variable, idx) => (idx === index ? { ...variable, [field]: value } : variable))
+      );
+      setError("");
+    },
+    [blockedDeleteKey]
+  );
 
   const applyDraftUpdate = useCallback(
     (updater, options) => {
@@ -719,11 +689,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
               allowEmpty: false,
             });
             updated.value = valueCheck.ok ? valueCheck.value : fallbackValueForType(newType);
-            const defaultCheck = validateAndFormatValue(
-              updated.defaultValue,
-              newType,
-              { allowEmpty: true }
-            );
+            const defaultCheck = validateAndFormatValue(updated.defaultValue, newType, { allowEmpty: true });
             updated.defaultValue = defaultCheck.ok ? defaultCheck.value : "";
           } else if (field === "value") {
             const valueCheck = validateAndFormatValue(value, updated.type, {
@@ -733,12 +699,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
             // Clear missing variable error if value is provided
             if (value && value.trim() && missingVariables.includes(updated.key)) {
-              const updatedMissingVars = missingVariables.filter(key => key !== updated.key);
+              const updatedMissingVars = missingVariables.filter((key) => key !== updated.key);
               setMissingVariables(updatedMissingVars);
               if (updatedMissingVars.length === 0) {
-                sessionStorage.removeItem('missingVariables');
+                sessionStorage.removeItem("missingVariables");
               } else {
-                sessionStorage.setItem('missingVariables', JSON.stringify(updatedMissingVars));
+                sessionStorage.setItem("missingVariables", JSON.stringify(updatedMissingVars));
               }
             }
           } else if (field === "defaultValue") {
@@ -749,12 +715,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
             // Clear missing variable error if default value is provided and no main value exists
             if (value && value.trim() && !updated.value && missingVariables.includes(updated.key)) {
-              const updatedMissingVars = missingVariables.filter(key => key !== updated.key);
+              const updatedMissingVars = missingVariables.filter((key) => key !== updated.key);
               setMissingVariables(updatedMissingVars);
               if (updatedMissingVars.length === 0) {
-                sessionStorage.removeItem('missingVariables');
+                sessionStorage.removeItem("missingVariables");
               } else {
-                sessionStorage.setItem('missingVariables', JSON.stringify(updatedMissingVars));
+                sessionStorage.setItem("missingVariables", JSON.stringify(updatedMissingVars));
               }
             }
           } else {
@@ -784,17 +750,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
   useEffect(() => {
     return () => {
-      sessionStorage.setItem('variableSliderDisabled', 'false');
-    }
+      sessionStorage.setItem("variableSliderDisabled", "false");
+    };
   }, []);
 
   const handleRequiredToggle = useCallback(
     (index) => {
       applyDraftUpdate(
         (prev) =>
-          prev.map((variable, idx) =>
-            idx === index ? { ...variable, required: !variable.required } : variable
-          ),
+          prev.map((variable, idx) => (idx === index ? { ...variable, required: !variable.required } : variable)),
         { suppressErrors: true }
       );
     },
@@ -811,9 +775,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           if (key && promptKeySet.has(key)) {
             setError("");
             setBlockedDeleteKey(key);
-            setBlockedDeleteMessage(
-              `Variable "${key}" is referenced in the prompt and can't be removed.`
-            );
+            setBlockedDeleteMessage(`Variable "${key}" is referenced in the prompt and can't be removed.`);
             return prev;
           }
 
@@ -830,10 +792,10 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const parseJsonToKeyValue = useCallback((jsonText) => {
     try {
       const parsed = JSON.parse(jsonText);
-      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         return Object.entries(parsed).map(([key, value]) => ({
           key,
-          value: typeof value === 'object' ? JSON.stringify(value) : String(value)
+          value: typeof value === "object" ? JSON.stringify(value) : String(value),
         }));
       }
     } catch {
@@ -845,8 +807,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const handleBulkEditToggle = useCallback(() => {
     if (!bulkEditMode) {
       const rows = draftVariables
-        .filter(variable => variable.key.trim()) // Only include variables with keys
-        .map(variable => `${variable.key},${variable.value}`)
+        .filter((variable) => variable.key.trim()) // Only include variables with keys
+        .map((variable) => `${variable.key},${variable.value}`)
         .join("\n");
       setBulkEditText(rows);
     }
@@ -864,13 +826,13 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const jsonVariables = parseJsonToKeyValue(bulkEditText);
       if (jsonVariables) {
         const parsed = jsonVariables.map(({ key, value }) => {
-          const type = inferType(value, '');
+          const type = inferType(value, "");
           const valueCheck = validateAndFormatValue(value, type, { allowEmpty: false });
 
           return {
             key,
             value: valueCheck.ok ? valueCheck.value : value,
-            defaultValue: '',
+            defaultValue: "",
             required: true,
             type,
           };
@@ -904,7 +866,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         const line = lines[i];
         if (!line) continue;
 
-        const commaIndex = line.indexOf(',');
+        const commaIndex = line.indexOf(",");
         if (commaIndex === -1) {
           rowErrors.push(`Row ${i + 1}: Missing comma separator`);
           continue;
@@ -921,13 +883,13 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           continue;
         }
 
-        const type = inferType(value, '');
+        const type = inferType(value, "");
         const valueCheck = validateAndFormatValue(value, type, { allowEmpty: false });
 
         parsed.push({
           key,
           value: valueCheck.ok ? valueCheck.value : value,
-          defaultValue: '',
+          defaultValue: "",
           required: true,
           type,
         });
@@ -950,12 +912,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     } catch {
       setError("Error parsing data. Please verify the format.");
     }
-  }, [
-    activeGroupId,
-    bulkEditText,
-    commitVariables,
-    parseJsonToKeyValue,
-  ]);
+  }, [activeGroupId, bulkEditText, commitVariables, parseJsonToKeyValue]);
 
   useEffect(() => {
     const slider = document.getElementById(SLIDER_ID);
@@ -1038,9 +995,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             {/* Show missing variables warning without button */}
             {missingVariables.length > 0 && (
               <div className="mt-3 p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                <p className="text-sm text-warning">
-                  Missing values for: {missingVariables.join(', ')}
-                </p>
+                <p className="text-sm text-warning">Missing values for: {missingVariables.join(", ")}</p>
                 <p className="text-xs text-warning/70 mt-1">
                   Fill in the missing variables below or use "Run Anyway" button at the bottom.
                 </p>
@@ -1048,6 +1003,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             )}
           </div>
           <button
+            id="variable-slider-bulk-edit-button"
             type="button"
             className="btn btn-ghost btn-sm p-1 absolute top-6 right-6"
             onClick={closeSlider}
@@ -1057,8 +1013,6 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           </button>
         </header>
 
-
-
         <section className="bg-base-100 border border-base-300 rounded-lg shadow-sm p-4 flex-1 flex flex-col">
           <div className="flex items-center justify-between border-b border-base-200 pb-3">
             <div />
@@ -1067,6 +1021,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
               {!bulkEditMode && (
                 <>
                   <button
+                    id="variable-slider-bulk-edit-button"
                     type="button"
                     className="btn btn-outline btn-xs gap-1"
                     onClick={handleBulkEditToggle}
@@ -1080,6 +1035,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
               {bulkEditMode && (
                 <>
                   <button
+                    id="variable-slider-bulk-edit-cancel-button"
                     type="button"
                     className="btn btn-ghost btn-xs"
                     onClick={handleBulkEditToggle}
@@ -1087,6 +1043,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                     Cancel
                   </button>
                   <button
+                    id="variable-slider-bulk-edit-save-button"
                     type="button"
                     className="btn btn-primary btn-xs"
                     onClick={handleBulkEditSave}
@@ -1113,47 +1070,39 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                 {variableCount ? (
                   draftVariables.map((variable, index) => {
                     const trimmedKey = typeof variable.key === "string" ? variable.key.trim() : "";
-                    const showBlockedWarning =
-                      Boolean(blockedDeleteKey) && trimmedKey === blockedDeleteKey;
+                    const showBlockedWarning = Boolean(blockedDeleteKey) && trimmedKey === blockedDeleteKey;
                     // Check if previous variable has a key to enable current row
-                    const isPreviousRowFilled = index === 0 || (draftVariables[index - 1]?.key?.trim());
+                    const isPreviousRowFilled = index === 0 || draftVariables[index - 1]?.key?.trim();
                     const isCurrentRowEnabled = isPreviousRowFilled;
 
                     return (
-                      <div
-                        key={variable.id || `${variable.key}-${index}`}
-                        className="px-3 py-2 text-sm"
-                      >
+                      <div key={variable.id || `${variable.key}-${index}`} className="px-3 py-2 text-sm">
                         <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 items-center">
                           <input
+                            id={`variable-key-input-${index}`}
                             type="text"
-                            className={`input input-xs input-bordered w-full ${missingVariables.includes(variable.key)
-                                ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                                : ''
-                              }`}
+                            className={`input input-xs input-bordered w-full ${
+                              missingVariables.includes(variable.key)
+                                ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
+                                : ""
+                            }`}
                             value={variable.key}
                             disabled={!isCurrentRowEnabled}
-                            onChange={(event) =>
-                              handleFieldChange(index, "key", event.target.value)
-                            }
+                            onChange={(event) => handleFieldChange(index, "key", event.target.value)}
                             onBlur={(event) => handleFieldCommit(index, "key", event.target.value.trim())}
                             placeholder="variable key"
                           />
 
                           {variable.type === "boolean" ? (
                             <select
-                              className={`select select-xs select-bordered w-full ${missingVariables.includes(variable.key)
-                                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                                  : ''
-                                }`}
+                              id={`variable-value-select-${index}`}
+                              className={`select select-xs select-bordered w-full ${
+                                missingVariables.includes(variable.key)
+                                  ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
+                                  : ""
+                              }`}
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
-                              value={
-                                variable.value === "false"
-                                  ? "false"
-                                  : variable.value === "true"
-                                    ? "true"
-                                    : ""
-                              }
+                              value={variable.value === "false" ? "false" : variable.value === "true" ? "true" : ""}
                               onChange={(event) => {
                                 handleFieldChange(index, "value", event.target.value);
                                 handleFieldCommit(index, "value", event.target.value);
@@ -1165,76 +1114,63 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             </select>
                           ) : variable.type === "number" ? (
                             <input
+                              id={`variable-value-number-${index}`}
                               type="number"
                               step="any"
-                              className={`input input-xs input-bordered w-full ${missingVariables.includes(variable.key)
-                                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                                  : ''
-                                }`}
+                              className={`input input-xs input-bordered w-full ${
+                                missingVariables.includes(variable.key)
+                                  ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
+                                  : ""
+                              }`}
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.value}
-                              onChange={(event) =>
-                                handleFieldChange(index, "value", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "value", event.target.value)
-                              }
+                              onChange={(event) => handleFieldChange(index, "value", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "value", event.target.value)}
                               placeholder="variable value"
                             />
                           ) : variable.type === "string" ? (
                             <input
+                              id={`variable-value-text-${index}`}
                               type="text"
-                              className={`input input-xs input-bordered w-full ${missingVariables.includes(variable.key)
-                                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                                  : ''
-                                }`}
+                              className={`input input-xs input-bordered w-full ${
+                                missingVariables.includes(variable.key)
+                                  ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
+                                  : ""
+                              }`}
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.value}
-                              onChange={(event) =>
-                                handleFieldChange(index, "value", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "value", event.target.value)
-                              }
+                              onChange={(event) => handleFieldChange(index, "value", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "value", event.target.value)}
                               placeholder="variable value"
                             />
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
-                              className={`textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs ${missingVariables.includes(variable.key)
-                                  ? 'border-error focus:border-error focus:ring-2 focus:ring-error/20'
-                                  : ''
-                                }`}
+                              className={`textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs ${
+                                missingVariables.includes(variable.key)
+                                  ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
+                                  : ""
+                              }`}
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.value}
-                              onChange={(event) =>
-                                handleFieldChange(index, "value", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "value", event.target.value)
-                              }
-                              placeholder={
-                                variable.type === "array"
-                                  ? '[\n  "value"\n]'
-                                  : '{\n  "key": "value"\n}'
-                              }
+                              onChange={(event) => handleFieldChange(index, "value", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "value", event.target.value)}
+                              placeholder={variable.type === "array" ? '[\n  "value"\n]' : '{\n  "key": "value"\n}'}
                             />
                           ) : (
                             <textarea
+                              id={`variable-value-textarea-${index}`}
                               className="textarea textarea-xs textarea-bordered w-full min-h-[60px]"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.value}
-                              onChange={(event) =>
-                                handleFieldChange(index, "value", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "value", event.target.value)
-                              }
+                              onChange={(event) => handleFieldChange(index, "value", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "value", event.target.value)}
                               placeholder="variable value"
                             />
                           )}
 
                           {variable.type === "boolean" ? (
                             <select
+                              id={`variable-default-select-${index}`}
                               className="select select-xs select-bordered w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={
@@ -1255,49 +1191,41 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             </select>
                           ) : variable.type === "number" ? (
                             <input
+                              id={`variable-default-number-${index}`}
                               type="number"
                               step="any"
                               className="input input-xs input-bordered w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
-                              onChange={(event) =>
-                                handleFieldChange(index, "defaultValue", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "defaultValue", event.target.value)
-                              }
+                              onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "defaultValue", event.target.value)}
                               placeholder="Optional fallback"
                             />
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
+                              id={`variable-default-textarea-${index}`}
                               className="textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
-                              onChange={(event) =>
-                                handleFieldChange(index, "defaultValue", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "defaultValue", event.target.value)
-                              }
+                              onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "defaultValue", event.target.value)}
                               placeholder="Optional JSON fallback"
                             />
                           ) : (
                             <input
+                              id={`variable-default-text-${index}`}
                               type="text"
                               className="input input-xs input-bordered w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
-                              onChange={(event) =>
-                                handleFieldChange(index, "defaultValue", event.target.value)
-                              }
-                              onBlur={(event) =>
-                                handleFieldCommit(index, "defaultValue", event.target.value)
-                              }
+                              onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
+                              onBlur={(event) => handleFieldCommit(index, "defaultValue", event.target.value)}
                               placeholder="default value"
                             />
                           )}
 
                           <select
+                            id={`variable-type-select-${index}`}
                             className="select select-xs select-bordered w-full"
                             disabled={!isCurrentRowEnabled || !variable.key.trim()}
                             value={variable.type}
@@ -1315,9 +1243,11 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           </select>
 
                           <button
+                            id={`variable-required-toggle-${index}`}
                             type="button"
-                            className={`badge badge-xs cursor-pointer hover:opacity-80 ${variable.required ? "badge-primary" : "badge-ghost"
-                              }`}
+                            className={`badge badge-xs cursor-pointer hover:opacity-80 ${
+                              variable.required ? "badge-primary" : "badge-ghost"
+                            }`}
                             disabled={!isCurrentRowEnabled || !variable.key.trim()}
                             onClick={() => handleRequiredToggle(index)}
                             title="Click to toggle required status"
@@ -1327,6 +1257,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
                           <div className="flex justify-end gap-1">
                             <button
+                              id={`variable-delete-button-${index}`}
                               type="button"
                               className="btn btn-ghost btn-xs text-error"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
@@ -1339,7 +1270,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                         </div>
                         {showBlockedWarning && (
                           <p className="text-[11px] text-warning mt-1">
-                            {blockedDeleteMessage || `Variable "${trimmedKey}" is referenced in the prompt and can't be removed.`}
+                            {blockedDeleteMessage ||
+                              `Variable "${trimmedKey}" is referenced in the prompt and can't be removed.`}
                           </p>
                         )}
                       </div>
@@ -1393,7 +1325,6 @@ Option 2 - JSON object:
               <span className="text-xs">{error}</span>
             </div>
           )}
-
         </section>
 
         {/* Run Anyway Button at the bottom - Only show when there are missing variables */}

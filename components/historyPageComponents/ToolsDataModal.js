@@ -5,16 +5,16 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
     if (typeof value === "string" && (value.startsWith("{") || value.startsWith("["))) {
       try {
         const parsedValue = JSON.parse(value);
-        return JSON.stringify(parsedValue, null, 2); 
+        return JSON.stringify(parsedValue, null, 2);
       } catch {
-        return value; 
+        return value;
       }
     }
     return JSON.stringify(value, null, 2);
   };
 
   return (
-    <dialog className="modal modal-middle mx-auto outline-none" ref={toolsDataModalRef}>
+    <dialog id="tools-data-modal" className="modal modal-middle mx-auto outline-none" ref={toolsDataModalRef}>
       <div className="relative bg-base-100 rounded-lg shadow-lg p-6 w-[80%] max-w-[80vw] overscroll-none">
         <h2 className="font-bold mb-1">Function Data:</h2>
         <div className="overflow-y-scroll max-h-[70vh] max-w-auto break-words">
@@ -27,7 +27,8 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
                     <span className="flex-1 min-w-0">
                       {key === "name" && integrationData?.[value] ? (
                         <p>
-                          {integrationData[value]?.title}<span>({value})</span>
+                          {integrationData[value]?.title}
+                          <span>({value})</span>
                         </p>
                       ) : (
                         <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
@@ -45,6 +46,7 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
         </div>
         <div className="absolute top-4 right-5">
           <button
+            id="tools-data-modal-close-button"
             className="hover:scale-110 transition-transform duration-300 ease-in-out focus:outline-none focus:border-none"
             onClick={handleClose}
           >

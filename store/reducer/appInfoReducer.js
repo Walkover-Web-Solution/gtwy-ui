@@ -4,7 +4,7 @@ const initialState = {
   embedUserDetails: {},
   appInfo: {},
   loading: false,
-  error: null
+  error: null,
 };
 
 export const appInfoReducer = createSlice({
@@ -20,18 +20,15 @@ export const appInfoReducer = createSlice({
       }, {});
       state.embedUserDetails = {
         ...state.embedUserDetails,
-        ...validUpdates
+        ...validUpdates,
       };
     },
     clearEmbedThemeDetails: (state) => {
       state.embedUserDetails.theme_config = {};
-    },    
-  }
+    },
+  },
 });
 
-export const {
-  setEmbedUserDetails,
-  clearEmbedThemeDetails
-} = appInfoReducer.actions;
+export const { setEmbedUserDetails, clearEmbedThemeDetails } = appInfoReducer.actions;
 
 export default appInfoReducer.reducer;

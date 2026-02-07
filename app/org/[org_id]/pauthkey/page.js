@@ -1,25 +1,25 @@
-"use client"
-import CustomTable from '@/components/customTable/CustomTable'
-import MainLayout from '@/components/layoutComponents/MainLayout'
-import LoadingSpinner from '@/components/LoadingSpinner'
-import OnBoarding from '@/components/OnBoarding'
-import PageHeader from '@/components/Pageheader'
-import Protected from '@/components/Protected'
-import TutorialSuggestionToast from '@/components/TutorialSuggestoinToast'
-import useTutorialVideos from '@/hooks/useTutorialVideos'
-import { useCustomSelector } from '@/customHooks/customSelector'
-import { createNewAuthData, deleteAuthData } from '@/store/action/authkeyAction'
-import { MODAL_TYPE, PAUTH_KEY_COLUMNS } from '@/utils/enums'
-import { closeModal, formatDate, formatRelativeTime, openModal, RequiredItem } from '@/utils/utility'
-import { CopyIcon, TrashIcon } from '@/components/Icons'
-import React, { useEffect, useState, use } from 'react'
-import { useDispatch } from 'react-redux'
-import { toast } from 'react-toastify'
-import DeleteModal from '@/components/UI/DeleteModal'
-import SearchItems from '@/components/UI/SearchItems'
-import useDeleteOperation from '@/customHooks/useDeleteOperation';
-import { Lock } from 'lucide-react';
-export const runtime = 'edge';
+"use client";
+import CustomTable from "@/components/customTable/CustomTable";
+import MainLayout from "@/components/layoutComponents/MainLayout";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import OnBoarding from "@/components/OnBoarding";
+import PageHeader from "@/components/Pageheader";
+import Protected from "@/components/Protected";
+import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
+import useTutorialVideos from "@/hooks/useTutorialVideos";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { createNewAuthData, deleteAuthData } from "@/store/action/authkeyAction";
+import { MODAL_TYPE, PAUTH_KEY_COLUMNS } from "@/utils/enums";
+import { closeModal, formatDate, formatRelativeTime, openModal, RequiredItem } from "@/utils/utility";
+import { CopyIcon, TrashIcon } from "@/components/Icons";
+import React, { useEffect, useState, use } from "react";
+import { useDispatch } from "react-redux";
+import { toast } from "react-toastify";
+import DeleteModal from "@/components/UI/DeleteModal";
+import SearchItems from "@/components/UI/SearchItems";
+import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { Lock } from "lucide-react";
+export const runtime = "edge";
 
 function Page({ params }) {
   // Use the tutorial videos hook
@@ -27,7 +27,7 @@ function Page({ params }) {
 
   const resolvedParams = use(params);
   const dispatch = useDispatch();
-  const { authData, isFirstPauthCreation, descriptions, orgRole , linksData } = useCustomSelector((state) => {
+  const { authData, isFirstPauthCreation, descriptions, orgRole, linksData } = useCustomSelector((state) => {
     const user = state.userDetailsReducer.userDetails || [];
     return {
       authData: state?.authDataReducer?.authData || [],
@@ -37,23 +37,23 @@ function Page({ params }) {
       linksData: state.flowDataReducer.flowData.linksData || [],
     };
   });
- 
+
   const [filterPauthKeys, setFilterPauthKeys] = useState(authData);
   const [selectedDataToDelete, setselectedDataToDelete] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const { isDeleting, executeDelete } = useDeleteOperation();
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
-    showSuggestion: isFirstPauthCreation
+    showSuggestion: isFirstPauthCreation,
   });
 
   useEffect(() => {
-    setFilterPauthKeys(authData)
+    setFilterPauthKeys(authData);
   }, [authData]);
 
   const maskAuthKey = (authkey) => {
-    if (!authkey) return '';
-    return authkey.substring(0, 3) + '*'.repeat(9) + authkey.substring(authkey.length - 3);
+    if (!authkey) return "";
+    return authkey.substring(0, 3) + "*".repeat(9) + authkey.substring(authkey.length - 3);
   };
 
   /**
@@ -61,13 +61,14 @@ function Page({ params }) {
    * @param {string} content Content to be copied
    */
   const copyToClipboard = (content) => {
-    navigator.clipboard.writeText(content)
+    navigator.clipboard
+      .writeText(content)
       .then(() => {
         toast.success("Content copied to clipboard");
         // Optionally, you can show a success message to the user
       })
       .catch((error) => {
-        console.error('Error copying content to clipboard:', error);
+        console.error("Error copying content to clipboard:", error);
         // Optionally, you can show an error message to the user
       });
   };
@@ -78,21 +79,21 @@ function Page({ params }) {
    * @param {string} name Name of the new auth key
    */
   const createAuthKeyHandler = async (e, name) => {
-    const isDuplicate = authData.some(item => item.name === name);
+    const isDuplicate = authData.some((item) => item.name === name);
     if (isDuplicate) {
-      toast.error("The name has already been taken")
-    }
-    else if (name.length > 2) {
+      toast.error("The name has already been taken");
+    } else if (name.length > 2) {
       setIsCreating(true); // Start loading
       try {
-        await dispatch(createNewAuthData({
-          name,
-          throttle_limit: "60:800",
-          temporary_throttle_limit: "60:600",
-          temporary_throttle_time: "30",
-        }));
+        await dispatch(
+          createNewAuthData({
+            name,
+            throttle_limit: "60:800",
+            temporary_throttle_limit: "60:600",
+            temporary_throttle_time: "30",
+          })
+        );
         toast.success("Auth key created successfully");
-
       } catch (error) {
         toast.error("Failed to create pauth key");
         console.error(error);
@@ -100,10 +101,10 @@ function Page({ params }) {
         setIsCreating(false); // End loading
       }
     } else {
-      toast.error("The name must be at least 3 characters. ")
+      toast.error("The name must be at least 3 characters. ");
     }
-    closeModal(MODAL_TYPE.PAUTH_KEY_MODAL)
-    document.getElementById('authNameInput').value = ''
+    closeModal(MODAL_TYPE.PAUTH_KEY_MODAL);
+    document.getElementById("authNameInput").value = "";
   };
 
   const DeleteAuth = async (item) => {
@@ -117,7 +118,12 @@ function Page({ params }) {
     return (
       <div className="flex gap-3 justify-center items-center">
         <div className="tooltip tooltip-primary" data-tip="delete">
-          <a onClick={() => { setselectedDataToDelete(row); openModal(MODAL_TYPE.DELETE_MODAL) }}>
+          <a
+            onClick={() => {
+              setselectedDataToDelete(row);
+              openModal(MODAL_TYPE.DELETE_MODAL);
+            }}
+          >
             <TrashIcon size={16} />
           </a>
         </div>
@@ -131,15 +137,16 @@ function Page({ params }) {
       </div>
     );
   };
- if(orgRole === "Viewer") return (
-    <div className="h-screen flex items-center justify-center">
-      <div className="flex flex-col items-center justify-center">
-        <Lock size={48} className="text-error mb-4" />
-        <h2 className="text-xl font-bold text-center">Access Restricted</h2>
-        <p className="text-center mt-2">This page is locked for viewers</p>
+  if (orgRole === "Viewer")
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center">
+          <Lock size={48} className="text-error mb-4" />
+          <h2 className="text-xl font-bold text-center">Access Restricted</h2>
+          <p className="text-center mt-2">This page is locked for viewers</p>
+        </div>
       </div>
-    </div>
-  );
+    );
   return (
     <div className="h-auto">
       <div className="w-full">
@@ -152,7 +159,7 @@ function Page({ params }) {
         )}
         {tutorialState?.showTutorial && (
           <OnBoarding
-            setShowTutorial={() => setTutorialState(prev => ({ ...prev, showTutorial: false }))}
+            setShowTutorial={() => setTutorialState((prev) => ({ ...prev, showTutorial: false }))}
             video={getPauthKeyVideo()}
             params={resolvedParams}
             flagKey="PauthKey"
@@ -163,18 +170,22 @@ function Page({ params }) {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between w-full pt-4">
               <PageHeader
                 title="Auth Key"
-                description={descriptions?.['Pauthkey'] || "A unique key used to validate API requests for sending and receiving messages securely."}
-                docLink={linksData?.find(link => link.title === 'Auth Key')?.blog_link}
+                description={
+                  descriptions?.["Pauthkey"] ||
+                  "A unique key used to validate API requests for sending and receiving messages securely."
+                }
+                docLink={linksData?.find((link) => link.title === "Auth Key")?.blog_link}
               />
-
             </div>
           </MainLayout>
           <div className="flex flex-row gap-4">
             {authData?.length > 5 && (
               <SearchItems data={authData} setFilterItems={setFilterPauthKeys} item="Auth Key" />
             )}
-            <div className={`flex-shrink-0 ${authData?.length > 5 ? 'mr-2' : 'ml-2'}`}>
-              <button className="btn btn-primary btn-sm" onClick={() => openModal(MODAL_TYPE.PAUTH_KEY_MODAL)}>+ Create New Auth Key</button>
+            <div className={`flex-shrink-0 ${authData?.length > 5 ? "mr-2" : "ml-2"}`}>
+              <button className="btn btn-primary btn-sm" onClick={() => openModal(MODAL_TYPE.PAUTH_KEY_MODAL)}>
+                + Create New Auth Key
+              </button>
             </div>
           </div>
         </div>
@@ -185,19 +196,15 @@ function Page({ params }) {
         ) : filterPauthKeys.length > 0 ? (
           <div>
             <CustomTable
-              data={filterPauthKeys.map(item => ({
+              data={filterPauthKeys.map((item) => ({
                 ...item,
-                actualName: item?.name || 'Unnamed Key',
+                actualName: item?.name || "Unnamed Key",
                 originalAuthkey: item?.authkey,
                 authkey: maskAuthKey(item?.authkey),
                 created_at: (
                   <div className="group cursor-help">
-                    <span className="group-hover:hidden">
-                      {formatRelativeTime(item?.created_at)}
-                    </span>
-                    <span className="hidden group-hover:inline">
-                      {formatDate(item?.created_at)}
-                    </span>
+                    <span className="group-hover:hidden">{formatRelativeTime(item?.created_at)}</span>
+                    <span className="hidden group-hover:inline">{formatDate(item?.created_at)}</span>
                   </div>
                 ),
                 created_at_original: item?.created_at,
@@ -216,10 +223,7 @@ function Page({ params }) {
           </div>
         )}
       </div>
-      <dialog
-        id={MODAL_TYPE.PAUTH_KEY_MODAL}
-        className="modal modal-bottom sm:modal-middle"
-      >
+      <dialog id={MODAL_TYPE.PAUTH_KEY_MODAL} className="modal modal-bottom sm:modal-middle">
         <div className="modal-box">
           <h3 className="font-bold text-lg mb-2">Create New Auth Key</h3>
           <label className="input input-sm input-bordered flex items-center gap-2">
@@ -229,7 +233,7 @@ function Page({ params }) {
               className="grow input input-sm border-none"
               id="authNameInput"
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   const authName = e.target.value.trim();
                   if (authName) {
                     createAuthKeyHandler(e, authName);
@@ -245,18 +249,30 @@ function Page({ params }) {
           </label>
           <div className="modal-action">
             <form method="dialog">
-              <div className='flex gap-2'>
+              <div className="flex gap-2">
                 <button className="btn btn-sm">Cancel</button>
               </div>
             </form>
-            <button className="btn btn-primary btn-sm" onClick={(e) => createAuthKeyHandler(e, document.getElementById('authNameInput').value)}>+ Create</button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={(e) => createAuthKeyHandler(e, document.getElementById("authNameInput").value)}
+            >
+              + Create
+            </button>
           </div>
         </div>
       </dialog>
 
-      <DeleteModal onConfirm={DeleteAuth} item={selectedDataToDelete} description={`Are you sure you want to delete the Auth key "${selectedDataToDelete?.name}"? This action cannot be undone.`} title='Delete Auth Key' loading={isDeleting} isAsync={true} />
+      <DeleteModal
+        onConfirm={DeleteAuth}
+        item={selectedDataToDelete}
+        description={`Are you sure you want to delete the Auth key "${selectedDataToDelete?.name}"? This action cannot be undone.`}
+        title="Delete Auth Key"
+        loading={isDeleting}
+        isAsync={true}
+      />
     </div>
   );
 }
 
-export default Protected(Page)
+export default Protected(Page);

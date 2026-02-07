@@ -4,10 +4,12 @@ const initialState = {
   history: [],
   versionHistory: [],
   thread: [],
-  selectedVersion: 'all',
+  recursiveHistory: null,
+  recursiveHistoryLoading: false,
+  recursiveHistoryError: null,
+  selectedVersion: "all",
   loading: false,
   success: false,
-
 };
 
 export const historyReducer = createSlice({
@@ -25,8 +27,7 @@ export const historyReducer = createSlice({
     fetchThreadReducer: (state, action) => {
       if (action.payload.nextPage == 1) {
         state.thread = action.payload.data.data;
-      }
-      else {
+      } else {
         state.thread = [...action.payload.data.data, ...state.thread];
       }
     },
@@ -35,7 +36,7 @@ export const historyReducer = createSlice({
       state.thread = [];
     },
     updateHistoryMessageReducer: (state, action) => {
-      const { index, data } = action.payload
+      const { index, data } = action.payload;
       state.thread[index] = { ...state.thread[index], ...data };
     },
     userFeedbackCountReducer: (state, action) => {
@@ -67,16 +68,24 @@ export const historyReducer = createSlice({
     },
     addThreadNMessageUsingRtLayer: (state, action) => {
       const { thread_id, sub_thread_id, Messages } = action.payload;
-      const threadIndex = state.thread.findIndex((thread) => thread.thread_id === thread_id && thread.sub_thread_id === sub_thread_id);
+      const threadIndex = state.thread.findIndex(
+        (thread) => thread.thread_id === thread_id && thread.sub_thread_id === sub_thread_id
+      );
       if (threadIndex !== -1) {
         state.thread.push(Messages);
       }
     },
-
-
+    fetchRecursiveHistoryStart: (state) => {
+      state.recursiveHistoryLoading = true;
+      state.recursiveHistoryError = null;
+    },
+    fetchRecursiveHistorySuccess: (state, action) => {
+      state.recursiveHistory = action.payload.data;
+      state.recursiveHistoryLoading = false;
+      state.recursiveHistoryError = null;
+    },
   },
 });
-
 
 export const {
   fetchAllHistoryReducer,
@@ -90,5 +99,7 @@ export const {
   clearHistoryData,
   addThreadUsingRtLayer,
   addThreadNMessageUsingRtLayer,
+  fetchRecursiveHistoryStart,
+  fetchRecursiveHistorySuccess,
 } = historyReducer.actions;
 export default historyReducer.reducer;

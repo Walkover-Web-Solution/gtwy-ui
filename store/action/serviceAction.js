@@ -8,9 +8,9 @@ export const getServiceAction = () => async (dispatch) => {
     if (data && typeof data === "object") {
       const default_model = { ...data?.services };
 
-      const services = Object.keys(data?.services).map(service => ({
+      const services = Object.keys(data?.services).map((service) => ({
         value: service,
-        displayName: service.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
+        displayName: service.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
       }));
 
       dispatch(fetchServiceReducer({ services, default_model }));

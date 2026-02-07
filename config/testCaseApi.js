@@ -13,7 +13,7 @@ export const getAllTestCasesOfBridgeApi = async ({ bridgeId }) => {
     console.error(error);
     return error;
   }
-}
+};
 
 export const createTestCaseApi = async ({ bridgeId, data }) => {
   try {
@@ -23,7 +23,7 @@ export const createTestCaseApi = async ({ bridgeId, data }) => {
     console.error(error);
     return error;
   }
-}
+};
 
 export const updateTestCaseApi = async ({ testCaseId, dataToUpdate }) => {
   try {
@@ -33,7 +33,7 @@ export const updateTestCaseApi = async ({ testCaseId, dataToUpdate }) => {
     console.error(error);
     return error;
   }
-}
+};
 
 export const deleteTestCaseApi = async ({ testCaseId }) => {
   try {
@@ -43,30 +43,42 @@ export const deleteTestCaseApi = async ({ testCaseId }) => {
     console.error(error);
     return error;
   }
-}
+};
 
 export const runTestCaseApi = async ({ versionId, testcase_id, testCaseData, bridgeId }) => {
   try {
-    const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, { "version_id": versionId, "testcases": true, "testcase_id": testcase_id, "testcase_data": testCaseData, "bridge_id": bridgeId });
+    const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, {
+      version_id: versionId,
+      testcases: true,
+      testcase_id: testcase_id,
+      testcase_data: testCaseData,
+      bridge_id: bridgeId,
+    });
     return response.data;
   } catch (error) {
-    toast.error(error?.response?.data?.detail?.error ? error?.response?.data?.detail?.error : "Error while running the testcases")
+    toast.error(
+      error?.response?.data?.detail?.error ? error?.response?.data?.detail?.error : "Error while running the testcases"
+    );
     console.error(error);
     return error;
   }
-}
+};
 
 export const generateAdditionalTestCasesApi = async ({ bridgeId, versionId }) => {
   try {
     const response = await axios.post(`${URL}/api/utils/call-gtwy`, {
-      type: 'generate_test_cases',
+      type: "generate_test_cases",
       bridge_id: bridgeId,
-      version_id: versionId
+      version_id: versionId,
     });
     return response.data;
   } catch (error) {
-    toast.error(error?.response?.data?.detail?.error ? error?.response?.data?.detail?.error : "Error while generating additional test cases")
+    toast.error(
+      error?.response?.data?.detail?.error
+        ? error?.response?.data?.detail?.error
+        : "Error while generating additional test cases"
+    );
     console.error(error);
     return error;
   }
-}
+};

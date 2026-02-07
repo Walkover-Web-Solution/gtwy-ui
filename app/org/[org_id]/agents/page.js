@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import CreateNewBridge from "@/components/CreateNewBridge";
 import CustomTable from "@/components/customTable/CustomTable";
 import MainLayout from "@/components/layoutComponents/MainLayout";
@@ -9,13 +9,19 @@ import Protected from "@/components/Protected";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import OpenAiIcon from "@/icons/OpenAiIcon";
-import { archiveBridgeAction, clearBridgeUsageMetricsAction, deleteBridgeAction, fetchBridgeUsageMetricsAction, updateBridgeAction } from "@/store/action/bridgeAction";
+import {
+  archiveBridgeAction,
+  clearBridgeUsageMetricsAction,
+  deleteBridgeAction,
+  fetchBridgeUsageMetricsAction,
+  updateBridgeAction,
+} from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { getIconOfService, openModal, formatRelativeTime, formatDate } from "@/utils/utility";
 
 import { ClockIcon, EllipsisIcon } from "@/components/Icons";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
@@ -28,10 +34,10 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 const BRIDGE_STATUS = {
   ACTIVE: 1,
-  PAUSED: 0
+  PAUSED: 0,
 };
 
 const ModelBadge = ({ model }) => {
@@ -42,9 +48,7 @@ const ModelBadge = ({ model }) => {
       className="mt-1 inline-flex w-fit max-w-xs items-center gap-1 rounded-full border border-base-300/70 bg-base-200/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-base-content/60"
       title={model}
     >
-      <span className="truncate text-base-content/70 normal-case max-w-[140px]">
-        {model}
-      </span>
+      <span className="truncate text-base-content/70 normal-case max-w-[140px]">{model}</span>
     </span>
   );
 };
@@ -70,7 +74,7 @@ const UsageProgressDonut = ({ percent, label }) => (
     <div
       className="h-full w-full rounded-full border border-base-300 bg-base-200"
       style={{
-        background: `conic-gradient(#3b82f6 ${percent}%, rgba(59,130,246,0.15) ${percent}% 100%)`
+        background: `conic-gradient(#3b82f6 ${percent}%, rgba(59,130,246,0.15) ${percent}% 100%)`,
       }}
     />
     <div className="absolute inset-[6px] flex items-center justify-center rounded-full bg-base-100 text-xs font-semibold text-base-content/70">
@@ -97,11 +101,13 @@ const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsag
         <div>
           <p className="text-sm font-semibold">Usage &amp; Limits</p>
         </div>
-
       </div>
 
       <div className="flex items-center gap-4">
-        <UsageProgressDonut percent={hasLimit ? usagePercent : 0} label={hasLimit ? `${Math.round(usagePercent)}%` : "--"} />
+        <UsageProgressDonut
+          percent={hasLimit ? usagePercent : 0}
+          label={hasLimit ? `${Math.round(usagePercent)}%` : "--"}
+        />
         <div className="flex-1 space-y-2 text-sm">
           <div className="flex gap-1 items-center justify-between">
             <span className="text-base-content/60">Limit</span>
@@ -130,16 +136,14 @@ const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsag
         <div className="flex flex-col gap-2">
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => { onSetLimit(item, limit); }}
+            onClick={() => {
+              onSetLimit(item, limit);
+            }}
             disabled={!isLimitDirty}
           >
             Set / Update Limit
           </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={onResetUsage}
-            disabled={!Number(usageValue)}
-          >
+          <button className="btn btn-ghost btn-sm" onClick={onResetUsage} disabled={!Number(usageValue)}>
             Reset Usage
           </button>
         </div>
@@ -151,36 +155,36 @@ const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsag
 // Column label mapping for table headers
 const getColumnLabel = (column) => {
   switch (column) {
-    case 'averageResponseTime':
-      return 'Average Response Time';
-    case 'totalTokens':
-      return 'Tokens';
-    case 'cost':
-      return 'Cost $';
-    case 'promptDetails':
-      return 'Prompt Details';
-    case 'last_used':
-      return 'Last Run';
-    case 'created_at':
-    case 'createdAt':
-      return 'Created At';
-    case 'updated_at':
-    case 'updatedAt':
-      return 'Updated At';
-    case 'created_by':
-      return 'Created By';
-    case 'updated_by':
-      return 'Updated By';
-    case 'agent_limit':
-      return 'Limit $';
-    case 'apikey_usage':
-      return 'Apikey Usage';
-    case 'agent_usage':
-      return 'Agent Usage';
-    case 'embed_usage':
-      return 'Embed Usage';
+    case "averageResponseTime":
+      return "Average Response Time";
+    case "totalTokens":
+      return "Tokens";
+    case "cost":
+      return "Cost $";
+    case "promptDetails":
+      return "Prompt Details";
+    case "last_used":
+      return "Last Run";
+    case "created_at":
+    case "createdAt":
+      return "Created At";
+    case "updated_at":
+    case "updatedAt":
+      return "Updated At";
+    case "created_by":
+      return "Created By";
+    case "updated_by":
+      return "Updated By";
+    case "agent_limit":
+      return "Limit $";
+    case "apikey_usage":
+      return "Apikey Usage";
+    case "agent_usage":
+      return "Agent Usage";
+    case "embed_usage":
+      return "Embed Usage";
     default:
-      return column.replace(/_/g, ' ');
+      return column.replace(/_/g, " ");
   }
 };
 
@@ -189,18 +193,11 @@ const customCellRenderers = {
   totalTokens: (row) => row.totalTokens,
 };
 
-
 // Empty cell component without tooltip
-const EmptyCell = () => (
-  ""
-);
+const EmptyCell = () => "";
 
 // Loading skeleton component for usage metrics
-const LoadingSkeleton = () => (
-  <div className="w-8 h-4 bg-base-300 rounded animate-pulse"></div>
-);
-
-
+const LoadingSkeleton = () => <div className="w-8 h-4 bg-base-300 rounded animate-pulse"></div>;
 
 const renderCreatedByCell = (createdBy, timestamp) => {
   if (!createdBy) {
@@ -272,11 +269,7 @@ const renderLimitCell = (limit) => {
     );
   }
 
-  return (
-    <div className="text-center font-medium">
-      {formatUsageNumber(limitValue, 4)}
-    </div>
-  );
+  return <div className="text-center font-medium">{formatUsageNumber(limitValue, 4)}</div>;
 };
 
 // Footer Component
@@ -307,7 +300,21 @@ function Home({ params, searchParams, isEmbedUser }) {
   const dispatch = useDispatch();
   const router = useRouter();
   const type = resolvedSearchParams?.type ?? "api";
-  const { allBridges, averageResponseTime, isLoading, isFirstBridgeCreation, descriptions, bridgeStatus, showHistory, usageMetrics, isAdminOrOwner, currentOrgRole, currentUser, linksData, users } = useCustomSelector((state) => {
+  const {
+    allBridges,
+    averageResponseTime,
+    isLoading,
+    isFirstBridgeCreation,
+    descriptions,
+    bridgeStatus,
+    showHistory,
+    usageMetrics,
+    isAdminOrOwner,
+    currentOrgRole,
+    currentUser,
+    linksData,
+    users,
+  } = useCustomSelector((state) => {
     const orgData = state.bridgeReducer.org[resolvedParams.org_id] || {};
     const user = state.userDetailsReducer.userDetails;
     const orgRole = state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]?.role_name;
@@ -331,28 +338,30 @@ function Home({ params, searchParams, isEmbedUser }) {
       currentOrgRole: orgRole || "Viewer",
     };
   });
-  const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === 'chatbot' ? 'chatbot' : 'api';
+  const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === "chatbot" ? "chatbot" : "api";
   const pageHeaderContent = useMemo(() => {
-    if (bridgeTypeFilter === 'chatbot') {
+    if (bridgeTypeFilter === "chatbot") {
       return {
-        title: 'Chatbot Agents',
-        description: descriptions?.Chatbot || "Design, deploy, and monitor conversational agents tailored for your end users."
+        title: "Chatbot Agents",
+        description:
+          descriptions?.Chatbot || "Design, deploy, and monitor conversational agents tailored for your end users.",
       };
     }
     return {
-      title: 'API Agents',
-      description: descriptions?.Agents || "Build and manage API-powered AI agents for workflows, automations, and integrations."
+      title: "API Agents",
+      description:
+        descriptions?.Agents || "Build and manage API-powered AI agents for workflows, automations, and integrations.",
     };
   }, [bridgeTypeFilter, descriptions]);
-  const archivedSectionTitle = bridgeTypeFilter === 'chatbot' ? 'Archived Chatbots' : 'Archived Agents';
-  const deletedSectionTitle = bridgeTypeFilter === 'chatbot' ? 'Deleted Chatbots' : 'Deleted Agents';
+  const archivedSectionTitle = bridgeTypeFilter === "chatbot" ? "Archived Chatbots" : "Archived Agents";
+  const deletedSectionTitle = bridgeTypeFilter === "chatbot" ? "Deleted Chatbots" : "Deleted Agents";
   // Initialize with empty array instead of typeFilteredBridges to avoid reference error
   const [filterBridges, setFilterBridges] = useState([]);
   const [loadingAgentId, setLoadingAgentId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [tutorialState, setTutorialState] = useState({
     showSuggestion: isFirstBridgeCreation,
-    showTutorial: false
+    showTutorial: false,
   });
   const [usageFilterPopover, setUsageFilterPopover] = useState({ open: false, top: 0, left: 0 });
   const [usageFilterDates, setUsageFilterDates] = useState({ start_date: "", end_date: "" });
@@ -360,16 +369,12 @@ function Home({ params, searchParams, isEmbedUser }) {
   const [isUsageFilterSubmitting, setIsUsageFilterSubmitting] = useState(false);
   const usageFilterPopoverRef = useRef(null);
   const [selectedAgentForAccess, setSelectedAgentForAccess] = useState(null);
+  const [shouldSortByMetrics, _setShouldSortByMetrics] = useState(false); // Track if user wants sorting
 
   // Use portal dropdown hook
-  const {
-    handlePortalOpen,
-    handlePortalCloseImmediate,
-    PortalDropdown,
-    PortalStyles
-  } = usePortalDropdown({
-    offsetX: -100,  // Better positioning for table dropdowns
-    offsetY: 5
+  const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown({
+    offsetX: -100, // Better positioning for table dropdowns
+    offsetY: 5,
   });
   const { isDeleting, executeDelete } = useDeleteOperation();
 
@@ -379,9 +384,11 @@ function Home({ params, searchParams, isEmbedUser }) {
     }
 
     // Make sure we handle different response structures properly
-    const metricsArray = Array.isArray(usageMetrics.data) ? usageMetrics.data :
-      (usageMetrics.data.data && Array.isArray(usageMetrics.data.data)) ? usageMetrics.data.data : [];
-
+    const metricsArray = Array.isArray(usageMetrics.data)
+      ? usageMetrics.data
+      : usageMetrics.data.data && Array.isArray(usageMetrics.data.data)
+        ? usageMetrics.data.data
+        : [];
 
     const result = metricsArray.reduce((acc, item) => {
       if (item?.bridge_id) {
@@ -407,7 +414,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       const date = new Date(value);
       return Number.isNaN(date.getTime())
         ? value
-        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
     };
     if (!usageMetrics?.filters?.start_date && !usageMetrics?.filters?.end_date) return "";
     return `${formatReadableDate(usageMetrics?.filters?.start_date)} → ${formatReadableDate(usageMetrics?.filters?.end_date)}`;
@@ -436,24 +443,29 @@ function Home({ params, searchParams, isEmbedUser }) {
     if (!Array.isArray(processedBridges)) return [];
     return processedBridges.filter((bridge) => {
       const type = bridge?.bridgeType?.toLowerCase?.();
-      if (bridgeTypeFilter === 'chatbot') {
-        return type === 'chatbot';
+      if (bridgeTypeFilter === "chatbot") {
+        return type === "chatbot";
       }
-      return type !== 'chatbot';
+      return type !== "chatbot";
     });
   }, [processedBridges, bridgeTypeFilter]);
 
-  // Show all bridges but always prioritize metrics API agents
+  // Show all bridges but only sort when user explicitly requests it
   const applyUsageFilter = (list) => {
     if (!Array.isArray(list)) return list;
 
     // Add hasMetrics property to each item
-    const listWithMetricsFlag = list.map(item => ({
+    const listWithMetricsFlag = list.map((item) => ({
       ...item,
-      hasMetrics: usageFilterIds.has(item._id)
+      hasMetrics: usageFilterIds.has(item._id),
     }));
 
-    // Always prioritize bridges with metrics, regardless of filter status
+    // Only sort if user has explicitly requested sorting
+    if (!shouldSortByMetrics) {
+      return listWithMetricsFlag; // Return unsorted list
+    }
+
+    // Sort: prioritize bridges with metrics
     return [...listWithMetricsFlag].sort((a, b) => {
       // Put bridges with metrics first
       if (a.hasMetrics && !b.hasMetrics) return -1;
@@ -483,12 +495,8 @@ function Home({ params, searchParams, isEmbedUser }) {
 
     return (
       <div className="group cursor-help">
-        <span className="group-hover:hidden">
-          {formatRelativeTime(timestamp)}
-        </span>
-        <span className="hidden group-hover:inline">
-          {formatDate(timestamp)}
-        </span>
+        <span className="group-hover:hidden">{formatRelativeTime(timestamp)}</span>
+        <span className="hidden group-hover:inline">{formatDate(timestamp)}</span>
       </div>
     );
   };
@@ -513,11 +521,13 @@ function Home({ params, searchParams, isEmbedUser }) {
     setIsUsageFilterSubmitting(true);
     try {
       // When user explicitly applies a filter, mark it as active
-      await dispatch(fetchBridgeUsageMetricsAction({
-        start_date: startDate,
-        end_date: endDate,
-        filterActive: true // Explicitly applying filter
-      }));
+      await dispatch(
+        fetchBridgeUsageMetricsAction({
+          start_date: startDate,
+          end_date: endDate,
+          filterActive: true, // Explicitly applying filter
+        })
+      );
     } catch (error) {
       console.error("Failed to apply preset usage filter:", error);
     } finally {
@@ -527,14 +537,15 @@ function Home({ params, searchParams, isEmbedUser }) {
 
   const loadInitialMetrics = async () => {
     try {
-      await dispatch(fetchBridgeUsageMetricsAction({
-        start_date: null,
-        end_date: null,
-        filterActive: true // Set to true to prioritize bridges with metrics
-      }));
-
+      await dispatch(
+        fetchBridgeUsageMetricsAction({
+          start_date: null,
+          end_date: null,
+          filterActive: true, // Set to true to prioritize bridges with metrics
+        })
+      );
     } catch (error) {
-      console.error('Failed to fetch initial metrics:', error);
+      console.error("Failed to fetch initial metrics:", error);
     }
   };
 
@@ -543,7 +554,7 @@ function Home({ params, searchParams, isEmbedUser }) {
   }, [dispatch]);
 
   useEffect(() => {
-    setFilterBridges(typeFilteredBridges)
+    setFilterBridges(typeFilteredBridges);
   }, [typeFilteredBridges]);
 
   // Reset loading state when component unmounts or navigation completes
@@ -560,8 +571,9 @@ function Home({ params, searchParams, isEmbedUser }) {
     };
   }, []);
 
-
-  const filteredUnArchivedBridges = filterBridges?.filter((item) => (item.status === 1 || item.status === undefined) && !item.deletedAt);
+  const filteredUnArchivedBridges = filterBridges?.filter(
+    (item) => (item.status === 1 || item.status === undefined) && !item.deletedAt
+  );
   const filteredDeletedBridges = filterBridges?.filter((item) => item.deletedAt);
   const filteredArchivedBridges = filterBridges?.filter((item) => item.status === 0 && !item.deletedAt);
 
@@ -570,12 +582,11 @@ function Home({ params, searchParams, isEmbedUser }) {
   const usageFilteredDeleted = applyUsageFilter(filteredDeletedBridges);
   const usageFilteredArchived = applyUsageFilter(filteredArchivedBridges);
 
-
   useEffect(() => {
     if (usageMetrics?.filters) {
       setUsageFilterDates({
         start_date: usageMetrics.filters.start_date,
-        end_date: usageMetrics.filters.end_date
+        end_date: usageMetrics.filters.end_date,
       });
     } else {
       setUsageFilterDates({ start_date: "", end_date: "" });
@@ -585,62 +596,82 @@ function Home({ params, searchParams, isEmbedUser }) {
   const getDaysRemaining = (deletedAt) => {
     if (!deletedAt) return 0;
     const deletedDate = new Date(deletedAt);
-    const expiryDate = new Date(deletedDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days from deletion
+    const expiryDate = new Date(deletedDate.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from deletion
     const now = new Date();
     const diffTime = expiryDate - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   };
 
-  const ArchivedBridges = usageFilteredArchived.filter((item) => item.status === 0).map((item) => ({
-    _id: item._id,
-    model: item.configuration?.model || "",
-    name: <div className="flex gap-3">
-      <div className="flex gap-2 items-center">
-        {loadingAgentId === item._id ? (
-          <div className="loading loading-spinner loading-sm"></div>
-        ) : (
-          getIconOfService(item.service, 20, 20)
-        )}
-      </div>
-      <div className="flex-col">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className={loadingAgentId === item._id ? "opacity-50 truncate block flex-1" : "truncate block flex-1"}>
-              {item.name}
-            </span>
-            {loadingAgentId === item._id && (
-              <span className="text-xs text-primary opacity-70">Loading...</span>
+  const ArchivedBridges = usageFilteredArchived
+    .filter((item) => item.status === 0)
+    .map((item) => ({
+      _id: item._id,
+      model: item.configuration?.model || "",
+      name: (
+        <div className="flex gap-3">
+          <div className="flex gap-2 items-center">
+            {loadingAgentId === item._id ? (
+              <div className="loading loading-spinner loading-sm"></div>
+            ) : (
+              getIconOfService(item.service, 20, 20)
             )}
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            {item.bridge_status === 0 && (
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
-                <ClockIcon size={12} />
-                <span className="hidden sm:inline">Paused</span>
+          <div className="flex-col">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span
+                  className={loadingAgentId === item._id ? "opacity-50 truncate block flex-1" : "truncate block flex-1"}
+                >
+                  {item.name}
+                </span>
+                {loadingAgentId === item._id && <span className="text-xs text-primary opacity-70">Loading...</span>}
               </div>
-            )}
+              <div className="flex items-center gap-2 mt-1">
+                {item.bridge_status === 0 && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
+                    <ClockIcon size={12} />
+                    <span className="hidden sm:inline">Paused</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>,
-    actualName: item?.name || "",
-    slugName: item?.slugName || "",
-    service: item.service === 'openai' ? <OpenAiIcon /> : item.service,
-    bridgeType: item.bridgeType,
-    status: item.status,
-    bridge_status: item.bridge_status,
-    versionId: item?.published_version_id || item?.versions?.[0],
-    totalTokens: item.metrics ? formatUsageNumber(item.metrics.total_tokens) : usageMetrics?.loading ? <LoadingSkeleton /> : <EmptyCell />,
-    totalTokens_original: item.metrics?.total_tokens || 0,
-    cost: item.metrics ? `${Number(item.metrics.total_cost).toFixed(4)}` : usageMetrics?.loading ? <LoadingSkeleton /> : <EmptyCell />,
-    averageResponseTime: averageResponseTime[item?._id] === 0 ? <div className="text-xs">Not used in 24h</div> : <div className="text-xs">{averageResponseTime[item?._id]} sec</div>,
-    isLoading: loadingAgentId === item._id,
-    last_used: renderMetricsTimestamp(item, item.last_used),
-    last_used_orignal: usageMetricsMap[item._id]?.last_used_time || item.last_used,
-    agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
-
-  }));
+      ),
+      actualName: item?.name || "",
+      slugName: item?.slugName || "",
+      service: item.service === "openai" ? <OpenAiIcon /> : item.service,
+      bridgeType: item.bridgeType,
+      status: item.status,
+      bridge_status: item.bridge_status,
+      versionId: item?.published_version_id || item?.versions?.[0],
+      totalTokens: item.metrics ? (
+        formatUsageNumber(item.metrics.total_tokens)
+      ) : usageMetrics?.loading ? (
+        <LoadingSkeleton />
+      ) : (
+        <EmptyCell />
+      ),
+      totalTokens_original: item.metrics?.total_tokens || 0,
+      cost: item.metrics ? (
+        `${Number(item.metrics.total_cost).toFixed(4)}`
+      ) : usageMetrics?.loading ? (
+        <LoadingSkeleton />
+      ) : (
+        <EmptyCell />
+      ),
+      averageResponseTime:
+        averageResponseTime[item?._id] === 0 ? (
+          <div className="text-xs">Not used in 24h</div>
+        ) : (
+          <div className="text-xs">{averageResponseTime[item?._id]} sec</div>
+        ),
+      isLoading: loadingAgentId === item._id,
+      last_used: renderMetricsTimestamp(item, item.last_used),
+      last_used_orignal: usageMetricsMap[item._id]?.last_used_time || item.last_used,
+      agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
+    }));
 
   const UnArchivedBridges = usageFilteredUnArchived
     ?.filter((item) => item.status === 1 || item.status === undefined)
@@ -650,34 +681,34 @@ function Home({ params, searchParams, isEmbedUser }) {
       const lastUsed = item.last_used;
       const promptTotalTokens = item?.prompt_total_tokens;
       const promptEnhancerPercentage = item?.prompt_enhancer_percentage;
-      return ({
+      return {
         _id: item._id,
         model: item.configuration?.model || "",
-        name: <div className="flex gap-3 items-center">
-          <div className="flex gap-2 items-center">
-            {loadingAgentId === item._id ? (
-              <div className="loading loading-spinner loading-sm"></div>
-            ) : (
-              getIconOfService(item.service, 20, 20)
-            )}
-          </div>
-          <div className="flex-col" title={item.name}>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 w-[300px]">
-                <span className="truncate block flex-1">
-                  {item.name}
-                </span>
-                {item.bridge_status === 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
-                    <ClockIcon size={12} />
-                    <span className="hidden sm:inline">Paused</span>
-                  </div>
-                )}
-              </div>
+        name: (
+          <div className="flex gap-3 items-center">
+            <div className="flex gap-2 items-center">
+              {loadingAgentId === item._id ? (
+                <div className="loading loading-spinner loading-sm"></div>
+              ) : (
+                getIconOfService(item.service, 20, 20)
+              )}
             </div>
-            <ModelBadge model={item.configuration?.model} />
+            <div className="flex-col" title={item.name}>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 w-[300px]">
+                  <span className="truncate block flex-1">{item.name}</span>
+                  {item.bridge_status === 0 && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
+                      <ClockIcon size={12} />
+                      <span className="hidden sm:inline">Paused</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <ModelBadge model={item.configuration?.model} />
+            </div>
           </div>
-        </div>,
+        ),
         actualName: item?.name || "",
         slugName: item?.slugName || "",
         service: getIconOfService(item.service),
@@ -685,25 +716,34 @@ function Home({ params, searchParams, isEmbedUser }) {
         status: item.status,
         bridge_status: item.bridge_status,
         versionId: item?.published_version_id || item?.versions?.[0],
-        promptDetails: (promptTotalTokens != null || promptEnhancerPercentage != null)
-          ? (
+        promptDetails:
+          promptTotalTokens != null || promptEnhancerPercentage != null ? (
             <div className="flex flex-col text-xs">
               {promptTotalTokens != null && (
-                <span className="font-semibold text-base-content">
-                  {formatUsageNumber(promptTotalTokens)} tokens
-                </span>
+                <span className="font-semibold text-base-content">{formatUsageNumber(promptTotalTokens)} tokens</span>
               )}
               {promptEnhancerPercentage != null && (
-                <span className="text-base-content/70">
-                  {promptEnhancerPercentage}% Optimizable
-                </span>
+                <span className="text-base-content/70">{promptEnhancerPercentage}% Optimizable</span>
               )}
             </div>
-          )
-          : <EmptyCell />,
-        totalTokens: item.metrics ? formatUsageNumber(item.metrics.total_tokens) : usageMetrics?.loading ? <LoadingSkeleton /> : <EmptyCell />,
+          ) : (
+            <EmptyCell />
+          ),
+        totalTokens: item.metrics ? (
+          formatUsageNumber(item.metrics.total_tokens)
+        ) : usageMetrics?.loading ? (
+          <LoadingSkeleton />
+        ) : (
+          <EmptyCell />
+        ),
         totalTokens_original: item.metrics?.total_tokens || 0,
-        cost: item.metrics ? `${Number(item.metrics.total_cost).toFixed(4)}` : usageMetrics?.loading ? <LoadingSkeleton /> : <EmptyCell />,
+        cost: item.metrics ? (
+          `${Number(item.metrics.total_cost).toFixed(4)}`
+        ) : usageMetrics?.loading ? (
+          <LoadingSkeleton />
+        ) : (
+          <EmptyCell />
+        ),
         averageResponseTime: averageResponseTime[item?._id] ? averageResponseTime[item?._id] : "Not used in 24h",
         agent_limit: renderLimitCell(item?.bridge_limit),
         agent_limit_original: item?.bridge_limit || 0,
@@ -713,32 +753,44 @@ function Home({ params, searchParams, isEmbedUser }) {
         last_used: renderMetricsTimestamp(item, lastUsed),
         last_used_original: item.metrics?.last_used_time || lastUsed,
         last_used_orignal: usageMetricsMap[item._id]?.last_used_time || lastUsed,
-        created_by: renderCreatedByCell(users?.find(user => String(user?.user_id) === String(item.user_id))?.name, createdAt),
-        created_by_original: users?.find(user => String(user?.user_id) === String(item.user_id))?.name ? users?.find(user => String(user?.user_id) === String(item.user_id))?.name : <EmptyCell />,
+        created_by: renderCreatedByCell(
+          users?.find((user) => String(user?.user_id) === String(item.user_id))?.name,
+          createdAt
+        ),
+        created_by_original: users?.find((user) => String(user?.user_id) === String(item.user_id))?.name ? (
+          users?.find((user) => String(user?.user_id) === String(item.user_id))?.name
+        ) : (
+          <EmptyCell />
+        ),
         created_at_original: createdAt,
-        updated_by: renderUpdatedByCell(users?.find(user => String(user?.user_id) === String(item.last_publisher_id))?.name, updatedAt),
-        updated_by_original: users?.find(user => String(user?.user_id) === String(item.last_publisher_id))?.name ? users?.find(user => String(user?.user_id) === String(item.last_publisher_id))?.name : <EmptyCell />,
+        updated_by: renderUpdatedByCell(
+          users?.find((user) => String(user?.user_id) === String(item.last_publisher_id))?.name,
+          updatedAt
+        ),
+        updated_by_original: users?.find((user) => String(user?.user_id) === String(item.last_publisher_id))?.name ? (
+          users?.find((user) => String(user?.user_id) === String(item.last_publisher_id))?.name
+        ) : (
+          <EmptyCell />
+        ),
         updated_at_original: updatedAt,
-      });
+      };
     });
-
-
 
   // Helper function to calculate days remaining for deletion (30 days from deletedAt)
 
-  const DeletedBridges = usageFilteredDeleted
-    ?.map((item) => {
-      const createdAt = item.created_at || item.createdAt;
-      const updatedAt = item.updated_at || item.updatedAt;
-      const lastUsed = item.last_used;
-      // Direct access to metrics data without using helper functions
-      const promptTotalTokens = item?.prompt_total_tokens;
-      const promptEnhancerPercentage = item?.prompt_enhancer_percentage;
+  const DeletedBridges = usageFilteredDeleted?.map((item) => {
+    const createdAt = item.created_at || item.createdAt;
+    const updatedAt = item.updated_at || item.updatedAt;
+    const lastUsed = item.last_used;
+    // Direct access to metrics data without using helper functions
+    const promptTotalTokens = item?.prompt_total_tokens;
+    const promptEnhancerPercentage = item?.prompt_enhancer_percentage;
 
-      return ({
-        _id: item._id,
-        model: item.configuration?.model || "",
-        name: <div className="flex gap-3">
+    return {
+      _id: item._id,
+      model: item.configuration?.model || "",
+      name: (
+        <div className="flex gap-3">
           <div className="flex gap-2 items-center">
             {loadingAgentId === item._id ? (
               <div className="loading loading-spinner loading-sm"></div>
@@ -749,61 +801,81 @@ function Home({ params, searchParams, isEmbedUser }) {
           <div className="flex-col">
             <div className="flex flex-col">
               <div className="flex items-center gap-2 w-[300px]">
-                <span className={loadingAgentId === item._id ? "opacity-50 truncate block flex-1" : "truncate block flex-1"}>
+                <span
+                  className={loadingAgentId === item._id ? "opacity-50 truncate block flex-1" : "truncate block flex-1"}
+                >
                   {item.name}
                 </span>
-                {loadingAgentId === item._id && (
-                  <span className="text-xs text-primary opacity-70">Loading...</span>
-                )}
+                {loadingAgentId === item._id && <span className="text-xs text-primary opacity-70">Loading...</span>}
               </div>
             </div>
             <ModelBadge model={item.configuration?.model} />
           </div>
-        </div>,
-        actualName: item?.name || "",
-        slugName: item?.slugName || "",
-        service: item.service === 'openai' ? <OpenAiIcon /> : item.service,
-        bridgeType: item.bridgeType,
-        status: item.status,
-        deletedAt: item.deletedAt,
-        daysRemaining: getDaysRemaining(item.deletedAt),
-        versionId: item?.published_version_id || item?.versions?.[0],
-        promptDetails: (promptTotalTokens != null || promptEnhancerPercentage != null)
-          ? (
-            <div className="flex flex-col text-xs">
-              {promptTotalTokens != null && (
-                <span className="font-semibold text-base-content">
-                  {formatUsageNumber(promptTotalTokens)} tokens
-                </span>
-              )}
-              {promptEnhancerPercentage != null && (
-                <span className="text-base-content/70">
-                  {promptEnhancerPercentage}% Optimizable
-                </span>
-              )}
-            </div>
-          )
-          : <EmptyCell />,
-        totalTokens: item.metrics ? formatUsageNumber(item.metrics.total_tokens) : usageMetrics?.loading ? <LoadingSkeleton /> : <EmptyCell />,
-        totalTokens_original: item.metrics?.total_tokens || 0,
-        cost: item.metrics ? `${Number(item.metrics.total_cost).toFixed(4)}` : usageMetrics?.loading ? <LoadingSkeleton /> : <EmptyCell />,
-        agent_limit: renderLimitCell(item?.bridge_limit),
-        agent_limit_original: item?.bridge_limit || 0,
-        averageResponseTime: averageResponseTime[item?._id] === 0 ? <div className="text-xs">Not used in 24h</div> : <div className="text-xs">{averageResponseTime[item?._id]} sec</div>,
-        isLoading: loadingAgentId === item._id,
-        last_used: renderMetricsTimestamp(item, lastUsed),
-        last_used_original: item.metrics?.last_used_time || lastUsed,
-        last_used_orignal: usageMetricsMap[item._id]?.last_used_time || lastUsed,
-        created_by: renderCreatedByCell(users?.find(user => String(user?.user_id) === String(item.user_id))?.name, createdAt),
-        created_by_original: users?.find(user => String(user?.user_id) === String(item.user_id))?.name,
-        created_at_original: createdAt,
-        updated_by: renderUpdatedByCell(users?.find(user => String(user?.user_id) === String(item.last_publisher_id))?.name, updatedAt),
-        updated_by_original: users?.find(user => String(user?.user_id) === String(item.last_publisher_id))?.name,
-        updated_at_original: updatedAt,
-        agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
-
-      });
-    });
+        </div>
+      ),
+      actualName: item?.name || "",
+      slugName: item?.slugName || "",
+      service: item.service === "openai" ? <OpenAiIcon /> : item.service,
+      bridgeType: item.bridgeType,
+      status: item.status,
+      deletedAt: item.deletedAt,
+      daysRemaining: getDaysRemaining(item.deletedAt),
+      versionId: item?.published_version_id || item?.versions?.[0],
+      promptDetails:
+        promptTotalTokens != null || promptEnhancerPercentage != null ? (
+          <div className="flex flex-col text-xs">
+            {promptTotalTokens != null && (
+              <span className="font-semibold text-base-content">{formatUsageNumber(promptTotalTokens)} tokens</span>
+            )}
+            {promptEnhancerPercentage != null && (
+              <span className="text-base-content/70">{promptEnhancerPercentage}% Optimizable</span>
+            )}
+          </div>
+        ) : (
+          <EmptyCell />
+        ),
+      totalTokens: item.metrics ? (
+        formatUsageNumber(item.metrics.total_tokens)
+      ) : usageMetrics?.loading ? (
+        <LoadingSkeleton />
+      ) : (
+        <EmptyCell />
+      ),
+      totalTokens_original: item.metrics?.total_tokens || 0,
+      cost: item.metrics ? (
+        `${Number(item.metrics.total_cost).toFixed(4)}`
+      ) : usageMetrics?.loading ? (
+        <LoadingSkeleton />
+      ) : (
+        <EmptyCell />
+      ),
+      agent_limit: renderLimitCell(item?.bridge_limit),
+      agent_limit_original: item?.bridge_limit || 0,
+      averageResponseTime:
+        averageResponseTime[item?._id] === 0 ? (
+          <div className="text-xs">Not used in 24h</div>
+        ) : (
+          <div className="text-xs">{averageResponseTime[item?._id]} sec</div>
+        ),
+      isLoading: loadingAgentId === item._id,
+      last_used: renderMetricsTimestamp(item, lastUsed),
+      last_used_original: item.metrics?.last_used_time || lastUsed,
+      last_used_orignal: usageMetricsMap[item._id]?.last_used_time || lastUsed,
+      created_by: renderCreatedByCell(
+        users?.find((user) => String(user?.user_id) === String(item.user_id))?.name,
+        createdAt
+      ),
+      created_by_original: users?.find((user) => String(user?.user_id) === String(item.user_id))?.name,
+      created_at_original: createdAt,
+      updated_by: renderUpdatedByCell(
+        users?.find((user) => String(user?.user_id) === String(item.last_publisher_id))?.name,
+        updatedAt
+      ),
+      updated_by_original: users?.find((user) => String(user?.user_id) === String(item.last_publisher_id))?.name,
+      updated_at_original: updatedAt,
+      agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
+    };
+  });
 
   // Helper function to calculate days remaining for deletion (30 days from deletedAt)
 
@@ -816,49 +888,50 @@ function Home({ params, searchParams, isEmbedUser }) {
     router.push(`/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}`);
   };
   const handlePauseBridge = async (bridgeId) => {
-    const newStatus = bridgeStatus[bridgeId]?.bridge_status === BRIDGE_STATUS.PAUSED
-      ? BRIDGE_STATUS.ACTIVE
-      : BRIDGE_STATUS.PAUSED;
+    const newStatus =
+      bridgeStatus[bridgeId]?.bridge_status === BRIDGE_STATUS.PAUSED ? BRIDGE_STATUS.ACTIVE : BRIDGE_STATUS.PAUSED;
 
     try {
-      await dispatch(updateBridgeAction({
-        bridgeId,
-        dataToSend: { bridge_status: newStatus }
-      }));
-      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? 'resumed' : 'paused'} successfully`);
+      await dispatch(
+        updateBridgeAction({
+          bridgeId,
+          dataToSend: { bridge_status: newStatus },
+        })
+      );
+      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to update agent status');
+      toast.error("Failed to update agent status");
     }
   };
   const archiveBridge = (bridgeId, newStatus = 0) => {
     try {
       dispatch(archiveBridgeAction(bridgeId, newStatus)).then((bridgeStatus) => {
         if (bridgeStatus === 1) {
-          toast.success('Agent Unarchived Successfully');
+          toast.success("Agent Unarchived Successfully");
         } else {
-          toast.success('Agent Archived Successfully');
+          toast.success("Agent Archived Successfully");
         }
         router.push(`/org/${resolvedParams.org_id}/agents`);
       });
     } catch (error) {
-      console.error('Failed to archive/unarchive agents', error);
+      console.error("Failed to archive/unarchive agents", error);
     }
-  }
+  };
 
   const handleUpdateBridgeLimit = async (bridge, limit) => {
     const dataToSend = {
-      "bridge_limit": limit
-    }
+      bridge_limit: limit,
+    };
     const res = await dispatch(updateBridgeAction({ bridgeId: bridge._id, dataToSend }));
-    if (res?.success) toast.success('Agent Usage Limit Updated Successfully');
+    if (res?.success) toast.success("Agent Usage Limit Updated Successfully");
   };
 
   const resetUsage = async (bridge) => {
-    const dataToSend = { "bridge_usage": 0 }
+    const dataToSend = { bridge_usage: 0 };
     const res = await dispatch(updateBridgeAction({ bridgeId: bridge._id, dataToSend }));
-    if (res?.success) toast.success('Agent Usage Reset Successfully');
-  }
+    if (res?.success) toast.success("Agent Usage Reset Successfully");
+  };
 
   const closeUsageFilterPopover = () => {
     setUsageFilterPopover((prev) => ({ ...prev, open: false }));
@@ -874,10 +947,8 @@ function Home({ params, searchParams, isEmbedUser }) {
     const modalWidth = 320;
     const modalHeight = 220;
 
-    const top =
-      window.scrollY + Math.max(16, (window.innerHeight - modalHeight) / 2);
-    const left =
-      window.scrollX + Math.max(16, (window.innerWidth - modalWidth) / 2);
+    const top = window.scrollY + Math.max(16, (window.innerHeight - modalHeight) / 2);
+    const left = window.scrollX + Math.max(16, (window.innerWidth - modalWidth) / 2);
 
     setUsageFilterError("");
     setUsageFilterPopover({
@@ -903,14 +974,16 @@ function Home({ params, searchParams, isEmbedUser }) {
     setIsUsageFilterSubmitting(true);
     try {
       // When user explicitly applies a custom date filter, mark it as active
-      await dispatch(fetchBridgeUsageMetricsAction({
-        start_date: usageFilterDates.start_date,
-        end_date: usageFilterDates.end_date,
-        filterActive: true // Explicitly applying filter
-      }));
+      await dispatch(
+        fetchBridgeUsageMetricsAction({
+          start_date: usageFilterDates.start_date,
+          end_date: usageFilterDates.end_date,
+          filterActive: true, // Explicitly applying filter
+        })
+      );
       closeUsageFilterPopover();
     } catch (error) {
-      console.error('Failed to fetch usage metrics:', error);
+      console.error("Failed to fetch usage metrics:", error);
     } finally {
       setIsUsageFilterSubmitting(false);
     }
@@ -990,7 +1063,14 @@ function Home({ params, searchParams, isEmbedUser }) {
     handlePortalOpen(e.currentTarget, dropdownContent);
   };
   const EndComponent = ({ row }) => {
-    const isEditor = ((currentOrgRole === "Editor" && (row.users?.length === 0 || !row.users || (row.users?.length > 0 && row.users?.some(user => user.id === currentUser.id)))) || ((currentOrgRole === "Viewer") && (row.users?.some(user => user.id === currentUser.id))) || currentOrgRole === "Creator") || isAdminOrOwner;
+    const isEditor =
+      (currentOrgRole === "Editor" &&
+        (row.users?.length === 0 ||
+          !row.users ||
+          (row.users?.length > 0 && row.users?.some((user) => user.id === currentUser.id)))) ||
+      (currentOrgRole === "Viewer" && row.users?.some((user) => user.id === currentUser.id)) ||
+      currentOrgRole === "Creator" ||
+      isAdminOrOwner;
     const usageStats = getUsageStatsForRow(row);
     const handleUsageSummaryClick = (e) => {
       e.preventDefault();
@@ -1021,23 +1101,41 @@ function Home({ params, searchParams, isEmbedUser }) {
 
       const dropdownContent = (
         <ul className="menu bg-base-100 rounded-box w-52 p-2 shadow">
-          <li className={`${row.status === 1 ? `hidden` : ''}`}><button onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handlePortalCloseImmediate();
-            archiveBridge(row._id, row.status != undefined ? Number(!row?.status) : undefined)
-          }}>{(row?.status === 0) ? <><ArchiveRestore size={14} className=" text-green-600" />Un-archive Agent</> : null}</button></li>
+          <li className={`${row.status === 1 ? `hidden` : ""}`}>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handlePortalCloseImmediate();
+                archiveBridge(row._id, row.status != undefined ? Number(!row?.status) : undefined);
+              }}
+            >
+              {row?.status === 0 ? (
+                <>
+                  <ArchiveRestore size={14} className=" text-green-600" />
+                  Un-archive Agent
+                </>
+              ) : null}
+            </button>
+          </li>
           {/* Only show Manage Access button for Admin or Owner roles */}
           {!isEmbedUser && isAdminOrOwner && (
-            <li><a onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handlePortalCloseImmediate();
-              setSelectedAgentForAccess(row);
-              setTimeout(() => {
-                openModal(MODAL_TYPE.ACCESS_MANAGEMENT_MODAL);
-              }, 10);
-            }}><Users size={16} />Manage Access</a></li>
+            <li>
+              <a
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handlePortalCloseImmediate();
+                  setSelectedAgentForAccess(row);
+                  setTimeout(() => {
+                    openModal(MODAL_TYPE.ACCESS_MANAGEMENT_MODAL);
+                  }, 10);
+                }}
+              >
+                <Users size={16} />
+                Manage Access
+              </a>
+            </li>
           )}
           <li>
             <button
@@ -1048,44 +1146,51 @@ function Home({ params, searchParams, isEmbedUser }) {
               Usage &amp; Limits
             </button>
           </li>
-          
-          <li> <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handlePortalCloseImmediate();
-              handlePauseBridge(row._id)
-            }}
-            className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2`}
-    >
-      {bridgeStatus[row._id]?.bridge_status === BRIDGE_STATUS.PAUSED ? (
-        <>
-          <Play size={14} className="text-green-600" />
-          Resume Agent
-        </>
-      ) : (
-        <>
-          <Pause size={14} className="text-red-600" />
-          Pause Agent
-        </>
-      )}
-          </button></li>
-            {/* Only show Delete button for Admin or Owner roles */}
-            {isAdminOrOwner && (
-              <li><button onClick={(e) => {
+
+          <li>
+            {" "}
+            <button
+              onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handlePortalCloseImmediate();
-                setItemToDelete(row);
-                // Small delay to ensure state is set before opening modal
-                setTimeout(() => {
-                  openModal(MODAL_TYPE.DELETE_MODAL);
-                }, 10);
-              }}>
+                handlePauseBridge(row._id);
+              }}
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2`}
+            >
+              {bridgeStatus[row._id]?.bridge_status === BRIDGE_STATUS.PAUSED ? (
+                <>
+                  <Play size={14} className="text-green-600" />
+                  Resume Agent
+                </>
+              ) : (
+                <>
+                  <Pause size={14} className="text-red-600" />
+                  Pause Agent
+                </>
+              )}
+            </button>
+          </li>
+          {/* Only show Delete button for Admin or Owner roles */}
+          {isAdminOrOwner && (
+            <li>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handlePortalCloseImmediate();
+                  setItemToDelete(row);
+                  // Small delay to ensure state is set before opening modal
+                  setTimeout(() => {
+                    openModal(MODAL_TYPE.DELETE_MODAL);
+                  }, 10);
+                }}
+              >
                 <Trash2 size={14} className="text-red-600" />
                 Delete Agent
-              </button></li>
-            )} 
+              </button>
+            </li>
+          )}
         </ul>
       );
 
@@ -1096,13 +1201,18 @@ function Home({ params, searchParams, isEmbedUser }) {
       <div className="flex items-center gap-2">
         <div className="flex items-center mr-4 text-sm">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            {(!isEmbedUser || (isEmbedUser && showHistory)) ? (
+            {!isEmbedUser || (isEmbedUser && showHistory) ? (
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <button className="btn btn-outline btn-ghost btn-sm" onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  router.push(`/org/${resolvedParams.org_id}/agents/history/${row._id}?version=${row?.versionId}&type=${row?.bridgeType || 'chatbot'}`);
-                }}>
+                <button
+                  className="btn btn-outline btn-ghost btn-sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(
+                      `/org/${resolvedParams.org_id}/agents/history/${row._id}?version=${row?.versionId}&type=${row?.bridgeType || "chatbot"}`
+                    );
+                  }}
+                >
                   History
                 </button>
               </div>
@@ -1121,8 +1231,8 @@ function Home({ params, searchParams, isEmbedUser }) {
           )}
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   const DeletedEndComponent = ({ row }) => {
     return (
@@ -1133,56 +1243,56 @@ function Home({ params, searchParams, isEmbedUser }) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              restoreBridge(row._id)
+              restoreBridge(row._id);
             }}
           >
             <span className="flex items-center  gap-1">
               <div className="flex text-xs items-center gap-1">
                 <Undo2 size={12} />
               </div>
-              <div className="text-sm">
-                Undo
-              </div>
+              <div className="text-sm">Undo</div>
             </span>
           </button>
         </div>
-        <div className="text-error font-sm mt-2 text-sm whitespace-nowrap">
-          {row.daysRemaining} days left
-        </div>
+        <div className="text-error font-sm mt-2 text-sm whitespace-nowrap">{row.daysRemaining} days left</div>
       </div>
-    )
-  }
+    );
+  };
 
   const deleteBridge = async (item, name) => {
     await executeDelete(async () => {
       const bridgeId = item._id;
       const response = await dispatch(deleteBridgeAction({ bridgeId, org_id: resolvedParams.org_id }));
-      toast.success(response?.data?.message || response?.message || response || 'Agent deleted successfully');
+      toast.success(response?.data?.message || response?.message || response || "Agent deleted successfully");
     });
-  }
+  };
 
   const restoreBridge = async (bridgeId) => {
     try {
       const response = await dispatch(deleteBridgeAction({ bridgeId, org_id: resolvedParams.org_id, restore: true }));
-      toast.success(response?.data?.message || response?.message || response || 'Agent restored successfully');
+      toast.success(response?.data?.message || response?.message || response || "Agent restored successfully");
     } catch (error) {
-      console.error('Failed to restore agent', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to restore agent';
+      console.error("Failed to restore agent", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to restore agent";
       toast.error(errorMessage);
     }
-  }
+  };
 
   return (
     <div className="w-full overflow-x-hidden flex flex-col min-h-screen">
       <div className="w-full max-w-full flex-1">
-
-        {tutorialState?.showSuggestion && <TutorialSuggestionToast setTutorialState={setTutorialState} flagKey={"bridgeCreation"} TutorialDetails={"Agent Creation"} />}
+        {tutorialState?.showSuggestion && (
+          <TutorialSuggestionToast
+            setTutorialState={setTutorialState}
+            flagKey={"bridgeCreation"}
+            TutorialDetails={"Agent Creation"}
+          />
+        )}
         {tutorialState?.showTutorial && (
           <OnBoarding
-            setShowTutorial={() => setTutorialState(prev => ({ ...prev, showTutorial: false }))}
+            setShowTutorial={() => setTutorialState((prev) => ({ ...prev, showTutorial: false }))}
             video={getBridgeCreationVideo()}
             flagKey={"bridgeCreation"}
-
           />
         )}
         <CreateNewBridge orgid={resolvedParams.org_id} defaultBridgeType={bridgeTypeFilter} />
@@ -1190,7 +1300,6 @@ function Home({ params, searchParams, isEmbedUser }) {
         <input id="my-drawer-2" type="checkbox" className="drawer-toggle" />
         <div className="drawer-content flex flex-col items-start justify-start">
           <div className="flex w-full justify-start gap-4 lg:gap-16 items-start">
-
             <div className="w-full">
               {typeFilteredBridges.length === 0 ? (
                 <AgentEmptyState
@@ -1209,10 +1318,9 @@ function Home({ params, searchParams, isEmbedUser }) {
                         <PageHeader
                           title={pageHeaderContent.title}
                           description={pageHeaderContent.description}
-                          docLink={linksData?.find(link => link.title === 'Agents')?.blog_link}
+                          docLink={linksData?.find((link) => link.title === "Agents")?.blog_link}
                           isEmbedUser={isEmbedUser}
                         />
-
                       </div>
                     </MainLayout>
 
@@ -1229,11 +1337,12 @@ function Home({ params, searchParams, isEmbedUser }) {
                           <Funnel size={14} />
                           <span>Usage Filter</span>
                           <span className="text-xs text-gray-500">
-                            {isUsageFilterActive ? usageFilterLabel || '' : 'All time'}
+                            {isUsageFilterActive ? usageFilterLabel || "" : "All time"}
                           </span>
                         </button>
 
                         <button
+                          data-testid="create-new-agent-button"
                           className="btn btn-primary btn-sm"
                           onClick={() => openModal(MODAL_TYPE?.CREATE_BRIDGE_MODAL)}
                         >
@@ -1246,12 +1355,29 @@ function Home({ params, searchParams, isEmbedUser }) {
                   <div className="w-full overflow-visible">
                     <CustomTable
                       data={UnArchivedBridges}
-                      columnsToShow={['name', 'promptDetails', 'cost', 'totalTokens', 'agent_limit', 'last_used', 'created_by', 'updated_by']}
+                      columnsToShow={[
+                        "name",
+                        "promptDetails",
+                        "cost",
+                        "totalTokens",
+                        "agent_limit",
+                        "last_used",
+                        "created_by",
+                        "updated_by",
+                      ]}
                       sorting
-                      sortingColumns={['name', 'cost', 'totalTokens', 'agent_limit', 'last_used', 'created_by', 'updated_by']}
+                      sortingColumns={[
+                        "name",
+                        "cost",
+                        "totalTokens",
+                        "agent_limit",
+                        "last_used",
+                        "created_by",
+                        "updated_by",
+                      ]}
                       handleRowClick={(props) => onClickConfigure(props?._id, props?.versionId)}
-                      keysToExtractOnRowClick={['_id', 'versionId']}
-                      keysToWrap={['name', 'model']}
+                      keysToExtractOnRowClick={["_id", "versionId"]}
+                      keysToWrap={["name", "model"]}
                       endComponent={EndComponent}
                       onUsageFilterClick={handleUsageFilterIconClick}
                       isUsageFilterActive={isUsageFilterActive}
@@ -1261,7 +1387,6 @@ function Home({ params, searchParams, isEmbedUser }) {
                       customCellRenderers={customCellRenderers}
                     />
                   </div>
-
 
                   {filteredArchivedBridges?.length > 0 && (
                     <div className="">
@@ -1275,15 +1400,15 @@ function Home({ params, searchParams, isEmbedUser }) {
                       <div className="opacity-60 overflow-visible">
                         <CustomTable
                           data={ArchivedBridges}
-                          columnsToShow={['name', 'model', 'cost', 'totalTokens', 'agent_usage', 'last_used']}
+                          columnsToShow={["name", "model", "cost", "totalTokens", "agent_usage", "last_used"]}
                           sorting
-                          sortingColumns={['name', 'model', 'cost', 'totalTokens', 'agent_usage', 'last_used']}
+                          sortingColumns={["name", "model", "cost", "totalTokens", "agent_usage", "last_used"]}
                           handleRowClick={(props) => onClickConfigure(props?._id, props?.versionId)}
-                          keysToExtractOnRowClick={['_id', 'versionId']}
-                          keysToWrap={['name', 'prompt', 'model']}
+                          keysToExtractOnRowClick={["_id", "versionId"]}
+                          keysToWrap={["name", "prompt", "model"]}
                           endComponent={EndComponent}
                           customGetColumnLabel={getColumnLabel}
-                            customCellRenderers={customCellRenderers} 
+                          customCellRenderers={customCellRenderers}
                         />
                       </div>
                     </div>
@@ -1301,14 +1426,33 @@ function Home({ params, searchParams, isEmbedUser }) {
                       <div className="opacity-60 overflow-visible">
                         <CustomTable
                           data={DeletedBridges}
-                          columnsToShow={['name', 'promptDetails', 'cost', 'totalTokens', 'agent_limit', 'last_used', 'created_by', 'updated_by']}
+                          columnsToShow={[
+                            "name",
+                            "promptDetails",
+                            "cost",
+                            "totalTokens",
+                            "agent_limit",
+                            "last_used",
+                            "created_by",
+                            "updated_by",
+                          ]}
                           sorting
-                          sortingColumns={['name', 'cost', 'totalTokens', 'agent_limit', 'last_used', 'created_by', 'updated_by', 'created_at', 'updated_at']}
-                          keysToWrap={['name', 'model']}
+                          sortingColumns={[
+                            "name",
+                            "cost",
+                            "totalTokens",
+                            "agent_limit",
+                            "last_used",
+                            "created_by",
+                            "updated_by",
+                            "created_at",
+                            "updated_at",
+                          ]}
+                          keysToWrap={["name", "model"]}
                           endComponent={DeletedEndComponent}
                           isUsageFilterActive={isUsageFilterActive}
                           customGetColumnLabel={getColumnLabel}
-                            customCellRenderers={customCellRenderers} 
+                          customCellRenderers={customCellRenderers}
                         />
                       </div>
                     </div>
@@ -1319,77 +1463,74 @@ function Home({ params, searchParams, isEmbedUser }) {
           </div>
 
           {/* Powered By Footer */}
-
         </div>
 
-        {usageFilterPopover.open && typeof document !== 'undefined' && createPortal(
-          <div
-            className="fixed z-[999999999]"
-            style={{ top: usageFilterPopover.top, left: usageFilterPopover.left }}
-          >
-            <div
-              ref={usageFilterPopoverRef}
-              className="w-72 rounded-2xl border border-base-300 bg-base-100 p-4 shadow-2xl space-y-3"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-base-content">Filter usage</p>
-                  <p className="text-xs text-base-content/60">Show tokens between two dates</p>
+        {usageFilterPopover.open &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div className="fixed z-[999999999]" style={{ top: usageFilterPopover.top, left: usageFilterPopover.left }}>
+              <div
+                ref={usageFilterPopoverRef}
+                className="w-72 rounded-2xl border border-base-300 bg-base-100 p-4 shadow-2xl space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-base-content">Filter usage</p>
+                    <p className="text-xs text-base-content/60">Show tokens between two dates</p>
+                  </div>
+                  {isUsageFilterActive && <span className="badge badge-primary badge-sm text-xs">Applied</span>}
                 </div>
-                {isUsageFilterActive && (
-                  <span className="badge badge-primary badge-sm text-xs">Applied</span>
-                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase text-base-content/60">Start date</label>
+                  <input
+                    type="date"
+                    className="input input-bordered input-sm w-full"
+                    value={usageFilterDates.start_date}
+                    max={usageFilterDates.end_date || undefined}
+                    onChange={(e) => handleUsageDateChange("start_date", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase text-base-content/60">End date</label>
+                  <input
+                    type="date"
+                    className="input input-bordered input-sm w-full"
+                    value={usageFilterDates.end_date}
+                    min={usageFilterDates.start_date || undefined}
+                    onChange={(e) => handleUsageDateChange("end_date", e.target.value)}
+                  />
+                </div>
+                {usageFilterError && <p className="text-xs text-error">{usageFilterError}</p>}
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={handleUsageFilterClear}
+                    disabled={isUsageResetDisabled}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="btn btn-primary btn-sm min-w-[70px]"
+                    onClick={handleUsageFilterApply}
+                    disabled={isUsageFilterSubmitting}
+                  >
+                    {isUsageFilterSubmitting ? <span className="loading loading-spinner loading-xs" /> : "Apply"}
+                  </button>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase text-base-content/60">Start date</label>
-                <input
-                  type="date"
-                  className="input input-bordered input-sm w-full"
-                  value={usageFilterDates.start_date}
-                  max={usageFilterDates.end_date || undefined}
-                  onChange={(e) => handleUsageDateChange("start_date", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase text-base-content/60">End date</label>
-                <input
-                  type="date"
-                  className="input input-bordered input-sm w-full"
-                  value={usageFilterDates.end_date}
-                  min={usageFilterDates.start_date || undefined}
-                  onChange={(e) => handleUsageDateChange("end_date", e.target.value)}
-                />
-              </div>
-              {usageFilterError && (
-                <p className="text-xs text-error">{usageFilterError}</p>
-              )}
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={handleUsageFilterClear}
-                  disabled={isUsageResetDisabled}
-                >
-                  Reset
-                </button>
-                <button
-                  className="btn btn-primary btn-sm min-w-[70px]"
-                  onClick={handleUsageFilterApply}
-                  disabled={isUsageFilterSubmitting}
-                >
-                  {isUsageFilterSubmitting ? (
-                    <span className="loading loading-spinner loading-xs" />
-                  ) : (
-                    "Apply"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+            </div>,
+            document.body
+          )}
 
         {/* Single DeleteModal for all delete operations */}
-        <DeleteModal onConfirm={deleteBridge} item={itemToDelete} title="Delete Agent" description={`Are you sure you want to delete the Agent "${itemToDelete?.actualName}"? This agent will be moved to deleted items and permanently removed after 30 days.`} loading={isDeleting} isAsync={true} />
+        <DeleteModal
+          onConfirm={deleteBridge}
+          item={itemToDelete}
+          title="Delete Agent"
+          description={`Are you sure you want to delete the Agent "${itemToDelete?.actualName}"? This agent will be moved to deleted items and permanently removed after 30 days.`}
+          loading={isDeleting}
+          isAsync={true}
+        />
       </div>
 
       {/* Powered By Footer pinned to bottom */}
@@ -1399,7 +1540,6 @@ function Home({ params, searchParams, isEmbedUser }) {
       {/* Portal components from hook */}
       <PortalStyles />
       <PortalDropdown />
-
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import { CloseIcon } from '@/components/Icons';
-import { useCustomSelector } from '@/customHooks/customSelector';
-import { toggleSidebar } from '@/utils/utility';
-import React, { useState, useMemo, useEffect } from 'react';
+import { CloseIcon } from "@/components/Icons";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { toggleSidebar } from "@/utils/utility";
+import React, { useState, useMemo, useEffect } from "react";
 
 // Configuration object for better maintainability
 
@@ -36,10 +36,11 @@ const CodeBlock = ({ children }) => (
 );
 
 const Link = ({ href, children }) => (
-  <a 
-    href={href} 
-    className="text-blue-600 hover:underline font-medium" 
-    target="_blank" 
+  <a
+    id="api-key-guide-provider-link"
+    href={href}
+    className="text-blue-600 hover:underline font-medium"
+    target="_blank"
     rel="noopener noreferrer"
   >
     {children}
@@ -47,29 +48,31 @@ const Link = ({ href, children }) => (
 );
 
 function ApiKeyGuideSlider() {
-   const {API_PROVIDERS}=useCustomSelector((state)=>({
-    API_PROVIDERS:state.flowDataReducer?.flowData?.apiKeyGuideData||[]
-  }))
+  const { API_PROVIDERS } = useCustomSelector((state) => ({
+    API_PROVIDERS: state.flowDataReducer?.flowData?.apiKeyGuideData || [],
+  }));
 
-// Memoize the model tabs to prevent unnecessary re-renders
-const modelTabs = useMemo(() => 
-  API_PROVIDERS.map((provider) => ({
-    id: provider.key,
-    name: provider.name,
-    color: 'bg-primary'
-    })), [API_PROVIDERS]
+  // Memoize the model tabs to prevent unnecessary re-renders
+  const modelTabs = useMemo(
+    () =>
+      API_PROVIDERS.map((provider) => ({
+        id: provider.key,
+        name: provider.name,
+        color: "bg-primary",
+      })),
+    [API_PROVIDERS]
   );
-const [selectedModel, setSelectedModel] = useState();
+  const [selectedModel, setSelectedModel] = useState();
 
-useEffect(() => {
-  if (modelTabs.length > 0 && !selectedModel) {
-    setSelectedModel(modelTabs[0].id);
-  }
-}, [modelTabs, selectedModel]);
+  useEffect(() => {
+    if (modelTabs.length > 0 && !selectedModel) {
+      setSelectedModel(modelTabs[0].id);
+    }
+  }, [modelTabs, selectedModel]);
 
   // Memoize the guide content to prevent unnecessary re-renders
   const guideContent = useMemo(() => {
-    const provider = API_PROVIDERS.find(p => p.key === selectedModel);
+    const provider = API_PROVIDERS.find((p) => p.key === selectedModel);
     if (!provider) return null;
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8">
@@ -78,9 +81,9 @@ useEffect(() => {
             <StepCard key={index} stepNumber={index + 1} title={step.title}>
               {step.content.map((paragraph, pIndex) => {
                 // Check if this paragraph mentions key format and next step should show the format
-                const shouldShowKeyFormat = paragraph.toLowerCase().includes('format:')||paragraph.toLowerCase().includes('look like this:');
-                                          
-                
+                const shouldShowKeyFormat =
+                  paragraph.toLowerCase().includes("format:") || paragraph.toLowerCase().includes("look like this:");
+
                 if (shouldShowKeyFormat) {
                   return (
                     <div key={pIndex}>
@@ -91,8 +94,8 @@ useEffect(() => {
                 }
 
                 // Handle URL mentions
-                if (provider.url && paragraph.includes(provider.url.replace('https://', ''))) {
-                  const urlText = provider.url.replace('https://', '');
+                if (provider.url && paragraph.includes(provider.url.replace("https://", ""))) {
+                  const urlText = provider.url.replace("https://", "");
                   const parts = paragraph.split(urlText);
                   return (
                     <p key={pIndex} className="text-sm text-base-content mb-3">
@@ -127,6 +130,7 @@ useEffect(() => {
     >
       <div>
         <button
+          id="api-key-guide-close-button"
           onClick={() => toggleSidebar("Api-Keys-guide-slider", "right")}
           className="absolute top-4 right-4 p-2 rounded-full hover:text-error transition-colors z-10"
           aria-label="Close guide"
@@ -137,17 +141,18 @@ useEffect(() => {
         {/* Header */}
         <div className="sticky top-0 bg-base-100 p-6 border-b border-base-300">
           <h2 className="text-xl font-bold mb-4">API Key Setup Guide</h2>
-          
+
           {/* Model Selection Tabs */}
-          <div className="flex flex-wrap gap-2">
+          <div id="api-key-guide-tabs" className="flex flex-wrap gap-2">
             {modelTabs.map((model) => (
               <button
+                id={`api-key-guide-tab-${model.id}`}
                 key={model.id}
                 onClick={() => setSelectedModel(model.id)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedModel === model.id
-                    ? `${model.color} text-white shadow-lg`
-                    : 'bg-base-200 text-base-content hover:bg-base-300'
+                    ? `${model.color} text-base-100 shadow-lg`
+                    : "bg-base-200 text-base-content hover:bg-base-300"
                 }`}
                 aria-pressed={selectedModel === model.id}
               >
@@ -158,9 +163,7 @@ useEffect(() => {
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          {guideContent}
-        </div>
+        <div className="p-6">{guideContent}</div>
       </div>
     </aside>
   );

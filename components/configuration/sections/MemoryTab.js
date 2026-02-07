@@ -8,7 +8,7 @@ const MemoryTab = () => {
   const { params, searchParams, isPublished, isEditor = true } = useConfigurationContext();
 
   return (
-    <div className="w-full">
+    <div id="memory-tab-container" className="w-full">
       <GptMemory params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
     </div>
   );

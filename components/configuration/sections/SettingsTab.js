@@ -24,20 +24,17 @@ const SettingsTab = () => {
     isEditor,
   } = useConfigurationContext();
 
-  const shouldShowTriggers = useMemo(
-    () => bridgeType === "trigger" && !isEmbedUser,
-    [bridgeType, isEmbedUser]
-  );
+  const shouldShowTriggers = useMemo(() => bridgeType === "trigger" && !isEmbedUser, [bridgeType, isEmbedUser]);
 
   const shouldShowAgentType = useMemo(
-    () => ((isEmbedUser && showConfigType) || !isEmbedUser),
+    () => (isEmbedUser && showConfigType) || !isEmbedUser,
     [isEmbedUser, showConfigType]
   );
 
   const isReadOnly = isPublished || !isEditor;
 
   return (
-    <div className="flex flex-col mt-4 gap-6 w-full">
+    <div id="settings-tab-container" className="flex flex-col mt-4 gap-6 w-full">
       {shouldShowTriggers && (
         <div className="rounded-xl w-full">
           <TriggersList params={params} searchParams={searchParams} isEmbedUser={isEmbedUser} isReadOnly={isReadOnly} />
@@ -48,28 +45,38 @@ const SettingsTab = () => {
       <div className="flex flex-col gap-6 w-full">
         {shouldShowAgentType && bridgeType?.toString()?.toLowerCase() !== "chatbot" && (
           <div className="">
-            <BridgeTypeToggle params={params} searchParams={searchParams} isEmbedUser={isEmbedUser} isPublished={isPublished} isEditor={isEditor} />
+            <BridgeTypeToggle
+              params={params}
+              searchParams={searchParams}
+              isEmbedUser={isEmbedUser}
+              isPublished={isPublished}
+              isEditor={isEditor}
+            />
           </div>
         )}
 
         {/* Only show tone, response style, and advanced config if modelType is NOT image */}
-        {modelType !== 'image' && (
+        {modelType !== "image" && (
           <>
             {!isEmbedUser && (
-              <div className="border border-base-200 p-3 flex items-center justify-between gap-4">
+              <div
+                id="agent-flow-section"
+                className="border border-base-200 p-3 flex items-center justify-between gap-4"
+              >
                 <div>
                   <p className="text-sm font-medium text-base-content">Connected Agent Flow</p>
                   <p className="text-xs text-base-content/60">Switch to orchestral flow builder.</p>
                 </div>
                 <label className="label cursor-pointer gap-2">
-                  <span className="text-xs font-semibold">{currentView === 'agent-flow' ? 'On' : 'Off'}</span>
+                  <span className="text-xs font-semibold">{currentView === "agent-flow" ? "On" : "Off"}</span>
                   <input
+                    id="connected-agent-flow-toggle"
                     type="checkbox"
                     disabled={isReadOnly}
                     className="toggle toggle-sm"
-                    checked={currentView === 'agent-flow'}
+                    checked={currentView === "agent-flow"}
                     onChange={() => {
-                      const newView = currentView === 'agent-flow' ? 'config' : 'agent-flow';
+                      const newView = currentView === "agent-flow" ? "config" : "agent-flow";
                       switchView?.(newView);
                     }}
                   />
@@ -78,10 +85,20 @@ const SettingsTab = () => {
             )}
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="">
-                <ToneDropdown params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+                <ToneDropdown
+                  params={params}
+                  searchParams={searchParams}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                />
               </div>
               <div className="">
-                <ResponseStyleDropdown params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+                <ResponseStyleDropdown
+                  params={params}
+                  searchParams={searchParams}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                />
               </div>
             </div>
 
@@ -103,7 +120,7 @@ const SettingsTab = () => {
       </div>
 
       {/* Chatbot Configuration - Keep Accordion */}
-      <div className="w-full max-w-2xl">
+      <div id="chatbot-config-section" className="w-full max-w-2xl">
         <ChatbotConfigSection isPublished={isPublished} isEditor={isEditor} />
       </div>
     </div>

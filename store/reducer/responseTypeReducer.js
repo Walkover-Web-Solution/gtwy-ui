@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   responses: {},
@@ -7,13 +7,13 @@ const initialState = {
 };
 
 const responseTypeReducer = createSlice({
-  name: 'responseType',
+  name: "responseType",
   initialState,
   reducers: {
     getAllResponseTypeSuccess: (state, action) => {
       const { responseTypes, orgId } = action.payload;
       state.responses[orgId] = responseTypes;
-    }
+    },
   },
 });
 

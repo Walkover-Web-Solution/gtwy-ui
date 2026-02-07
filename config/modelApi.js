@@ -5,16 +5,6 @@ const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
 // Model and Service APIs
-// export const getSingleModels = async () => {
-//   try {
-//     const getSingleModels = await axios.get(`${URL}/api/v1/agentConfig/models`)
-//     return getSingleModels
-//   } catch (error) {
-//     console.error(error)
-//     throw new Error(error)
-//   }
-// }
-
 export const getAllModels = async (service) => {
   try {
     const response = await axios.get(`${URL}/api/service/${service}`);
@@ -37,23 +27,23 @@ export const getAllServices = async () => {
 
 export const addNewModel = async (newModelObj) => {
   try {
-    const response = await axios.post(`${URL}/api/models`, newModelObj)
+    const response = await axios.post(`${URL}/api/models`, newModelObj);
     return response;
   } catch (error) {
-    throw error
+    throw error;
   }
-}
+};
 
 export const deleteModel = async (dataToSend) => {
   try {
-    const response = await axios.delete(`${URL}/api/models?${new URLSearchParams(dataToSend).toString()}`)
-    toast.success(response?.data?.message)
+    const response = await axios.delete(`${URL}/api/models?${new URLSearchParams(dataToSend).toString()}`);
+    toast.success(response?.data?.message);
     return response;
   } catch (error) {
-    throw error
-    toast.error(error?.response?.data?.error || error?.response?.data?.message)
+    throw error;
+    toast.error(error?.response?.data?.error || error?.response?.data?.message);
   }
-}
+};
 
 // API Key Management APIs
 export const saveApiKeys = async (data) => {
@@ -65,18 +55,18 @@ export const saveApiKeys = async (data) => {
     toast.error(error?.response?.data?.message);
     return error;
   }
-}
+};
 
 export const updateApikey = async (dataToSend) => {
   try {
-    const response = await axios.put(`${URL}/api/apikeys/${dataToSend.apikey_object_id}`, dataToSend)
+    const response = await axios.put(`${URL}/api/apikeys/${dataToSend.apikey_object_id}`, dataToSend);
     return response;
   } catch (error) {
-    console.error(error)
+    console.error(error);
     toast.error(error?.response?.data?.message);
     return error;
   }
-}
+};
 
 export const deleteApikey = async (id) => {
   try {
@@ -85,7 +75,6 @@ export const deleteApikey = async (id) => {
     });
     return response;
   } catch (error) {
-    
     console.error(error);
     toast.error(error?.response?.data?.message);
     return error;
@@ -94,30 +83,34 @@ export const deleteApikey = async (id) => {
 
 export const getAllApikey = async (org_id) => {
   try {
-    const response = await axios.get(`${URL}/api/apikeys`, org_id)
+    const response = await axios.get(`${URL}/api/apikeys`, org_id);
     return response;
   } catch (error) {
-    console.error(error)
+    console.error(error);
     return error;
   }
-}
+};
 
 // Model Playground and Testing APIs
 export const dryRun = async ({ localDataToSend, bridge_id }) => {
   try {
-    let dryRun
-    const modelType = localDataToSend.configuration.type
-    if (modelType !== 'completion' && modelType !== 'embedding') dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend)
-    if (modelType === "completion") dryRun = await axios.post(`${URL}/api/v1/model/playground/completion/${bridge_id}`, localDataToSend)
-    if (modelType === "embedding") dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend)
-    if (modelType !== 'completion' && modelType !== 'embedding') {
+    let dryRun;
+    const modelType = localDataToSend.configuration.type;
+    if (modelType !== "completion" && modelType !== "embedding")
+      dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
+    if (modelType === "completion")
+      dryRun = await axios.post(`${URL}/api/v1/model/playground/completion/${bridge_id}`, localDataToSend);
+    if (modelType === "embedding")
+      dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
+    if (modelType !== "completion" && modelType !== "embedding") {
       return dryRun.data;
     }
-    return { success: true, data: dryRun.data }
+    return { success: true, data: dryRun.data };
   } catch (error) {
     console.error("dry run error", error, error.response.data.error);
 
-    const errorMessage = error?.response?.data?.error || error?.response?.data?.detail?.error || "Something went wrong.";
+    const errorMessage =
+      error?.response?.data?.error || error?.response?.data?.detail?.error || "Something went wrong.";
 
     const hasBothErrors = errorMessage.includes("Initial Error:") && errorMessage.includes("Fallback Error:");
 
@@ -126,26 +119,26 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
       const fallbackErrorMatch = errorMessage.match(/Fallback Error: (.+?) \(Type:/);
       initialErrorMatch && fallbackErrorMatch
         ? (() => {
-          const initialError = initialErrorMatch[1].trim();
-          const fallbackError = fallbackErrorMatch[1].trim();
+            const initialError = initialErrorMatch[1].trim();
+            const fallbackError = fallbackErrorMatch[1].trim();
 
-          toast.error(`Initial Error: ${initialError}`);
-          setTimeout(() => toast.error(`Fallback Error: ${fallbackError}`), 1000);
-        })()
+            toast.error(`Initial Error: ${initialError}`);
+            setTimeout(() => toast.error(`Fallback Error: ${fallbackError}`), 1000);
+          })()
         : toast.error(errorMessage);
     } else {
       toast.error(errorMessage);
     }
     throw error;
   }
-}
+};
 
 export const batchApi = async ({ payload }) => {
   try {
     const response = await axios.post(`${PYTHON_URL}/api/v2/model/batch/chat/completion`, payload);
     return response.data;
   } catch (error) {
-    console.error('Error in batch API:', error);
+    console.error("Error in batch API:", error);
     throw error;
   }
-}
+};

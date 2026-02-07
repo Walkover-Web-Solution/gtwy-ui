@@ -10,15 +10,17 @@ import Canvas from "../Canvas";
 import Modal from "../UI/Modal";
 import { closeModal } from "@/utils/utility";
 
-function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_id, onResetThreadId=()=>{}}) {
+function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_id, onResetThreadId = () => {} }) {
   const dispatch = useDispatch();
   const { json_schema } = useCustomSelector((state) => ({
-    json_schema: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type?.json_schema,
+    json_schema:
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type
+        ?.json_schema,
   }));
 
   // Use useMemo to always get the latest formatted JSON schema
   const jsonSchemaRequirements = useMemo(() => {
-    return typeof json_schema === "object" ? JSON.stringify(json_schema, null, 4) : (json_schema || "");
+    return typeof json_schema === "object" ? JSON.stringify(json_schema, null, 4) : json_schema || "";
   }, [json_schema]);
 
   const handleOptimizeApi = async (instructionText) => {
@@ -35,10 +37,8 @@ function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_i
   const handleApply = async (schemaToApply) => {
     try {
       // Ensure we're parsing only if it's a string and not already an object
-      const parsedSchema = typeof schemaToApply === 'string' 
-        ? JSON.parse(schemaToApply) 
-        : schemaToApply;
-        
+      const parsedSchema = typeof schemaToApply === "string" ? JSON.parse(schemaToApply) : schemaToApply;
+
       await dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
@@ -67,14 +67,13 @@ function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_i
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.JSON_SCHEMA}>
-      <div className="modal-box  max-w-screen-lg h-[calc(100%-10rem)] w-[calc(100%-20rem)] bg-base-100 overflow-hidden">
+      <div
+        id="json-schema-modal-container"
+        className="modal-box  max-w-screen-lg h-[calc(100%-10rem)] w-[calc(100%-20rem)] bg-base-100 overflow-hidden"
+      >
         <div className="flex justify-between items-center mb-2 pt-3">
-        <h3 className="font-bold text-lg">Improve JSON Schema</h3>
-          <button
-            onClick={handleCloseModal}
-            className="btn btn-sm"
-            type="button"
-          >
+          <h3 className="font-bold text-lg">Improve JSON Schema</h3>
+          <button id="json-schema-close-button" onClick={handleCloseModal} className="btn btn-sm" type="button">
             Close
           </button>
         </div>

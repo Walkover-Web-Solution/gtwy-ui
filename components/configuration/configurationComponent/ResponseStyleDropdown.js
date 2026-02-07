@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import InfoTooltip from "@/components/InfoTooltip";
-import { CircleQuestionMark } from 'lucide-react';
+import { CircleQuestionMark } from "lucide-react";
 
 const RESPONSE_STYLES = [
   {
@@ -12,13 +12,11 @@ const RESPONSE_STYLES = [
   },
   {
     value: "analytical",
-    prompt:
-      "Generate a logical, data-driven response that breaks down the topic with reasoning.",
+    prompt: "Generate a logical, data-driven response that breaks down the topic with reasoning.",
   },
   {
     value: "crisp",
-    prompt:
-      "Generate a concise and to-the-point response without extra details.",
+    prompt: "Generate a concise and to-the-point response without extra details.",
   },
   {
     value: "detailed",
@@ -30,8 +28,7 @@ const RESPONSE_STYLES = [
   },
   {
     value: "storytelling",
-    prompt:
-      "Generate a response in the form of a short story or narrative to convey the message in an engaging way.",
+    prompt: "Generate a response in the form of a short story or narrative to convey the message in an engaging way.",
   },
 ];
 
@@ -40,14 +37,13 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
   const isReadOnly = isPublished || !isEditor;
   const { reduxResponseStyle } = useCustomSelector((state) => ({
     reduxResponseStyle:
-      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[
-        searchParams?.version
-      ]?.configuration?.responseStyle || null,
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.responseStyle ||
+      null,
   }));
   const dispatch = useDispatch();
 
   const [selectedStyle, setSelectedStyle] = useState(reduxResponseStyle?.value || "");
-  
+
   useEffect(() => {
     setSelectedStyle(reduxResponseStyle?.value || "");
   }, [reduxResponseStyle]);
@@ -56,7 +52,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
 
     if (styleValue !== reduxResponseStyle?.value) {
       setSelectedStyle(styleValue);
-      
+
       // Handle "None" option - send empty string
       if (styleValue === "") {
         dispatch(
@@ -70,8 +66,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
           })
         );
       } else {
-        const style =
-          RESPONSE_STYLES.find((style) => style.value === styleValue) || {};
+        const style = RESPONSE_STYLES.find((style) => style.value === styleValue) || {};
         if (style) {
           dispatch(
             updateBridgeVersionAction({
@@ -100,9 +95,10 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
       </div>
-      
+
       {/* Response Style Dropdown */}
       <select
+        id="response-style-select"
         disabled={isReadOnly}
         value={selectedStyle}
         onChange={handleStyleChange}
@@ -111,9 +107,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
         <option value="" disabled>
           Select a Response Style
         </option>
-        <option value="">
-          None
-        </option>
+        <option value="">None</option>
         {RESPONSE_STYLES.map((style) => (
           <option key={style.value} value={style.value}>
             {style.value}
