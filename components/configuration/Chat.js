@@ -353,7 +353,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
             {showTestCases ? <CloseCircleIcon /> : <Menu />}
           </div>
         </button>
-        <span className="label-text">Experiments</span>
+        <span className="label-text">New Test Case</span>
         <div className="flex items-center gap-2">
           {messages?.length > 0 && (
             <div className="flex items-center gap-2 justify-center">

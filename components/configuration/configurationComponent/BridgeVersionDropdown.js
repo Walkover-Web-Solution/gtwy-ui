@@ -100,10 +100,13 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
     [dispatch, params?.id, shouldFetch]
   );
 
-    // Helper function to get version description
-    const getVersionDescription = useCallback((versionId) => {
-        return bridgeVersionMapping?.[versionId]?.version_description || "";
-    }, [bridgeVersionMapping]);
+  // Helper function to get version description
+  const getVersionDescription = useCallback(
+    (versionId) => {
+      return bridgeVersionMapping?.[versionId]?.version_description || "";
+    },
+    [bridgeVersionMapping]
+  );
 
   // Helper function to get version display name
   const getVersionDisplayName = useCallback(
@@ -395,25 +398,23 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
     );
   }
 
-    return (
-        <div id="bridge-version-dropdown-container" className='flex items-center gap-1'>
-            {/* Version Tabs Container */}
-            <div  id="bridge-version-tabs" className="flex items-center gap-1">
-                {versionsToShow.map((version, index) => {
-                    const isActive = searchParams.get?.('version') === version;
-                    const isPublished = version === publishedVersion;
-                    const versionDisplayName = getVersionDisplayName(version);
-                    const versionDesc = getVersionDescription(version);
-                    const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
-                    return (
-                        <div  key={version} className="relative group">
-                            
-                            <div className={versionDesc ? "tooltip tooltip-bottom" : ""} data-tip={versionDesc}>
-                                
-                            <button
-                                id={`version-button-${version}`}
-                                onClick={() => handleVersionChange(version)}
-                                className={`
+  return (
+    <div id="bridge-version-dropdown-container" className="flex items-center gap-1">
+      {/* Version Tabs Container */}
+      <div id="bridge-version-tabs" className="flex items-center gap-1">
+        {versionsToShow.map((version, index) => {
+          const isActive = searchParams.get?.("version") === version;
+          const isPublished = version === publishedVersion;
+          const versionDisplayName = getVersionDisplayName(version);
+          const versionDesc = getVersionDescription(version);
+          const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
+          return (
+            <div key={version} className="relative group">
+              <div className={versionDesc ? "tooltip tooltip-bottom" : ""} data-tip={versionDesc}>
+                <button
+                  id={`version-button-${version}`}
+                  onClick={() => handleVersionChange(version)}
+                  className={`
                                    btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 relative whitespace-nowrap min-w-fit
                                     ${canDelete ? "group-hover:pr-8" : ""}
                                     ${
