@@ -167,7 +167,7 @@ const TestCaseSidebar = ({ params, resolvedParams, onTestCaseClick }) => {
             </button>
           </div>
         ) : (
-          testCaseArray.map((testCase, index) => {
+          testCaseArray?.filter(testCase => testCase && testCase._id).map((testCase, index) => {
             const isExpanded = expandedTests.has(testCase._id);
             return (
               <div
