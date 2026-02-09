@@ -2,7 +2,6 @@ import { BuildingIcon, CheckCircleIcon, LinkIcon } from "@/components/Icons";
 import AIMLIcon from "@/icons/AIMLIcon";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
-import FavIcon from "@/icons/FavIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
@@ -912,4 +911,36 @@ export const extractPromptVariables = (prompt) => {
     }
   }
   return matches;
+};
+
+/**
+ * Recursively trims all property names in a JSON schema properties object
+ * @param {Object} properties - The properties object from a JSON schema
+ * @returns {Object} - New properties object with trimmed keys
+ */
+export const trimPropertyNames = (properties) => {
+  if (!properties || typeof properties !== "object") return properties;
+
+  const trimmedProperties = {};
+  Object.entries(properties).forEach(([key, value]) => {
+    const trimmedKey = key.trim();
+    const trimmedValue = { ...value };
+
+    // Recursively trim nested object properties
+    if (trimmedValue.properties) {
+      trimmedValue.properties = trimPropertyNames(trimmedValue.properties);
+    }
+
+    // Recursively trim array item properties
+    if (trimmedValue.type === "array" && trimmedValue.items?.properties) {
+      trimmedValue.items = {
+        ...trimmedValue.items,
+        properties: trimPropertyNames(trimmedValue.items.properties),
+      };
+    }
+
+    trimmedProperties[trimmedKey] = trimmedValue;
+  });
+
+  return trimmedProperties;
 };

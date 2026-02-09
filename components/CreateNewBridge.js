@@ -109,7 +109,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
             sendDataToParent(
               "drafted",
               {
-                name: data?.name,
+                name: data?.agent?.name,
                 agent_id: data?.agent?._id,
               },
               "Agent created Successfully"

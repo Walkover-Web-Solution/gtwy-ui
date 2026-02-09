@@ -3,7 +3,7 @@ import { ADVANCED_BRIDGE_PARAMETERS, KEYS_NOT_TO_DISPLAY } from "@/jsonFiles/bri
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
-import { generateRandomID, openModal } from "@/utils/utility";
+import { generateRandomID, openModal, trimPropertyNames } from "@/utils/utility";
 import { ChevronDownIcon, ChevronUpIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
@@ -747,10 +747,22 @@ const AdvancedParameters = ({
               type="input"
               defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
               onBlur={(e) => {
-                setObjectFieldValue(e.target.value);
                 try {
                   const parsedValue = JSON.parse(e.target.value);
-                  handleSelectChange({ target: { value: "json_schema" } }, key, defaultValue, parsedValue, true);
+
+                  // Trim schema name and all property names
+                  const trimmedValue = {
+                    ...parsedValue,
+                    name: parsedValue.name?.trim(),
+                    schema: parsedValue.schema
+                      ? {
+                          ...parsedValue.schema,
+                          properties: trimPropertyNames(parsedValue.schema.properties),
+                        }
+                      : parsedValue.schema,
+                  };
+
+                  handleSelectChange({ target: { value: "json_schema" } }, key, defaultValue, trimmedValue, true);
                 } catch (error) {
                   console.error(error);
                   toast.error("Invalid JSON schema");
