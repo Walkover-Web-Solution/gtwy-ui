@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { getFromCookies, setInCookies } from "@/utils/utility";
 import { applyThemeObject } from "@/utils/themeLoader";
 
 const useThemeVariables = (userType = "default", customThemePath = null, customTheme = null) => {
@@ -54,7 +53,7 @@ export const useThemeManager = () => {
   const changeTheme = useCallback((newTheme) => {
     setLoading(true);
     setTheme(newTheme);
-    setInCookies("theme", newTheme);
+    sessionStorage.setItem("theme", newTheme);
 
     let themeToApply;
     if (newTheme === "system") {
@@ -71,7 +70,7 @@ export const useThemeManager = () => {
 
   // Initialize theme on mount
   useEffect(() => {
-    const savedTheme = getFromCookies("theme") || "system";
+    const savedTheme = sessionStorage.getItem("theme") || "system";
     const systemTheme = getSystemTheme();
 
     setTheme(savedTheme);
@@ -95,7 +94,7 @@ export const useThemeManager = () => {
 
     const handleSystemThemeChange = (e) => {
       const newSystemTheme = e.matches ? "dark" : "light";
-      const currentSavedTheme = getFromCookies("theme") || "system";
+      const currentSavedTheme = sessionStorage.getItem("theme") || "system";
 
       if (currentSavedTheme === "system") {
         setActualTheme(newSystemTheme);

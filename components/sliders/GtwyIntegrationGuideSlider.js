@@ -360,19 +360,6 @@ const CONFIG_SCHEMA = [
     section: "Display Settings",
   },
   {
-    key: "themeMode",
-    type: "select",
-    label: "Theme Mode",
-    description: "Choose the color theme for the embedded GTWY interface",
-    defaultValue: "system",
-    options: [
-      { value: "system", label: "System" },
-      { value: "light", label: "Light" },
-      { value: "dark", label: "Dark" },
-    ],
-    section: "Display Settings",
-  },
-  {
     key: "hideFullScreenButton",
     type: "toggle",
     label: "Hide Full Screen",
@@ -427,6 +414,19 @@ const CONFIG_SCHEMA = [
     description: "Show agent name",
     defaultValue: false,
     section: "Interface Options",
+  },
+  {
+    key: "themeMode",
+    type: "select",
+    label: "Theme Mode",
+    description: "Choose the color theme for the embedded GTWY interface",
+    defaultValue: "system",
+    options: [
+      { value: "system", label: "System" },
+      { value: "light", label: "Light" },
+      { value: "dark", label: "Dark" },
+    ],
+    section: "Display Settings",
   },
 ];
 
