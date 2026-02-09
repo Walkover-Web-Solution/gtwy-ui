@@ -748,8 +748,20 @@ const AdvancedParameters = ({
               defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
               onBlur={(e) => {
                 try {
+                  const value = e.target.value.trim();
+
+                  // Check if the value is empty or just whitespace
+                  if (!value) {
+                    toast.error("JSON Schema cannot be empty");
+                    return;
+                  }
+
                   const parsedValue = JSON.parse(e.target.value);
 
+                  if (Object.keys(parsedValue).length === 0) {
+                    toast.error("JSON Schema cannot be empty");
+                    return;
+                  }
                   // Trim schema name and all property names
                   const trimmedValue = {
                     ...parsedValue,

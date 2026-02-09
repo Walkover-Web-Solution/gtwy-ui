@@ -463,7 +463,7 @@ const Navbar = ({ isEmbedUser, params }) => {
   if (!shouldShowNavbar()) return null;
 
   return (
-    <div className="bg-base-100 z-medium">
+       <div className={`bg-base-100 z-medium ${isEmbedUser ? 'pt-[10px]' : ''}`}>
       {/* Main navigation header */}
       <div
         className={`sticky top-0 z-high transition-all duration-300 ${
