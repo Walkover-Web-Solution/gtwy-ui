@@ -1,5 +1,5 @@
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
-import { closeModal } from "@/utils/utility";
+import { closeModal, trimPropertyNames } from "@/utils/utility";
 import { MODAL_TYPE, PARAMETER_TYPES } from "@/utils/enums";
 import { TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
 import React, { useEffect, useState, useCallback } from "react";
@@ -49,9 +49,17 @@ const SchemaPropertyCard = ({
               setEditingName(e.target.value);
             }}
             onBlur={(e) => {
-              if (onPropertyNameChange && e?.target.value?.trim() !== propertyKey && e?.target.value?.trim() !== "") {
-                onPropertyNameChange(currentPath, e.target.value.trim(), propertyKey);
-              } else if (e?.target.value?.trim() === "") {
+              const trimmedValue = e?.target.value?.trim();
+
+              if (trimmedValue && trimmedValue.includes(".")) {
+                toast.error("Property names cannot contain periods (.)");
+                setEditingName(propertyKey);
+                return;
+              }
+
+              if (onPropertyNameChange && trimmedValue !== propertyKey && trimmedValue !== "") {
+                onPropertyNameChange(currentPath, trimmedValue, propertyKey);
+              } else if (trimmedValue === "") {
                 setEditingName(propertyKey);
               }
             }}
@@ -610,6 +618,11 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
           const newProperties = { ...prevData.properties };
           const propertyData = newProperties[oldName];
 
+          if (!propertyData) {
+            console.error("Property not found:", oldName);
+            return prevData;
+          }
+
           delete newProperties[oldName];
           newProperties[newName] = propertyData;
 
@@ -626,43 +639,60 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
           };
         }
 
-        const updatedProperties = updateProperty(prevData.properties, parentPath, (parentProperty) => {
-          if (!parentProperty.properties) return parentProperty;
+        try {
+          const updatedProperties = updateProperty(prevData.properties, parentPath, (parentProperty) => {
+            if (!parentProperty || !parentProperty.properties) {
+              console.error("Invalid parent property path:", parentPath);
+              throw new Error("Invalid parent path");
+            }
 
-          const newNestedProperties = { ...parentProperty.properties };
-          const propertyData = newNestedProperties[oldName];
+            const newNestedProperties = { ...parentProperty.properties };
+            const propertyData = newNestedProperties[oldName];
 
-          delete newNestedProperties[oldName];
-          newNestedProperties[newName] = propertyData;
+            if (!propertyData) {
+              console.error("Property not found:", oldName);
+              throw new Error("Property not found");
+            }
 
-          let newRequired = parentProperty.required || [];
-          if (newRequired.includes(oldName)) {
-            newRequired = newRequired.filter((name) => name !== oldName);
-            newRequired.push(newName);
-          }
+            delete newNestedProperties[oldName];
+            newNestedProperties[newName] = propertyData;
+
+            let newRequired = parentProperty.required || [];
+            if (newRequired.includes(oldName)) {
+              newRequired = newRequired.filter((name) => name !== oldName);
+              newRequired.push(newName);
+            }
+
+            return {
+              ...parentProperty,
+              properties: newNestedProperties,
+              required: newRequired,
+            };
+          });
 
           return {
-            ...parentProperty,
-            properties: newNestedProperties,
-            required: newRequired,
+            ...prevData,
+            properties: updatedProperties,
           };
-        });
-
-        return {
-          ...prevData,
-          properties: updatedProperties,
-        };
+        } catch (error) {
+          console.error("Failed to rename property:", error);
+          toast.error("Failed to rename property. Please try again.");
+          return prevData;
+        }
       });
     },
     [updateProperty]
   );
 
   const handleSave = useCallback(() => {
+    const trimmedSchemaData = {
+      ...schemaData,
+      properties: trimPropertyNames(schemaData.properties),
+    };
+
     const jsonSchemaOutput = {
-      name: schemaName,
-      schema: {
-        ...schemaData,
-      },
+      name: schemaName?.trim(),
+      schema: trimmedSchemaData,
       strict: true,
     };
 
