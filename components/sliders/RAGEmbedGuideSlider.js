@@ -20,15 +20,9 @@ const RAGEmbedGuideSlider = ({ data, handleCloseSlider, params }) => {
       <div className="flex items-center justify-between p-4 border-b border-base-300 bg-base-200">
         <div>
           <h2 className="text-lg font-semibold">RAG Embed Integration Guide</h2>
-          {data?.name && (
-            <p className="text-sm text-base-content/60">{data.name}</p>
-          )}
+          {data?.name && <p className="text-sm text-base-content/60">{data.name}</p>}
         </div>
-        <button
-          onClick={handleClose}
-          className="btn btn-ghost btn-sm btn-circle"
-          aria-label="Close"
-        >
+        <button onClick={handleClose} className="btn btn-ghost btn-sm btn-circle" aria-label="Close">
           <X size={20} />
         </button>
       </div>

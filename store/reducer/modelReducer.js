@@ -28,13 +28,9 @@ export const modelReducer = createSlice({
       if (state.serviceModels[service]?.[type]?.[model_name]) {
         delete state.serviceModels[service][type][model_name];
       }
-    }
-  }
+    },
+  },
 });
 
-export const {
-  fetchModelReducer,
-  addNewModelReducer,
-  deleteModelReducer
-} = modelReducer.actions;
+export const { fetchModelReducer, addNewModelReducer, deleteModelReducer } = modelReducer.actions;
 export default modelReducer.reducer;

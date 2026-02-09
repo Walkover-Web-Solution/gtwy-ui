@@ -197,7 +197,7 @@
                 this.initializeGtwyEmbed().then(() => this.openGtwy());
                 return;
             }
-     const dataToSend = {};
+            const dataToSend = {};
             if (agent_id) dataToSend.agent_id = agent_id;
             if (meta && Object.keys(meta).length > 0) dataToSend.meta = meta;
             if (agent_name) dataToSend.agent_name = agent_name;
@@ -207,7 +207,6 @@
             if (Object.keys(dataToSend).length > 0) {
                 SendDataToGtwyEmbed(dataToSend);
             }
-
             const container = document.getElementById('gtwy-iframe-parent-container');
             const iframe = document.getElementById('gtwyInterfaceEmbed');
 

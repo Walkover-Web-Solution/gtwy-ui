@@ -1,33 +1,35 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { toast } from 'react-toastify';
-import { RefreshIcon } from '@/components/Icons';
-import { useCustomSelector } from '@/customHooks/customSelector';
-import { SaveAllIcon } from 'lucide-react';
-import { resetPrebuiltPromptAction, updatePrebuiltPromptAction } from '@/store/action/prebuiltPromptAction';
-import MainLayout from '@/components/layoutComponents/MainLayout';
+import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { toast } from "react-toastify";
+import { RefreshIcon } from "@/components/Icons";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { SaveAllIcon } from "lucide-react";
+import { resetPrebuiltPromptAction, updatePrebuiltPromptAction } from "@/store/action/prebuiltPromptAction";
+import MainLayout from "@/components/layoutComponents/MainLayout";
 
 export default function PrebuiltPromptsPage() {
   const dispatch = useDispatch();
   const prebuiltPrompts = useCustomSelector((state) => state.prebuiltPromptReducer.PrebuiltPrompts || []);
-  const descriptions = useCustomSelector((state) => state.flowDataReducer.flowData.descriptionsData?.descriptions || {});
+  const descriptions = useCustomSelector(
+    (state) => state.flowDataReducer.flowData.descriptionsData?.descriptions || {}
+  );
   // Convert array of objects to a more usable format
   const processedPrompts = React.useMemo(() => {
-    const processed = {};    
+    const processed = {};
     // Custom name mappings for specific tools
     const customNames = {
-      'structured_output_optimizer': 'JSON Builder',
-      'optimze_prompt': 'Prompt Builder'
+      structured_output_optimizer: "JSON Builder",
+      optimze_prompt: "Prompt Builder",
     };
-    
-    prebuiltPrompts.forEach(promptObj => {
+
+    prebuiltPrompts.forEach((promptObj) => {
       const key = Object.keys(promptObj)[0];
       const value = promptObj[key];
       processed[key] = {
-        name: customNames[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-        description: `${customNames[key] || key.replace(/_/g, ' ')} agent configuration`,
+        name: customNames[key] || key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+        description: `${customNames[key] || key.replace(/_/g, " ")} agent configuration`,
         prompt: value,
       };
     });
@@ -35,7 +37,7 @@ export default function PrebuiltPromptsPage() {
   }, [prebuiltPrompts]);
 
   const availableKeys = Object.keys(processedPrompts);
-  const [selectedAgent, setSelectedAgent] = useState(availableKeys[0] || '');
+  const [selectedAgent, setSelectedAgent] = useState(availableKeys[0] || "");
   const [prompts, setPrompts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [savebtnEnabled, setSavebtnEnabled] = useState(false);
@@ -44,10 +46,10 @@ export default function PrebuiltPromptsPage() {
     if (availableKeys.length > 0 && !selectedAgent) {
       setSelectedAgent(availableKeys[0]);
     }
-  }, [availableKeys, selectedAgent])
+  }, [availableKeys, selectedAgent]);
   useEffect(() => {
     const initialPrompts = {};
-    Object.keys(processedPrompts).forEach(key => {
+    Object.keys(processedPrompts).forEach((key) => {
       initialPrompts[key] = processedPrompts[key].prompt;
     });
     setPrompts(initialPrompts);
@@ -55,9 +57,9 @@ export default function PrebuiltPromptsPage() {
     setSavebtnEnabled(false);
   }, [processedPrompts, prebuiltPrompts]);
   const handlePromptChange = (agentKey, value) => {
-    setPrompts(prev => ({
+    setPrompts((prev) => ({
       ...prev,
-      [agentKey]: value
+      [agentKey]: value,
     }));
     setSavebtnEnabled(true);
   };
@@ -69,28 +71,25 @@ export default function PrebuiltPromptsPage() {
 
   // Dummy action for resetting prebuilt prompts
   const resetPrebuiltPrompt = async (agentKey) => {
-     await dispatch(resetPrebuiltPromptAction(
-      {"prompt_id":agentKey}
-    ));
+    await dispatch(resetPrebuiltPromptAction({ prompt_id: agentKey }));
   };
-  
+
   const handleSave = async (agentKey) => {
     setIsLoading(true);
     try {
       const dataToUpdate = {
         [agentKey]: prompts[agentKey],
-      }
+      };
       await updatePrebuiltPrompt(dataToUpdate);
       setSavebtnEnabled(false);
-      
-      toast.success((processedPrompts[agentKey]?.name || 'Agent') + ' prompt updated successfully!');
-     
-      
+
+      toast.success((processedPrompts[agentKey]?.name || "Agent") + " prompt updated successfully!");
+
       // Update the original prompt to the new saved value
       processedPrompts[agentKey].prompt = prompts[agentKey];
     } catch (error) {
-      toast.error('Failed to update prompt. Please try again.');
-      console.error('Save error:', error);
+      toast.error("Failed to update prompt. Please try again.");
+      console.error("Save error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -100,31 +99,34 @@ export default function PrebuiltPromptsPage() {
     try {
       await resetPrebuiltPrompt(agentKey);
       setSavebtnEnabled(false);
-      toast.info((processedPrompts[agentKey]?.name || 'Agent') + ' prompt reset to default.');
+      toast.info((processedPrompts[agentKey]?.name || "Agent") + " prompt reset to default.");
     } catch (error) {
-      toast.error('Failed to reset prompt. Please try again.');
-      console.error('Reset error:', error);
+      toast.error("Failed to reset prompt. Please try again.");
+      console.error("Reset error:", error);
     }
   };
 
   // Function to estimate token count from text
   const estimateTokenCount = (text) => {
     if (!text) return 0;
-    
-    // Simple token estimation: 
+
+    // Simple token estimation:
     // - Split by whitespace and punctuation
     // - Average ~4 characters per token for English text
     // - Account for special tokens and encoding overhead
-    
-    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+
+    const words = text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
     const characters = text.length;
-    
+
     // More accurate estimation considering:
     // - Average English word length
     // - Punctuation and special characters
     // - Subword tokenization used by modern models
     const estimatedTokens = Math.ceil(characters / 4) + Math.ceil(words.length * 0.3);
-    
+
     return estimatedTokens;
   };
 
@@ -134,7 +136,9 @@ export default function PrebuiltPromptsPage() {
         <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
           <div className="text-center">
             <div className="text-6xl mb-4">🤖</div>
-            <h2 className="text-2xl font-bold mb-2">No {descriptions?.PrebuiltPrompts?.title || 'Predefined Agent Prompts'} Found</h2>
+            <h2 className="text-2xl font-bold mb-2">
+              No {descriptions?.PrebuiltPrompts?.title || "Predefined Agent Prompts"} Found
+            </h2>
           </div>
         </div>
       </MainLayout>
@@ -151,9 +155,12 @@ export default function PrebuiltPromptsPage() {
             <div className="py-4 border-b border-base-300">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold">{descriptions?.PrebuiltPrompts?.title || 'Predefined Agent Prompts'}</h1>
+                  <h1 className="text-2xl font-bold">
+                    {descriptions?.PrebuiltPrompts?.title || "Predefined Agent Prompts"}
+                  </h1>
                   <p className="text-sm text-base-content/60 mt-1">
-                    {descriptions?.PrebuiltPrompts?.description || 'Configure and customize the core system prompts for specialized AI agents. These predefined prompts control how each agent behaves and processes requests to deliver specific functionality.'}
+                    {descriptions?.PrebuiltPrompts?.description ||
+                      "Configure and customize the core system prompts for specialized AI agents. These predefined prompts control how each agent behaves and processes requests to deliver specific functionality."}
                   </p>
                 </div>
               </div>
@@ -166,9 +173,9 @@ export default function PrebuiltPromptsPage() {
                   <button
                     key={key}
                     className={`px-3 btn btn-sm rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                      selectedAgent === key 
-                        ? 'bg-primary text-primary-content hover:text-primary-content hover:bg-primary' 
-                        : 'bg-base-100 hover:bg-base-300 border border-base-300'
+                      selectedAgent === key
+                        ? "bg-primary text-primary-content hover:text-primary-content hover:bg-primary"
+                        : "bg-base-100 hover:bg-base-300 border border-base-300"
                     }`}
                     onClick={() => setSelectedAgent(key)}
                   >
@@ -187,19 +194,14 @@ export default function PrebuiltPromptsPage() {
               {/* Top Action Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3 bg-base-200 p-3 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold">
-                    {processedPrompts[selectedAgent]?.name}
-                  </h2>
+                  <h2 className="text-lg font-semibold">{processedPrompts[selectedAgent]?.name}</h2>
                   <span className="text-xs text-base-content/60 bg-base-300 px-2 py-1 rounded">
-                    ~{estimateTokenCount(prompts[selectedAgent] || '')} tokens
+                    ~{estimateTokenCount(prompts[selectedAgent] || "")} tokens
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleReset(selectedAgent)}
-                    className="btn btn-sm btn-ghost"
-                  >
+                  <button onClick={() => handleReset(selectedAgent)} className="btn btn-sm btn-ghost">
                     <RefreshIcon size={14} />
                     <span className="ml-1">Default</span>
                   </button>
@@ -217,14 +219,12 @@ export default function PrebuiltPromptsPage() {
 
               {/* Full Height Textarea */}
               <div className="flex-1 flex flex-col">
-               
-                
                 <textarea
                   className="textarea bg-white dark:bg-black/15 textarea-bordered flex-1 w-full font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={prompts[selectedAgent] || ''}
+                  value={prompts[selectedAgent] || ""}
                   onChange={(e) => handlePromptChange(selectedAgent, e.target.value)}
                   placeholder="Enter the system prompt that defines how this agent should behave and respond to user requests"
-                  style={{ minHeight: 'calc(100vh - 280px)' }}
+                  style={{ minHeight: "calc(100vh - 280px)" }}
                 />
               </div>
             </div>

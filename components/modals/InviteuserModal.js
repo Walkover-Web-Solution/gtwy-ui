@@ -1,13 +1,13 @@
-import { MODAL_TYPE } from '@/utils/enums'
-import React, { useState } from 'react'
-import Modal from '../UI/Modal'
-import { getInvitedUsers, inviteUser } from '@/config/index';
-import { toast } from 'react-toastify';
-import { closeModal } from '@/utils/utility';
-import { Mail, UserPlus } from 'lucide-react';
+import { MODAL_TYPE } from "@/utils/enums";
+import React, { useState } from "react";
+import Modal from "../UI/Modal";
+import { getInvitedUsers, inviteUser } from "@/config/index";
+import { toast } from "react-toastify";
+import { closeModal } from "@/utils/utility";
+import { Mail, UserPlus } from "lucide-react";
 
 const InviteUserModal = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
 
   const handleEmailChange = (e) => {
@@ -21,38 +21,45 @@ const InviteUserModal = () => {
 
   const handleInviteSubmit = async () => {
     if (!isEmailValid(email)) {
-      toast.error('Please enter a valid email address.');
+      toast.error("Please enter a valid email address.");
       return;
     }
 
     setIsInviting(true);
-    
+
     try {
       const response = await inviteUser({ user: { email: email } });
       if (response.status === "success") {
-        await getInvitedUsers(1,20,'');
+        await getInvitedUsers(1, 20, "");
         toast.success(`Invitation sent to ${email} successfully!`);
-        setEmail('');
+        setEmail("");
         handleClose();
       } else {
-        toast.error('Failed to send invitation.');
+        toast.error("Failed to send invitation.");
       }
     } catch {
-      toast.error('An error occurred while sending the invitation.');
+      toast.error("An error occurred while sending the invitation.");
     } finally {
       setIsInviting(false);
     }
   };
 
   const handleClose = () => {
-    setEmail('');
+    setEmail("");
     setIsInviting(false);
     closeModal(MODAL_TYPE.INVITE_USER);
-};
+  };
 
   return (
-    <Modal MODAL_ID={MODAL_TYPE.INVITE_USER}>
-      <form onSubmit={(e) => { e.preventDefault(); handleInviteSubmit(); }} className="modal-box max-w-md">
+    <Modal MODAL_ID={MODAL_TYPE.INVITE_USER} onClose={handleClose}>
+      <form
+        id="invite-user-modal-container"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleInviteSubmit();
+        }}
+        className="modal-box max-w-md"
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -79,6 +86,7 @@ const InviteUserModal = () => {
                 <Mail size={16} className="text-base-content/40" />
               </div>
               <input
+                id="invite-user-email-input"
                 type="email"
                 value={email}
                 onChange={handleEmailChange}
@@ -94,6 +102,7 @@ const InviteUserModal = () => {
         {/* Footer */}
         <div className="flex justify-end gap-3 pt-4 border-t border-base-300">
           <button
+            id="invite-user-cancel-button"
             type="button"
             onClick={handleClose}
             className="btn btn-sm"
@@ -102,9 +111,10 @@ const InviteUserModal = () => {
             Cancel
           </button>
           <button
+            id="invite-user-send-button"
             type="submit"
             disabled={isInviting || !email.trim()}
-            className={`btn btn-primary btn-sm ${isInviting ? 'loading' : ''}`}
+            className={`btn btn-primary btn-sm ${isInviting ? "loading" : ""}`}
           >
             {isInviting ? (
               <>
@@ -121,7 +131,7 @@ const InviteUserModal = () => {
         </div>
       </form>
     </Modal>
-  )
-}
+  );
+};
 
-export default InviteUserModal
+export default InviteUserModal;

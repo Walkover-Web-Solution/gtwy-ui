@@ -2,9 +2,10 @@ import React from "react";
 
 const Autoscroll = ({ items }) => {
   return (
-    <div className="grid grid-cols-4 gap-4 p-4">
+    <div id="autoscroll-container" className="grid grid-cols-4 gap-4 p-4">
       {items.map((item, index) => (
         <div
+          id={`autoscroll-item-${index}`}
           key={index}
           className="flex flex-col items-center p-4 text-white rounded-md hover:scale-110 transition-all ease-in-out duration-300"
         >

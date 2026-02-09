@@ -12,17 +12,17 @@ import { BotIcon, Info, Plus } from "lucide-react";
 import { CloseIcon } from "./Icons";
 
 const buildInitialState = () => ({
-  selectedService: 'openai',
+  selectedService: "openai",
   selectedModel: "gpt-4o",
   selectedType: "chat",
   isManualMode: false,
   validationErrors: { purpose: "" },
   globalError: "",
   isLoading: false,
-  isAiLoading: false
+  isAiLoading: false,
 });
 
-function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
+function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
   const [state, setState] = useState(buildInitialState);
   const textAreaPurposeRef = useRef();
   const dispatch = useDispatch();
@@ -32,26 +32,26 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
     SERVICES: state?.serviceReducer?.services,
   }));
   const bridgeTypeForContext = useMemo(
-    () => defaultBridgeType?.toLowerCase() === 'chatbot' ? 'chatbot' : 'api',
+    () => (defaultBridgeType?.toLowerCase() === "chatbot" ? "chatbot" : "api"),
     [defaultBridgeType]
   );
 
   // Generate unique names
   const generateUniqueName = useCallback(() => {
-    const baseName = 'untitled_agent_';
+    const baseName = "untitled_agent_";
     return `${baseName}`;
   }, []);
 
   // State update helper
   const updateState = useCallback((updates) => {
-    setState(prev => ({ ...prev, ...updates }));
+    setState((prev) => ({ ...prev, ...updates }));
   }, []);
 
   // Clean state
   const cleanState = useCallback(() => {
     setState(buildInitialState());
     if (textAreaPurposeRef?.current) {
-      textAreaPurposeRef.current.value = '';
+      textAreaPurposeRef.current.value = "";
     }
     closeModal(MODAL_TYPE.CREATE_BRIDGE_MODAL);
   }, []);
@@ -63,9 +63,12 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
     }
   }, [SERVICES, dispatch, orgid]);
 
-  useEffect(() => () => {
-    closeModal(MODAL_TYPE.CREATE_BRIDGE_MODAL);
-  }, []);
+  useEffect(
+    () => () => {
+      closeModal(MODAL_TYPE.CREATE_BRIDGE_MODAL);
+    },
+    []
+  );
 
   useEffect(() => {
     const cleanup = focusDialogWhenOpen(MODAL_TYPE.CREATE_BRIDGE_MODAL, () => {
@@ -77,39 +80,42 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
   const handlePurposeInput = useCallback(() => {
     updateState({
       validationErrors: { ...state.validationErrors, purpose: "" },
-      globalError: ""
+      globalError: "",
     });
   }, [updateState, state.validationErrors]);
-
 
   const handleCreateAgent = useCallback(() => {
     const purpose = textAreaPurposeRef?.current?.value?.trim();
     updateState({
       validationErrors: { purpose: "" },
-      globalError: ""
+      globalError: "",
     });
 
     const resolvedBridgeType = bridgeTypeForContext;
 
     if (purpose) {
       updateState({ isAiLoading: true });
-      
-      const dataToSend = { 
-        purpose, 
-        bridgeType: resolvedBridgeType 
+
+      const dataToSend = {
+        purpose,
+        bridgeType: resolvedBridgeType,
       };
 
       dispatch(createBridgeWithAiAction({ dataToSend, orgId: orgid }))
         .then((response) => {
           const data = response.data;
-          
+
           if (isEmbedUser) {
-            sendDataToParent("drafted", {
-              name: data?.name, 
-              agent_id: data?.agent?._id
-            }, "Agent created Successfully");
+            sendDataToParent(
+              "drafted",
+              {
+                name: data?.agent?.name,
+                agent_id: data?.agent?._id,
+              },
+              "Agent created Successfully"
+            );
           }
-          
+
           router.push(`/org/${orgid}/agents/configure/${data.agent._id}?version=${data.agent.versions[0]}`);
           updateState({ isAiLoading: false });
           cleanState();
@@ -125,32 +131,40 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
               bridgeType: resolvedBridgeType,
               type: state.selectedType,
             };
-            dispatch(createBridgeAction({ dataToSend: fallbackDataToSend, orgid }, (data) => {
-              if (isEmbedUser) {
-                sendDataToParent("drafted", {
-                  name: data?.data?.agent?.name, 
-                  agent_id: data?.data?.agent?._id
-                }, "Agent created Successfully");
-              }             
-              router.push(`/org/${orgid}/agents/configure/${data.data.agent._id}?version=${data.data.agent.versions[0]}`);
-              updateState({ isLoading: false });
-              cleanState();
-            })).catch(() => {
-              updateState({ 
+            dispatch(
+              createBridgeAction({ dataToSend: fallbackDataToSend, orgid }, (data) => {
+                if (isEmbedUser) {
+                  sendDataToParent(
+                    "drafted",
+                    {
+                      name: data?.data?.agent?.name,
+                      agent_id: data?.data?.agent?._id,
+                    },
+                    "Agent created Successfully"
+                  );
+                }
+                router.push(
+                  `/org/${orgid}/agents/configure/${data.data.agent._id}?version=${data.data.agent.versions[0]}`
+                );
+                updateState({ isLoading: false });
+                cleanState();
+              })
+            ).catch(() => {
+              updateState({
                 isLoading: false,
-                globalError: error?.response?.data?.message || "Error while creating agent"
+                globalError: error?.response?.data?.message || "Error while creating agent",
               });
             });
           } else {
-            updateState({ 
-              globalError: error?.response?.data?.message || "Error while creating agent"
+            updateState({
+              globalError: error?.response?.data?.message || "Error while creating agent",
             });
           }
         });
     } else {
       if (state.selectedModel) {
         updateState({ isLoading: true });
-        
+
         const dataToSend = {
           service: state.selectedService,
           model: state.selectedModel,
@@ -158,18 +172,24 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
           type: state.selectedType,
         };
 
-        dispatch(createBridgeAction({ dataToSend, orgid }, (data) => {
-          if (isEmbedUser) {
-            sendDataToParent("drafted", {
-              name: data?.data?.agent?.name, 
-              agent_id: data?.data?.agent?._id
-            }, "Agent created Successfully");
-          }
-          
-          router.push(`/org/${orgid}/agents/configure/${data.data.agent._id}?version=${data.data.agent.versions[0]}`);
-          updateState({ isLoading: false });
-          cleanState();
-        })).catch(() => {
+        dispatch(
+          createBridgeAction({ dataToSend, orgid }, (data) => {
+            if (isEmbedUser) {
+              sendDataToParent(
+                "drafted",
+                {
+                  name: data?.data?.agent?.name,
+                  agent_id: data?.data?.agent?._id,
+                },
+                "Agent created Successfully"
+              );
+            }
+
+            router.push(`/org/${orgid}/agents/configure/${data.data.agent._id}?version=${data.data.agent.versions[0]}`);
+            updateState({ isLoading: false });
+            cleanState();
+          })
+        ).catch(() => {
           updateState({ isLoading: false });
         });
       }
@@ -185,7 +205,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
     router,
     cleanState,
     generateUniqueName,
-    bridgeTypeForContext
+    bridgeTypeForContext,
   ]);
 
   const handleCloseModal = useCallback(() => {
@@ -196,28 +216,32 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
     <div>
       {state.isLoading && <LoadingSpinner />}
       <dialog id={MODAL_TYPE.CREATE_BRIDGE_MODAL} className="modal backdrop-blur-sm">
-        <div className="modal-box max-w-2xl w-full mx-4 bg-gradient-to-br from-base-100 to-base-200 shadow-2xl border border-base-300">
+        <div
+          id="create-new-bridge-modal-container"
+          className="modal-box max-w-2xl w-full mx-4 bg-gradient-to-br from-base-100 to-base-200 shadow-2xl border border-base-300"
+        >
           {/* Modal Header */}
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-base-300">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <BotIcon size={20} className="text-primary"/>
+                <BotIcon size={20} className="text-primary" />
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-base-content">Create New Agent</h3>
               </div>
             </div>
-            <button 
+            <button
+              id="create-new-bridge-close-button"
               className="btn btn-sm btn-circle btn-ghost hover:bg-base-300"
               onClick={handleCloseModal}
             >
-              <CloseIcon size={20} className="text-primary"/>
+              <CloseIcon size={20} className="text-primary" />
             </button>
           </div>
 
           {/* Global Error Message */}
           {state.globalError && (
-            <div className="alert alert-error mb-6 shadow-lg">
+            <div id="create-new-bridge-error-alert" className="alert alert-error mb-6 shadow-lg">
               <Plus size={20} className="text-primary" />
               <span className="font-medium">{state.globalError}</span>
             </div>
@@ -230,7 +254,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
                 <h4 className="text-lg font-semibold text-base-content">Agent Purpose</h4>
                 <span className="text-xs bg-info/20 text-info px-2 py-1 rounded-full">Optional</span>
               </div>
-              
+
               <div className="form-control">
                 <div className="relative">
                   <textarea
@@ -251,24 +275,35 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
                     {textAreaPurposeRef?.current?.value?.length || 0}/300
                   </div>
                 </div>
-                
+
                 {state.validationErrors.purpose && (
                   <div className="flex items-center gap-2 mt-2 text-error">
-                    <Info size={20} className="text-error"/>
+                    <Info size={20} className="text-error" />
                     <span className="text-sm font-medium">{state.validationErrors.purpose}</span>
                   </div>
                 )}
-                
+
                 <div className="mt-3 p-3 bg-info/10 rounded-lg border border-info/20">
                   <div className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-info mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-4 h-4 text-info mt-0.5 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     <div className="text-sm text-info">
                       <p className="font-medium mb-1">Smart Creation</p>
                       <p className="text-xs text-info/80">
-                        • <strong>With purpose:</strong> AI will create a customized agent based on your description<br/>
-                        • <strong>Without purpose:</strong> A basic agent template will be created for manual setup
+                        • <strong>With purpose:</strong> AI will create a customized agent based on your description
+                        <br />• <strong>Without purpose:</strong> A basic agent template will be created for manual
+                        setup
                       </p>
                     </div>
                   </div>
@@ -279,19 +314,18 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = 'api' }) {
 
           {/* Modal Actions */}
           <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-base-300">
-            <button
-              className="btn btn-sm"
-              onClick={handleCloseModal}
-            >
+            <button id="create-new-bridge-cancel-button" className="btn btn-sm" onClick={handleCloseModal}>
               Cancel
             </button>
-            
+
             <button
+              data-testid="create-new-bridge-submit-button"
+              id="create-new-bridge-submit-button"
               className="btn btn-sm btn-primary"
               onClick={handleCreateAgent}
               disabled={state.isAiLoading || state.isLoading}
             >
-              {(state.isAiLoading || state.isLoading) ? (
+              {state.isAiLoading || state.isLoading ? (
                 <>
                   <span className="loading loading-spinner loading-sm" />
                   Creating...

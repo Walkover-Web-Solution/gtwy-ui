@@ -1,31 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { BookIcon, BrainIcon, CloseIcon } from '../../Icons';
-import { usePathname } from 'next/navigation';
-import Canvas from '@/components/Canvas';
-import { useDispatch } from 'react-redux';
-import { optimizePromptReducer } from '@/store/reducer/bridgeReducer';
-import { optimizePromptApi } from '@/config/index';
+import React, { useState, useEffect, useCallback } from "react";
+import { BookIcon, BrainIcon, CloseIcon } from "../../Icons";
+import { usePathname } from "next/navigation";
+import Canvas from "@/components/Canvas";
+import { useDispatch } from "react-redux";
+import { optimizePromptReducer } from "@/store/reducer/bridgeReducer";
+import { optimizePromptApi } from "@/config/index";
 
-const PromptHelper = ({ 
-  isVisible, 
-  params, 
+const PromptHelper = ({
+  isVisible,
+  params,
   onClose,
   savePrompt,
   setPrompt,
   messages: initialMessages = [],
   setMessages: setParentMessages,
   thread_id,
-  autoCloseOnBlur
+  autoCloseOnBlur,
 }) => {
   const dispatch = useDispatch();
   const [focusedSection, setFocusedSection] = useState(null); // 'notes', 'promptBuilder', or null for 50/50
-  const [optimizedPrompt, setOptimizedPrompt] = useState('');
+  const [optimizedPrompt, setOptimizedPrompt] = useState("");
   const [messages, setMessages] = useState(initialMessages);
-  
+
   const pathname = usePathname();
-  const pathParts = pathname.split('?')[0].split('/');
+  const pathParts = pathname.split("?")[0].split("/");
   const bridgeId = pathParts[5];
-  
+
   // Extract parameters from URL if not provided
   const promptParams = params || {
     id: bridgeId || pathParts[3],
@@ -40,30 +40,33 @@ const PromptHelper = ({
   }, [messages, setParentMessages]);
 
   // Handle optimize prompt function for Canvas component
-  const handleOptimizePrompt = useCallback(async (instructionText) => {
-    try {
-      const response = await optimizePromptApi({
-        query: instructionText,
-        thread_id,
-        bridge_id: promptParams.id,
-        version_id: promptParams.version,
-      });
+  const handleOptimizePrompt = useCallback(
+    async (instructionText) => {
+      try {
+        const response = await optimizePromptApi({
+          query: instructionText,
+          thread_id,
+          bridge_id: promptParams.id,
+          version_id: promptParams.version,
+        });
 
-      const result = typeof response === 'string' ? JSON.parse(response) : response?.data ?? response;
-      
-      // Store the optimized prompt
-      if (result?.updated) {
-        setOptimizedPrompt(result.updated);
-        localStorage.setItem(`optimized_prompt_${promptParams.id}_${promptParams.version}`, result.updated);
-        dispatch(optimizePromptReducer({ bridgeId: promptParams.id, prompt: result.updated }));
+        const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
+
+        // Store the optimized prompt
+        if (result?.updated) {
+          setOptimizedPrompt(result.updated);
+          localStorage.setItem(`optimized_prompt_${promptParams.id}_${promptParams.version}`, result.updated);
+          dispatch(optimizePromptReducer({ bridgeId: promptParams.id, prompt: result.updated }));
+        }
+
+        return result;
+      } catch (error) {
+        console.error("Error optimizing prompt:", error);
+        return { description: "Failed to optimize prompt. Please try again." };
       }
-      
-      return result;
-    } catch (error) {
-      console.error("Error optimizing prompt:", error);
-      return { description: "Failed to optimize prompt. Please try again." };
-    }
-  }, [promptParams, thread_id, dispatch]);
+    },
+    [promptParams, thread_id, dispatch]
+  );
 
   // Apply optimized prompt
   const handleApplyOptimizedPrompt = () => {
@@ -76,14 +79,14 @@ const PromptHelper = ({
   };
 
   const handleScriptLoad = () => {
-      if (typeof window.sendDataToDocstar === 'function') {
-        window.sendDataToDocstar({
-            parentId: 'notes-embed',
-            page_id: bridgeId,
-        });
-        window.openTechDoc();
+    if (typeof window.sendDataToDocstar === "function") {
+      window.sendDataToDocstar({
+        parentId: "notes-embed",
+        page_id: bridgeId,
+      });
+      window.openTechDoc();
     } else {
-        console.warn('sendDataToDocstar is not defined yet.');
+      console.warn("sendDataToDocstar is not defined yet.");
     }
   };
 
@@ -99,32 +102,35 @@ const PromptHelper = ({
         setOptimizedPrompt(savedPrompt);
       }
     }
-    
+
     // Add event listener for localStorage changes from other components
     const handleStorageChange = (e) => {
-      if (promptParams?.id && promptParams?.version && 
-          e.key === `optimized_prompt_${promptParams.id}_${promptParams.version}`) {
-        setOptimizedPrompt(e.newValue || '');
+      if (
+        promptParams?.id &&
+        promptParams?.version &&
+        e.key === `optimized_prompt_${promptParams.id}_${promptParams.version}`
+      ) {
+        setOptimizedPrompt(e.newValue || "");
       }
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [promptParams?.id, promptParams?.version]);
-  
+
   // Calculate heights based on focus
   const getNotesHeight = () => {
-    if (focusedSection === 'notes') return 'h-3/4'; // 75% when focused
-    if (focusedSection === 'promptBuilder') return 'h-1/4'; // 25% when prompt builder is focused
-    return 'h-1/2'; // 50% when nothing is focused (default state)
+    if (focusedSection === "notes") return "h-3/4"; // 75% when focused
+    if (focusedSection === "promptBuilder") return "h-1/4"; // 25% when prompt builder is focused
+    return "h-1/2"; // 50% when nothing is focused (default state)
   };
-  
+
   const getPromptBuilderHeight = () => {
-    if (focusedSection === 'promptBuilder') return 'h-3/4';
-    if (focusedSection === 'notes') return 'h-1/4';
-    return 'h-1/2';
+    if (focusedSection === "promptBuilder") return "h-3/4";
+    if (focusedSection === "notes") return "h-1/4";
+    return "h-1/2";
   };
-  
+
   const modalRef = React.createRef();
 
   useEffect(() => {
@@ -132,27 +138,26 @@ const PromptHelper = ({
 
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
-        const isBackdrop = event.target.classList.contains('modal-backdrop') || 
-                           event.target.closest('.modal-backdrop');
+        const isBackdrop = event.target.classList.contains("modal-backdrop") || event.target.closest(".modal-backdrop");
 
         if (isBackdrop) {
           onClose();
         }
       }
     };
-    
+
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [autoCloseOnBlur, onClose]);
 
@@ -172,8 +177,8 @@ const PromptHelper = ({
   if (!isVisible) return null;
 
   return (
-    <div 
-      ref={modalRef} 
+    <div
+      ref={modalRef}
       className="fixed right-0 top-20 w-1/2 bottom-2 bg-base-100 border h-full rounded-l-md shadow-lg transition-all duration-300 ease-in-out z-50"
       onBlur={handleModalBlur}
       tabIndex={-1}
@@ -181,10 +186,7 @@ const PromptHelper = ({
       {/* Header */}
       <div className="flex items-center justify-between p-1 border-b bg-gray-50">
         <h3 className="font-medium">Prompt Helper</h3>
-        <button 
-          className="p-1 rounded-full hover:text-error transition-colors z-10"
-          onClick={() => onClose('prompt')}
-        >
+        <button className="p-1 rounded-full hover:text-error transition-colors z-10" onClick={() => onClose("prompt")}>
           <CloseIcon />
         </button>
       </div>
@@ -199,16 +201,18 @@ const PromptHelper = ({
               <span className="text-sm font-medium">Notes</span>
             </div>
           </div>
-          <div className="p-3 h-[calc(100vh-60px)]" 
-               onFocus={() => setFocusedSection('notes')}
-               onBlur={() => setFocusedSection(null)}
-               tabIndex={0}>
-            <div id='notes-embed' className='w-full h-full' >
+          <div
+            className="p-3 h-[calc(100vh-60px)]"
+            onFocus={() => setFocusedSection("notes")}
+            onBlur={() => setFocusedSection(null)}
+            tabIndex={0}
+          >
+            <div id="notes-embed" className="w-full h-full">
               {/* This will be populated by the docstar script */}
-            </div>   
+            </div>
           </div>
         </div>
-        
+
         {/* Prompt Builder Section */}
         <div className={`${getPromptBuilderHeight()} transition-all duration-300 ease-in-out`}>
           <div className="p-3 border-b bg-gray-50">
@@ -217,9 +221,9 @@ const PromptHelper = ({
               <span className="text-sm font-medium">Prompt Builder</span>
             </div>
           </div>
-          <div 
+          <div
             className="p-3 h-[calc(100vh-60px)] flex flex-col"
-            onFocus={() => setFocusedSection('promptBuilder')}
+            onFocus={() => setFocusedSection("promptBuilder")}
             onBlur={() => setFocusedSection(null)}
             tabIndex={0}
           >
@@ -227,36 +231,37 @@ const PromptHelper = ({
             <div className="flex flex-row h-full gap-3 ">
               {/* Canvas for chat interactions */}
               <div className="flex-1 flex flex-col">
-                <Canvas 
+                <Canvas
                   OptimizePrompt={handleOptimizePrompt}
-                  messages={messages} 
+                  messages={messages}
                   setMessages={setMessages}
                   width="100%"
-                  style={{ 
-                    minHeight: "300px", 
-                    display: "flex", 
+                  style={{
+                    minHeight: "300px",
+                    display: "flex",
                     flexDirection: "column",
-                    marginBottom: "120px"
+                    marginBottom: "120px",
                   }}
                 />
               </div>
-              
+
               {/* Optimized prompt section */}
               <div className="w-2/5 border rounded-md bg-gray-50 flex flex-col">
                 <div className="p-2 border-b">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-medium">Current Optimized Prompt</span>
-                    <button 
+                    <button
                       onClick={handleApplyOptimizedPrompt}
                       disabled={!optimizedPrompt}
-                      className={`btn btn-sm ${optimizedPrompt ? 'btn-primary' : 'btn-disabled'}`}
+                      className={`btn btn-sm ${optimizedPrompt ? "btn-primary" : "btn-disabled"}`}
                     >
                       Apply
                     </button>
                   </div>
                 </div>
                 <div className="flex-1 p-2 bg-white rounded overflow-y-auto text-xs">
-                  {optimizedPrompt || "No optimized prompt available yet. Enter instructions above to optimize your prompt."}
+                  {optimizedPrompt ||
+                    "No optimized prompt available yet. Enter instructions above to optimize your prompt."}
                 </div>
               </div>
             </div>

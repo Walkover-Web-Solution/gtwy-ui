@@ -1,10 +1,19 @@
-'use client';
-import { MODAL_TYPE } from '@/utils/enums';
-import React, { useState, useRef, useEffect } from 'react';
-import { PlayIcon, ChevronDownIcon, ChevronRightIcon, BookIcon, BotIcon, KeyIcon, WrenchIcon, SettingsIcon } from '@/components/Icons';
-import { closeModal } from '@/utils/utility';
-import Modal from '../UI/Modal';
-import { useCustomSelector } from '@/customHooks/customSelector';
+"use client";
+import { MODAL_TYPE } from "@/utils/enums";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  PlayIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  BookIcon,
+  BotIcon,
+  KeyIcon,
+  WrenchIcon,
+  SettingsIcon,
+} from "@/components/Icons";
+import { closeModal } from "@/utils/utility";
+import Modal from "../UI/Modal";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 const TutorialVideo = ({ videoUrl, title }) => {
   return (
@@ -21,16 +30,16 @@ const TutorialVideo = ({ videoUrl, title }) => {
   );
 };
 const iconMap = {
-  "bot": BotIcon,
-  "key": KeyIcon,
-  "wrench": WrenchIcon,
-  "settings": SettingsIcon,
-  "book-text": BookIcon
+  bot: BotIcon,
+  key: KeyIcon,
+  wrench: WrenchIcon,
+  settings: SettingsIcon,
+  "book-text": BookIcon,
 };
 const TutorialModal = () => {
-  const {tutorialData}=useCustomSelector((state)=>({
-    tutorialData:state.flowDataReducer?.flowData?.tutorialData || []
-  }))
+  const { tutorialData } = useCustomSelector((state) => ({
+    tutorialData: state.flowDataReducer?.flowData?.tutorialData || [],
+  }));
   const [activeIndex, setActiveIndex] = useState(null);
   const videoRefs = useRef({});
   const contentAreaRef = useRef(null);
@@ -53,9 +62,9 @@ const TutorialModal = () => {
         const videoElement = videoRefs.current[index];
         if (videoElement && contentAreaRef.current) {
           videoElement.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-            inline: 'nearest'
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest",
           });
         }
       }, 150); // Small delay to allow animation to start
@@ -68,9 +77,12 @@ const TutorialModal = () => {
   };
 
   return (
-    <Modal MODAL_ID={MODAL_TYPE.TUTORIAL_MODAL}>
+    <Modal MODAL_ID={MODAL_TYPE.TUTORIAL_MODAL} onClose={internalClose}>
       {/* Main Modal */}
-      <div className="relative z-low w-full max-w-5xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-300">
+      <div
+        id="tutorial-modal-container"
+        className="relative z-low w-full max-w-5xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-300"
+      >
         {/* Header */}
         <div className=" px-8 py-6 ">
           <div className="flex items-center justify-between">
@@ -87,10 +99,7 @@ const TutorialModal = () => {
         </div>
 
         {/* Content Area */}
-        <div
-          ref={contentAreaRef}
-          className="p-8 max-h-[75vh] overflow-y-auto scroll-smooth"
-        >
+        <div ref={contentAreaRef} className="p-8 max-h-[75vh] overflow-y-auto scroll-smooth">
           <div className="space-y-3">
             {tutorialData?.map((tutorial, index) => {
               const IconComponent = iconMap[tutorial.icon];
@@ -98,20 +107,26 @@ const TutorialModal = () => {
 
               return (
                 <div
+                  id={`tutorial-item-${index}`}
                   key={index}
-                  className={`border rounded-xl transition-all duration-200 transform hover:scale-[1.01] ${isActive
-                      ? 'border-base-300 shadow-lg bg-base-100'
-                      : 'border-base-300 hover:border-base-300 hover:shadow-md bg-base-100 hover:bg-base-100'
-                    }`}
+                  className={`border rounded-xl transition-all duration-200 transform hover:scale-[1.01] ${
+                    isActive
+                      ? "border-base-300 shadow-lg bg-base-100"
+                      : "border-base-300 hover:border-base-300 hover:shadow-md bg-base-100 hover:bg-base-100"
+                  }`}
                 >
-                  <div
-                    className="p-4 cursor-pointer"
-                  >
+                  <div className="p-4 cursor-pointer">
                     <div className="flex items-center gap-4">
                       {/* Icon */}
-                      <div className={`p-2.5 bg-base-100 rounded-lg border border-base-300 transition-all duration-200 ${isActive ? 'bg-base-300 border-base-200' : 'group-hover:bg-base-200'
-                        }`}>
-                        <IconComponent size={20} className={`transition-colors duration-200 ${isActive ? 'text-base-content' : 'text-base-content'}`} />
+                      <div
+                        className={`p-2.5 bg-base-100 rounded-lg border border-base-300 transition-all duration-200 ${
+                          isActive ? "bg-base-300 border-base-200" : "group-hover:bg-base-200"
+                        }`}
+                      >
+                        <IconComponent
+                          size={20}
+                          className={`transition-colors duration-200 ${isActive ? "text-base-content" : "text-base-content"}`}
+                        />
                       </div>
 
                       {/* Content */}
@@ -124,6 +139,7 @@ const TutorialModal = () => {
                       <div className="flex items-center gap-3 flex-shrink-0">
                         {!isActive && (
                           <button
+                            id={`tutorial-watch-button-${index}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleTutorial(index);
@@ -135,13 +151,14 @@ const TutorialModal = () => {
                           </button>
                         )}
 
-                        <div className={`text-slate-400 transition-transform duration-200 cursor-pointer ${isActive ? 'rotate-180' : 'hover:translate-x-1'
-                          }`} onClick={() => toggleTutorial(index)}>
-                          {isActive ? (
-                            <ChevronDownIcon size={20} />
-                          ) : (
-                            <ChevronRightIcon size={20} />
-                          )}
+                        <div
+                          id={`tutorial-toggle-${index}`}
+                          className={`text-slate-400 transition-transform duration-200 cursor-pointer ${
+                            isActive ? "rotate-180" : "hover:translate-x-1"
+                          }`}
+                          onClick={() => toggleTutorial(index)}
+                        >
+                          {isActive ? <ChevronDownIcon size={20} /> : <ChevronRightIcon size={20} />}
                         </div>
                       </div>
                     </div>
@@ -154,16 +171,14 @@ const TutorialModal = () => {
                       className="border-t border-base-300 bg-base-100 animate-in slide-in-from-top-2 duration-300"
                     >
                       <div className="p-6">
-                        <TutorialVideo
-                          videoUrl={tutorial.videoUrl}
-                          title={tutorial.title}
-                        />
+                        <TutorialVideo videoUrl={tutorial.videoUrl} title={tutorial.title} />
                         <div className="mt-6 flex justify-between items-center">
                           <div className="text-sm text-base-content flex items-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             You can pause, rewind, or replay the video using the video controls
                           </div>
                           <button
+                            id={`tutorial-close-video-button-${index}`}
                             onClick={() => setActiveIndex(null)}
                             className="px-4 py-2 text-base-content hover:text-base-content hover:bg-base-200 rounded-lg transition-all duration-200 text-sm hover:scale-105"
                           >
@@ -183,6 +198,7 @@ const TutorialModal = () => {
         <div className="border-t border-base-300 bg-base-100 px-8 py-5">
           <div className="flex justify-between items-center">
             <button
+              id="tutorial-close-button"
               onClick={internalClose}
               className="px-6 py-2 bg-base-300 text-base-content rounded-lg hover:bg-base-200 transition-all duration-200 font-medium text-sm hover:scale-105 shadow-sm hover:shadow-md ml-auto"
             >

@@ -1,20 +1,13 @@
 {
-  "extends": [
-    "next",
-    "next/core-web-vitals",
-    "plugin:import/recommended"
-  ],
-  "plugins": [
-    "unused-imports",
-    "import",
-    "no-commented-code"
-  ],
+  "extends": ["next", "next/core-web-vitals", "plugin:import/recommended", "plugin:prettier/recommended"],
+  "plugins": ["unused-imports", "import", "no-commented-code", "prettier"],
   "settings": {
     "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      },
       "alias": {
-        "map": [
-          ["@", "."]
-        ],
+        "map": [["@", "."]],
         "extensions": [".js", ".jsx", ".ts", ".tsx"]
       }
     }
@@ -53,14 +46,7 @@
       {
         "unusedExports": true,
         "missingExports": false,
-        "ignoreExports": [
-          "app/**/*",
-          "components/**/*",
-          "hooks/**/*",
-          "customHooks/**/*",
-          "store/**/*",
-          "utils/**/*"
-        ]
+        "ignoreExports": ["app/**/*", "components/**/*", "hooks/**/*", "customHooks/**/*", "store/**/*", "utils/**/*"]
       }
     ],
     // Prevent leaving commented-out code in the repo

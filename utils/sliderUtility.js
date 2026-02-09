@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 /**
  * Generic Slider Utility Component
@@ -19,34 +19,34 @@ export const GenericSlider = ({
   onClose,
   title,
   url,
-  maxWidth = '4xl',
+  maxWidth = "4xl",
   addSourceParam = true,
   iframeProps = {},
-  customStyles = {}
+  customStyles = {},
 }) => {
   // Handle ESC key to close slider
   useEffect(() => {
     if (!isOpen) return;
-    
+
     const handleEscapeKey = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
-    
-    window.addEventListener('keydown', handleEscapeKey);
-    return () => window.removeEventListener('keydown', handleEscapeKey);
+
+    window.addEventListener("keydown", handleEscapeKey);
+    return () => window.removeEventListener("keydown", handleEscapeKey);
   }, [isOpen, onClose]);
 
-  if (!isOpen || typeof window === 'undefined') return null;
+  if (!isOpen || typeof window === "undefined") return null;
 
   const finalUrl = addSourceParam && url ? `${url}?source=single` : url;
-  
+
   const defaultIframeProps = {
     className: "w-full h-full border-0",
     title: "External Content",
     sandbox: "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox",
-    ...iframeProps
+    ...iframeProps,
   };
 
   const sliderStyles = {
@@ -56,39 +56,27 @@ export const GenericSlider = ({
     title: "text-lg font-semibold text-base-content truncate flex-1 mr-4",
     closeButton: "btn btn-sm btn-ghost btn-circle",
     content: "flex-1 w-full overflow-hidden",
-    ...customStyles
+    ...customStyles,
   };
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex">
       {/* Backdrop */}
-      <div 
-        className={sliderStyles.backdrop}
-        onClick={onClose}
-      />
-      
+      <div className={sliderStyles.backdrop} onClick={onClose} />
+
       {/* Drawer Panel */}
       <div className={sliderStyles.panel}>
         {/* Header */}
         <div className={sliderStyles.header}>
-          <h3 className={sliderStyles.title}>
-            {title}
-          </h3>
-          <button
-            onClick={onClose}
-            className={sliderStyles.closeButton}
-            aria-label="Close"
-          >
+          <h3 className={sliderStyles.title}>{title}</h3>
+          <button onClick={onClose} className={sliderStyles.closeButton} aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
         <div className={sliderStyles.content}>
-          <iframe
-            src={finalUrl}
-            {...defaultIframeProps}
-          />
+          <iframe src={finalUrl} {...defaultIframeProps} />
         </div>
       </div>
     </div>,
@@ -101,7 +89,7 @@ export const GenericSlider = ({
  * @param {Object} initialState - Initial slider state
  * @returns {Object} Slider state and controls
  */
-export const useSlider = (initialState = { isOpen: false, url: '', title: '' }) => {
+export const useSlider = (initialState = { isOpen: false, url: "", title: "" }) => {
   const [sliderState, setSliderState] = React.useState(initialState);
 
   const openSlider = React.useCallback((url, title, additionalData = {}) => {
@@ -109,14 +97,14 @@ export const useSlider = (initialState = { isOpen: false, url: '', title: '' }) 
       isOpen: true,
       url,
       title,
-      ...additionalData
+      ...additionalData,
     });
   }, []);
 
   const closeSlider = React.useCallback(() => {
-    setSliderState(prev => ({
+    setSliderState((prev) => ({
       ...prev,
-      isOpen: false
+      isOpen: false,
     }));
   }, []);
 
@@ -129,7 +117,7 @@ export const useSlider = (initialState = { isOpen: false, url: '', title: '' }) 
     openSlider,
     closeSlider,
     resetSlider,
-    setSliderState
+    setSliderState,
   };
 };
 
@@ -140,11 +128,11 @@ export const useSlider = (initialState = { isOpen: false, url: '', title: '' }) 
  */
 export const createSliderConfig = (config) => {
   return {
-    maxWidth: '4xl',
+    maxWidth: "4xl",
     addSourceParam: true,
     iframeProps: {},
     customStyles: {},
-    ...config
+    ...config,
   };
 };
 

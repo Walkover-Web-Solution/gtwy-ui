@@ -30,9 +30,7 @@ const syncActiveGroupVariables = (versionState) => {
     versionState.activeGroupId = activeGroup.id;
   }
 
-  versionState.variables = Array.isArray(activeGroup.variables)
-    ? activeGroup.variables
-    : [];
+  versionState.variables = Array.isArray(activeGroup.variables) ? activeGroup.variables : [];
 };
 
 const inferType = (value, fallback) => {
@@ -44,7 +42,7 @@ const inferType = (value, fallback) => {
     const parsed = JSON.parse(sample);
     if (Array.isArray(parsed)) return "array";
     if (typeof parsed === "object") return "object";
-  } catch (_err) {
+  } catch {
     /* ignore */
   }
   return "string";
@@ -101,14 +99,11 @@ const sanitizeValueForType = (rawValue, type, { allowEmpty } = {}) => {
         if (type === "array" && !Array.isArray(parsed)) {
           return { ok: false, error: "Value must be a JSON array" };
         }
-        if (
-          type === "object" &&
-          (parsed === null || Array.isArray(parsed) || typeof parsed !== "object")
-        ) {
+        if (type === "object" && (parsed === null || Array.isArray(parsed) || typeof parsed !== "object")) {
           return { ok: false, error: "Value must be a JSON object" };
         }
         return { ok: true, value: JSON.stringify(parsed, null, 2) };
-      } catch (_err) {
+      } catch {
         return { ok: false, error: "Value must be valid JSON" };
       }
     }
@@ -167,9 +162,7 @@ const ensureVersionState = (state, bridgeId, versionId) => {
 
     versionState.groups = versionState.groups.map((group) => ({
       ...group,
-      variables: Array.isArray(group.variables)
-        ? group.variables.map(normalizeVariableEntry)
-        : [],
+      variables: Array.isArray(group.variables) ? group.variables.map(normalizeVariableEntry) : [],
     }));
     if (Array.isArray(versionState.variables)) {
       versionState.variables = versionState.variables.map(normalizeVariableEntry);
@@ -198,8 +191,7 @@ const variableReducer = createSlice({
     createVariableGroup: (state, action) => {
       const { bridgeId, versionId, groupName = "" } = action.payload;
       const versionState = ensureVersionState(state, bridgeId, versionId);
-      const displayName =
-        groupName?.trim() || `Group ${versionState.groups.length + 1}`;
+      const displayName = groupName?.trim() || `Group ${versionState.groups.length + 1}`;
       const newGroup = createEmptyGroup(displayName);
       versionState.groups.push(newGroup);
       versionState.activeGroupId = newGroup.id;
@@ -245,9 +237,7 @@ const variableReducer = createSlice({
         versionState.activeGroupId = fallbackGroup.id;
         targetGroup = fallbackGroup;
       }
-      targetGroup.variables = Array.isArray(variables)
-        ? variables.map(normalizeVariableEntry)
-        : [];
+      targetGroup.variables = Array.isArray(variables) ? variables.map(normalizeVariableEntry) : [];
       syncActiveGroupVariables(versionState);
     },
     updateVariables: (state, action) => {
@@ -257,15 +247,11 @@ const variableReducer = createSlice({
       }
       const versionState = ensureVersionState(state, bridgeId, versionId);
       const targetGroupId = groupId || versionState.activeGroupId;
-      const targetGroup =
-        versionState.groups.find((group) => group.id === targetGroupId) ||
-        versionState.groups[0];
+      const targetGroup = versionState.groups.find((group) => group.id === targetGroupId) || versionState.groups[0];
       if (!targetGroup) {
         return;
       }
-      targetGroup.variables = Array.isArray(data)
-        ? data.map(normalizeVariableEntry)
-        : [];
+      targetGroup.variables = Array.isArray(data) ? data.map(normalizeVariableEntry) : [];
       versionState.activeGroupId = targetGroup.id;
       syncActiveGroupVariables(versionState);
     },

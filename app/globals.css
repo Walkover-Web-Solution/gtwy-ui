@@ -15,7 +15,7 @@
   textarea {
     @apply bg-white dark:bg-black/15;
   }
-  
+
   /* Override DaisyUI input classes specifically */
   .input-bordered,
   .input-sm,
@@ -33,7 +33,7 @@ body {
   @apply font-medium text-gray-500 cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400 hover:decoration-gray-600;
 }
 .promptSummary-info {
-   @apply cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400 hover:decoration-gray-600;
+  @apply cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400 hover:decoration-gray-600;
 }
 :root {
   scrollbar-width: none;
@@ -52,7 +52,6 @@ body {
   scrollbar-width: none;
   /* Firefox */
 }
-
 
 /* Show the button container when the row is hovered */
 .hover-row:hover {
@@ -96,11 +95,7 @@ html {
 @layer utilities {
   .hero-bg {
     background-color: hsl(0, 0%, 0%);
-    background-image: radial-gradient(
-      circle farthest-side at center top,
-      hsl(276, 100%, 50%) 0%,
-      hsl(0, 0%, 0%) 70%
-    );
+    background-image: radial-gradient(circle farthest-side at center top, hsl(276, 100%, 50%) 0%, hsl(0, 0%, 0%) 70%);
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center top;
@@ -109,11 +104,7 @@ html {
 @layer utilities {
   .hero-bg-center {
     background-color: hsl(0, 0%, 0%);
-    background-image: radial-gradient(
-      circle farthest-corner at center,
-      hsl(263, 100%, 70%) 0%,
-      hsl(0, 0%, 0%) 100%
-    );
+    background-image: radial-gradient(circle farthest-corner at center, hsl(263, 100%, 70%) 0%, hsl(0, 0%, 0%) 100%);
 
     background-repeat: no-repeat;
     background-size: cover;
@@ -132,7 +123,7 @@ html {
   z-index: 999999;
 }
 
-#parentChatbot{
+#parentChatbot {
   z-index: 1;
 }
 
@@ -157,30 +148,37 @@ html {
 
 /* Responsive font sizing for mobile screens */
 @media (max-width: 640px) {
-  html, body {
+  html,
+  body {
     font-size: 87.5%; /* Reduces to 14px if base is 16px */
   }
-  
+
   h1 {
     font-size: 1.5rem; /* 24px if base is 16px */
   }
-  
+
   h2 {
     font-size: 1.25rem; /* 20px if base is 16px */
   }
-  
+
   h3 {
     font-size: 1.125rem; /* 18px if base is 16px */
   }
-  
-  p, span, div, input, select, textarea {
+
+  p,
+  span,
+  div,
+  input,
+  select,
+  textarea {
     font-size: 0.875rem; /* 14px if base is 16px */
   }
 }
 
 /* Even smaller font size for very small screens */
 @media (max-width: 375px) {
-  html, body {
+  html,
+  body {
     font-size: 81.25%; /* Reduces to 13px if base is 16px */
   }
 }

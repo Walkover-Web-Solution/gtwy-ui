@@ -10,9 +10,9 @@ import {
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
-import { useCustomSelector } from '@/customHooks/customSelector';
+import { useCustomSelector } from "@/customHooks/customSelector";
 import Protected from "../Protected";
 import PublishVersionDataComparisonView from "../comparison/PublishVersionDataComparisonView";
 import { DIFFERNCE_DATA_DISPLAY_NAME, KEYS_TO_COMPARE } from "@/jsonFiles/bridgeParameter";
@@ -29,215 +29,234 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [showSummaryValidation, setShowSummaryValidation] = useState(false);
   const [summaryAccordionOpen, setSummaryAccordionOpen] = useState(false);
-  
 
-  const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } = useCustomSelector((state) => {
-    const isPublished = searchParams?.get("isPublished") === 'true';
-    const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
-    const versionDataFromState = state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
-    
-    // Check if user has editor permissions
-    const orgId = params?.org_id;
-    const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
-    const currentUser = state.userDetailsReducer.userDetails;
-    const agentUsers = bridgeDataFromState?.users || [];
-    
-    // Determine if user is allowed to edit based on role and agent access
-    const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
-    // Updated canEdit condition
-    const canEdit = ((currentOrgRole === "Editor" && (agentUsers?.length === 0 || !agentUsers || (agentUsers?.length > 0 && agentUsers?.some(user => user.id === currentUser?.id))))||
-                  ((currentOrgRole === "Viewer") && (agentUsers?.some(user => user === currentUser?.id))) ||
-                  currentOrgRole === "Creator") ||
-                  isAdminOrOwner;
-    
-    return {
-      bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
-      versionData: versionDataFromState,
-      bridgeData: bridgeDataFromState,
-      agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
-      bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
-      allBridgesMap: state.bridgeReducer.allBridgesMap || {},
-      prompt: isPublished ? (bridgeDataFromState?.configuration?.prompt || "") : (versionDataFromState?.configuration?.prompt || ""),
-      isEditor: isEmbedUser ? true : canEdit,
-    };
-  });
+  const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } =
+    useCustomSelector((state) => {
+      const isPublished = searchParams?.get("isPublished") === "true";
+      const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
+      const versionDataFromState =
+        state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+
+      // Check if user has editor permissions
+      const orgId = params?.org_id;
+      const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
+      const currentUser = state.userDetailsReducer.userDetails;
+      const agentUsers = bridgeDataFromState?.users || [];
+
+      // Determine if user is allowed to edit based on role and agent access
+      const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
+      // Updated canEdit condition
+      const canEdit =
+        (currentOrgRole === "Editor" &&
+          (agentUsers?.length === 0 ||
+            !agentUsers ||
+            (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
+        (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
+        currentOrgRole === "Creator" ||
+        isAdminOrOwner;
+
+      return {
+        bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
+        versionData: versionDataFromState,
+        bridgeData: bridgeDataFromState,
+        agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
+        bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
+        allBridgesMap: state.bridgeReducer.allBridgesMap || {},
+        prompt: isPublished
+          ? bridgeDataFromState?.configuration?.prompt || ""
+          : versionDataFromState?.configuration?.prompt || "",
+        isEditor: isEmbedUser ? true : canEdit,
+      };
+    });
 
   // Flag to determine if the UI should be in read-only mode
   const isReadOnly = !isEditor;
   // Memoized form data initialization
   const [formData, setFormData] = useState(() => ({
-    url_slugname: '',
-    availability: 'public',
-    description: '',
+    url_slugname: "",
+    availability: "public",
+    description: "",
     allowedUsers: [],
-    newEmail: ''
+    newEmail: "",
   }));
 
   // Update form data when bridge data changes
   useEffect(() => {
     if (bridge) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        url_slugname: bridge.url_slugname || '',
-        availability: bridge.availability || 'public',
-        description: bridge.description || '',
-        allowedUsers: bridge.allowedUsers || []
+        url_slugname: bridge.url_slugname || "",
+        availability: bridge.availability || "public",
+        description: bridge.description || "",
+        allowedUsers: bridge.allowedUsers || [],
       }));
     }
   }, [bridge]);
 
-  
-  const getAllConnectedAgents = useCallback(async (agentId, versionData, agentList, useVersionData = false, visited = new Set(), level = 0, allBridgesMap = null) => {
-    // Prevent infinite loops and invalid agents
-    if (!agentId || visited.has(agentId)) return [];
-    
-    // Add current agent to visited set
-    visited.add(agentId);
-    
-    // Get agent data - either from version data, bridge data, or agent list
-    let agent;
-    
-    if (useVersionData && versionData) {
-      agent = { ...versionData };
-      // Get the parent agent name from agentList
-      const parentAgent = agentList?.find(a => a._id === agent?.parent_id);
-      agent.name = parentAgent?.name || agent.name || 'Unknown Agent';
-      agent.haveToPublish = agent.is_drafted || false;
-      agent.isVersionData = true;
-    } else if (!useVersionData && versionData) {
-      // This is bridge data from allBridgesMap
-      agent = { ...versionData };
-      agent.name = agent.name || 'Unknown Agent';
-      agent.haveToPublish = false; // Bridge data doesn't need publishing
-      agent.isVersionData = false;
-      agent.isBridgeData = true;
-    } else {
-      const foundAgent = agentList?.find(a => a._id === agentId);
-      if (!foundAgent) {
-        return [];
-      }
-      // Create a copy to avoid modifying the original
-      agent = { ...foundAgent };
-      agent.haveToPublish = false; // Regular agents don't need publishing
-      agent.isVersionData = false;
-      agent.isBridgeData = false;
-    }
-    
-    // Add hierarchy information
-    const agentWithHierarchy = {
-      ...agent,
-      hierarchyLevel: level,
-      children: []
-    };
-    
-    // Get connected agents from the current agent
-    // For bridge data, connected_agents might be in different locations
-    let connectedAgents = agent?.connected_agents || {};
-    
-    // If no connected_agents found, try other possible locations
-    if (Object.keys(connectedAgents).length === 0) {
-      // Try page_config.connected_agents for bridge data
-      connectedAgents = agent?.page_config?.connected_agents || {};
-      
-      // Try configuration.connected_agents
-      if (Object.keys(connectedAgents).length === 0) {
-        connectedAgents = agent?.configuration?.connected_agents || {};
-      }
-      
-      // For version data, try the direct structure
-      if (Object.keys(connectedAgents).length === 0 && agent.isVersionData) {
-        // Version data might have connected_agents at root level
-        connectedAgents = versionData?.connected_agents || {};
-      }
-    }
-    
-    // Process each connected agent
-    for (const [_agentName, agentInfo] of Object.entries(connectedAgents)) {
-      const connectedId = agentInfo?.bridge_id;
-      if (!connectedId || visited.has(connectedId)) {
-        continue;
-      }
-      
-      // Check if this connection has a specific version
-      const hasVersionId = agentInfo?.version_id && agentInfo.version_id.trim() !== "";
-      
-      let childVersionData = null;
-      let shouldUseVersionData = false;
-      
-      if (hasVersionId) {
-        try {
-          // Fetch the specific version data
-          const fetchedData = await dispatch(getBridgeVersionAction({
-            versionId: agentInfo.version_id
-          }));
-          
-          if (fetchedData) {
-            childVersionData = fetchedData;
-            shouldUseVersionData = true;
-          }
-        } catch (error) {
-          console.error(`Error fetching version data for ${agentInfo.version_id}:`, error);
-          // Continue with regular agent data if version fetch fails
-        }
+  const getAllConnectedAgents = useCallback(
+    async (
+      agentId,
+      versionData,
+      agentList,
+      useVersionData = false,
+      visited = new Set(),
+      level = 0,
+      allBridgesMap = null
+    ) => {
+      // Prevent infinite loops and invalid agents
+      if (!agentId || visited.has(agentId)) return [];
+
+      // Add current agent to visited set
+      visited.add(agentId);
+
+      // Get agent data - either from version data, bridge data, or agent list
+      let agent;
+
+      if (useVersionData && versionData) {
+        agent = { ...versionData };
+        // Get the parent agent name from agentList
+        const parentAgent = agentList?.find((a) => a._id === agent?.parent_id);
+        agent.name = parentAgent?.name || agent.name || "Unknown Agent";
+        agent.haveToPublish = agent.is_drafted || false;
+        agent.isVersionData = true;
+      } else if (!useVersionData && versionData) {
+        // This is bridge data from allBridgesMap
+        agent = { ...versionData };
+        agent.name = agent.name || "Unknown Agent";
+        agent.haveToPublish = false; // Bridge data doesn't need publishing
+        agent.isVersionData = false;
+        agent.isBridgeData = true;
       } else {
-        // If no version_id, try to get bridge data from allBridgesMap
-        if (allBridgesMap && allBridgesMap[connectedId]) {
-          childVersionData = allBridgesMap[connectedId];
-          shouldUseVersionData = false; // This is bridge data, not version data
+        const foundAgent = agentList?.find((a) => a._id === agentId);
+        if (!foundAgent) {
+          return [];
         }
+        // Create a copy to avoid modifying the original
+        agent = { ...foundAgent };
+        agent.haveToPublish = false; // Regular agents don't need publishing
+        agent.isVersionData = false;
+        agent.isBridgeData = false;
       }
-      
-      // Always try to process the agent, even if we don't have specific data
-      // The recursive function will try to find it in agentList
-      const childAgents = await getAllConnectedAgents(
-        connectedId,
-        childVersionData,
-        agentList,
-        shouldUseVersionData,
-        new Set([...visited]), // Pass a copy of visited set
-        level + 1,
-        allBridgesMap // Pass allBridgesMap to recursive calls
-      );
-      
-      // Add children to current agent
-      if (childAgents.length > 0) {
-        agentWithHierarchy.children.push(...childAgents);
-      }
-    }
-    
-    // Return structure based on level
-    if (level === 0) {
-      // For root call, collect all connected agents without duplicates
-      const result = [];
-      const seenIds = new Set();
-      
-      // Add the root agent if it needs publishing
-      if (agentWithHierarchy.haveToPublish && !seenIds.has(agentWithHierarchy._id)) {
-        result.push(agentWithHierarchy);
-        seenIds.add(agentWithHierarchy._id);
-      }
-      
-      // Collect all agents in a flat structure, avoiding duplicates
-      const collectAllAgents = (currentAgent) => {
-        if (currentAgent.children && currentAgent.children.length > 0) {
-          currentAgent.children.forEach(child => {
-            if (!seenIds.has(child._id)) {
-              result.push(child);
-              seenIds.add(child._id);
-            }
-            collectAllAgents(child);
-          });
-        }
+
+      // Add hierarchy information
+      const agentWithHierarchy = {
+        ...agent,
+        hierarchyLevel: level,
+        children: [],
       };
-      
-      collectAllAgents(agentWithHierarchy);
-      
-      return result;
-    } else {
-      // For nested calls, return the current agent
-      return [agentWithHierarchy];
-    }
-  }, [dispatch]);
+
+      // Get connected agents from the current agent
+      // For bridge data, connected_agents might be in different locations
+      let connectedAgents = agent?.connected_agents || {};
+
+      // If no connected_agents found, try other possible locations
+      if (Object.keys(connectedAgents).length === 0) {
+        // Try page_config.connected_agents for bridge data
+        connectedAgents = agent?.page_config?.connected_agents || {};
+
+        // Try configuration.connected_agents
+        if (Object.keys(connectedAgents).length === 0) {
+          connectedAgents = agent?.configuration?.connected_agents || {};
+        }
+
+        // For version data, try the direct structure
+        if (Object.keys(connectedAgents).length === 0 && agent.isVersionData) {
+          // Version data might have connected_agents at root level
+          connectedAgents = versionData?.connected_agents || {};
+        }
+      }
+
+      // Process each connected agent
+      for (const [_agentName, agentInfo] of Object.entries(connectedAgents)) {
+        const connectedId = agentInfo?.bridge_id;
+        if (!connectedId || visited.has(connectedId)) {
+          continue;
+        }
+
+        // Check if this connection has a specific version
+        const hasVersionId = agentInfo?.version_id && agentInfo.version_id.trim() !== "";
+
+        let childVersionData = null;
+        let shouldUseVersionData = false;
+
+        if (hasVersionId) {
+          try {
+            // Fetch the specific version data
+            const fetchedData = await dispatch(
+              getBridgeVersionAction({
+                versionId: agentInfo.version_id,
+              })
+            );
+
+            if (fetchedData) {
+              childVersionData = fetchedData;
+              shouldUseVersionData = true;
+            }
+          } catch (error) {
+            console.error(`Error fetching version data for ${agentInfo.version_id}:`, error);
+            // Continue with regular agent data if version fetch fails
+          }
+        } else {
+          // If no version_id, try to get bridge data from allBridgesMap
+          if (allBridgesMap && allBridgesMap[connectedId]) {
+            childVersionData = allBridgesMap[connectedId];
+            shouldUseVersionData = false; // This is bridge data, not version data
+          }
+        }
+
+        // Always try to process the agent, even if we don't have specific data
+        // The recursive function will try to find it in agentList
+        const childAgents = await getAllConnectedAgents(
+          connectedId,
+          childVersionData,
+          agentList,
+          shouldUseVersionData,
+          new Set([...visited]), // Pass a copy of visited set
+          level + 1,
+          allBridgesMap // Pass allBridgesMap to recursive calls
+        );
+
+        // Add children to current agent
+        if (childAgents.length > 0) {
+          agentWithHierarchy.children.push(...childAgents);
+        }
+      }
+
+      // Return structure based on level
+      if (level === 0) {
+        // For root call, collect all connected agents without duplicates
+        const result = [];
+        const seenIds = new Set();
+
+        // Add the root agent if it needs publishing
+        if (agentWithHierarchy.haveToPublish && !seenIds.has(agentWithHierarchy._id)) {
+          result.push(agentWithHierarchy);
+          seenIds.add(agentWithHierarchy._id);
+        }
+
+        // Collect all agents in a flat structure, avoiding duplicates
+        const collectAllAgents = (currentAgent) => {
+          if (currentAgent.children && currentAgent.children.length > 0) {
+            currentAgent.children.forEach((child) => {
+              if (!seenIds.has(child._id)) {
+                result.push(child);
+                seenIds.add(child._id);
+              }
+              collectAllAgents(child);
+            });
+          }
+        };
+
+        collectAllAgents(agentWithHierarchy);
+
+        return result;
+      } else {
+        // For nested calls, return the current agent
+        return [agentWithHierarchy];
+      }
+    },
+    [dispatch]
+  );
 
   const fetchConnectedAgents = useCallback(async () => {
     if (!params?.id || !versionData || !agentList.length) {
@@ -250,7 +269,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       const agents = await getAllConnectedAgents(params.id, versionData, agentList, true, new Set(), 0, allBridgesMap);
       setAllConnectedAgents(Array.isArray(agents) ? agents : []);
     } catch (error) {
-      console.error('Error fetching connected agents:', error);
+      console.error("Error fetching connected agents:", error);
       setAllConnectedAgents([]);
     } finally {
       setIsLoadingAgents(false);
@@ -264,8 +283,8 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'open') {
-          const isOpen = modalElement.hasAttribute('open');
+        if (mutation.type === "attributes" && mutation.attributeName === "open") {
+          const isOpen = modalElement.hasAttribute("open");
           if (isOpen) {
             // Modal just opened, fetch connected agents
             fetchConnectedAgents();
@@ -277,7 +296,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     // Observe changes to the 'open' attribute
     observer.observe(modalElement, {
       attributes: true,
-      attributeFilter: ['open']
+      attributeFilter: ["open"],
     });
 
     // Cleanup observer on unmount
@@ -288,7 +307,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     const filterData = (data, keys) => {
       if (!data || !keys) return {};
       const filtered = {};
-      keys.forEach(key => {
+      keys.forEach((key) => {
         if (key in data) {
           filtered[key] = data[key];
         }
@@ -297,7 +316,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     };
     return {
       filteredBridgeData: filterData(bridgeData, KEYS_TO_COMPARE),
-      filteredVersionData: filterData(versionData, KEYS_TO_COMPARE)
+      filteredVersionData: filterData(versionData, KEYS_TO_COMPARE),
     };
   }, [bridgeData, versionData]);
 
@@ -307,20 +326,20 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     const diff = {};
     const allKeys = [...new Set([...Object.keys(filteredBridgeData), ...Object.keys(filteredVersionData)])];
 
-    allKeys.forEach(key => {
+    allKeys.forEach((key) => {
       const val1 = filteredBridgeData[key];
       const val2 = filteredVersionData[key];
-      
+
       if (!val1 && !val2) return;
 
       if (key in filteredBridgeData && key in filteredVersionData) {
         if (JSON.stringify(val1) !== JSON.stringify(val2)) {
-          diff[key] = { oldValue: val1, newValue: val2, status: 'changed' };
+          diff[key] = { oldValue: val1, newValue: val2, status: "changed" };
         }
       } else if (key in filteredBridgeData) {
-        diff[key] = { oldValue: val1, newValue: undefined, status: 'removed' };
+        diff[key] = { oldValue: val1, newValue: undefined, status: "removed" };
       } else {
-        diff[key] = { oldValue: undefined, newValue: val2, status: 'added' };
+        diff[key] = { oldValue: undefined, newValue: val2, status: "added" };
       }
     });
 
@@ -329,16 +348,16 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
   const extractedConfigChanges = useMemo(() => {
     const extracted = {};
-    
+
     if (differences.configuration) {
       const oldConfig = filteredBridgeData.configuration || {};
       const newConfig = filteredVersionData.configuration || {};
-      
+
       if (oldConfig.model !== newConfig.model) {
         extracted.model = {
           oldValue: oldConfig.model,
           newValue: newConfig.model,
-          status: 'changed'
+          status: "changed",
         };
       }
 
@@ -346,7 +365,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         extracted.prompt = {
           oldValue: oldConfig.prompt,
           newValue: newConfig.prompt,
-          status: 'changed'
+          status: "changed",
         };
       }
     }
@@ -362,7 +381,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const changesSummary = useMemo(() => {
     return {
       ...Object.fromEntries(Object.entries(differences).map(([key, value]) => [key, value.status])),
-      ...Object.fromEntries(Object.entries(extractedConfigChanges).map(([key, value]) => [key, value.status]))
+      ...Object.fromEntries(Object.entries(extractedConfigChanges).map(([key, value]) => [key, value.status])),
     };
   }, [differences, extractedConfigChanges]);
 
@@ -374,42 +393,41 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    const processedValue = name === 'url_slugname' ? value.replace(/\s+/g, '_') : value;
+    const processedValue = name === "url_slugname" ? value.replace(/\s+/g, "_") : value;
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: processedValue
+      [name]: processedValue,
     }));
   }, []);
 
   const handleAddEmail = useCallback(() => {
-    if (!formData.newEmail?.includes('@')) return;
-    
+    if (!formData.newEmail?.includes("@")) return;
+
     if (formData.allowedUsers.includes(formData.newEmail)) {
       toast.warn("This email has already been added.");
       return;
     }
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       allowedUsers: [...(prev.allowedUsers || []), prev.newEmail],
-      newEmail: ''
+      newEmail: "",
     }));
   }, [formData.newEmail, formData.allowedUsers]);
 
   const handleRemoveUser = useCallback((indexToRemove) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      allowedUsers: prev.allowedUsers.filter((_, i) => i !== indexToRemove)
+      allowedUsers: prev.allowedUsers.filter((_, i) => i !== indexToRemove),
     }));
   }, []);
-
 
   // Helper function to get all agents recursively (flattened for operations)
   const getAllAgentsFlat = useCallback((agents) => {
     const result = [];
     const traverse = (agentList) => {
-      agentList.forEach(agent => {
+      agentList.forEach((agent) => {
         result.push(agent);
         if (agent.children && agent.children.length > 0) {
           traverse(agent.children);
@@ -420,32 +438,33 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     return result;
   }, []);
 
-  const toggleAgentSelection = useCallback((agentId) => {
-    const flatAgents = getAllAgentsFlat(allConnectedAgents);
-    const agent = flatAgents.find(a => a._id === agentId);
-    if (!agent?.haveToPublish) return;
-    
-    setSelectedAgentsToPublish(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(agentId)) {
-        newSet.delete(agentId);
-      } else {
-        newSet.add(agentId);
-      }
-      return newSet;
-    });
-  }, [allConnectedAgents, getAllAgentsFlat]);
+  const toggleAgentSelection = useCallback(
+    (agentId) => {
+      const flatAgents = getAllAgentsFlat(allConnectedAgents);
+      const agent = flatAgents.find((a) => a._id === agentId);
+      if (!agent?.haveToPublish) return;
+
+      setSelectedAgentsToPublish((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(agentId)) {
+          newSet.delete(agentId);
+        } else {
+          newSet.add(agentId);
+        }
+        return newSet;
+      });
+    },
+    [allConnectedAgents, getAllAgentsFlat]
+  );
 
   const toggleSelectAllAgents = useCallback(() => {
     const flatAgents = getAllAgentsFlat(allConnectedAgents);
     const publishableAgents = flatAgents
-      .filter(agent => agent._id !== params?.id && agent?.haveToPublish)
-      .map(agent => agent._id);
-      
-    const allSelected = publishableAgents.every(agentId => 
-      selectedAgentsToPublish.has(agentId)
-    );
-    
+      .filter((agent) => agent._id !== params?.id && agent?.haveToPublish)
+      .map((agent) => agent._id);
+
+    const allSelected = publishableAgents.every((agentId) => selectedAgentsToPublish.has(agentId));
+
     if (allSelected) {
       setSelectedAgentsToPublish(new Set());
     } else {
@@ -454,130 +473,135 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   }, [allConnectedAgents, params?.id, selectedAgentsToPublish, getAllAgentsFlat]);
 
   const toggleComparison = useCallback(() => {
-    setShowComparison(prev => !prev);
+    setShowComparison((prev) => !prev);
   }, []);
 
-  const getVersionIndexToPublish = useCallback((agentId, isPublishedVersion = false) => {
-    // For agents that need to be published (version data)
-    if (!isPublishedVersion) {
-      const versionIndex = agentList?.filter(oneAgent => oneAgent.versions.includes(agentId))[0]?.versions.findIndex(version => version === agentId);
-      return versionIndex !== -1 ? versionIndex + 1 : 'N/A';
-    } 
-    // For getting published version index
-    else {
-      const agent = allConnectedAgents.find(a => a._id === agentId);
-      if (agent?.haveToPublish) {
-        // For agents that need publishing, find the published version from agentList
-        const parentAgent = agentList?.filter(oneAgent => oneAgent.versions.includes(agentId))[0];
-        const versionIndex = parentAgent?.versions?.findIndex(version => version === agentId);
-        return versionIndex !== -1 ? versionIndex + 1 : 'None';
-      } else {
-        // For regular agents, use their own published_version_id
-        const versionIndex = agent?.versions?.findIndex(version => version === agent.published_version_id);
-        if (versionIndex !== -1 && versionIndex !== undefined) {
-          return versionIndex + 1;
-        }
-        // Fallback to checking in agentList
-        const parentAgent = agentList.find(oneAgent => oneAgent._id === agentId);
-        const parentVersionIndex = parentAgent?.versions?.findIndex(version => version === parentAgent.published_version_id);
-        return parentVersionIndex !== -1 && parentVersionIndex !== undefined ? parentVersionIndex + 1 : 'None';
+  const getVersionIndexToPublish = useCallback(
+    (agentId, isPublishedVersion = false) => {
+      // For agents that need to be published (version data)
+      if (!isPublishedVersion) {
+        const versionIndex = agentList
+          ?.filter((oneAgent) => oneAgent.versions.includes(agentId))[0]
+          ?.versions.findIndex((version) => version === agentId);
+        return versionIndex !== -1 ? versionIndex + 1 : "N/A";
       }
-    }
-  }, [agentList, allConnectedAgents]);
+      // For getting published version index
+      else {
+        const agent = allConnectedAgents.find((a) => a._id === agentId);
+        if (agent?.haveToPublish) {
+          // For agents that need publishing, find the published version from agentList
+          const parentAgent = agentList?.filter((oneAgent) => oneAgent.versions.includes(agentId))[0];
+          const versionIndex = parentAgent?.versions?.findIndex((version) => version === agentId);
+          return versionIndex !== -1 ? versionIndex + 1 : "None";
+        } else {
+          // For regular agents, use their own published_version_id
+          const versionIndex = agent?.versions?.findIndex((version) => version === agent.published_version_id);
+          if (versionIndex !== -1 && versionIndex !== undefined) {
+            return versionIndex + 1;
+          }
+          // Fallback to checking in agentList
+          const parentAgent = agentList.find((oneAgent) => oneAgent._id === agentId);
+          const parentVersionIndex = parentAgent?.versions?.findIndex(
+            (version) => version === parentAgent.published_version_id
+          );
+          return parentVersionIndex !== -1 && parentVersionIndex !== undefined ? parentVersionIndex + 1 : "None";
+        }
+      }
+    },
+    [agentList, allConnectedAgents]
+  );
 
   // Recursive function to render agents with hierarchy
-  const renderAgentHierarchy = useCallback((agents, level = 0) => {
-    if (!agents || agents.length === 0) return null;
-    
-    return agents
-      .filter(agent => {
-        // Filter out the current agent and any versions of the current agent
-        if (agent._id === params?.id) return false;
-        
-        // Check if this agent is a version of the current agent
-        const currentAgent = agentList.find(a => a._id === params?.id);
-        if (currentAgent?.versions?.includes(agent._id)) return false;
-        
-        return true;
-      })
-      .map(agent => {
-        const isSelected = selectedAgentsToPublish.has(agent._id);
-        const actualLevel = agent.hierarchyLevel || level;
-        const indentLevel = actualLevel * 24; // 24px per level
-        
-        return (
-          <div key={`${agent._id}-${actualLevel}`} className="relative">
-            {/* Connection lines for hierarchy visualization */}
-            {actualLevel > 0 && (
-              <>
-                <div 
-                  className="absolute left-0 top-0 bottom-0 w-px bg-base-300" 
-                  style={{ left: `${indentLevel - 12}px` }}
-                ></div>
-                <div 
-                  className="absolute top-6 w-3 h-px bg-base-300" 
-                  style={{ left: `${indentLevel - 12}px` }}
-                ></div>
-              </>
-            )}
-            
-            <div 
-              className="card bg-base-100 shadow-sm border border-base-300 mb-3"
-              style={{ marginLeft: `${indentLevel}px` }}
-            >
-              <div className="card-body p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-full">
-                      <Bot className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h5 className="font-medium text-sm">{agent.name || 'Unknown Agent'}</h5>
-                        {agent?.haveToPublish ? (
-                          <div className="badge badge-warning badge-sm text-white">Needs Publish</div>
-                        ) : (
-                          <div className="badge badge-success badge-sm text-white">Already Published</div>
+  const renderAgentHierarchy = useCallback(
+    (agents, level = 0) => {
+      if (!agents || agents.length === 0) return null;
+
+      return agents
+        .filter((agent) => {
+          // Filter out the current agent and any versions of the current agent
+          if (agent._id === params?.id) return false;
+
+          // Check if this agent is a version of the current agent
+          const currentAgent = agentList.find((a) => a._id === params?.id);
+          if (currentAgent?.versions?.includes(agent._id)) return false;
+
+          return true;
+        })
+        .map((agent) => {
+          const isSelected = selectedAgentsToPublish.has(agent._id);
+          const actualLevel = agent.hierarchyLevel || level;
+          const indentLevel = actualLevel * 24; // 24px per level
+
+          return (
+            <div key={`${agent._id}-${actualLevel}`} className="relative">
+              {/* Connection lines for hierarchy visualization */}
+              {actualLevel > 0 && (
+                <>
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-px bg-base-300"
+                    style={{ left: `${indentLevel - 12}px` }}
+                  ></div>
+                  <div className="absolute top-6 w-3 h-px bg-base-300" style={{ left: `${indentLevel - 12}px` }}></div>
+                </>
+              )}
+
+              <div
+                className="card bg-base-100 shadow-sm border border-base-300 mb-3"
+                style={{ marginLeft: `${indentLevel}px` }}
+              >
+                <div className="card-body p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-full">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-medium text-sm">{agent.name || "Unknown Agent"}</h5>
+                          {agent?.haveToPublish ? (
+                            <div className="badge badge-warning badge-sm text-white">Needs Publish</div>
+                          ) : (
+                            <div className="badge badge-success badge-sm text-white">Already Published</div>
+                          )}
+                        </div>
+                        <p className="text-xs text-base-content/70 mt-1">
+                          Service: {agent.service || "N/A"} | Model: {agent.configuration?.model || "N/A"}
+                        </p>
+                        {agent.url_slugname && (
+                          <p className="text-xs text-base-content/50">Slug: {agent.url_slugname}</p>
                         )}
                       </div>
-                      <p className="text-xs text-base-content/70 mt-1">
-                        Service: {agent.service || 'N/A'} | Model: {agent.configuration?.model || 'N/A'}
-                      </p>
-                      {agent.url_slugname && (
-                        <p className="text-xs text-base-content/50">
-                          Slug: {agent.url_slugname}
-                        </p>
-                      )}
                     </div>
+
+                    {agent?.haveToPublish && (
+                      <div className="flex items-center gap-2">
+                        {isSelected && (
+                          <div className="flex items-center gap-1 text-warning text-sm">
+                            <AlertTriangle className="w-3 h-3" />
+                            Version {getVersionIndexToPublish(agent._id, agent?.haveToPublish)} will be Published
+                          </div>
+                        )}
+                        <span className="text-xs text-base-content/70">Include in publish</span>
+                        <input
+                          type="checkbox"
+                          className="toggle toggle-sm"
+                          checked={isSelected}
+                          onChange={() => toggleAgentSelection(agent._id)}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    )}
                   </div>
-                  
-                  {agent?.haveToPublish && (
-                    <div className="flex items-center gap-2">
-                      {isSelected && (
-                        <div className="flex items-center gap-1 text-warning text-sm">
-                          <AlertTriangle className="w-3 h-3" />
-                          Version {getVersionIndexToPublish(agent._id, agent?.haveToPublish)} will be Published
-                        </div>
-                      )}
-                      <span className="text-xs text-base-content/70">Include in publish</span>
-                      <input
-                        type="checkbox"
-                        className="toggle toggle-sm"
-                        checked={isSelected}
-                        onChange={() => toggleAgentSelection(agent._id)}
-                        disabled={isLoading}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
+
+              {/* Children are already included in the flattened list, no need to render recursively */}
             </div>
-            
-            {/* Children are already included in the flattened list, no need to render recursively */}
-          </div>
-        );
-      });
-  }, [params?.id, agentList, selectedAgentsToPublish, toggleAgentSelection, isLoading, getVersionIndexToPublish]);
+          );
+        });
+    },
+    [params?.id, agentList, selectedAgentsToPublish, toggleAgentSelection, isLoading, getVersionIndexToPublish]
+  );
 
   const handlePublishBridge = useCallback(async () => {
     setIsLoading(true);
@@ -585,16 +609,16 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
     try {
       // Require a summary before publishing
-      if (!bridge_summary || (typeof bridge_summary === 'string' && bridge_summary.trim().length === 0)) {
+      if (!bridge_summary || (typeof bridge_summary === "string" && bridge_summary.trim().length === 0)) {
         // Show validation error and redirect to summary section
         setShowSummaryValidation(true);
         setSummaryAccordionOpen(true);
         setIsLoading(false);
         // Scroll to summary section
         setTimeout(() => {
-          const summarySection = document.querySelector('.summary-accordion');
+          const summarySection = document.querySelector(".summary-accordion");
           if (summarySection) {
-            summarySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            summarySection.scrollIntoView({ behavior: "smooth", block: "center" });
           }
         }, 100);
         return;
@@ -612,19 +636,21 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
             url_slugname: formData.url_slugname,
             availability: formData.availability,
             description: formData.description,
-            allowedUsers: formData.availability === 'private' ? formData.allowedUsers : [],
-          }
+            allowedUsers: formData.availability === "private" ? formData.allowedUsers : [],
+          },
         };
 
         try {
-          await dispatch(updateBridgeAction({
-            bridgeId: params?.id,
-            dataToSend: payload
-          }));
+          await dispatch(
+            updateBridgeAction({
+              bridgeId: params?.id,
+              dataToSend: payload,
+            })
+          );
           toast.success("Configuration saved successfully!");
         } catch (error) {
-          if (error?.response?.data?.detail?.includes('DuplicateKey')) {
-            setError({ error: 'This slug name already exists. Please choose a different one.' });
+          if (error?.response?.data?.detail?.includes("DuplicateKey")) {
+            setError({ error: "This slug name already exists. Please choose a different one." });
           }
           setIsLoading(false);
           return;
@@ -653,12 +679,16 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
       // Handle embed user callback
       if (isEmbedUser) {
-        sendDataToParent("published", {
-          name: agent_name,
-          agent_description: agent_description,
-          agent_id: params?.id,
-          agent_version_id: searchParams?.get("version")
-        }, "Agent Published Successfully");
+        sendDataToParent(
+          "published",
+          {
+            name: agent_name,
+            agent_description: agent_description,
+            agent_id: params?.id,
+            agent_version_id: searchParams?.get("version"),
+          },
+          "Agent Published Successfully"
+        );
       }
 
       dispatch(getAllBridgesAction());
@@ -671,26 +701,40 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     } finally {
       setIsLoading(false);
     }
-  }, [dispatch, params, searchParams, isPublicAgent, formData, agent_name, agent_description, isEmbedUser, selectedAgentsToPublish, bridge_summary]);
+  }, [
+    dispatch,
+    params,
+    searchParams,
+    isPublicAgent,
+    formData,
+    agent_name,
+    agent_description,
+    isEmbedUser,
+    selectedAgentsToPublish,
+    bridge_summary,
+  ]);
 
   return (
-    <Modal MODAL_ID={MODAL_TYPE.PUBLISH_BRIDGE_VERSION}>
+    <Modal MODAL_ID={MODAL_TYPE.PUBLISH_BRIDGE_VERSION} onClose={handleCloseModal}>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-low-medium overflow-auto h-auto bg-base-100">
-        <div 
+        <div
+          id="publish-bridge-modal-container"
           className="bg-base-100 mb-auto mt-auto rounded-lg shadow-2xl max-w-6xl w-[90vw] my-8 flex flex-col p-6 md:p-10 transition-all duration-300 ease-in-out animate-fadeIn"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Publish Bridge Version</h2>
             <div className="flex gap-2">
               <button
+                id="publish-toggle-comparison-button"
                 onClick={toggleComparison}
-                className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? 'hidden' : 'block'}`}
+                className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
                 title="Compare Version Changes"
               >
                 <ArrowRightLeft size={16} />
-                {showComparison ? 'Hide Changes' : 'View Changes'}
+                {showComparison ? "Hide Changes" : "View Changes"}
               </button>
               <button
+                id="publish-close-x-button"
                 onClick={handleCloseModal}
                 className="btn btn-sm btn-circle btn-ghost"
               >
@@ -700,14 +744,17 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
           </div>
 
           {/* Agent Summary Accordion */}
-          <div className={`collapse collapse-arrow border bg-base-100 rounded-lg mb-6 summary-accordion ${
-            showSummaryValidation && (!bridge_summary || bridge_summary.trim() === '') 
-              ? 'border-red-500' 
-              : 'border-base-300'
-          }`}>
-            <input 
-              type="checkbox" 
-              className="peer" 
+          <div
+            className={`collapse collapse-arrow border bg-base-100 rounded-lg mb-6 summary-accordion ${
+              showSummaryValidation && (!bridge_summary || bridge_summary.trim() === "")
+                ? "border-red-500"
+                : "border-base-300"
+            }`}
+          >
+            <input
+              id="publish-summary-accordion-toggle"
+              type="checkbox"
+              className="peer"
               defaultChecked={summaryAccordionOpen}
               checked={summaryAccordionOpen}
               onChange={(e) => setSummaryAccordionOpen(e.target.checked)}
@@ -715,12 +762,12 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
             <div className="collapse-title font-medium flex items-center">
               <Bot className="w-5 h-5 mr-2" />
               Agent Summary
-              {showSummaryValidation && (!bridge_summary || bridge_summary.trim() === '') && (
+              {showSummaryValidation && (!bridge_summary || bridge_summary.trim() === "") && (
                 <span className="text-red-500 ml-2">*</span>
               )}
             </div>
             <div className="collapse-content">
-              <AgentSummaryContent 
+              <AgentSummaryContent
                 params={params}
                 prompt={prompt}
                 versionId={searchParams?.get("version")}
@@ -762,6 +809,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                   <h3 className="text-lg font-bold">Changes Summary</h3>
                   {Object.keys(changesSummary).length > 0 && (
                     <button
+                      id="publish-view-all-changes-button"
                       className="btn btn-sm btn-outline flex gap-1"
                       onClick={toggleComparison}
                     >
@@ -779,36 +827,33 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                 ) : (
                   <div className="flex items-center gap-2">
                     {/* Extracted config changes */}
-                      <div className="flex flex-wrap gap-1">
-                        {Object.keys(extractedConfigChanges).length > 0 && (
-                            Object.keys(extractedConfigChanges).map(key => (
-                              <div key={key} className="card bg-base-100">
-                                <div className="card-body p-3">
-                                  <div className="flex justify-between items-center">
-                                    <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                        )}
-                        {Object.keys(changesSummary)
-                          .filter(key => !Object.keys(extractedConfigChanges).includes(key))
-                          .map(key => (
-                            <div key={key} className="card bg-base-100">
-                              <div className="card-body p-3">
-                                <div className="flex justify-between items-center">
-                                  <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
-                                </div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.keys(extractedConfigChanges).length > 0 &&
+                        Object.keys(extractedConfigChanges).map((key) => (
+                          <div key={key} className="card bg-base-100">
+                            <div className="card-body p-3">
+                              <div className="flex justify-between items-center">
+                                <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
                               </div>
                             </div>
-                          ))
-                        }
-                      </div>
-                    
+                          </div>
+                        ))}
+                      {Object.keys(changesSummary)
+                        .filter((key) => !Object.keys(extractedConfigChanges).includes(key))
+                        .map((key) => (
+                          <div key={key} className="card bg-base-100">
+                            <div className="card-body p-3">
+                              <div className="flex justify-between items-center">
+                                <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
-              
+
               {/* Connected Agents Section */}
               {isLoadingAgents ? (
                 <div className="mt-4 pt-4 border-t border-base-300">
@@ -824,25 +869,25 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                       <Bot className="w-5 h-5 text-primary" />
                       Connected Agents ({allConnectedAgents.length - 1})
                     </h4>
-                    
+
                     {/* Select All option */}
-                    {allConnectedAgents.filter(agent => agent._id !== params?.id && agent?.haveToPublish).length > 1 && (
-                      <button 
+                    {allConnectedAgents.filter((agent) => agent._id !== params?.id && agent?.haveToPublish).length >
+                      1 && (
+                      <button
+                        id="publish-select-all-agents-button"
                         onClick={toggleSelectAllAgents}
                         className="btn btn-sm btn-outline flex gap-1"
                       >
                         {allConnectedAgents
-                          .filter(agent => agent._id !== params?.id && agent?.haveToPublish)
-                          .every(agent => selectedAgentsToPublish.has(agent._id)) 
-                          ? 'Deselect All' 
-                          : 'Select All'}
+                          .filter((agent) => agent._id !== params?.id && agent?.haveToPublish)
+                          .every((agent) => selectedAgentsToPublish.has(agent._id))
+                          ? "Deselect All"
+                          : "Select All"}
                       </button>
                     )}
                   </div>
-                
-                  <div className="space-y-3">
-                    {renderAgentHierarchy(allConnectedAgents)}
-                  </div>
+
+                  <div className="space-y-3">{renderAgentHierarchy(allConnectedAgents)}</div>
                 </div>
               ) : null}
             </div>
@@ -879,15 +924,14 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                       <span className="label-text font-medium">
                         Slug Name <span className="text-error">*</span>
                       </span>
-                      <span className="label-text-alt text-xs text-base-content/60">
-                        Must be globally unique
-                      </span>
+                      <span className="label-text-alt text-xs text-base-content/60">Must be globally unique</span>
                     </label>
                     <input
+                      id="publish-slug-name-input"
                       type="text"
                       name="url_slugname"
                       placeholder="Enter a unique slug name"
-                      className={`input input-bordered w-full ${error?.error ? 'input-error' : ''}`}
+                      className={`input input-bordered w-full ${error?.error ? "input-error" : ""}`}
                       value={formData.url_slugname}
                       onChange={handleChange}
                       required
@@ -905,6 +949,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                       <span className="label-text font-medium">Description</span>
                     </label>
                     <textarea
+                      id="publish-description-textarea"
                       name="description"
                       placeholder="Enter a description"
                       className="textarea bg-white dark:bg-black/15 textarea-bordered w-full h-20"
@@ -919,6 +964,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                       <span className="label-text font-medium">Visibility</span>
                     </label>
                     <select
+                      id="publish-visibility-select"
                       className="select select-bordered w-full"
                       name="availability"
                       value={formData.availability}
@@ -930,7 +976,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                   </div>
 
                   {/* Allowed Users Field */}
-                  {formData.availability === 'private' && (
+                  {formData.availability === "private" && (
                     <div className="form-control w-full">
                       <label className="label">
                         <span className="label-text font-medium">Allowed Users</span>
@@ -940,12 +986,10 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                         <div className="mb-3 p-3 bg-base-200/50 rounded-lg min-h-[3rem]">
                           <div className="flex flex-wrap gap-2">
                             {formData.allowedUsers.map((user, index) => (
-                              <div
-                                key={index}
-                                className="badge badge-outline gap-2 py-3 px-3"
-                              >
+                              <div key={index} className="badge badge-outline gap-2 py-3 px-3">
                                 <span className="text-sm">{user}</span>
                                 <button
+                                  id={`publish-remove-user-${index}`}
                                   onClick={() => handleRemoveUser(index)}
                                   className="hover:text-error transition-colors"
                                   type="button"
@@ -960,28 +1004,30 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
                       <div className="join w-full">
                         <input
+                          id="publish-add-user-email-input"
                           type="email"
                           placeholder="Enter email address"
                           className="input input-bordered join-item flex-1"
-                          value={formData.newEmail || ''}
+                          value={formData.newEmail || ""}
                           onChange={(e) => {
-                            setFormData(prev => ({
+                            setFormData((prev) => ({
                               ...prev,
-                              newEmail: e.target.value
-                            }))
+                              newEmail: e.target.value,
+                            }));
                           }}
                           onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               e.preventDefault();
                               handleAddEmail();
                             }
                           }}
                         />
                         <button
+                          id="publish-add-user-button"
                           type="button"
                           className="btn btn-sm join-item"
                           onClick={handleAddEmail}
-                          disabled={!formData.newEmail || !formData.newEmail.includes('@')}
+                          disabled={!formData.newEmail || !formData.newEmail.includes("@")}
                         >
                           Add
                         </button>
@@ -995,15 +1041,12 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-base-300">
-            <button
-              className="btn btn-sm"
-              onClick={handleCloseModal}
-              disabled={isLoading}
-            >
+            <button id="publish-cancel-button" className="btn btn-sm" onClick={handleCloseModal} disabled={isLoading}>
               Cancel
             </button>
             <button
-              className={`btn btn-primary btn-sm ${isLoading ? 'loading' : ''}`}
+              id="publish-confirm-button"
+              className={`btn btn-primary btn-sm ${isLoading ? "loading" : ""}`}
               onClick={handlePublishBridge}
               disabled={isLoading || (isPublicAgent && !formData.url_slugname.trim()) || isReadOnly}
               title={isReadOnly ? "You don't have permission to publish" : ""}
@@ -1011,12 +1054,10 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
               {isLoading ? (
                 <>
                   <span className="loading loading-spinner loading-sm"></span>
-                  {isPublicAgent ? 'Saving & Publishing...' : 'Publishing...'}
+                  {isPublicAgent ? "Saving & Publishing..." : "Publishing..."}
                 </>
               ) : (
-                <>
-                  {isPublicAgent ? 'Save & Publish' : 'Confirm Publish'}
-                </>
+                <>{isPublicAgent ? "Save & Publish" : "Confirm Publish"}</>
               )}
             </button>
           </div>

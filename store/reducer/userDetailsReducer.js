@@ -4,7 +4,7 @@ const initialState = {
   userDetails: {},
   organizations: [],
   loading: false,
-  success: false
+  success: false,
 };
 
 export const userDetailsReducer = createSlice({
@@ -12,13 +12,13 @@ export const userDetailsReducer = createSlice({
   initialState,
   reducers: {
     fetchUserDetails: (state, action) => {
-      state.userDetails = action.payload
-      const org = {}
-      action.payload.c_companies.forEach(element => {
-        org[element.id] = element
+      state.userDetails = action.payload;
+      const org = {};
+      action.payload.c_companies.forEach((element) => {
+        org[element.id] = element;
       });
-      state.organizations = org
-      state.success = action.payload.success
+      state.organizations = org;
+      state.success = action.payload.success;
     },
     updateUserDetails: (state, action) => {
       const { orgId, updatedUserDetails } = action.payload;
@@ -30,9 +30,9 @@ export const userDetailsReducer = createSlice({
         ...state.organizations[orgId],
         meta: {
           ...state.organizations[orgId]?.meta,
-          auth_token: auth_token
-        }
-      }
+          auth_token: auth_token,
+        },
+      };
     },
     updateGtwyAccessToken: (state, action) => {
       const { gtwyAccessToken, orgId } = action.payload;
@@ -40,9 +40,9 @@ export const userDetailsReducer = createSlice({
         ...state.organizations[orgId],
         meta: {
           ...state.organizations[orgId]?.meta,
-          gtwyAccessToken: gtwyAccessToken
-        }
-      }
+          gtwyAccessToken: gtwyAccessToken,
+        },
+      };
     },
     updateUserMeta: (state, action) => {
       const { user } = action.payload;
@@ -51,19 +51,12 @@ export const userDetailsReducer = createSlice({
         meta: {
           ...state.userDetails.meta,
           ...user?.meta,
-        }
-      }
+        },
+      };
     },
+  },
+});
 
-  }
-}
-);
-
-export const {
-  fetchUserDetails,
-  updateUserDetails,
-  updateToken,
-  updateGtwyAccessToken,
-  updateUserMeta
-} = userDetailsReducer.actions;
+export const { fetchUserDetails, updateUserDetails, updateToken, updateGtwyAccessToken, updateUserMeta } =
+  userDetailsReducer.actions;
 export default userDetailsReducer.reducer;

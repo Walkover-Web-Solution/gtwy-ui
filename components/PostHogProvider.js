@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import posthog, { trackOrganizationEvent } from '@/utils/posthog';
-import { useCustomSelector } from '@/customHooks/customSelector';
+import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import posthog, { trackOrganizationEvent } from "@/utils/posthog";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 export default function PostHogProvider({ children }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previousPathRef = useRef(null);
-  
+
   const userInfo = useCustomSelector((state) => state.userDetailsReducer.userInfo);
   const currentOrg = useCustomSelector((state) => state.orgReducer.currentOrgId);
   const organizations = useCustomSelector((state) => state.userDetailsReducer.userInfo?.c_companies);
@@ -38,7 +38,7 @@ export default function PostHogProvider({ children }) {
         name: userInfo.name,
         created_at: userInfo.created_at,
         user_id: userInfo.id,
-        user_type: userInfo.user_type || 'standard',
+        user_type: userInfo.user_type || "standard",
         total_organizations: organizations?.length || 0,
       });
     }
@@ -46,10 +46,10 @@ export default function PostHogProvider({ children }) {
 
   useEffect(() => {
     if (currentOrg && organizations) {
-      const currentOrgData = organizations.find(org => org.id === currentOrg);
-      
+      const currentOrgData = organizations.find((org) => org.id === currentOrg);
+
       if (currentOrgData) {
-        posthog.group('organization', currentOrg, {
+        posthog.group("organization", currentOrg, {
           name: currentOrgData.name,
           org_id: currentOrg,
           created_at: currentOrgData.created_at,
@@ -60,7 +60,7 @@ export default function PostHogProvider({ children }) {
           current_org_name: currentOrgData.name,
         });
 
-        trackOrganizationEvent('switched', {
+        trackOrganizationEvent("switched", {
           org_id: currentOrg,
           name: currentOrgData.name,
         });
