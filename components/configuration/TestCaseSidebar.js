@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Play, Clock, AlertCircle, Eye, EyeOff, History, ChevronDown, ChevronRight, TrashIcon } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
@@ -8,6 +8,8 @@ import {
   runTestCaseAction,
   generateAdditionalTestCasesAction,
 } from "@/store/action/testCasesAction";
+import { toggleSidebar } from "@/utils/utility";
+import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 
 const TestCaseSidebar = ({ params, resolvedParams, onTestCaseClick }) => {
   const [runningTests, setRunningTests] = useState(new Set());
@@ -17,19 +19,56 @@ const TestCaseSidebar = ({ params, resolvedParams, onTestCaseClick }) => {
   const [generatingTestCases, setGeneratingTestCases] = useState(false);
   const dispatch = useDispatch();
 
-  const { testCases, versions } = useCustomSelector((state) => ({
-    testCases: state?.testCasesReducer?.testCases?.[params?.id] || [],
-    versions: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions || [],
-  }));
+  const { testCases, versions, prompt, variablesKeyValue, isEmbedUser, showVariables } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[resolvedParams?.version];
+    return {
+      testCases: state?.testCasesReducer?.testCases?.[params?.id] || [],
+      versions: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions || [],
+      prompt: versionData?.configuration?.prompt,
+      variablesKeyValue:
+        state?.variableReducer?.VariableMapping?.[params?.id]?.[resolvedParams?.version]?.variables || [],
+      isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser || false,
+      showVariables: state?.appInfoReducer?.embedUserDetails?.showVariables || false,
+    };
+  });
 
   useEffect(() => {
     dispatch(getAllTestCasesOfBridgeAction({ bridgeId: params?.id }));
   }, []);
+
+  // Validate missing variables in prompt (using shared utility)
+  const validateVariables = useCallback(
+    () => validatePromptVariables(prompt, variablesKeyValue),
+    [prompt, variablesKeyValue]
+  );
+
+  // Build variables object from variablesKeyValue (using shared utility)
+  const variables = useMemo(() => buildVariablesObject(variablesKeyValue), [variablesKeyValue]);
   const runSingleTest = async (testId) => {
+    // Validate variables before running test
+    const validation = validateVariables();
+    if (!validation.isValid && (!isEmbedUser || (isEmbedUser && showVariables))) {
+      // Open the variable collection slider
+      toggleSidebar("variable-collection-slider", "right");
+
+      // Store missing variables in sessionStorage for the slider to highlight
+      sessionStorage.setItem("missingVariables", JSON.stringify(validation.missingVariables));
+
+      return; // Don't run the test
+    }
+
+    // Clear missing variables from sessionStorage if validation passes
+    sessionStorage.removeItem("missingVariables");
+
     setRunningTests((prev) => new Set([...prev, testId]));
     try {
       await dispatch(
-        runTestCaseAction({ versionId: resolvedParams?.version, bridgeId: params?.id, testcase_id: testId })
+        runTestCaseAction({
+          versionId: resolvedParams?.version,
+          bridgeId: params?.id,
+          testcase_id: testId,
+          variables,
+        })
       );
       // No need to refetch - runTestCaseAction now updates Redux store directly
     } catch (error) {
@@ -44,9 +83,30 @@ const TestCaseSidebar = ({ params, resolvedParams, onTestCaseClick }) => {
   };
 
   const runAllTests = async () => {
+    // Validate variables before running all tests
+    const validation = validateVariables();
+    if (!validation.isValid && (!isEmbedUser || (isEmbedUser && showVariables))) {
+      // Open the variable collection slider
+      toggleSidebar("variable-collection-slider", "right");
+
+      // Store missing variables in sessionStorage for the slider to highlight
+      sessionStorage.setItem("missingVariables", JSON.stringify(validation.missingVariables));
+
+      return; // Don't run the tests
+    }
+
+    // Clear missing variables from sessionStorage if validation passes
+    sessionStorage.removeItem("missingVariables");
+
     const testIds = Array.isArray(testCases) ? testCases.map((test) => test._id) : [];
     setRunningTests(new Set(testIds));
-    await dispatch(runTestCaseAction({ versionId: resolvedParams?.version, bridgeId: params?.id }));
+    await dispatch(
+      runTestCaseAction({
+        versionId: resolvedParams?.version,
+        bridgeId: params?.id,
+        variables,
+      })
+    );
     // No need to refetch - runTestCaseAction now updates Redux store directly
     setRunningTests(new Set());
   };

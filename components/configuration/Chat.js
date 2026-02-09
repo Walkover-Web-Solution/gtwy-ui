@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import CodeBlock from "../codeBlock/CodeBlock";
 import ChatTextInput from "./ChatTextInput";
 import { PdfIcon } from "@/icons/pdfIcon";
@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
-import { createConversationForTestCase } from "@/utils/utility";
+import { createConversationForTestCase, toggleSidebar } from "@/utils/utility";
+import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 import { runTestCaseAction } from "@/store/action/testCasesAction";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -72,10 +73,23 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   }, [params, searchParams, publishedVersionId]);
 
   // Redux selectors for chat state
-  const { messages, finishReasonDescription } = useCustomSelector((state) => ({
-    messages: state?.chatReducer?.messagesByChannel?.[channelIdentifier] || [],
-    finishReasonDescription: state?.flowDataReducer?.flowData?.finishReasonsData || [],
-  }));
+  const {
+    messages,
+    finishReasonDescription,
+    variablesKeyValue,
+    prompt,
+    showVariables: showVariablesFromRedux,
+  } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    return {
+      messages: state?.chatReducer?.messagesByChannel?.[channelIdentifier] || [],
+      finishReasonDescription: state?.flowDataReducer?.flowData?.finishReasonsData || [],
+      variablesKeyValue:
+        state?.variableReducer?.VariableMapping?.[params?.id]?.[searchParams?.version]?.variables || [],
+      prompt: versionData?.configuration?.prompt,
+      showVariables: state?.appInfoReducer?.embedUserDetails?.showVariables || false,
+    };
+  });
 
   // Initialize channel and RT layer
   useEffect(() => {
@@ -85,6 +99,15 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   }, [channelIdentifier, dispatch]);
 
   useRtLayerEventHandler(channelIdentifier);
+
+  // Build variables object from variablesKeyValue (using shared utility)
+  const variables = useMemo(() => buildVariablesObject(variablesKeyValue), [variablesKeyValue]);
+
+  // Validate missing variables in prompt (using shared utility)
+  const validateVariables = useCallback(
+    () => validatePromptVariables(prompt, variablesKeyValue),
+    [prompt, variablesKeyValue]
+  );
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (el) {
@@ -186,6 +209,22 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   }, [userMessage]);
 
   const handleRunTestCase = async (index) => {
+    // Validate variables before running test
+    const validation = validateVariables();
+    const shouldShowVariables = isEmbedUser ? showVariablesFromRedux : true;
+    if (!validation.isValid && shouldShowVariables) {
+      // Open the variable collection slider
+      toggleSidebar("variable-collection-slider", "right");
+
+      // Store missing variables in sessionStorage for the slider to highlight
+      sessionStorage.setItem("missingVariables", JSON.stringify(validation.missingVariables));
+
+      return; // Don't run the test
+    }
+
+    // Clear missing variables from sessionStorage if validation passes
+    sessionStorage.removeItem("missingVariables");
+
     const conversationForTestCase = messages.slice(-6, index + 1);
     conversationForTestCase.push(messages[index + 1]);
     const { conversation, expected } = createConversationForTestCase(conversationForTestCase);
@@ -198,7 +237,13 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     };
     try {
       const data = await dispatch(
-        runTestCaseAction({ versionId: searchParams.version, bridgeId: null, testcase_id: null, testCaseData })
+        runTestCaseAction({
+          versionId: searchParams.version,
+          bridgeId: null,
+          testcase_id: null,
+          testCaseData,
+          variables,
+        })
       );
       const updatedMessages = [...messages];
       updatedMessages[index + 1] = {

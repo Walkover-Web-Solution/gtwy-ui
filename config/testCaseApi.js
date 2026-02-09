@@ -45,7 +45,7 @@ export const deleteTestCaseApi = async ({ testCaseId }) => {
   }
 };
 
-export const runTestCaseApi = async ({ versionId, testcase_id, testCaseData, bridgeId }) => {
+export const runTestCaseApi = async ({ versionId, testcase_id, testCaseData, bridgeId, variables }) => {
   try {
     const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, {
       version_id: versionId,
@@ -53,6 +53,7 @@ export const runTestCaseApi = async ({ versionId, testcase_id, testCaseData, bri
       testcase_id: testcase_id,
       testcase_data: testCaseData,
       bridge_id: bridgeId,
+      variables: variables,
     });
     return response.data;
   } catch (error) {
