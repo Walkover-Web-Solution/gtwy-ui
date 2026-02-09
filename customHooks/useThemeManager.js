@@ -16,10 +16,6 @@ const useThemeVariables = (userType = "default", customThemePath = null, customT
     };
 
     loadTheme();
-
-    return () => {
-      cancelled = true;
-    };
   }, [userType, customThemePath, customTheme]);
 };
 
