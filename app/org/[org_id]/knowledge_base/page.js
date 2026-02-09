@@ -51,7 +51,7 @@ const Page = ({ params }) => {
       </div>
     ),
     description: (
-      <div className="text-sm text-base-content max-w-xs">
+      <div className="text-sm text-base-content flex items-center justify-center text-center max-w-xs">
         {item?.description ? (
           <div className="tooltip" data-tip={item.description}>
             <span className="truncate block">
