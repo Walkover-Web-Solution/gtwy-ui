@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Input and Textarea Styles - Pure White/Black Backgrounds */
+/* Global Input and Textarea Styles - Theme Aware */
 @layer components {
   .input,
   input[type="text"],
@@ -13,7 +13,7 @@
   input[type="url"],
   input[type="tel"],
   textarea {
-    @apply bg-white dark:bg-black/15;
+    @apply bg-base-100;
   }
 
   /* Override DaisyUI input classes specifically */
@@ -21,7 +21,7 @@
   .input-sm,
   .textarea,
   .textarea-bordered {
-    @apply bg-white dark:bg-black/15;
+    @apply bg-base-100;
   }
 }
 body {
