@@ -383,7 +383,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [uiState.isDesktop, updateUiState]);
   useEffect(() => {
-    const scrollContainer = leftPanelScrollRef.current;
+  const scrollContainer = leftPanelScrollRef.current;
     if (uiState.isPromptHelperOpen) {
       const timeoutId = setTimeout(() => {
         scrollToTextarea();
@@ -399,7 +399,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
       }
     }
   }, [uiState.isPromptHelperOpen]);
-  // PromptHelper effects
+    // PromptHelper effects
   useEffect(() => {
     dispatch(setIsFocusReducer(uiState.isPromptHelperOpen));
   }, [uiState.isPromptHelperOpen, dispatch]);

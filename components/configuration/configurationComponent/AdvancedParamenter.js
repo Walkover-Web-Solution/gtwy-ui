@@ -31,6 +31,113 @@ const AdvancedParameters = ({
   // Use the tutorial videos hook
   const { getAdvanceParameterVideo } = useTutorialVideos();
 
+const textareaRef = useRef(null);
+
+useEffect(() => {
+  let attempts = 0;
+  const maxAttempts = 20;
+  let scrollInterval = null;
+  let isResizing = false;
+  let startY = 0;
+  let startHeight = 0;
+  
+  const setupListeners = () => {
+    const textarea = textareaRef.current;
+    
+    if (!textarea) {
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(setupListeners, 200);
+      }
+      return;
+    }
+    
+    const handleMouseDown = (e) => {
+      const rect = textarea.getBoundingClientRect();
+      const isNearResizeHandle = e.clientX > rect.right - 30 && e.clientY > rect.bottom - 30;
+      
+      if (isNearResizeHandle) {
+        e.preventDefault();
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = textarea.offsetHeight;
+      }
+    };
+    
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      
+      // Calculate new height based on mouse movement
+      const deltaY = e.clientY - startY;
+      const newHeight = Math.max(128, startHeight + deltaY);
+      textarea.style.height = `${newHeight}px`;
+      
+      const scrollContainer = document.getElementById('config-scroll-container');
+      if (!scrollContainer) return;
+      
+      const mouseY = e.clientY;
+      const threshold = 150;
+      
+      if (scrollInterval) {
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+      }
+      
+      // Auto-scroll down if mouse is near bottom of viewport
+      if (mouseY > window.innerHeight - threshold) {
+        const distance = mouseY - (window.innerHeight - threshold);
+        const speed = Math.min(Math.max(distance / 20, 2), 15);
+        
+        scrollInterval = setInterval(() => {
+          scrollContainer.scrollTop += speed;
+          // Update startY to account for scroll, so height continues to grow
+          startY -= speed;
+        }, 16);
+      }
+      // Auto-scroll up if mouse is near top of viewport
+      else if (mouseY < threshold) {
+        const distance = threshold - mouseY;
+        const speed = Math.min(Math.max(distance / 20, 2), 15);
+        
+        scrollInterval = setInterval(() => {
+          scrollContainer.scrollTop -= speed;
+          startY += speed;
+        }, 16);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      isResizing = false;
+      if (scrollInterval) {
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+      }
+    };
+    
+    textarea.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      textarea.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      if (scrollInterval) {
+        clearInterval(scrollInterval);
+      }
+    };
+  };
+  
+  const timeoutId = setTimeout(setupListeners, 200);
+  const cleanup = setupListeners();
+  
+  return () => {
+    clearTimeout(timeoutId);
+    if (cleanup) cleanup();
+  };
+}, []);
+
+
   const [objectFieldValue, setObjectFieldValue] = useState();
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -742,14 +849,27 @@ const AdvancedParameters = ({
             </div>
 
             <textarea
+             ref={textareaRef}
               id={`advanced-param-json-schema-textarea-${key}`}
               key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
               type="input"
+               style={{ resize: 'vertical', maxHeight: '100vh', minHeight: '22rem' }}
               defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
               onBlur={(e) => {
                 try {
+                  const value = e.target.value.trim();
+                  // Check if the value is empty or just whitespace
+                  if (!value) {
+                    toast.error("JSON Schema cannot be empty");
+                    return;
+                  }
+
                   const parsedValue = JSON.parse(e.target.value);
 
+                  if (Object.keys(parsedValue).length === 0) {
+                    toast.error("JSON Schema cannot be empty");
+                    return;
+                  }
                   // Trim schema name and all property names
                   const trimmedValue = {
                     ...parsedValue,
@@ -768,7 +888,7 @@ const AdvancedParameters = ({
                   toast.error("Invalid JSON schema");
                 }
               }}
-              className="textarea textarea-bordered w-full h-32 font-mono text-xs"
+              className="textarea textarea-bordered w-full font-mono text-xs"
               placeholder="Enter JSON schema..."
               disabled={isReadOnly}
             />
