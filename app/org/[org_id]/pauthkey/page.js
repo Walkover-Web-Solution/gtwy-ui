@@ -226,11 +226,11 @@ function Page({ params }) {
       <dialog id={MODAL_TYPE.PAUTH_KEY_MODAL} className="modal modal-bottom sm:modal-middle">
         <div className="modal-box">
           <h3 className="font-bold text-lg mb-2">Create New Auth Key</h3>
-          <label className="input input-sm input-bordered flex items-center gap-2">
+          <label className="input input-sm input-bordered flex items-center gap-2 !bg-transparent">
             <span>Name{RequiredItem()} :</span>
             <input
               type="text"
-              className="grow input input-sm border-none"
+              className="grow input input-xs border-none !bg-transparent"
               id="authNameInput"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
