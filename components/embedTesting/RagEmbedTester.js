@@ -111,6 +111,8 @@ const RagEmbedTester = () => {
                       <span className="label-text font-semibold">Embed Token</span>
                     </label>
                     <input
+                      data-testid="rag-embed-token-input"
+                      id="rag-embed-token-input"
                       type="text"
                       placeholder="Enter your embed token"
                       className="input input-bordered w-full input-sm"
@@ -119,6 +121,8 @@ const RagEmbedTester = () => {
                       onKeyPress={(e) => e.key === "Enter" && handleSetToken()}
                     />
                     <button
+                      data-testid="rag-initialize-button"
+                      id="rag-initialize-button"
                       className="btn btn-outline btn-sm mt-3 w-full"
                       onClick={handleSetToken}
                       disabled={!embedToken.trim()}
@@ -137,7 +141,12 @@ const RagEmbedTester = () => {
                         {copied ? <Check size={16} /> : <Copy size={16} />}
                       </button>
                     </div>
-                    <button className="btn btn-outline btn-sm mt-2 w-full" onClick={handleReset}>
+                    <button
+                      data-testid="rag-reset-button"
+                      id="rag-reset-button"
+                      className="btn btn-outline btn-sm mt-2 w-full"
+                      onClick={handleReset}
+                    >
                       Reset
                     </button>
                   </div>
@@ -150,6 +159,8 @@ const RagEmbedTester = () => {
                 <h3 className="card-title text-lg mb-3">Theme</h3>
                 <div className="flex gap-2">
                   <button
+                    data-testid="rag-theme-light-button"
+                    id="rag-theme-light-button"
                     className={`btn btn-sm flex-1 ${theme === "light" ? "btn-outline btn-active" : "btn-ghost"}`}
                     onClick={() => handleThemeChange("light")}
                   >
@@ -170,7 +181,12 @@ const RagEmbedTester = () => {
                 <div className="card-body p-4">
                   <h3 className="card-title text-lg mb-3">Available Functions</h3>
                   <div className="space-y-2">
-                    <button className="btn btn-outline btn-sm w-full justify-start" onClick={handleOpenRag}>
+                    <button
+                      data-testid="rag-open-function"
+                      id="rag-open-function"
+                      className="btn btn-outline btn-sm w-full justify-start"
+                      onClick={handleOpenRag}
+                    >
                       <span className="font-mono text-xs">window.openRag()</span>
                     </button>
                     <p className="text-xs text-base-content/60 ml-2 -mt-1">Opens the add document modal</p>

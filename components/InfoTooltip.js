@@ -40,6 +40,7 @@ const InfoTooltip = ({ video = "", children, tooltipContent, docLink }) => {
   return (
     <>
       <div
+        data-testid="info-tooltip-trigger"
         id="info-tooltip-trigger"
         ref={refs.setReference}
         onMouseEnter={handleOpenWithDelay}
@@ -50,6 +51,7 @@ const InfoTooltip = ({ video = "", children, tooltipContent, docLink }) => {
 
         {open && (
           <div
+            data-testid="info-tooltip-content"
             id="info-tooltip-content"
             ref={refs.setFloating}
             style={floatingStyles}
@@ -77,6 +79,7 @@ const InfoTooltip = ({ video = "", children, tooltipContent, docLink }) => {
             </p>
             {video !== "" && (
               <button
+                data-testid="info-tooltip-video-button"
                 id="info-tooltip-video-button"
                 onClick={() => setShowTutorial(true)}
                 className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 pointer-events-auto"

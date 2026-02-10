@@ -395,6 +395,7 @@ const AccessManagementModal = ({ agent }) => {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
+                  data-testid="access-management-email-input"
                   id="access-management-email-input"
                   type="email"
                   value={emailInput}
@@ -418,6 +419,7 @@ const AccessManagementModal = ({ agent }) => {
                     </button>
                   ) : searchResults.length > 0 ? (
                     <button
+                      data-testid="access-management-add-user-button"
                       id="access-management-add-user-button"
                       className="btn btn-primary btn-sm"
                       onClick={() => {
@@ -437,6 +439,7 @@ const AccessManagementModal = ({ agent }) => {
                     </button>
                   ) : (
                     <button
+                      data-testid="access-management-invite-button"
                       id="access-management-invite-button"
                       className="btn btn-outline btn-sm btn-primary"
                       onClick={handleInviteUser}
@@ -459,6 +462,7 @@ const AccessManagementModal = ({ agent }) => {
                   {searchResults.map((user) => (
                     <li key={user.user_id || user.id}>
                       <button
+                        data-testid={`access-management-user-result-${user.user_id || user.id}`}
                         id={`access-management-user-result-${user.user_id || user.id}`}
                         className={`flex items-start py-2 px-3 hover:bg-base-200 w-full text-left ${(foundUser?.user_id || foundUser?.id) === (user.user_id || user.id) ? "bg-primary/10" : ""}`}
                         onClick={() => selectUser(user)}
@@ -529,6 +533,7 @@ const AccessManagementModal = ({ agent }) => {
                       </div>
                       {/* Don't show remove button for admin/owner */}
                       <button
+                        data-testid={`access-management-remove-button-${agentMember.id}`}
                         id={`access-management-remove-button-${agentMember.id}`}
                         className="btn btn-ghost btn-xs btn-circle text-error ml-1"
                         onClick={() => removeUserFromAgent(agentMember.id || agentMember.user_id)}

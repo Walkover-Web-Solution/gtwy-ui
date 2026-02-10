@@ -115,6 +115,7 @@ const PromptTextarea = memo(
 
     return (
       <div
+        data-testid="prompt-textarea-wrapper"
         id="prompt-textarea-wrapper"
         ref={wrapperRef}
         className={`
@@ -131,6 +132,7 @@ const PromptTextarea = memo(
       `}
       >
         <textarea
+          data-testid="prompt-textarea"
           id="prompt-textarea"
           ref={textareaRef}
           disabled={isPublished || !isEditor}

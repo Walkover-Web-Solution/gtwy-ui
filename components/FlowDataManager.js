@@ -112,6 +112,7 @@ function SlideOver({
     <>
       {/* Overlay */}
       <div
+        data-testid={overlayId}
         id={overlayId}
         onClick={handleOverlayClick}
         className={`fixed inset-0 ${overlayZ} ${backDropBlur ? "backdrop-blur-sm bg-black/40" : ""} transition-opacity duration-300
@@ -602,6 +603,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                 <h2 className="text-xl font-bold text-base-content">{title}</h2>
               </div>
               <button
+                data-testid="agent-sidebar-close-button"
                 id="agent-sidebar-close-button"
                 onClick={onClose}
                 className="btn btn-circle btn-ghost hover:btn-error"
@@ -621,6 +623,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
             <div className="form-control">
               <div className="input-group flex items-center gap-2">
                 <input
+                  data-testid="agent-sidebar-search-input"
                   id="agent-sidebar-search-input"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
@@ -699,6 +702,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                       <div className="card-body p-2">
                         <div className="flex items-center justify-between">
                           <button
+                            data-testid={`agent-sidebar-select-${agent._id || agent.__key}`}
                             id={`agent-sidebar-select-${agent._id || agent.__key}`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -741,6 +745,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                           <div className="card-actions">
                             <div className="tooltip tooltip-left" data-tip="Configure Agent">
                               <button
+                                data-testid={`agent-sidebar-config-${agent._id || agent.__key}`}
                                 id={`agent-sidebar-config-${agent._id || agent.__key}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -765,6 +770,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
           <div className="border-t border-base-300 mb-24 p-4 bg-base-100 flex-shrink-0">
             <div className="dropdown dropdown-top w-full">
               <div
+                data-testid="agent-sidebar-create-toggle"
                 id="agent-sidebar-create-toggle"
                 tabIndex={0}
                 role="button"
@@ -796,6 +802,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                       </label>
                       <div className="join w-full">
                         <button
+                          data-testid="agent-sidebar-create-type-name"
                           id="agent-sidebar-create-type-name"
                           onClick={() => handleTypeChange("name")}
                           className={`btn btn-sm join-item flex-1 ${

@@ -23,6 +23,7 @@ const Dropdown = ({
   onOpenChange,
   renderTriggerContent,
   children,
+  testId = "dropdown",
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -140,6 +141,7 @@ const Dropdown = ({
 
   const DefaultTrigger = (
     <button
+      data-testid={`${testId}-trigger-button`}
       id="dropdown-trigger-button"
       type="button"
       disabled={disabled}
@@ -192,6 +194,7 @@ const Dropdown = ({
           {enableSearch && (
             <div className="p-2 border-b border-base-content/10">
               <input
+                data-testid={`${testId}-search-input`}
                 id="dropdown-search-input"
                 autoFocus
                 type="text"
@@ -218,6 +221,7 @@ const Dropdown = ({
                     return (
                       <li key={String(opt.value)} className="whitespace-nowrap">
                         <a
+                          data-testid={`${testId}-option-${opt.value}`}
                           id={`dropdown-option-${opt.value}`}
                           className={cx(
                             "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
@@ -278,6 +282,7 @@ const Dropdown = ({
                         return (
                           <li key={String(opt.value)} className="whitespace-nowrap">
                             <a
+                              data-testid={`${testId}-grouped-option-${opt.value}`}
                               id={`dropdown-grouped-option-${opt.value}`}
                               className={cx(
                                 "flex items-start gap-2 w-full rounded-md hover:bg-base-200",

@@ -81,7 +81,11 @@ const IntegrationGuideTab = ({ isPublished }) => {
   // Render locked state when no published version exists
   if (!hasPublishedVersion) {
     return (
-      <div id="integration-guide-locked-container" className="p-6 space-y-6 relative">
+      <div
+        data-testid="integration-guide-locked-container"
+        id="integration-guide-locked-container"
+        className="p-6 space-y-6 relative"
+      >
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-base-content mb-2">Integration Guide</h2>
           <p className="text-sm text-base-content/70">Choose your integration type and follow the guide</p>
@@ -110,7 +114,7 @@ const IntegrationGuideTab = ({ isPublished }) => {
   }
 
   return (
-    <div id="integration-guide-container" className="p-6 space-y-6">
+    <div data-testid="integration-guide-container" id="integration-guide-container" className="p-6 space-y-6">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-base-content mb-2">Integration Guide</h2>
         <p className="text-sm text-base-content/70">Choose your integration type and follow the guide</p>
@@ -119,9 +123,14 @@ const IntegrationGuideTab = ({ isPublished }) => {
       <div className="flex flex-col gap-4">
         {/* Dynamic Tabs based on bridge type */}
         {!tabs.some((tab) => tab.id === "chatbot") && (
-          <div id="integration-guide-tabs" className="tabs tabs-boxed bg-base-100 p-1 rounded-lg">
+          <div
+            data-testid="integration-guide-tabs"
+            id="integration-guide-tabs"
+            className="tabs tabs-boxed bg-base-100 p-1 rounded-lg"
+          >
             {tabs.map((tab) => (
               <button
+                data-testid={`integration-tab-${tab.id}`}
                 id={`integration-tab-${tab.id}`}
                 key={tab.id}
                 className={`tab flex-1 transition-colors ${

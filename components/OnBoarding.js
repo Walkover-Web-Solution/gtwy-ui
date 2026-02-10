@@ -36,10 +36,12 @@ const OnBoarding = ({ video, setShowTutorial, flagKey }) => {
 
   const modalContent = (
     <div
+      data-testid="onboarding-modal-overlay"
       id="onboarding-modal-overlay"
       className="fixed inset-0 z-very-high  bg-black bg-opacity-70 flex items-center justify-center"
     >
       <button
+        data-testid="onboarding-close-button"
         id="onboarding-close-button"
         onClick={() => handleVideoEnd()}
         className="absolute top-4 right-4 text-white text-4xl hover:text-red-500 z-low-medium"
@@ -60,6 +62,7 @@ const OnBoarding = ({ video, setShowTutorial, flagKey }) => {
         }}
       >
         <iframe
+          data-testid="onboarding-video-iframe"
           id="onboarding-video-iframe"
           src={video}
           loading="lazy"

@@ -62,13 +62,22 @@ const Section = ({ title, caption, children }) => (
 
 const BatchApiGuide = ({ params, searchParams }) => {
   return (
-    <div id="batch-api-guide-container" className="min-h-screen gap-4 flex flex-col">
-      <div id="batch-api-guide-step1-section" className="flex flex-col gap-4 p-4">
+    <div
+      data-testid="batch-api-guide-container"
+      id="batch-api-guide-container"
+      className="min-h-screen gap-4 flex flex-col"
+    >
+      <div
+        data-testid="batch-api-guide-step1-section"
+        id="batch-api-guide-step1-section"
+        className="flex flex-col gap-4 p-4"
+      >
         <Section title="Step 1" caption="Create `Auth key`" />
         <p className=" text-sm">
           Follow the on-screen instructions to create a new Auth key. Ignore if already created
           <br />{" "}
           <Link
+            data-testid="batch-api-guide-create-authkey-link"
             id="batch-api-guide-create-authkey-link"
             href={`/org/${params.org_id}/pauthkey`}
             target="_blank"
@@ -78,9 +87,17 @@ const BatchApiGuide = ({ params, searchParams }) => {
           </Link>
         </p>
       </div>
-      <div id="batch-api-guide-step2-section" className="flex flex-col gap-4 p-4">
+      <div
+        data-testid="batch-api-guide-step2-section"
+        id="batch-api-guide-step2-section"
+        className="flex flex-col gap-4 p-4"
+      >
         <Section title="Step 2" caption="Use the Batch API" />
-        <div id="batch-api-guide-curl-code-block" className="mockup-code relative">
+        <div
+          data-testid="batch-api-guide-curl-code-block"
+          id="batch-api-guide-curl-code-block"
+          className="mockup-code relative"
+        >
           <CopyButton data={BatchApi(params.id, searchParams?.version)} />
           <pre className="break-words whitespace-pre-wrap ml-4">
             <code>{BatchApi(params.id, searchParams?.version)}</code>
@@ -91,9 +108,17 @@ const BatchApiGuide = ({ params, searchParams }) => {
           <strong>Note:</strong> Ensure that the 'webhook_url' is correctly set to receive batch processing updates.
         </p>
       </div>
-      <div id="batch-api-guide-response-section" className="flex flex-col gap-4 p-4">
+      <div
+        data-testid="batch-api-guide-response-section"
+        id="batch-api-guide-response-section"
+        className="flex flex-col gap-4 p-4"
+      >
         <Section title="Response Format" />
-        <div id="batch-api-guide-response-code-block" className="mockup-code relative">
+        <div
+          data-testid="batch-api-guide-response-code-block"
+          id="batch-api-guide-response-code-block"
+          className="mockup-code relative"
+        >
           <CopyButton data={BatchResponseFormat()} />
           <pre className="break-words whitespace-pre-wrap">
             <code>{BatchResponseFormat()}</code>

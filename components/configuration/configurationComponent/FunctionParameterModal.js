@@ -58,6 +58,7 @@ const ParameterCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 justify-between w-full">
           <input
+            data-testid={`param-name-input-${currentPath}`}
             id={`param-name-input-${currentPath}`}
             disabled={isPublished || !isEditor}
             type="text"
@@ -84,6 +85,7 @@ const ParameterCard = ({
           <div className="flex items-center mr-4 gap-2">
             <label className="flex items-center gap-1 text-xs">
               <input
+                data-testid={`param-required-checkbox-${currentPath}`}
                 id={`param-required-checkbox-${currentPath}`}
                 type="checkbox"
                 className="checkbox checkbox-xs"
@@ -234,6 +236,7 @@ const ParameterCard = ({
             </label>
             <label className="flex items-center gap-2">
               <input
+                data-testid={`param-fill-ai-checkbox-${currentPath}`}
                 id={`param-fill-ai-checkbox-${currentPath}`}
                 type="checkbox"
                 className="checkbox checkbox-xs"
@@ -256,6 +259,7 @@ const ParameterCard = ({
 
         <div className="flex items-center gap-2 text-xs">
           <select
+            data-testid={`param-type-select-${currentPath}`}
             id={`param-type-select-${currentPath}`}
             disabled={isReadOnly}
             className="select select-xs select-bordered text-xs"
@@ -269,6 +273,7 @@ const ParameterCard = ({
             ))}
           </select>
           <button
+            data-testid={`param-delete-button-${currentPath}`}
             id={`param-delete-button-${currentPath}`}
             onClick={() => onDelete(currentPath)}
             className="btn btn-sm btn-ghost text-error text-xs"
@@ -285,6 +290,7 @@ const ParameterCard = ({
       {/* Description */}
       <div className="text-xs">
         <textarea
+          data-testid={`param-description-textarea-${currentPath}`}
           id={`param-description-textarea-${currentPath}`}
           placeholder="Description of parameter..."
           className="col-[1] row-[1] m-0 w-full overflow-y-hidden whitespace-pre-wrap break-words outline-none bg-transparent p-0 caret-black placeholder:text-quaternary dark:caret-slate-200 text-xs resize-none"
@@ -315,6 +321,7 @@ const ParameterCard = ({
 
             {param.hasOwnProperty("enum") && (
               <input
+                data-testid={`param-enum-input-${currentPath}`}
                 id={`param-enum-input-${currentPath}`}
                 disabled={isReadOnly}
                 type="text"
@@ -340,6 +347,7 @@ const ParameterCard = ({
           <div className="mb-1 flex flex-row ml-1 items-center justify-end">
             <label className="block text-xs mb-0 mr-1">Value Path:</label>
             <input
+              data-testid={`param-value-path-input-${currentPath}`}
               id={`param-value-path-input-${currentPath}`}
               disabled={isReadOnly}
               type="text"
@@ -363,6 +371,7 @@ const ParameterCard = ({
         <div>
           <div className="flex items-center justify-between">
             <button
+              data-testid={`param-expand-button-${currentPath}`}
               id={`param-expand-button-${currentPath}`}
               onClick={() => setIsExpanded(!isExpanded)}
               className="flex items-center gap-1 text-xs font-medium"
@@ -371,6 +380,7 @@ const ParameterCard = ({
               <span className="text-xs">Properties</span>
             </button>
             <button
+              data-testid={`param-add-property-button-${currentPath}`}
               id={`param-add-property-button-${currentPath}`}
               onClick={() => onAddChild(currentPath)}
               disabled={isReadOnly}

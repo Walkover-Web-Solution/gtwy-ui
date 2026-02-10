@@ -150,6 +150,7 @@ function EmbedListSuggestionDropdownMenu({
       )}
       {!tutorialState?.showTutorial && (
         <ul
+          data-testid="embed-suggestion-dropdown-menu"
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
           className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0"
@@ -161,6 +162,7 @@ function EmbedListSuggestionDropdownMenu({
               <li className="text-sm font-semibold disabled">Available Tools</li>
             )}
             <input
+              data-testid="embed-suggestion-search-input"
               id="embed-suggestion-search-input"
               type="text"
               placeholder={`Search ${name == "preFunction" ? "Pre Function" : "Tool"}`}
@@ -205,6 +207,7 @@ function EmbedListSuggestionDropdownMenu({
 
             {!hideCreateFunction && (
               <li
+                data-testid="embed-suggestion-add-new-button"
                 id="embed-suggestion-add-new-button"
                 className="border-t border-base-300 w-full sticky bottom-0 bg-base-100 py-2"
                 onClick={() =>

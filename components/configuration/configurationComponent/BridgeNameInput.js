@@ -87,9 +87,14 @@ function BridgeNameInput({ params, searchParams, isEmbedUser }) {
   );
 
   return (
-    <div id="bridge-name-input-container" className="flex flex-row items-center">
+    <div
+      data-testid="bridge-name-input-container"
+      id="bridge-name-input-container"
+      className="flex flex-row items-center"
+    >
       <div className="relative w-full">
         <textarea
+          data-testid="bridge-name-input"
           id="bridge-name-input"
           className="font-bold min-h-[25px] text-xl outline-none resize-none leading-tight bg-transparent"
           style={{

@@ -81,7 +81,12 @@ const WebhookForm = ({ params, searchParams }) => {
   );
 
   return (
-    <form id="batch-api-form" onSubmit={handleSubmit} className="space-y-6 rounded-lg h-full p-4">
+    <form
+      data-testid="batch-api-form"
+      id="batch-api-form"
+      onSubmit={handleSubmit}
+      className="space-y-6 rounded-lg h-full p-4"
+    >
       <div className="form-control mb-4">
         <label htmlFor="webhookUrl" className="label">
           <span className="label-text font-semibold">Webhook URL</span>
@@ -102,7 +107,8 @@ const WebhookForm = ({ params, searchParams }) => {
           <span className="label-text font-semibold">Headers (JSON)</span>
         </label>
         <textarea
-          id="headers"
+          data-testid="batch-api-headers-textarea"
+          id="batch-api-headers-textarea"
           value={headers}
           onChange={handleHeadersChange}
           placeholder='Example: { "Authorization": "Bearer token" }'
@@ -117,6 +123,7 @@ const WebhookForm = ({ params, searchParams }) => {
           <span className="label-text font-semibold">Messages</span>
         </label>
         <textarea
+          data-testid="batch-api-messages-textarea"
           id="batch-api-messages-textarea"
           onChange={handleMessagesChange}
           placeholder="Enter messages separated by commas"
@@ -126,7 +133,7 @@ const WebhookForm = ({ params, searchParams }) => {
       </div>
 
       {responseData && (
-        <div id="batch-api-response-container" className="form-control mb-4">
+        <div data-testid="batch-api-response-container" id="batch-api-response-container" className="form-control mb-4">
           <label className="label">
             <span className="label-text text-lg font-semibold">Response Data</span>
           </label>
@@ -136,6 +143,7 @@ const WebhookForm = ({ params, searchParams }) => {
 
       <div className="flex justify-end">
         <button
+          data-testid="batch-api-submit-button"
           id="batch-api-submit-button"
           type="submit"
           disabled={!isFormValid || isSubmitting}

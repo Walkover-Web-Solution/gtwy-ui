@@ -98,6 +98,7 @@ const ConfigurationPage = ({
             {!isEmbedUser && (
               <>
                 <button
+                  data-testid="speak-to-us-button"
                   data-cal-namespace="30min"
                   data-cal-link="team/gtwy.ai/ai-consultation"
                   data-cal-origin="https://cal.id"
@@ -111,6 +112,7 @@ const ConfigurationPage = ({
                 {/* Help Docs */}
 
                 <a
+                  data-testid="help-docs-link"
                   id="help-docs-link"
                   href="https://gtwy.ai/resources"
                   className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content font-bold transition-colors"
@@ -124,6 +126,7 @@ const ConfigurationPage = ({
                 {/* Integration Guide */}
 
                 <button
+                  data-testid="integration-guide-button"
                   id="integration-guide-button"
                   onClick={() => {
                     handleNavigation("integration");
@@ -246,6 +249,7 @@ const ConfigurationPage = ({
         {/* Published Data Banner - Sticky and close to navbar */}
         {bannerState.showPublished && (
           <div
+            data-testid="published-data-banner"
             id="published-banner"
             className={`sticky top-0 z-40 bg-blue-50 dark:bg-slate-800 border-b border-blue-200 dark:border-slate-700 py-2 ${
               bannerState.animatingPublished ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
@@ -263,6 +267,7 @@ const ConfigurationPage = ({
         {/* Non-Editor Banner - Sticky and close to navbar */}
         {bannerState.showNonEditor && (
           <div
+            data-testid="non-editor-banner"
             id="non-editor-banner"
             className={`sticky top-0 z-40 bg-amber-50 dark:bg-slate-800 border-b border-amber-200 dark:border-slate-700 py-2 ${
               bannerState.animatingNonEditor ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"

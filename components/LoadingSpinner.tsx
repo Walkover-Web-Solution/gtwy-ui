@@ -3,6 +3,7 @@ import React from "react";
 function LoadingSpinner({ height = "100vh", width = "100vw", marginLeft = "0px", marginTop = "0px", margin = "auto" }) {
   return (
     <div
+      data-testid="loading-spinner"
       className="fixed inset-0 bg-base-100 flex flex-col justify-center items-center z-very-high"
       style={{ height, width, margin, marginLeft, marginTop }}
     >

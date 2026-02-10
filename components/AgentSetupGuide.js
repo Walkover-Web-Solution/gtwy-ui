@@ -213,6 +213,8 @@ const AgentSetupGuide = ({
 
   return (
     <div
+      data-testid="agent-setup-guide-container"
+      id="agent-setup-guide-container"
       className={`w-full h-full z-very-low bg-base-300 overflow-hidden relative transition-all duration-300 ${isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"}`}
     >
       <div className="card w-full h-full">
@@ -236,6 +238,8 @@ const AgentSetupGuide = ({
 
                 return (
                   <div
+                    data-testid={`agent-setup-step-${step}`}
+                    id={`agent-setup-step-${step}`}
                     key={step}
                     className={`card shadow-sm transition-all duration-300 hover:shadow-md ${
                       isCompleted ? "bg-success/10 border border-success/20" : "bg-base-200 border border-base-300"
@@ -302,6 +306,7 @@ const AgentSetupGuide = ({
 
           <div className="text-center mt-6 flex-shrink-0">
             <button
+              data-testid="agent-setup-get-started-button"
               id="agent-setup-get-started-button"
               onClick={handleStart}
               className="btn btn-lg gap-2 bg-base-content text-base-100 hover:bg-base-content/90 border-base-content shadow-md hover:shadow-lg transition-all duration-200"

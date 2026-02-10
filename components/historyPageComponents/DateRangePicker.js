@@ -86,6 +86,7 @@ const DateRangePicker = ({
 
   return (
     <div
+      data-testid="history-date-range-picker"
       id="history-date-range-picker"
       className="border-b border-base-300 sticky flex flex-col gap-2 top-0 bg-base-200 z-low"
     >
@@ -94,6 +95,7 @@ const DateRangePicker = ({
           From
         </label>
         <input
+          data-testid="history-date-range-from-input"
           id="from"
           type="datetime-local"
           className="w-full p-2 border border-base-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -109,6 +111,7 @@ const DateRangePicker = ({
           To
         </label>
         <input
+          data-testid="history-date-range-to-input"
           id="to"
           type="datetime-local"
           className="w-full p-2 border border-base-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -121,6 +124,7 @@ const DateRangePicker = ({
       </div>
 
       <button
+        data-testid="history-date-range-apply-button"
         id="history-date-range-apply-button"
         className="btn btn-primary btn-sm"
         onClick={handleDataChange}
@@ -128,7 +132,12 @@ const DateRangePicker = ({
       >
         Apply
       </button>
-      <button id="history-date-range-clear-button" className="btn btn-outline btn-sm" onClick={handleClear}>
+      <button
+        data-testid="history-date-range-clear-button"
+        id="history-date-range-clear-button"
+        className="btn btn-outline btn-sm"
+        onClick={handleClear}
+      >
         Clear
       </button>
     </div>

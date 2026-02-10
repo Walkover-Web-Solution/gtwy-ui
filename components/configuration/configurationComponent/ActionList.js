@@ -50,19 +50,20 @@ function ActionList({ params, searchParams, isPublished, isEditor = true }) {
   );
 
   return (
-    <div id="action-list-container" className="form-control mb-4">
+    <div data-testid="action-list-container" id="action-list-container" className="form-control mb-4">
       <div className="flex items-center gap-1">
         <label className="label font-medium whitespace-nowrap">Action</label>
         <InfoTooltip tooltipContent="Action is a task or operation executed in response to a trigger or event, often used to perform a defined outcome such as sending or processing data.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
       </div>
-      <div id="action-cards-wrapper" className="flex flex-wrap gap-4">
+      <div data-testid="action-cards-wrapper" id="action-cards-wrapper" className="flex flex-wrap gap-4">
         {action &&
           Object.entries(action)
             .sort()
             .map(([key, value]) => (
               <div
+                data-testid={`action-card-${key}`}
                 id={`action-card-${key}`}
                 key={key}
                 className="flex w-[250px] mb-4 flex-col items-start rounded-md border border-base-300 hover:bg-base-200 md:flex-row cursor-pointer"
@@ -76,6 +77,7 @@ function ActionList({ params, searchParams, isPublished, isEditor = true }) {
                   <div className="flex items-center justify-between">
                     <h1 className="inline-flex items-center text-lg font-semibold text-base-content">{key}</h1>
                     <button
+                      data-testid={`action-delete-button-${key}`}
                       id={`action-delete-button-${key}`}
                       disabled={isReadOnly}
                       onClick={(e) => handleRemoveAction(key, value?.type, value?.description, value?.variable, e)}

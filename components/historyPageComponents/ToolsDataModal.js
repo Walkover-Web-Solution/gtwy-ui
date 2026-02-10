@@ -14,7 +14,12 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
   };
 
   return (
-    <dialog id="tools-data-modal" className="modal modal-middle mx-auto outline-none" ref={toolsDataModalRef}>
+    <dialog
+      data-testid="tools-data-modal"
+      id="tools-data-modal"
+      className="modal modal-middle mx-auto outline-none"
+      ref={toolsDataModalRef}
+    >
       <div className="relative bg-base-100 rounded-lg shadow-lg p-6 w-[80%] max-w-[80vw] overscroll-none">
         <h2 className="font-bold mb-1">Function Data:</h2>
         <div className="overflow-y-scroll max-h-[70vh] max-w-auto break-words">
@@ -46,6 +51,7 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
         </div>
         <div className="absolute top-4 right-5">
           <button
+            data-testid="tools-data-modal-close-button"
             id="tools-data-modal-close-button"
             className="hover:scale-110 transition-transform duration-300 ease-in-out focus:outline-none focus:border-none"
             onClick={handleClose}

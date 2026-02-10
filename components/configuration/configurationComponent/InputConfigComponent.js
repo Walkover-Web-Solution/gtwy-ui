@@ -158,7 +158,7 @@ const InputConfigComponent = memo(
     );
 
     return (
-      <div id="input-config-container" ref={promptTextAreaRef}>
+      <div data-testid="input-config-container" id="input-config-container" ref={promptTextAreaRef}>
         <PromptHeader
           hasUnsavedChanges={promptState.hasUnsavedChanges}
           onSave={handleSavePrompt}

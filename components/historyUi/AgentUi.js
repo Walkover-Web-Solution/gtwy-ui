@@ -28,6 +28,7 @@ export function AgentUI({ label, name, status, statusClass, onToolClick, emptyTo
             tools.map((tool, index) => (
               <div
                 key={`${tool?.name || "tool"}-${index}`}
+                data-testid={`agent-ui-tool-${index}`}
                 className="flex items-center justify-between border border-base-300 hover:border-primary p-2 mb-3 hover:bg-primary/10 cursor-pointer"
                 onClick={() => handleToolClick(tool)}
               >

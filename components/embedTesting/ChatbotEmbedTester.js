@@ -181,6 +181,8 @@ const ChatbotEmbedTester = () => {
                         <span className="label-text font-semibold">Embed Token</span>
                       </label>
                       <input
+                        data-testid="chatbot-embed-token-input"
+                        id="chatbot-embed-token-input"
                         type="text"
                         placeholder="Enter your embed token"
                         className="input input-bordered w-full input-sm"
@@ -194,6 +196,8 @@ const ChatbotEmbedTester = () => {
                         <span className="label-text font-semibold">Slug Name</span>
                       </label>
                       <input
+                        data-testid="chatbot-slug-name-input"
+                        id="chatbot-slug-name-input"
                         type="text"
                         placeholder="Enter agent slug name"
                         className="input input-bordered w-full input-sm"
@@ -207,6 +211,8 @@ const ChatbotEmbedTester = () => {
                         <span className="label-text font-semibold">Thread ID</span>
                       </label>
                       <input
+                        data-testid="chatbot-thread-id-input"
+                        id="chatbot-thread-id-input"
                         type="text"
                         placeholder="Enter thread ID"
                         className="input input-bordered w-full input-sm"
@@ -216,6 +222,8 @@ const ChatbotEmbedTester = () => {
                     </div>
 
                     <button
+                      data-testid="chatbot-initialize-button"
+                      id="chatbot-initialize-button"
                       className="btn btn-outline btn-sm w-full mt-3"
                       onClick={handleInitialize}
                       disabled={!embedToken.trim() || !bridgeName.trim() || !threadId.trim()}
@@ -265,11 +273,21 @@ const ChatbotEmbedTester = () => {
                         onChange={(e) => setThreadId(e.target.value.trim())}
                       />
                     </div>
-                    <button className="btn btn-outline btn-sm w-full mb-2" onClick={loadChatbotScript}>
+                    <button
+                      data-testid="chatbot-reload-button"
+                      id="chatbot-reload-button"
+                      className="btn btn-outline btn-sm w-full mb-2"
+                      onClick={loadChatbotScript}
+                    >
                       Reload Chatbot
                     </button>
 
-                    <button className="btn btn-outline btn-sm w-full" onClick={handleReset}>
+                    <button
+                      data-testid="chatbot-reset-button"
+                      id="chatbot-reset-button"
+                      className="btn btn-outline btn-sm w-full"
+                      onClick={handleReset}
+                    >
                       Reset
                     </button>
                   </div>
@@ -285,6 +303,8 @@ const ChatbotEmbedTester = () => {
                     <div className="form-control">
                       <label className="label cursor-pointer justify-start gap-2">
                         <input
+                          data-testid="chatbot-fullscreen-checkbox"
+                          id="chatbot-fullscreen-checkbox"
                           type="checkbox"
                           className="checkbox checkbox-sm"
                           checked={fullScreen}
@@ -339,7 +359,12 @@ const ChatbotEmbedTester = () => {
                 <div className="card-body p-4">
                   <h3 className="card-title text-lg mb-3">Available Functions</h3>
                   <div className="space-y-2">
-                    <button className="btn btn-outline btn-sm w-full justify-start" onClick={handleOpenChatbot}>
+                    <button
+                      data-testid="chatbot-open-function"
+                      id="chatbot-open-function"
+                      className="btn btn-outline btn-sm w-full justify-start"
+                      onClick={handleOpenChatbot}
+                    >
                       <span className="font-mono text-xs">window.Chatbot.open()</span>
                     </button>
 
@@ -374,7 +399,13 @@ const ChatbotEmbedTester = () => {
                           onChange={(e) => setAskAiInput(e.target.value)}
                           onKeyPress={(e) => e.key === "Enter" && handleAskAi()}
                         />
-                        <button className="btn btn-outline btn-sm" onClick={handleAskAi} disabled={!askAiInput.trim()}>
+                        <button
+                          data-testid="chatbot-ask-ai-button"
+                          id="chatbot-ask-ai-button"
+                          className="btn btn-outline btn-sm"
+                          onClick={handleAskAi}
+                          disabled={!askAiInput.trim()}
+                        >
                           Send
                         </button>
                       </div>

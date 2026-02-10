@@ -96,6 +96,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
       <dialog id={MODAL_TYPE.CREATE_ORG_MODAL} className="modal" onKeyDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-center min-h-screen py-8">
           <form
+            data-testid="create-org-form"
             id="create-org-form"
             className="modal-box relative p-5 bg-base-100 rounded-lg shadow-xl mx-4 max-h-[90vh] overflow-y-auto"
             onSubmit={(e) => {
@@ -107,6 +108,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
             <h3 className="font-bold text-lg mb-2">Create Workspace</h3>
             <label className="label-text mb-1">Workspace Name *</label>
             <input
+              data-testid="create-org-name-input"
               id="create-org-name-input"
               type="text"
               name="name"
@@ -120,6 +122,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
             />
             <label className="label-text mb-1">Description</label>
             <textarea
+              data-testid="create-org-description-input"
               id="message"
               name="about"
               rows="4"
@@ -133,6 +136,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
             <div className={`mb-4 ${showTimezoneDropdown ? "mb-80" : ""}`}>
               <div className="relative">
                 <div
+                  data-testid="create-org-timezone-trigger"
                   id="create-org-timezone-trigger"
                   className="relative w-full cursor-pointer border border-base-content/20 rounded-lg p-3 flex items-center justify-between hover:border-base-content/40 transition-colors duration-200 bg-base-100"
                   onClick={() => setShowTimezoneDropdown(!showTimezoneDropdown)}
@@ -149,11 +153,13 @@ const CreateOrg = ({ handleSwitchOrg }) => {
 
                 {showTimezoneDropdown && (
                   <div
+                    data-testid="create-org-timezone-dropdown"
                     id="create-org-timezone-dropdown"
                     className="absolute mt-1 z-30 w-full bg-base-100 border border-base-content/20 rounded-lg shadow-lg max-h-72 overflow-hidden"
                   >
                     <div className="sticky top-0 bg-base-100 p-3 border-b border-base-content/10">
                       <input
+                        data-testid="create-org-timezone-search-input"
                         id="create-org-timezone-search-input"
                         type="text"
                         placeholder="Search timezone"
@@ -191,6 +197,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
 
             <div className="modal-action">
               <button
+                data-testid="create-org-close-button"
                 id="create-org-close-button"
                 type="button"
                 onClick={() => closeModal(MODAL_TYPE.CREATE_ORG_MODAL)}
@@ -200,6 +207,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
                 Close
               </button>
               <button
+                data-testid="create-org-submit-button"
                 id="create-org-submit-button"
                 type="submit"
                 onKeyDown={(e) => e.stopPropagation()}

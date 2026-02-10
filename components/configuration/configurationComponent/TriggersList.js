@@ -118,6 +118,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
           </div>
           {hasTriggers && (
             <button
+              data-testid="triggers-add-button"
               id="triggers-add-button"
               onClick={() => openTrigger()}
               className="btn btn-outline hover:bg-base-200 hover:text-base-content btn-xs gap-1"
@@ -135,6 +136,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
             <div className="border-2 border-dashed border-base-200 p-4 text-center">
               <p className="text-sm text-base-content/70">No triggers found.</p>
               <button
+                data-testid="triggers-add-first-button"
                 id="triggers-add-first-button"
                 onClick={() => openTrigger()}
                 className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -150,6 +152,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
             <div className="flex flex-col gap-2">
               {activeTriggers.map((trigger) => (
                 <div
+                  data-testid={`trigger-card-${trigger?.id}`}
                   id={`trigger-card-${trigger?.id}`}
                   key={trigger?.id}
                   onClick={() => openTrigger(trigger?.id)}

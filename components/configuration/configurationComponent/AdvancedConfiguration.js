@@ -45,7 +45,7 @@ const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, is
   );
 
   return (
-    <div className="z-very-low text-base-content w-full" tabIndex={0}>
+    <div data-testid="advanced-configuration-container" className="z-very-low text-base-content w-full" tabIndex={0}>
       {renderContent()}
     </div>
   );

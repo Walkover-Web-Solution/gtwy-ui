@@ -1,6 +1,6 @@
 export const ChatLoadingSkeleton = () => {
   return (
-    <div className="w-full h-full overflow-y-auto pb-16 px-3 pt-4">
+    <div data-testid="chat-loading-skeleton" className="w-full h-full overflow-y-auto pb-16 px-3 pt-4">
       {[...Array(2)].map((_, index) => (
         <div key={index} className="mb-6 animate-pulse">
           {/* User message skeleton */}

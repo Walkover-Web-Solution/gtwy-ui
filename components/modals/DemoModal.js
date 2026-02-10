@@ -37,6 +37,7 @@ const DemoModal = ({ speakToUs }) => {
         <div className="flex justify-between items-center pb-4 border-b border-base-300">
           <h3 className="font-bold text-2xl">{speakToUs ? "Speak to Us" : "Discover GTWY AI"}</h3>
           <button
+            data-testid="demo-modal-close-button"
             id="demo-modal-close-button"
             onClick={handleClose}
             className="btn btn-ghost p-2 rounded-full hover:bg-gray-100 transition-colors group"
@@ -84,6 +85,7 @@ const DemoModal = ({ speakToUs }) => {
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 pointer-events-none" />
             <div className="aspect-video w-full overflow-hidden rounded-lg">
               <iframe
+                data-testid="demo-modal-video-iframe"
                 id="demo-modal-video-iframe"
                 src="https://video-faq.viasocket.com/embed/cm60d6r5a031w121t2akjkw9y?embed_v=2"
                 loading="lazy"
@@ -99,6 +101,7 @@ const DemoModal = ({ speakToUs }) => {
 
         <div className="modal-action mt-4">
           <button
+            data-testid="demo-modal-schedule-button"
             id="demo-modal-schedule-button"
             data-cal-namespace="30min"
             data-cal-link={speakToUs ? "team/gtwy.ai/ai-consultation" : "team/gtwy.ai/30min"}

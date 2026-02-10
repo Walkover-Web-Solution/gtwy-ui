@@ -16,6 +16,7 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
             <span className="label-text">Description</span>
           </label>
           <textarea
+            data-testid="agent-description-textarea"
             id="agent-description-textarea"
             className="textarea bg-white dark:bg-black/15 textarea-bordered w-full h-32"
             placeholder="Enter description for the agent..."
@@ -27,6 +28,7 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
         </div>
         <div className="modal-action">
           <button
+            data-testid="agent-description-cancel-button"
             id="agent-description-cancel-button"
             className="btn btn-sm"
             onClick={() => closeModal(MODAL_TYPE?.AGENT_DESCRIPTION_MODAL)}
@@ -34,6 +36,7 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
             Cancel
           </button>
           <button
+            data-testid="agent-description-save-button"
             id="agent-description-save-button"
             className="btn btn-sm btn-primary"
             onClick={() => handleSaveAgent()}

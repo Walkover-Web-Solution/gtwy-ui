@@ -67,15 +67,18 @@ const OrgPageGuard = ({ children }) => {
       {/* Simple onboarding modal */}
       {showOnboarding && (
         <div
+          data-testid="org-page-guard-modal-overlay"
           id="org-page-guard-modal-overlay"
           className="fixed inset-0 z-50 bg-base-100 bg-opacity-50 flex items-center justify-center p-4"
         >
           <div
+            data-testid="org-page-guard-modal-container"
             id="org-page-guard-modal-container"
             className="relative w-full h-full max-w-5xl max-h-[99vh] bg-base-200 rounded-lg shadow-2xl overflow-hidden"
           >
             {/* Close Button */}
             <button
+              data-testid="org-page-guard-close-button"
               id="org-page-guard-close-button"
               onClick={handleClose}
               className="absolute top-4 right-4 z-10 p-2 bg-base-100 rounded-full shadow-lg hover:bg-base-200 transition-all duration-200 hover:scale-105"
@@ -87,6 +90,7 @@ const OrgPageGuard = ({ children }) => {
             {/* Onboarding Content */}
             <div className="w-full h-full">
               <iframe
+                data-testid="org-page-guard-onboarding-iframe"
                 id="org-page-guard-onboarding-iframe"
                 data-tally-src="https://tally.so/r/pbxOAP?transparentBackground=1"
                 width="100%"

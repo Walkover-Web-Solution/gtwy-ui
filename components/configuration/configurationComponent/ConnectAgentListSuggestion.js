@@ -42,6 +42,7 @@ function ConnectedAgentListSuggestion({
         .map((bridge) => {
           return (
             <li
+              data-testid={`connect-agent-suggestion-item-${bridge?._id}`}
               key={bridge?._id}
               id={`connect-agent-suggestion-item-${bridge?._id}`}
               onClick={() => (bridge?.published_version_id ? handleItemClick(bridge, bridgeData) : null)}
@@ -85,6 +86,7 @@ function ConnectedAgentListSuggestion({
 
   return (
     <ul
+      data-testid="connect-agent-suggestion-dropdown"
       id="connect-agent-suggestion-dropdown"
       tabIndex={0}
       className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-1"
@@ -92,6 +94,7 @@ function ConnectedAgentListSuggestion({
       <div className="flex flex-col gap-2 w-full">
         <li className="text-sm font-semibold disabled">Available Agents</li>
         <input
+          data-testid="connect-agent-suggestion-search-input"
           id="connect-agent-suggestion-search-input"
           type="text"
           placeholder="Search Agent"

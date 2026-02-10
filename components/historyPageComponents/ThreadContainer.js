@@ -433,9 +433,14 @@ const ThreadContainer = ({
   }, [searchMessageId, scrollToSearchedMessage]);
 
   return (
-    <div id="thread-container" className="drawer-content flex flex-col items-center overflow-hidden justify-center">
+    <div
+      data-testid="thread-container"
+      id="thread-container"
+      className="drawer-content flex flex-col items-center overflow-hidden justify-center"
+    >
       <div className="w-full min-h-screen">
         <div
+          data-testid="thread-container-scrollable-div"
           id="scrollableDiv"
           ref={historyRef}
           onScroll={onScroll}
@@ -495,6 +500,7 @@ const ThreadContainer = ({
 
         {showScrollToBottom && (
           <button
+            data-testid="thread-container-scroll-to-bottom"
             id="thread-container-scroll-to-bottom"
             onClick={() => scrollToBottom(historyRef)}
             className="fixed bottom-16 right-4 bg-gray-500 text-white p-2 rounded-full shadow-lg z-[5]"

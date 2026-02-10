@@ -250,6 +250,8 @@ const GTWYEmbedTester = () => {
                 <h2 className="card-title text-lg mb-3">1. Load Embed</h2>
                 <div className="space-y-3">
                   <textarea
+                    data-testid="gtwy-embed-token-input"
+                    id="gtwy-embed-token-input"
                     className="textarea textarea-bordered w-full resize-none font-mono text-xs"
                     rows="3"
                     placeholder="Paste JWT embed token here..."
@@ -258,10 +260,22 @@ const GTWYEmbedTester = () => {
                     disabled={isEmbedLoaded}
                   />
                   <div className="flex gap-2">
-                    <button onClick={loadEmbed} disabled={isEmbedLoaded} className="btn btn-outline btn-sm flex-1">
+                    <button
+                      data-testid="gtwy-load-embed-button"
+                      id="gtwy-load-embed-button"
+                      onClick={loadEmbed}
+                      disabled={isEmbedLoaded}
+                      className="btn btn-outline btn-sm flex-1"
+                    >
                       {isEmbedLoaded ? "✓ Loaded" : "Load"}
                     </button>
-                    <button onClick={unloadEmbed} disabled={!isEmbedLoaded} className="btn btn-outline btn-sm flex-1">
+                    <button
+                      data-testid="gtwy-unload-embed-button"
+                      id="gtwy-unload-embed-button"
+                      onClick={unloadEmbed}
+                      disabled={!isEmbedLoaded}
+                      className="btn btn-outline btn-sm flex-1"
+                    >
                       Unload
                     </button>
                   </div>
@@ -281,6 +295,8 @@ const GTWYEmbedTester = () => {
                 <h2 className="card-title text-lg mb-3">2. Window Controls</h2>
                 <div className="space-y-2">
                   <button
+                    data-testid="gtwy-open-function"
+                    id="gtwy-open-function"
                     onClick={openGtwyModal}
                     disabled={!isEmbedLoaded}
                     className="btn btn-outline btn-sm w-full justify-start"
@@ -311,6 +327,8 @@ const GTWYEmbedTester = () => {
                 <h2 className="card-title text-lg mb-3">4. API Testing</h2>
                 <div className="space-y-2">
                   <button
+                    data-testid="gtwy-get-agents-button"
+                    id="gtwy-get-agents-button"
                     onClick={openGetAgentsModal}
                     disabled={!embedToken.trim()}
                     className="btn btn-outline btn-sm w-full"

@@ -154,11 +154,17 @@ function Canvas({
   };
 
   return (
-    <div id="canvas-container" style={{ width, height }} className="flex flex-col bg-base-100">
+    <div
+      data-testid="canvas-container"
+      id="canvas-container"
+      style={{ width, height }}
+      className="flex flex-col bg-base-100"
+    >
       {/* Header with Reset Button */}
       <div className="flex  items-center pb-1 mb-1 pl-2" style={{ justifyContent: "flex-end" }}>
         {messages?.length > 0 && (
           <button
+            data-testid="canvas-reset-chat-button"
             id="canvas-reset-chat-button"
             className="btn btn-sm  btn-outline btn-error hover:btn-error"
             onMouseDown={handleResetChat}
@@ -175,6 +181,7 @@ function Canvas({
         <div id="messages" className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 space-y-4">
           {safeMessages.length === 0 && !loading && (
             <div
+              data-testid="canvas-empty-state"
               id="canvas-empty-state"
               className="flex flex-col items-center justify-center h-full text-center opacity-60"
             >
@@ -235,6 +242,7 @@ function Canvas({
                           </div>
                         ) : (
                           <button
+                            data-testid={`canvas-apply-button-${message.id}`}
                             id={`canvas-apply-button-${message.id}`}
                             className="btn btn-sm btn-primary gap-1 hover:btn-primary-focus transition-all duration-200 shadow-sm"
                             onClick={() => handleApply(message)}
@@ -251,6 +259,7 @@ function Canvas({
                           </div>
                         ) : (
                           <button
+                            data-testid={`canvas-copy-button-${message.id}`}
                             id={`canvas-copy-button-${message.id}`}
                             className="btn btn-sm btn-primary gap-1 hover:btn-primary-focus transition-all duration-200 shadow-sm"
                             onClick={() => handleCopy(message.id, message.optimized)}
@@ -272,7 +281,7 @@ function Canvas({
 
           {/* Loading State */}
           {loading && (
-            <div id="canvas-loading-state" className="chat chat-start">
+            <div data-testid="canvas-loading-state" id="canvas-loading-state" className="chat chat-start">
               <div className="chat-header mb-1">
                 <span className="text-sm font-medium">assistant</span>
                 <time className="text-xs opacity-50 pl-2">
@@ -295,6 +304,7 @@ function Canvas({
           <div className="flex gap-3 items-center max-w-4xl mx-auto justify-center">
             <div className="flex-1 relative mt-1">
               <textarea
+                data-testid="canvas-instruction-textarea"
                 id="canvas-instruction-textarea"
                 ref={textareaRef}
                 className="w-full textarea textarea-bordered"
@@ -323,6 +333,7 @@ function Canvas({
             </div>
 
             <button
+              data-testid="canvas-send-button"
               id="canvas-send-button"
               className={`btn btn-circle transition-all duration-200 ${
                 loading
@@ -339,6 +350,7 @@ function Canvas({
           {/* Error Message */}
           {errorMessage && (
             <div
+              data-testid="canvas-error-message"
               id="canvas-error-message"
               className="max-w-4xl mx-auto mt-3 p-3 bg-red-50 border border-red-200 rounded-lg"
             >

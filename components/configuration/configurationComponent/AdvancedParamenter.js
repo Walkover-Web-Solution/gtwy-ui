@@ -384,6 +384,7 @@ const AdvancedParameters = ({
             )}
             {field === "boolean" && (
               <input
+                data-testid={`advanced-param-checkbox-${key}`}
                 id={`advanced-param-checkbox-${key}`}
                 name={key}
                 type="checkbox"
@@ -402,6 +403,7 @@ const AdvancedParameters = ({
           <div className="w-[110px] flex justify-end flex-shrink-0 min-h-[32px]">
             {!isDefaultValue && (
               <button
+                data-testid={`advanced-param-reset-${key}`}
                 id={`advanced-param-reset-${key}`}
                 type="button"
                 className="text-xs text-base-content/60 hover:text-base-content cursor-pointer px-3 py-1 rounded hover:bg-base-200 transition-colors whitespace-nowrap inline-block"
@@ -420,6 +422,7 @@ const AdvancedParameters = ({
             {/* Text input */}
             {field === "text" && (
               <input
+                data-testid={`advanced-param-text-${key}`}
                 id={`advanced-param-text-${key}`}
                 type="text"
                 value={isDefaultValue ? "default" : inputConfiguration?.[key] || ""}
@@ -447,6 +450,7 @@ const AdvancedParameters = ({
             {/* Number input */}
             {field === "number" && (
               <input
+                data-testid={`advanced-param-number-${key}`}
                 id={`advanced-param-number-${key}`}
                 type="number"
                 min={min}
@@ -471,6 +475,7 @@ const AdvancedParameters = ({
             {/* Select input */}
             {field === "select" && (
               <select
+                data-testid={`advanced-param-select-${key}`}
                 id={`advanced-param-select-${key}`}
                 value={isDefaultValue ? "default" : configuration?.[key]?.[defaultValue?.key] || configuration?.[key]}
                 onChange={(e) => handleSelectChange(e, key, defaultValue, "{}", isDeafaultObject)}
@@ -493,6 +498,7 @@ const AdvancedParameters = ({
             {field === "slider" && (
               <div className="flex items-center gap-2 w-full">
                 <button
+                  data-testid={`advanced-param-slider-min-btn-${key}`}
                   id={`advanced-param-slider-min-btn-${key}`}
                   type="button"
                   className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20`}
@@ -509,6 +515,7 @@ const AdvancedParameters = ({
                 </button>
                 {sliderValueNode}
                 <input
+                  data-testid={`advanced-param-slider-${key}`}
                   id={`advanced-param-slider-${key}`}
                   type="range"
                   min={min || 0}
@@ -541,6 +548,7 @@ const AdvancedParameters = ({
                   disabled={isReadOnly}
                 />
                 <button
+                  data-testid={`advanced-param-slider-max-btn-${key}`}
                   id={`advanced-param-slider-max-btn-${key}`}
                   type="button"
                   className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20 text-sm`}
@@ -562,6 +570,7 @@ const AdvancedParameters = ({
             {field === "dropdown" && (
               <div id={`advanced-param-dropdown-wrapper-${key}`} className="relative w-full" ref={dropdownContainerRef}>
                 <div
+                  data-testid={`advanced-param-dropdown-trigger-${key}`}
                   id={`advanced-param-dropdown-trigger-${key}`}
                   className={`flex items-center gap-2 input input-bordered ${inputSizeClass} w-full min-h-[2rem] cursor-pointer`}
                   disabled={isReadOnly}
@@ -581,11 +590,13 @@ const AdvancedParameters = ({
 
                 {showDropdown && (
                   <div
+                    data-testid={`advanced-param-dropdown-menu-${key}`}
                     id={`advanced-param-dropdown-menu-${key}`}
                     className="absolute top-full left-0 right-0 bg-base-300 border border-base-200 rounded-md shadow-lg z-50 max-h-[200px] overflow-y-auto mt-1 p-2"
                   >
                     <div className="p-2 top-0 bg-base-100">
                       <input
+                        data-testid={`advanced-param-dropdown-search-${key}`}
                         id={`advanced-param-dropdown-search-${key}`}
                         type="text"
                         placeholder="Search functions..."
@@ -742,6 +753,7 @@ const AdvancedParameters = ({
             </div>
 
             <textarea
+              data-testid={`advanced-param-json-schema-textarea-${key}`}
               id={`advanced-param-json-schema-textarea-${key}`}
               key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
               type="input"

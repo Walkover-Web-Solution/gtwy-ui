@@ -57,6 +57,7 @@ const DeleteModal = ({
     <Modal MODAL_ID={modalType}>
       <div className=" flex items-center justify-center ">
         <div
+          data-testid="delete-modal-content"
           id="delete-modal-content"
           className="w-full max-w-lg bg-base-100 border border-base-300 rounded-lg  p-6 mx-4 "
           onClick={(e) => e.stopPropagation()}
@@ -68,6 +69,7 @@ const DeleteModal = ({
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
             <button
+              data-testid="delete-modal-cancel-button"
               id="delete-modal-cancel-button"
               type="button"
               onClick={handleClose}
@@ -77,6 +79,7 @@ const DeleteModal = ({
               Cancel
             </button>
             <button
+              data-testid="delete-modal-confirm-button"
               id="delete-modal-confirm-button"
               type="button"
               onClick={handleConfirm}

@@ -17,19 +17,19 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
     switch (status) {
       case "added":
         return (
-          <span className="badge badge-success flex items-center gap-1 text-white">
+          <span data-testid="status-badge-added" className="badge badge-success flex items-center gap-1 text-white">
             <Check size={12} /> Added
           </span>
         );
       case "removed":
         return (
-          <span className="badge badge-error flex items-center gap-1 text-white">
+          <span data-testid="status-badge-removed" className="badge badge-error flex items-center gap-1 text-white">
             <X size={12} /> Removed
           </span>
         );
       case "changed":
         return (
-          <span className="badge badge-warning flex items-center gap-1 text-white">
+          <span data-testid="status-badge-changed" className="badge badge-warning flex items-center gap-1 text-white">
             <AlertCircle size={12} /> Changed
           </span>
         );
@@ -242,7 +242,7 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
                   const isPromptField = path === "prompt" || path.endsWith(".prompt");
 
                   return (
-                    <div key={path} className="card bg-base-200">
+                    <div key={path} data-testid={`comparison-card-${path}`} className="card bg-base-200">
                       <div className="card-body p-4">
                         <div className="flex justify-between items-start mb-3">
                           <h5 className="card-title text-sm">

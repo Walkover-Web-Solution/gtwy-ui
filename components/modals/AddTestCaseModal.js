@@ -205,6 +205,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           <div className="flex justify-between items-center p-6 pb-0  top-0 bg-base-100 z-low">
             <h3 className="text-xl font-semibold">Add Test Case</h3>
             <button
+              data-testid="add-testcase-close-x-button"
               id="add-testcase-close-x-button"
               type="button"
               className="btn btn-circle btn-ghost btn-sm"
@@ -219,6 +220,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             {finalTestCases && finalTestCases.length > 2 && !showFullConversation && (
               <div className="flex xs">
                 <button
+                  data-testid="add-testcase-show-conversations-button"
                   id="add-testcase-show-conversations-button"
                   type="button"
                   onClick={() => setShowFullConversation(true)}
@@ -403,6 +405,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             <div className="flex items-center gap-3">
               <label className="text-sm text-base-content">Matching strategy:</label>
               <select
+                data-testid="add-testcase-matching-strategy-select"
                 id="add-testcase-matching-strategy-select"
                 className="select select-sm bg-base-100 focus:outline-none border-none"
                 value={responseType}
@@ -415,6 +418,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
             <div className="flex gap-2">
               <button
+                data-testid="add-testcase-cancel-button"
                 id="add-testcase-cancel-button"
                 type="button"
                 className="btn btn-sm btn-ghost"
@@ -423,6 +427,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 Cancel
               </button>
               <button
+                data-testid="add-testcase-create-button"
                 id="add-testcase-create-button"
                 type="submit"
                 className="btn btn-sm btn-primary px-6"

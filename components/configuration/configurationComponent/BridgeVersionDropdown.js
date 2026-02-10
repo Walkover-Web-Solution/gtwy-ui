@@ -383,7 +383,11 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
 
   if (!bridgeVersionsArray.length) {
     return (
-      <div id="bridge-version-dropdown-empty" className="flex items-center gap-2">
+      <div
+        data-testid="bridge-version-dropdown-empty"
+        id="bridge-version-dropdown-empty"
+        className="flex items-center gap-2"
+      >
         <PublishBridgeVersionModal
           params={params}
           searchParams={searchParams}
@@ -399,9 +403,13 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   }
 
   return (
-    <div id="bridge-version-dropdown-container" className="flex items-center gap-1">
+    <div
+      data-testid="bridge-version-dropdown-container"
+      id="bridge-version-dropdown-container"
+      className="flex items-center gap-1"
+    >
       {/* Version Tabs Container */}
-      <div id="bridge-version-tabs" className="flex items-center gap-1">
+      <div data-testid="bridge-version-tabs" id="bridge-version-tabs" className="flex items-center gap-1">
         {versionsToShow.map((version, index) => {
           const isActive = searchParams.get?.("version") === version;
           const isPublished = version === publishedVersion;
@@ -412,6 +420,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
             <div key={version} className="relative group">
               <div className={versionDesc ? "tooltip tooltip-bottom" : ""} data-tip={versionDesc}>
                 <button
+                  data-testid={`version-button-${version}`}
                   id={`version-button-${version}`}
                   onClick={() => handleVersionChange(version)}
                   className={`
@@ -442,6 +451,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
               {/* Delete Button - appears on hover, positioned outside button */}
               {canDelete && (
                 <span
+                  data-testid={`version-delete-button-${version}`}
                   id={`version-delete-button-${version}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -463,6 +473,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
         {hasMoreVersions && (
           <div id="version-dropdown-wrapper" className="relative" ref={dropdownRef}>
             <button
+              data-testid="version-dropdown-toggle"
               id="version-dropdown-toggle"
               onClick={() => setShowVersionDropdown(!showVersionDropdown)}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-base-100 text-base-content hover:bg-base-200 rounded-md transition-all duration-200"
@@ -476,7 +487,11 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
             {showVersionDropdown && (
               <div className="absolute top-full left-0 mt-1 w-48 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 <div className="p-2">
-                  <div id="version-dropdown-menu" className="text-xs font-medium text-base-content/70 mb-2 px-2">
+                  <div
+                    data-testid="version-dropdown-menu"
+                    id="version-dropdown-menu"
+                    className="text-xs font-medium text-base-content/70 mb-2 px-2"
+                  >
                     All Versions
                   </div>
                   {bridgeVersionsArray.map((version, index) => {
@@ -489,6 +504,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                     return (
                       <div key={version} className="relative group">
                         <button
+                          data-testid={`version-dropdown-button-${version}`}
                           id={`version-dropdown-button-${version}`}
                           onClick={() => {
                             handleVersionChange(version);
@@ -522,6 +538,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                           {/* Delete Button */}
                           {canDelete && (
                             <span
+                              data-testid={`version-dropdown-delete-${version}`}
                               id={`version-dropdown-delete-${version}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -547,6 +564,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
 
         {/* Create New Version Button */}
         <button
+          data-testid="create-new-version-button"
           id="create-new-version-button"
           onClick={() => openModal(MODAL_TYPE.VERSION_DESCRIPTION_MODAL)}
           className="flex items-center gap-1 px-2 py-1 text-xs bg-base-100 text-base-content  hover:bg-base-200 rounded-md transition-all duration-200"

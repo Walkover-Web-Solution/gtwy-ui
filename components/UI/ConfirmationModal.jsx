@@ -37,6 +37,7 @@ const ConfirmationModal = ({
   return (
     <Modal MODAL_ID={modalType}>
       <div
+        data-testid="confirmation-modal-container"
         id="confirmation-modal-container"
         className="modal-box bg-base-100 rounded-lg shadow-xl max-w-md w-full relative animate-fadeIn"
         onClick={(e) => e.stopPropagation()}
@@ -54,10 +55,16 @@ const ConfirmationModal = ({
 
         {/* Actions */}
         <div className="modal-action flex justify-end gap-2">
-          <button id="confirmation-modal-cancel-button" className="btn btn-sm" onClick={handleCancel}>
+          <button
+            data-testid="confirmation-modal-cancel-button"
+            id="confirmation-modal-cancel-button"
+            className="btn btn-sm"
+            onClick={handleCancel}
+          >
             {cancelText}
           </button>
           <button
+            data-testid="confirmation-modal-confirm-button"
             id="confirmation-modal-confirm-button"
             className={`btn btn-sm ${confirmButtonClass}`}
             onClick={onConfirm}

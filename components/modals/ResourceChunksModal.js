@@ -51,7 +51,12 @@ const ResourceChunksModal = ({ resourceId, resourceName }) => {
             <h3 className="font-bold text-lg">Resource Chunks</h3>
             {resourceName && <p className="text-sm text-gray-500 mt-1">Resource Name : {resourceName}</p>}
           </div>
-          <button onClick={handleClose} className="btn btn-sm btn-circle btn-ghost">
+          <button
+            data-testid="resource-chunks-close-header-button"
+            id="resource-chunks-close-header-button"
+            onClick={handleClose}
+            className="btn btn-sm btn-circle btn-ghost"
+          >
             <CloseIcon size={16} />
           </button>
         </div>
@@ -87,7 +92,12 @@ const ResourceChunksModal = ({ resourceId, resourceName }) => {
           ) : (
             <div className="space-y-3">
               {chunks.map((chunk, index) => (
-                <div key={chunk._id || index} className="collapse collapse-arrow bg-base-100 border border-base-300">
+                <div
+                  key={chunk._id || index}
+                  data-testid={`resource-chunk-item-${index}`}
+                  id={`resource-chunk-item-${index}`}
+                  className="collapse collapse-arrow bg-base-100 border border-base-300"
+                >
                   <input type="checkbox" defaultChecked />
                   <div className="collapse-title font-medium flex items-center gap-2">
                     <span className="badge badge-primary badge-sm">#{index + 1}</span>
@@ -110,7 +120,13 @@ const ResourceChunksModal = ({ resourceId, resourceName }) => {
         {!isLoading && !error && chunks.length > 0 && (
           <div className="flex justify-between items-center mt-4 pt-3 border-t border-base-300">
             <span className="text-sm text-gray-500">Total chunks: {chunks.length}</span>
-            <button type="button" className="btn btn-primary btn-sm" onClick={handleClose}>
+            <button
+              data-testid="resource-chunks-close-footer-button"
+              id="resource-chunks-close-footer-button"
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleClose}
+            >
               Close
             </button>
           </div>

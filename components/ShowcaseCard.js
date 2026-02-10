@@ -4,7 +4,7 @@ import React from "react";
 
 const ShowcaseCard = ({ img, heading, text, url }) => {
   return (
-    <div id="showcase-card-container" className="group w-full">
+    <div data-testid="showcase-card-container" id="showcase-card-container" className="group w-full">
       <div className="card bg-base-100 w-full shadow-xl bg-transparent text-white border-[0.1px] border-gray-500 transition-all duration-300 hover:border-primary overflow-hidden">
         <div className="relative h-64 w-full">
           {img && (
@@ -23,6 +23,7 @@ const ShowcaseCard = ({ img, heading, text, url }) => {
               {heading}
             </h2>
             <Image
+              data-testid="showcase-card-arrow-icon"
               id="showcase-card-arrow-icon"
               src="/RightArrow.svg"
               width={20}
@@ -36,6 +37,7 @@ const ShowcaseCard = ({ img, heading, text, url }) => {
           {url && (
             <div className="card-actions justify-end">
               <a
+                data-testid="showcase-card-visit-link"
                 id="showcase-card-visit-link"
                 href={url}
                 className="btn bg-primary text-white hover:bg-primary/90 border-none"

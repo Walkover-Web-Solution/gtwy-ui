@@ -28,6 +28,7 @@ const PromptHeader = memo(
     if (isPromptHelperOpen && !isMobileView) {
       return (
         <div
+          data-testid="prompt-header-helper-open"
           id="prompt-header-helper-open"
           className={`flex z-very-high items-center justify-between p-3 border-b border-base-300 bg-base-50 ${!isEditor ? "mt-8" : ""}`}
         >
@@ -38,6 +39,7 @@ const PromptHeader = memo(
           <div className="flex items-center gap-4">
             {prompt && showDiffButton && (
               <span
+                data-testid="prompt-header-diff-button-open"
                 id="prompt-header-diff-button-open"
                 className="text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 cursor-pointer px-2 py-1 rounded transition-colors"
                 onClick={handleOpenDiff}
@@ -47,6 +49,7 @@ const PromptHeader = memo(
               </span>
             )}
             <span
+              data-testid="prompt-header-close-helper-button"
               id="prompt-header-close-helper-button"
               className="text-sm text-error hover:text-error/80 hover:bg-error/10 cursor-pointer px-2 py-1 rounded transition-colors"
               onClick={(e) => {
@@ -65,7 +68,7 @@ const PromptHeader = memo(
 
     // Default styling when isPromptHelperOpen is false
     return (
-      <div id="prompt-header-default" className="flex justify-between items-center">
+      <div data-testid="prompt-header-default" id="prompt-header-default" className="flex justify-between items-center">
         <div className="label flex items-center gap-2">
           <span className="label-text capitalize font-medium">System Prompt</span>
         </div>
@@ -73,6 +76,7 @@ const PromptHeader = memo(
         <div className="label gap-6 sm:gap-4">
           {prompt && !isPromptHelperOpen && showDiffButton && (
             <span
+              data-testid="prompt-header-diff-button"
               id="prompt-header-diff-button"
               className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${
                 isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
@@ -88,6 +92,7 @@ const PromptHeader = memo(
           )}
           {!isPromptHelperOpen && (
             <span
+              data-testid="prompt-header-open-helper-button"
               id="prompt-header-open-helper-button"
               className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${
                 isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"

@@ -41,6 +41,7 @@ export function MainAgentUI({
             {tools.map((tool, index) => (
               <div
                 key={`${tool?.name || "tool"}-${index}`}
+                data-testid={`main-agent-tool-${index}`}
                 className="flex items-center justify-between border border-base-300 hover:border-primary p-2 hover:bg-primary/10 cursor-pointer"
                 onClick={() => handleToolClick(tool)}
               >
@@ -70,6 +71,7 @@ export function MainAgentUI({
             {agentCount} agent{agentCount === 1 ? "" : "s"} • {toolCount} tool{toolCount === 1 ? "" : "s"} called
           </div>
           <div
+            data-testid="main-agent-response-preview"
             className="border border-base-300 hover:border-success p-3 hover:bg-success/10 cursor-pointer transition-all"
             onClick={onResponseClick}
           >

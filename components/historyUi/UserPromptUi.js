@@ -2,7 +2,10 @@ import { User } from "lucide-react";
 
 export function UserPromptUI({ text }) {
   return (
-    <div className="space-y-2 bg-base-100 flex flex-col items-center justify-center border-primary">
+    <div
+      data-testid="user-prompt-ui"
+      className="space-y-2 bg-base-100 flex flex-col items-center justify-center border-primary"
+    >
       <div className="w-10 h-10 flex items-center justify-center border border-primary bg-base-200 ">
         <User size={18} className="text-base-content" />
       </div>

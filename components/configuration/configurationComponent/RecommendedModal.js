@@ -84,6 +84,7 @@ const RecommendedModal = ({
         {shouldPromptShow && (
           <div className="flex flex-col items-start gap-2">
             <button
+              data-testid="get-recommended-model-button"
               id="get-recommended-model-button"
               className="flex items-center gap-2  rounded-md bg-gradient-to-r from-blue-800 to-orange-600 text-sm text-transparent bg-clip-text hover:opacity-80 transition-opacity"
               onClick={handleGetRecommendations}

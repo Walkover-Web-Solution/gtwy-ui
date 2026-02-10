@@ -6,7 +6,7 @@ const ReactMarkdown = dynamic(
   () => import("react-markdown").catch(() => ({ default: () => <div>Loading markdown...</div> })),
   {
     ssr: false,
-    loading: () => <div className="h-32 bg-gray-100 animate-pulse rounded" />,
+    loading: () => <div data-testid="lazy-markdown-loading" className="h-32 bg-gray-100 animate-pulse rounded" />,
     suspense: false,
   }
 );

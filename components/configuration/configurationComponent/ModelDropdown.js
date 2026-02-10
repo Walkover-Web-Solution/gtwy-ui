@@ -24,6 +24,7 @@ const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
   // Use createPortal to render directly to document body
   return createPortal(
     <div
+      data-testid="model-preview-container"
       id="model-preview-container"
       className="w-[260px] bg-base-100 border border-base-content/20 rounded-lg shadow-xl p-4 transition-all duration-200 ease-in-out"
       style={previewStyle}
@@ -205,9 +206,14 @@ const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) =
   }, []);
 
   return (
-    <div id="model-dropdown-container" className="flex flex-col items-start gap-4 relative">
+    <div
+      data-testid="model-dropdown-container"
+      id="model-dropdown-container"
+      className="flex flex-col items-start gap-4 relative"
+    >
       <div className="w-full" ref={dropdownRef}>
         <Dropdown
+          testId="model-dropdown"
           disabled={isReadOnly}
           options={modelOptions}
           value={model || ""}
@@ -232,6 +238,7 @@ const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) =
             <span className="label-text text-base-content">Fine-Tune Model</span>
           </div>
           <input
+            data-testid="fine-tune-model-input"
             id="fine-tune-model-input"
             type="text"
             name="name"

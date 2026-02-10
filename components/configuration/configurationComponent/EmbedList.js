@@ -248,7 +248,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   const hasTools = bridgeFunctions.length > 0 || selectedPrebuiltTools.length > 0;
   return (
     bridge_functions && (
-      <div id="embed-list-container">
+      <div data-testid="embed-list-container" id="embed-list-container">
         <DeleteModal
           onConfirm={handleRemoveFunctionFromBridge}
           item={functionId}
@@ -301,12 +301,21 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                 </div>
               </div>
               <div className="flex flex-col gap-2 w-full">
-                <div id="embed-list-tools-container" className="flex flex-col gap-2 w-full max-w-md">
+                <div
+                  data-testid="embed-list-tools-container"
+                  id="embed-list-tools-container"
+                  className="flex flex-col gap-2 w-full max-w-md"
+                >
                   {!hasTools ? (
-                    <div id="embed-list-no-tools-dropdown" className="dropdown dropdown-end w-full">
+                    <div
+                      data-testid="embed-list-no-tools-dropdown"
+                      id="embed-list-no-tools-dropdown"
+                      className="dropdown dropdown-end w-full"
+                    >
                       <div className="border-2 border-base-200 border-dashed p-4 text-center">
                         <p className="text-sm text-base-content/70">No tools found.</p>
                         <button
+                          data-testid="embed-list-add-tool-button-empty"
                           id="embed-list-add-tool-button"
                           tabIndex={0}
                           className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -366,6 +375,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
 
                         return (
                           <div
+                            data-testid={`embed-list-prebuilt-tool-${item?.value}`}
                             key={item?.value}
                             id={`embed-list-prebuilt-tool-${item?.value}`}
                             className={`group flex w-full items-center border border-base-200 cursor-pointer bg-base-100 relative ${hasIssue ? "border-error" : ""} transition-colors duration-200 min-h-[44px]`}
@@ -392,6 +402,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
                               {(item?.value === "web_search" || item?.value === "Gtwy_Web_Search") && (
                                 <button
+                                  data-testid={`embed-list-prebuilt-tool-config-button-${item?.value}`}
                                   id={`embed-list-prebuilt-tool-config-button-${item?.value}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -405,6 +416,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                                 </button>
                               )}
                               <button
+                                data-testid={`embed-list-prebuilt-tool-delete-button-${item?.value}`}
                                 id={`embed-list-prebuilt-tool-delete-button-${item?.value}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -422,9 +434,14 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                       })}
 
                       {hasTools && (
-                        <div id="embed-list-add-tool-dropdown" className="dropdown dropdown-end w-full max-w-md">
+                        <div
+                          data-testid="embed-list-add-tool-dropdown"
+                          id="embed-list-add-tool-dropdown"
+                          className="dropdown dropdown-end w-full max-w-md"
+                        >
                           <div className="border-2 border-base-200 border-dashed text-center">
                             <button
+                              data-testid="embed-list-add-tool-button"
                               id="embed-list-add-tool-button"
                               tabIndex={0}
                               className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
