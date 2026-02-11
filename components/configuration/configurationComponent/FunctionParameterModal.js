@@ -1415,7 +1415,7 @@ function FunctionParameterModal({
                 disabled={isReadOnly}
                 type="input"
                 value={objectFieldValue}
-                className="textarea bg-white dark:bg-black/15 textarea-bordered border border-base-300 w-full min-h-96 resize-y"
+                className="textarea bg-base-100 textarea-bordered border border-base-300 w-full min-h-96 resize-y"
                 onChange={(e) => setObjectFieldValue(e.target.value)}
                 onBlur={handleTextFieldChange}
                 placeholder="Enter valid JSON object here..."
