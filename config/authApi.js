@@ -23,7 +23,7 @@ export const logoutUserFromMsg91 = async (headers) => {
 export const logoutUser = async (token) => {
   try {
     const response = await axios.post(
-      `${URL}/api/auth/logout`, 
+      `${URL}/api/user/logout`, 
       {}, 
       {
         headers: { Authorization: token }
