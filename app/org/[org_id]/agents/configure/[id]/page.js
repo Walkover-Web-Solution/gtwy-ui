@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, use, useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { setIsFocusReducer, setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
 import { updateTitle, generateRandomID, extractPromptVariables } from "@/utils/utility";
+import { extractVariablesFromPrompt } from "@/utils/promptUtils";
 import { useRouter } from "next/navigation";
 import Chatbot from "@/components/configuration/Chatbot";
 import AgentSetupGuide from "@/components/AgentSetupGuide";
@@ -331,10 +332,26 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }, []);
   const savePrompt = useCallback(
     (newPrompt) => {
-      const newValue = (newPrompt || "").trim();
-      const promptVariables = extractPromptVariables(newValue);
-      const variablesState = {};
+      // Handle both string and object formats
+      let newValue;
+      let promptVariables = [];
 
+      if (typeof newPrompt === "object" && newPrompt !== null) {
+        // Structured prompt format
+        newValue = newPrompt;
+        // Extract variables from all fields
+        promptVariables = extractVariablesFromPrompt(newPrompt);
+      } else if (typeof newPrompt === "string") {
+        // Legacy string format
+        newValue = newPrompt.trim();
+        promptVariables = extractPromptVariables(newValue);
+      } else {
+        // Fallback for undefined/null/other types
+        newValue = "";
+        promptVariables = [];
+      }
+
+      const variablesState = {};
       promptVariables.forEach((varName) => {
         variablesState[varName] = {
           status: "required",
@@ -342,7 +359,22 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
         };
       });
 
-      if (newValue !== reduxPrompt.trim()) {
+      // Compare properly based on format
+      let hasChanges = false;
+      if (typeof reduxPrompt === "string" && typeof newValue === "string") {
+        hasChanges = newValue !== reduxPrompt.trim();
+      } else if (
+        typeof reduxPrompt === "object" &&
+        typeof newValue === "object" &&
+        reduxPrompt !== null &&
+        newValue !== null
+      ) {
+        hasChanges = JSON.stringify(newValue) !== JSON.stringify(reduxPrompt);
+      } else {
+        hasChanges = true; // Format changed
+      }
+
+      if (hasChanges) {
         dispatch(
           updateBridgeVersionAction({
             versionId: resolvedSearchParams?.version,

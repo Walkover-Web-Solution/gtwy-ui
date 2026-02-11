@@ -213,7 +213,30 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     if (!prompt) {
       return new Set();
     }
-    const matches = prompt.match(/\{\{([^}]+)\}\}/g);
+
+    // Handle both string and object formats
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object") {
+      // Extract text from structured prompt object
+      if (prompt.role) promptText += prompt.role + " ";
+      if (prompt.goal) promptText += prompt.goal + " ";
+      if (prompt.instruction) promptText += prompt.instruction + " ";
+      if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+      // Extract from embedFields if present
+      if (Array.isArray(prompt.embedFields)) {
+        prompt.embedFields.forEach((field) => {
+          if (field.value) promptText += field.value + " ";
+        });
+      }
+    }
+
+    if (!promptText || typeof promptText !== "string") {
+      return new Set();
+    }
+
+    const matches = promptText.match(/\{\{([^}]+)\}\}/g);
     if (!matches) {
       return new Set();
     }
@@ -945,8 +968,28 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   useEffect(() => {
     // sync prompt variables into groups
     if (!prompt || !variableGroups.length) return;
+
+    // Handle both string and object formats
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object") {
+      // Extract text from structured prompt object
+      if (prompt.role) promptText += prompt.role + " ";
+      if (prompt.goal) promptText += prompt.goal + " ";
+      if (prompt.instruction) promptText += prompt.instruction + " ";
+      // Extract from embedFields if present
+      if (Array.isArray(prompt.embedFields)) {
+        prompt.embedFields.forEach((field) => {
+          if (field.value) promptText += field.value + " ";
+        });
+      }
+    }
+
+    if (!promptText) return;
+
     const regex = /{{(.*?)}}/g;
-    const matches = [...prompt.matchAll(regex)];
+    const matches = [...promptText.matchAll(regex)];
     const promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
     if (!promptVariables.length) return;
 

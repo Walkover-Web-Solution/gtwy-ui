@@ -6,8 +6,14 @@ import PromptSummaryModal from "../../modals/PromptSummaryModal";
 import Diff_Modal from "@/components/modals/DiffModal";
 import PromptHeader from "./PromptHeader";
 import PromptTextarea from "./PromptTextarea";
+import StructuredPromptInput from "./StructuredPromptInput";
+import EmbedPromptFields from "./EmbedPromptFields";
 import DefaultVariablesSection from "./DefaultVariablesSection";
-import { useCustomSelector } from "@/customHooks/customSelector";
+import {
+  normalizePromptToStructured,
+  extractVariablesFromPrompt,
+  convertPromptToAdvancedView,
+} from "@/utils/promptUtils";
 
 // Ultra-smooth InputConfigComponent with ref-based approach
 const InputConfigComponent = memo(
@@ -28,7 +34,6 @@ const InputConfigComponent = memo(
     isEditor,
     isEmbedUser,
   }) => {
-    const { showVariables } = useCustomSelector((state) => state.appInfoReducer.embedUserDetails);
     // Optimized Redux selector with memoization and shallow comparison
     const { prompt: reduxPrompt, oldContent } = usePromptSelector(params, searchParams);
     // Refs for zero-render typing experience
@@ -39,57 +44,111 @@ const InputConfigComponent = memo(
 
     // Focus state for textarea
     const [isTextareaFocused, setIsTextareaFocused] = useState(false);
+
+    // View mode: 'simple' (structured fields) or 'advanced' (single textarea)
+    const [viewMode, setViewMode] = useState("simple");
+
     // Update refs when redux prompt changes (external updates)
     if (oldContentRef.current !== reduxPrompt) {
       oldContentRef.current = oldContent || reduxPrompt;
       hasUnsavedChangesRef.current = false;
     }
+
+    // **FIX: Calculate the current prompt value to use**
+    // This gives us the live editing value for controlled inputs
+    const currentPromptValue = useMemo(() => {
+      // If there's newContent in state (user is editing), use that
+      if (promptState.newContent) {
+        return promptState.newContent;
+      }
+      // Otherwise use the redux value
+      return reduxPrompt;
+    }, [promptState.newContent, reduxPrompt]);
+
     // Zero-render prompt change handler using refs only
     const handlePromptChange = useCallback(
       (value) => {
-        // Update refs immediately - no re-render
-        const hasChanges = value.trim() !== reduxPrompt.trim();
-        hasUnsavedChangesRef.current = hasChanges;
-        // Update save button state only when needed
-        if (hasChanges !== promptState.hasUnsavedChanges) {
-          setPromptState((prev) => ({
-            ...prev,
-            hasUnsavedChanges: hasChanges,
-          }));
+        // Handle both string and object formats
+        let hasChanges = false;
+
+        if (isEmbedUser) {
+          // For embed users: compare based on actual format
+          if (typeof reduxPrompt === "string" && typeof value === "string") {
+            hasChanges = value.trim() !== reduxPrompt.trim();
+          } else if (typeof reduxPrompt === "object" && typeof value === "object") {
+            hasChanges = JSON.stringify(value) !== JSON.stringify(reduxPrompt);
+          } else {
+            hasChanges = true; // Format changed
+          }
+        } else {
+          // For main users: structured format
+          if (typeof reduxPrompt === "string") {
+            hasChanges = JSON.stringify(value) !== JSON.stringify(normalizePromptToStructured(reduxPrompt));
+          } else if (typeof reduxPrompt === "object") {
+            hasChanges = JSON.stringify(value) !== JSON.stringify(reduxPrompt);
+          } else {
+            hasChanges = JSON.stringify(value) !== JSON.stringify({ role: "", goal: "", instruction: "" });
+          }
         }
 
-        // Debounced updates for diff modal only
+        hasUnsavedChangesRef.current = hasChanges;
+
+        // **FIX: Update newContent immediately for controlled inputs**
+        setPromptState((prev) => ({
+          ...prev,
+          newContent: value,
+          hasUnsavedChanges: hasChanges,
+        }));
+
+        // Clear any existing debounce timer
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
         }
-
-        debounceTimerRef.current = setTimeout(() => {
-          setPromptState((prev) => ({
-            ...prev,
-            newContent: value,
-          }));
-        }, 500); // Longer debounce since it's just for diff modal
       },
-      [reduxPrompt, promptState.hasUnsavedChanges, setPromptState]
+      [reduxPrompt, setPromptState, isEmbedUser]
     );
 
     // Optimized save handler using current editor text (contentEditable div)
-    const handleSavePrompt = useCallback(() => {
-      const currentValue = (textareaRef.current?.value || "").trim();
-      savePrompt(currentValue);
-      oldContentRef.current = currentValue;
-      hasUnsavedChangesRef.current = false;
+    const handleSavePrompt = useCallback(
+      (val) => {
+        let currentValue = val;
 
-      // Update state only for UI elements that need it
-      setPromptState((prev) => ({
-        ...prev,
-        prompt: currentValue,
-        newContent: "",
-        hasUnsavedChanges: false,
-      }));
-      // Don't close Prompt Helper when saving
-      // handleCloseTextAreaFocus();
-    }, [savePrompt, setPromptState]);
+        // If val is an event or undefined, calculate from state/refs
+        const isEventLike = typeof val === "object" && val !== null && "nativeEvent" in val;
+        if (val == null || isEventLike) {
+          if (!isEmbedUser) {
+            // For main users, get structured prompt from state
+            currentValue = promptState.newContent || normalizePromptToStructured(reduxPrompt);
+          } else {
+            // For embed users: check format
+            if (typeof reduxPrompt === "string") {
+              // Default prompt mode: get string from textarea
+              currentValue = (textareaRef.current?.value || "").trim();
+            } else if (typeof reduxPrompt === "object" && reduxPrompt !== null) {
+              // Custom prompt mode: get object from state
+              currentValue = promptState.newContent || reduxPrompt;
+            } else {
+              // Fallback
+              currentValue = (textareaRef.current?.value || "").trim();
+            }
+          }
+        }
+        savePrompt(currentValue);
+        oldContentRef.current = currentValue;
+        hasUnsavedChangesRef.current = false;
+
+        // Update state only for UI elements that need it
+        setPromptState((prev) => ({
+          ...prev,
+          prompt: currentValue,
+          newContent: "", // Clear newContent after save
+          hasUnsavedChanges: false,
+        }));
+        // Don't close Prompt Helper when saving
+        // handleCloseTextAreaFocus();
+      },
+      [savePrompt, setPromptState, isEmbedUser, reduxPrompt, promptState.newContent]
+    );
 
     // Memoized handlers to prevent unnecessary re-renders
     const handleOpenDiffModal = useCallback(() => {
@@ -135,7 +194,16 @@ const InputConfigComponent = memo(
     // Determine if diff button should be shown (hide when old and new content are the same)
     const showDiffButton = useMemo(() => {
       const currentValue = textareaRef.current?.value || reduxPrompt;
-      return oldContent.trim() !== currentValue.trim();
+
+      // Convert both values to strings for comparison
+      const oldStr = typeof oldContent === 'object'
+        ? JSON.stringify(oldContent)
+        : (oldContent || '');
+      const currentStr = typeof currentValue === 'object'
+        ? JSON.stringify(currentValue)
+        : (currentValue || '');
+
+      return oldStr.trim() !== currentStr.trim();
     }, [oldContent, reduxPrompt]);
 
     // Early return for unsupported service types
@@ -171,31 +239,197 @@ const InputConfigComponent = memo(
           handleCloseTextAreaFocus={handleCloseTextAreaFocus}
           isPublished={isPublished}
           isEditor={isEditor}
-          prompt={reduxPrompt}
+          prompt={currentPromptValue}
           setIsTextareaFocused={setIsTextareaFocused}
           isFocused={isTextareaFocused}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           showDiffButton={showDiffButton}
         />
 
         <div className="form-control relative">
-          <PromptTextarea
-            textareaRef={textareaRef}
-            initialValue={reduxPrompt}
-            onChange={handlePromptChange}
-            isPromptHelperOpen={uiState.isPromptHelperOpen}
-            onKeyDown={handleKeyDown}
-            isPublished={isPublished}
-            isEditor={isEditor}
-            onSave={handleSavePrompt}
-            onFocus={handleTextareaFocus}
-            onTextAreaBlur={handleTextareaBlur}
-          />
-          {((isEmbedUser && showVariables) || !isEmbedUser) && (
-            <DefaultVariablesSection isPublished={isPublished} prompt={reduxPrompt} isEditor={isEditor} />
-          )}
+          {(() => {
+            // Extract embed fields for embed users
+            let hiddenFields = [];
+            let allEmbedFieldNames = [];
+
+            if (isEmbedUser && typeof currentPromptValue === "object" && currentPromptValue !== null) {
+              if (Array.isArray(currentPromptValue.embedFields)) {
+                // Get all embed field names to filter them out from custom variables
+                allEmbedFieldNames = currentPromptValue.embedFields.map((field) => field.name);
+                // Get only hidden fields to display separately
+                hiddenFields = currentPromptValue.embedFields.filter((field) => field.hidden === true);
+              }
+            }
+
+            // Extract variables from prompt and filter out embed fields
+            const allVariables = extractVariablesFromPrompt(currentPromptValue);
+            const customVariables = allVariables.filter((varName) => !allEmbedFieldNames.includes(varName));
+
+            // Always show variables section in all cases
+            const variablesSection = (
+              <DefaultVariablesSection
+                isPublished={isPublished}
+                prompt={currentPromptValue}
+                isEditor={isEditor}
+                customVariables={customVariables}
+                hiddenFields={hiddenFields}
+                isEmbedUser={isEmbedUser}
+              />
+            );
+
+            // ADVANCED VIEW: Show single textarea with compiled prompt
+            if (viewMode === "advanced") {
+              const advancedPromptValue = convertPromptToAdvancedView(currentPromptValue, isEmbedUser);
+              return (
+                <>
+                  <PromptTextarea
+                    textareaRef={textareaRef}
+                    initialValue={advancedPromptValue}
+                    onChange={handlePromptChange}
+                    isPromptHelperOpen={uiState.isPromptHelperOpen}
+                    onKeyDown={handleKeyDown}
+                    isPublished={isPublished}
+                    isEditor={isEditor}
+                    onSave={handleSavePrompt}
+                    onFocus={handleTextareaFocus}
+                    onTextAreaBlur={handleTextareaBlur}
+                    variablesSection={variablesSection}
+                  />
+                  <div className="alert alert-info mt-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      className="stroke-current shrink-0 w-6 h-6"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                    <span className="text-xs">
+                      Advanced view: Showing compiled prompt with values. Switch to Simple mode to edit individual
+                      fields.
+                    </span>
+                  </div>
+                </>
+              );
+            }
+
+            // SIMPLE VIEW: Show structured fields
+            if (!isEmbedUser) {
+              // Main User: Structured Prompt Input (Role, Goal, Instruction)
+              return (
+                <StructuredPromptInput
+                  prompt={currentPromptValue}
+                  onChange={handlePromptChange}
+                  onSave={handleSavePrompt}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                  onFocus={handleTextareaFocus}
+                  onBlur={handleTextareaBlur}
+                  isPromptHelperOpen={uiState.isPromptHelperOpen}
+                  variablesSection={variablesSection}
+                />
+              );
+            }
+
+            // Embed User
+            const promptToUse = currentPromptValue;
+
+            // If prompt is a string, show single textarea (useDefaultPrompt = true)
+            if (typeof promptToUse === "string") {
+              return (
+                <PromptTextarea
+                  textareaRef={textareaRef}
+                  initialValue={promptToUse}
+                  onChange={handlePromptChange}
+                  isPromptHelperOpen={uiState.isPromptHelperOpen}
+                  onKeyDown={handleKeyDown}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                  onSave={handleSavePrompt}
+                  onFocus={handleTextareaFocus}
+                  onTextAreaBlur={handleTextareaBlur}
+                  variablesSection={variablesSection}
+                />
+              );
+            }
+
+            // If prompt is an object, check if it's custom prompt mode
+            if (typeof promptToUse === "object" && promptToUse !== null) {
+              // If it has customPrompt and useDefaultPrompt is false, show fields
+              if (promptToUse.customPrompt && promptToUse.useDefaultPrompt === false) {
+                return (
+                  <EmbedPromptFields
+                    prompt={promptToUse}
+                    onChange={handlePromptChange}
+                    onSave={handleSavePrompt}
+                    isPublished={isPublished}
+                    isEditor={isEditor}
+                    onFocus={handleTextareaFocus}
+                    onBlur={handleTextareaBlur}
+                    variablesSection={variablesSection}
+                  />
+                );
+              }
+
+              // If it's structured format (role/goal/instruction), show structured input
+              if (
+                promptToUse.role !== undefined ||
+                promptToUse.goal !== undefined ||
+                promptToUse.instruction !== undefined
+              ) {
+                return (
+                  <StructuredPromptInput
+                    prompt={promptToUse}
+                    onChange={handlePromptChange}
+                    onSave={handleSavePrompt}
+                    isPublished={isPublished}
+                    isEditor={isEditor}
+                    onFocus={handleTextareaFocus}
+                    onBlur={handleTextareaBlur}
+                    isPromptHelperOpen={uiState.isPromptHelperOpen}
+                    variablesSection={variablesSection}
+                  />
+                );
+              }
+            }
+
+            // Fallback: show single textarea
+            return (
+              <PromptTextarea
+                textareaRef={textareaRef}
+                initialValue={typeof promptToUse === "string" ? promptToUse : ""}
+                onChange={handlePromptChange}
+                isPromptHelperOpen={uiState.isPromptHelperOpen}
+                onKeyDown={handleKeyDown}
+                isPublished={isPublished}
+                isEditor={isEditor}
+                onSave={handleSavePrompt}
+                onFocus={handleTextareaFocus}
+                onTextAreaBlur={handleTextareaBlur}
+                variablesSection={variablesSection}
+              />
+            );
+          })()}
         </div>
 
-        <Diff_Modal oldContent={oldContent} newContent={textareaRef.current?.value || reduxPrompt} />
+        <Diff_Modal
+          oldContent={
+            typeof oldContentRef.current === "object"
+              ? JSON.stringify(oldContentRef.current, null, 2)
+              : oldContentRef.current
+          }
+          newContent={
+            !isEmbedUser
+              ? JSON.stringify(promptState.newContent || normalizePromptToStructured(reduxPrompt), null, 2)
+              : textareaRef.current?.value || currentPromptValue
+          }
+        />
         <PromptSummaryModal modalType={MODAL_TYPE.PROMPT_SUMMARY} params={params} searchParams={searchParams} />
       </div>
     );

@@ -63,7 +63,27 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
   };
 
   const replaceVariablesInPrompt = (prompt) => {
-    return prompt.replace(/{{(.*?)}}/g, (_, variableName) => {
+    // Handle both string and object formats
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object") {
+      // Extract text from structured prompt object
+      if (prompt.role) promptText += prompt.role + " ";
+      if (prompt.goal) promptText += prompt.goal + " ";
+      if (prompt.instruction) promptText += prompt.instruction + " ";
+      if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+      // Extract from embedFields if present
+      if (Array.isArray(prompt.embedFields)) {
+        prompt.embedFields.forEach((field) => {
+          if (field.value) promptText += field.value + " ";
+        });
+      }
+    }
+
+    if (!promptText) return "";
+
+    return promptText.replace(/{{(.*?)}}/g, (_, variableName) => {
       const value = variablesKeyValue[variableName];
       if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
         return value;

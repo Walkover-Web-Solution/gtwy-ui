@@ -45,7 +45,20 @@ const RecommendedModal = ({
     setIsLoadingRecommendations(true);
 
     try {
-      const currentPrompt = promptTextAreaRef.current?.querySelector("textarea")?.value?.trim() || prompt.trim();
+      // Convert prompt to string safely (handles both string and object formats)
+      const promptText =
+        typeof prompt === "string"
+          ? prompt
+          : prompt?.customPrompt ||
+            [
+              prompt?.role ? `Role: ${prompt.role}` : null,
+              prompt?.goal ? `Goal: ${prompt.goal}` : null,
+              prompt?.instruction ? `Instructions: ${prompt.instruction}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n\n") ||
+            "";
+      const currentPrompt = promptTextAreaRef.current?.querySelector("textarea")?.value?.trim() || promptText.trim();
       if (((bridgeApiKey || deafultApiKeys) && currentPrompt !== "") || service === "ai_ml") {
         const response = await modelSuggestionApi({ versionId: searchParams?.version });
         if (response?.success) {
