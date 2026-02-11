@@ -30,7 +30,7 @@ const NotesPanel = ({ isVisible, params, isEmbedUser, onClose, showCloseButton =
   if (!isVisible || isEmbedUser) return null;
 
   return (
-    <div id="notes-panel-container" className="h-full bg-base-100 flex flex-col">
+    <div data-testid="notes-panel-container" id="notes-panel-container" className="h-full bg-base-100 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-base-300 bg-base-50">
         <div className="flex items-center gap-2">
@@ -39,6 +39,7 @@ const NotesPanel = ({ isVisible, params, isEmbedUser, onClose, showCloseButton =
 
         {showCloseButton && onClose && (
           <button
+            data-testid="notes-panel-close-button"
             id="notes-panel-close-button"
             onClick={onClose}
             className="btn btn-xs btn-error"
@@ -51,7 +52,7 @@ const NotesPanel = ({ isVisible, params, isEmbedUser, onClose, showCloseButton =
 
       {/* Notes Content */}
       <div className="flex-1 pl-2 pt-2 overflow-hidden">
-        <div id="notes-embed-main" className="w-full h-full">
+        <div data-testid="notes-embed-main" id="notes-embed-main" className="w-full h-full">
           {/* This will be populated by the docstar script */}
         </div>
       </div>

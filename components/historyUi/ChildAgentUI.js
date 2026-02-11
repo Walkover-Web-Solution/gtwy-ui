@@ -28,6 +28,7 @@ export function ChildAgentUI({ name, onToolClick, tools = [] }) {
             {directTools.map((tool, index) => (
               <div
                 key={`${tool?.name || "tool"}-${index}`}
+                data-testid={`child-agent-tool-${index}`}
                 className="flex items-center justify-between border border-base-300 hover:border-primary p-2 hover:bg-primary/10 cursor-pointer"
                 onClick={() => handleToolClick(tool)}
               >

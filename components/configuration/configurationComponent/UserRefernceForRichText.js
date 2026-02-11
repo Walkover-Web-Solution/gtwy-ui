@@ -66,7 +66,7 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
   }, [user_reference]);
 
   return (
-    <div id="user-reference-container" className="bg-base-100 mt-4">
+    <div data-testid="user-reference-container" id="user-reference-container" className="bg-base-100 mt-4">
       {/* Header Section */}
       <div className="p-2">
         <div className="flex items-center gap-4">
@@ -83,6 +83,7 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
           </div>
 
           <input
+            data-testid="rich-text-toggle"
             id="rich-text-toggle"
             type="checkbox"
             checked={isRichText}
@@ -95,6 +96,7 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
         {/* Status and Action Row */}
         {isRichText && (
           <div
+            data-testid="user-reference-status-section"
             id="user-reference-status-section"
             className="mt-3 p-3 bg-gradient-to-r from-base-200/40 to-base-300/20 rounded-lg border border-base-300/50"
           >
@@ -107,6 +109,7 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
               </div>
 
               <button
+                data-testid="user-reference-edit-button"
                 id="user-reference-edit-button"
                 onClick={toggleExpansion}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-base-content bg-base-200 hover:bg-base-300 rounded-lg transition-all duration-200 border border-base-300 hover:shadow-sm"
@@ -123,6 +126,7 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
       {/* Expandable Context Input */}
       {showInput && isRichText && (
         <div
+          data-testid="user-reference-input-section"
           id="user-reference-input-section"
           className="border-t border-base-300 bg-gradient-to-b from-base-200/10 to-base-200/30"
         >
@@ -135,6 +139,7 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
               </p>
             </div>
             <textarea
+              data-testid="user-reference-textarea"
               id="user-reference-textarea"
               className="textarea bg-white dark:bg-black/15 textarea-bordered w-full min-h-[7rem] resize-y border-base-300 focus:border-base-content/30 focus:outline-none transition-colors text-sm leading-relaxed placeholder:text-base-content/40"
               defaultValue={userReference}

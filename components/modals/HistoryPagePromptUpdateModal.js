@@ -48,6 +48,7 @@ const HistoryPagePromptUpdateModal = ({
           <h3 className="font-bold text-lg mb-4">Update Prompt</h3>
           {handleRegenerate && (
             <button
+              data-testid="history-prompt-regenerate-button"
               id="history-prompt-regenerate-button"
               className="btn btn-xs btn-primary ml-2 gap-2"
               onClick={handleRegenerate}
@@ -73,6 +74,7 @@ const HistoryPagePromptUpdateModal = ({
               <span className="label-text">Previous Prompt</span>
             </div>
             <textarea
+              data-testid="history-prompt-previous-textarea"
               id="history-prompt-previous-textarea"
               className="textarea bg-white dark:bg-black/15 textarea-bordered border border-base-300 w-full min-h-96 focus:border-primary caret-base-content p-2"
               key={previousPrompt}
@@ -85,6 +87,7 @@ const HistoryPagePromptUpdateModal = ({
               <span className="label-text">Updated Prompt</span>
             </div>
             <textarea
+              data-testid="history-prompt-updated-textarea"
               id="history-prompt-updated-textarea"
               className="textarea bg-white dark:bg-black/15 textarea-bordered border border-base-300 w-full min-h-96 focus:border-primary caret-base-content p-2"
               key={promotToUpdate}
@@ -95,11 +98,21 @@ const HistoryPagePromptUpdateModal = ({
         </div>
         <div className="modal-action">
           <form method="dialog">
-            <button id="history-prompt-cancel-button" className="btn btn-sm" onClick={handleClose}>
+            <button
+              data-testid="history-prompt-cancel-button"
+              id="history-prompt-cancel-button"
+              className="btn btn-sm"
+              onClick={handleClose}
+            >
               Cancel
             </button>
 
-            <button id="history-prompt-save-button" className="btn btn-sm btn-primary ml-2" onClick={handleSave}>
+            <button
+              data-testid="history-prompt-save-button"
+              id="history-prompt-save-button"
+              className="btn btn-sm btn-primary ml-2"
+              onClick={handleSave}
+            >
               Save
             </button>
           </form>

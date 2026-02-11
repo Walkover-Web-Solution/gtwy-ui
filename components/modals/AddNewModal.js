@@ -594,6 +594,7 @@ export default function AddNewModelModal() {
           <div className="w-full mx-auto">
             <div className="relative text-center">
               <button
+                data-testid="add-model-reset-button"
                 id="add-model-reset-button"
                 onClick={resetFormToDefault}
                 className="btn btn-ghost absolute right-0 top-1/3 tooltip tooltip-left"
@@ -618,6 +619,7 @@ export default function AddNewModelModal() {
                         <span className="label-text">Service</span>
                       </label>
                       <select
+                        data-testid="add-model-service-select"
                         id="add-model-service-select"
                         value={config.service}
                         onChange={(e) => handleTopLevelChange("service", e.target.value)}
@@ -639,6 +641,7 @@ export default function AddNewModelModal() {
                         </span>
                       </label>
                       <input
+                        data-testid="add-model-name-input"
                         id="add-model-name-input"
                         type="text"
                         value={config.model_name}
@@ -669,6 +672,7 @@ export default function AddNewModelModal() {
                         </span>
                       </label>
                       <input
+                        data-testid="add-model-display-name-input"
                         id="add-model-display-name-input"
                         type="text"
                         value={config.display_name}
@@ -687,6 +691,7 @@ export default function AddNewModelModal() {
                       <div className="form-control p-4 rounded-lg border border-base-300">
                         <label className="label cursor-pointer justify-start gap-4">
                           <input
+                            data-testid="add-model-vision-checkbox"
                             id="add-model-vision-checkbox"
                             type="checkbox"
                             checked={!!config?.validationConfig?.vision}
@@ -699,6 +704,7 @@ export default function AddNewModelModal() {
                       <div className="form-control p-4 rounded-lg border border-base-300">
                         <label className="label cursor-pointer justify-start gap-4">
                           <input
+                            data-testid="add-model-tools-checkbox"
                             id="add-model-tools-checkbox"
                             type="checkbox"
                             checked={!!config.validationConfig?.tools}
@@ -711,6 +717,7 @@ export default function AddNewModelModal() {
                       <div className="form-control p-4 rounded-lg border border-base-300">
                         <label className="label cursor-pointer justify-start gap-4">
                           <input
+                            data-testid="add-model-system-prompt-checkbox"
                             id="add-model-system-prompt-checkbox"
                             type="checkbox"
                             checked={!!config.validationConfig?.system_prompt}
@@ -725,6 +732,7 @@ export default function AddNewModelModal() {
                           <span className="label-text font-medium">Model Type</span>
                         </label>
                         <select
+                          data-testid="add-model-type-select"
                           id="add-model-type-select"
                           value={config.validationConfig?.type}
                           onChange={(e) => handleValidationChange("type", e.target.value)}
@@ -750,6 +758,7 @@ export default function AddNewModelModal() {
                               </span>
                             </label>
                             <input
+                              data-testid="add-model-input-cost-input"
                               id="add-model-input-cost-input"
                               type="number"
                               value={config.validationConfig.specification.input_cost}
@@ -772,6 +781,7 @@ export default function AddNewModelModal() {
                               </span>
                             </label>
                             <input
+                              data-testid="add-model-output-cost-input"
                               id="add-model-output-cost-input"
                               type="number"
                               value={config.validationConfig.specification.output_cost}

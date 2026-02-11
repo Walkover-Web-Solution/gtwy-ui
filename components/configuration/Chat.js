@@ -346,6 +346,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               <span className="text-sm font-medium">YouTube Video</span>
             </div>
             <a
+              data-testid="chat-youtube-link"
               id="chat-youtube-link"
               href={message.youtube_url}
               target="_blank"
@@ -362,6 +363,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
             {message.files.map((url, fileIndex) =>
               typeof url === "string" && url ? (
                 <a
+                  data-testid={`chat-file-link-${fileIndex}`}
                   id={`chat-file-link-${fileIndex}`}
                   key={fileIndex}
                   href={url}
@@ -383,9 +385,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   };
 
   return (
-    <div id="chat-container" className="px-4 pt-4 bg-base-300">
-      <div id="chat-header" className="w-full flex justify-between items-center px-2">
+    <div data-testid="chat-container" id="chat-container" className="px-4 pt-4 bg-base-300">
+      <div data-testid="chat-header" id="chat-header" className="w-full flex justify-between items-center px-2">
         <button
+          data-testid="chat-toggle-testcases-button"
           id="chat-toggle-testcases-button"
           className="btn btn-sm btn-square"
           onClick={() => setShowTestCases((prev) => !prev)}
@@ -403,6 +406,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           {messages?.length > 0 && (
             <div className="flex items-center gap-2 justify-center">
               <select
+                data-testid="chat-strategy-select"
                 id="chat-strategy-select"
                 className="select select-sm select-bordered"
                 value={selectedStrategy}
@@ -412,7 +416,12 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                 <option value="ai">AI</option>
                 <option value="exact">Exact</option>
               </select>
-              <button id="chat-add-testcase-button" className="btn btn-sm" onClick={handleResetChat}>
+              <button
+                data-testid="chat-add-testcase-button"
+                id="chat-add-testcase-button"
+                className="btn btn-sm"
+                onClick={handleResetChat}
+              >
                 {" "}
                 <PlusIcon size={14} />
                 Add Test Case
@@ -422,7 +431,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           {/* Test Cases Toggle Button */}
         </div>
       </div>
-      <div id="chat-content-wrapper" className="flex mt-4 h-[86vh] overflow-hidden relative">
+      <div
+        data-testid="chat-content-wrapper"
+        id="chat-content-wrapper"
+        className="flex mt-4 h-[86vh] overflow-hidden relative"
+      >
         {/* Overlay Test Cases Sidebar */}
         {showTestCases && (
           <div id="chat-testcase-sidebar-overlay" className="absolute inset-0 z-low flex">
@@ -431,6 +444,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
             {/* Sidebar */}
             <div
+              data-testid="chat-testcase-sidebar"
               id="chat-testcase-sidebar"
               className="relative w-[70%] h-full border border-base-content/30 rounded-md bg-base-100 shadow-lg z-30 animate-slideIn"
             >
@@ -440,10 +454,15 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
         )}
 
         {/* Chat Section */}
-        <div id="chat-messages-section" className="w-full flex-grow min-w-0 relative">
+        <div
+          data-testid="chat-messages-section"
+          id="chat-messages-section"
+          className="w-full flex-grow min-w-0 relative"
+        >
           {/* Loading overlay for testcase loading */}
           {isLoadingTestCase && (
             <div
+              data-testid="chat-loading-overlay"
               id="chat-loading-overlay"
               className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-md z-50"
             >
@@ -456,6 +475,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
           <div className="sm:p-2 justify-between flex flex-col h-full min-h-0 w-full z-low">
             <div
+              data-testid="chat-messages-container"
               id="chat-messages-container"
               ref={messagesContainerRef}
               className="flex flex-col w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-1 mb-4 pr-2"
@@ -463,6 +483,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               {messages.map((message, index) => {
                 return (
                   <div
+                    data-testid={`chat-message-${index}`}
                     id={`chat-message-${index}`}
                     key={index}
                     className={`chat show-on-hover ${
@@ -569,6 +590,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                         >
                           {message?.sender === "user" && message?.content && (
                             <button
+                              data-testid={`chat-run-test-button-${index}`}
                               id={`chat-run-test-button-${index}`}
                               className="btn btn-sm btn-outline hover:btn-primary see-on-hover flex mt-2"
                               onClick={() => handleRunTestCase(index)}
@@ -673,6 +695,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                               {editingMessage === message.id ? (
                                 <div className="w-full">
                                   <textarea
+                                    data-testid="chat-edit-textarea"
                                     id="chat-edit-textarea"
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
@@ -681,6 +704,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   />
                                   <div className="flex gap-2 mt-2">
                                     <button
+                                      data-testid="chat-save-edit-button"
                                       id="chat-save-edit-button"
                                       onClick={() => handleSaveEdit(message.id)}
                                       className="btn btn-sm btn-success"
@@ -689,6 +713,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       Save
                                     </button>
                                     <button
+                                      data-testid="chat-cancel-edit-button"
                                       id="chat-cancel-edit-button"
                                       onClick={handleCancelEdit}
                                       className="btn btn-sm btn-error"
@@ -704,6 +729,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   {/* Edit Button for Assistant Messages */}
                                   {message.sender === "assistant" && !message.isLoading && (
                                     <button
+                                      data-testid={`chat-edit-message-button-${message.id}`}
                                       id={`chat-edit-message-button-${message.id}`}
                                       onClick={() => handleEditMessage(message.id, message.content)}
                                       className="absolute -top-2 -right-5 opacity-0 group-hover:opacity-100 transition-opacity btn btn-sm btn-circle btn-ghost"
@@ -755,6 +781,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                           {/* Absolute Toggle Button for Test Case Results */}
                           {message?.testCaseResult && (
                             <button
+                              data-testid={`chat-toggle-result-button-${message.id}`}
                               id={`chat-toggle-result-button-${message.id}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -796,7 +823,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               })}
             </div>
 
-            <div id="chat-input-wrapper" className=" border-base-content/30 px-4 pt-4 mb-2 sm:mb-0 w-full">
+            <div
+              data-testid="chat-input-wrapper"
+              id="chat-input-wrapper"
+              className=" border-base-content/30 px-4 pt-4 mb-2 sm:mb-0 w-full"
+            >
               <div className="relative flex flex-col gap-4 w-full">
                 <div className="flex flex-row gap-2">
                   <ChatTextInput

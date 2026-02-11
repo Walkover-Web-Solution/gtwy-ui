@@ -86,6 +86,7 @@ const InviteUserModal = () => {
                 <Mail size={16} className="text-base-content/40" />
               </div>
               <input
+                data-testid="invite-user-email-input"
                 id="invite-user-email-input"
                 type="email"
                 value={email}
@@ -102,6 +103,7 @@ const InviteUserModal = () => {
         {/* Footer */}
         <div className="flex justify-end gap-3 pt-4 border-t border-base-300">
           <button
+            data-testid="invite-user-cancel-button"
             id="invite-user-cancel-button"
             type="button"
             onClick={handleClose}
@@ -111,6 +113,7 @@ const InviteUserModal = () => {
             Cancel
           </button>
           <button
+            data-testid="invite-user-send-button"
             id="invite-user-send-button"
             type="submit"
             disabled={isInviting || !email.trim()}

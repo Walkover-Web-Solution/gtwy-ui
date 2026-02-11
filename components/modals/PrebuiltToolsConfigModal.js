@@ -229,6 +229,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
         {/* Header */}
         <div
           id="prebuilt-tools-config-modal-container"
+          data-testid="prebuilt-tools-config-modal-container"
           className="bg-base-100 mb-auto mt-auto rounded-lg shadow-2xl flex flex-col p-6 transition-all duration-300 ease-in-out animate-fadeIn"
         >
           <div className="flex items-center justify-between border-b border-base-300">
@@ -254,6 +255,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                 <div className="flex items-center gap-2">
                   <input
                     id="prebuilt-tools-config-domain-input"
+                    data-testid="prebuilt-tools-config-domain-input"
                     type="text"
                     name="domain"
                     value={newDomain}
@@ -267,6 +269,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                   />
                   <button
                     id="prebuilt-tools-config-add-domain-button"
+                    data-testid="prebuilt-tools-config-add-domain-button"
                     type="button"
                     onClick={handleAddDomain}
                     className="btn btn-primary btn-sm"
@@ -286,17 +289,27 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
 
               {/* Domain List */}
               {domains.length > 0 && (
-                <div id="prebuilt-tools-config-domains-list" className="space-y-2 mb-4">
+                <div
+                  id="prebuilt-tools-config-domains-list"
+                  data-testid="prebuilt-tools-config-domains-list"
+                  className="space-y-2 mb-4"
+                >
                   <label className="label !px-0">
                     <span className="label-text text-sm font-medium">Current Domains ({domains.length})</span>
                   </label>
                   {domains.map((domain, index) => (
-                    <div id={`prebuilt-tools-config-domain-item-${index}`} key={index} className="space-y-1">
+                    <div
+                      id={`prebuilt-tools-config-domain-item-${index}`}
+                      data-testid={`prebuilt-tools-config-domain-item-${index}`}
+                      key={index}
+                      className="space-y-1"
+                    >
                       <div className="group flex items-center gap-2 bg-base-200 rounded-lg p-3 border border-base-300 hover:bg-base-300 transition-colors duration-200">
                         <div className="flex-1">
                           {isEditing && editingIndex === index ? (
                             <input
                               id={`prebuilt-tools-config-edit-input-${index}`}
+                              data-testid={`prebuilt-tools-config-edit-input-${index}`}
                               type="text"
                               defaultValue={editingValueRef.current}
                               onChange={handleEditInputChange}
@@ -317,6 +330,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                             <>
                               <button
                                 id={`prebuilt-tools-config-save-edit-button-${index}`}
+                                data-testid={`prebuilt-tools-config-save-edit-button-${index}`}
                                 type="button"
                                 onClick={handleSaveEdit}
                                 className="btn btn-ghost btn-xs p-1 hover:bg-green-100 hover:text-success"
@@ -327,6 +341,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                               </button>
                               <button
                                 id={`prebuilt-tools-config-cancel-edit-button-${index}`}
+                                data-testid={`prebuilt-tools-config-cancel-edit-button-${index}`}
                                 type="button"
                                 onClick={handleCancelEdit}
                                 className="btn btn-ghost btn-xs p-1 hover:bg-gray-100 hover:text-base-content"
@@ -340,6 +355,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                             <>
                               <button
                                 id={`prebuilt-tools-config-edit-button-${index}`}
+                                data-testid={`prebuilt-tools-config-edit-button-${index}`}
                                 type="button"
                                 onClick={() => handleEditDomain(index)}
                                 className="btn btn-ghost btn-xs p-1 hover:bg-blue-100 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200 tooltip"
@@ -350,6 +366,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                               </button>
                               <button
                                 id={`prebuilt-tools-config-delete-button-${index}`}
+                                data-testid={`prebuilt-tools-config-delete-button-${index}`}
                                 type="button"
                                 onClick={() => handleRemoveDomain(index)}
                                 className="btn btn-ghost btn-xs p-1 hover:bg-red-100 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity duration-200 tooltip"
@@ -378,6 +395,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
             <div className="flex justify-end gap-3 pt-4">
               <button
                 id="prebuilt-tools-config-close-button"
+                data-testid="prebuilt-tools-config-close-button"
                 type="button"
                 className="btn btn-sm hover:text-base-content"
                 onClick={handleClose}

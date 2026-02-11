@@ -50,6 +50,7 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
           return (
             <div key={`${toolName}-${index}`} className={isLastOdd ? "col-span-2" : ""}>
               <div
+                data-testid={`batch-ui-tool-${depth}-${index}`}
                 onClick={() =>
                   isAgentNode
                     ? handleAgentClick(
@@ -190,6 +191,7 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
               {isActualAgent && (
                 <div className="relative">
                   <div
+                    data-testid={`batch-ui-agent-${agentKey}`}
                     onClick={() => handleAgentClick(agentKey, functionData, agent.name, agent.parallelTools)}
                     ref={(node) => {
                       if (node) rowRefs.current[agentKey] = node;

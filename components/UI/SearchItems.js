@@ -106,6 +106,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
     <div className={containerClasses}>
       <div className="relative">
         <input
+          data-testid="search-items-input"
           id="search-items-input"
           type="text"
           ref={searchInputRef}
@@ -129,6 +130,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
             {filterParam && (
               <button
+                data-testid="search-items-clear-filter-button"
                 id="search-items-clear-filter-button"
                 onClick={clearFilter}
                 className="btn btn-xs btn-ghost p-1 hover:bg-error hover:text-error-content"

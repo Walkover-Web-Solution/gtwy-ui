@@ -172,7 +172,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
 
   return (
     <>
-      <div id="pre-embed-list-container">
+      <div data-testid="pre-embed-list-container" id="pre-embed-list-container">
         <FunctionParameterModal
           isPublished={isReadOnly}
           name="Pre Tool"
@@ -203,7 +203,11 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         <div id="pre-embed-list-content" className="w-full mt-4 gap-2 flex flex-col px-2 py-2 cursor-default">
           {bridgePreFunctions.length > 0 && (
             <div className="flex items-center gap-2 mb-2">
-              <div id="pre-embed-header-wrapper" className="flex items-center gap-2 group">
+              <div
+                data-testid="pre-embed-header-wrapper"
+                id="pre-embed-header-wrapper"
+                className="flex items-center gap-2 group"
+              >
                 <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
                   <div className="flex items-center gap-1 cursor-help">
                     <p className="text-sm whitespace-nowrap">Pre Functions</p>
@@ -213,10 +217,15 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
             </div>
           )}
           {bridgePreFunctions.length === 0 && (
-            <div id="pre-embed-empty-dropdown" className="dropdown dropdown-end w-full max-w-md">
+            <div
+              data-testid="pre-embed-empty-dropdown"
+              id="pre-embed-empty-dropdown"
+              className="dropdown dropdown-end w-full max-w-md"
+            >
               <div className="border-2 border-base-200 border-dashed text-center">
                 <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
                   <button
+                    data-testid="pre-embed-add-button"
                     id="pre-embed-add-button"
                     tabIndex={0}
                     className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -242,7 +251,11 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
           <div className="flex flex-col gap-2 w-full">
             {/* Render pre-tool cards */}
             {bridgePreFunctions.length > 0 && (
-              <div id="pre-embed-functions-container" className="w-full max-w-md">
+              <div
+                data-testid="pre-embed-functions-container"
+                id="pre-embed-functions-container"
+                className="w-full max-w-md"
+              >
                 <RenderEmbed
                   isPublished={isPublished}
                   isEditor={isEditor}
@@ -259,7 +272,11 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                   halfLength={1}
                 />
                 {bridgePreFunctions.length > 0 && (
-                  <div id="pre-embed-add-more-dropdown" className="dropdown dropdown-right">
+                  <div
+                    data-testid="pre-embed-add-more-dropdown"
+                    id="pre-embed-add-more-dropdown"
+                    className="dropdown dropdown-right"
+                  >
                     <EmbedListSuggestionDropdownMenu
                       params={params}
                       searchParams={searchParams}

@@ -48,7 +48,10 @@ export default function NetworkStatus() {
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-base-100 flex items-center justify-center overflow-hidden">
+    <div
+      data-testid="network-status-container"
+      className="fixed inset-0 z-[99999] bg-base-100 flex items-center justify-center overflow-hidden"
+    >
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.02]">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-base-content rounded-full" />
       </div>
@@ -66,12 +69,16 @@ export default function NetworkStatus() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button onClick={handleRetry} className="btn btn-primary gap-2 group">
+          <button
+            data-testid="network-status-retry-button"
+            onClick={handleRetry}
+            className="btn btn-primary gap-2 group"
+          >
             <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" strokeWidth={2} />
             <span>Retry</span>
           </button>
 
-          <button onClick={handleGoHome} className="btn btn-outline gap-2">
+          <button data-testid="network-status-home-button" onClick={handleGoHome} className="btn btn-outline gap-2">
             <Home className="w-4 h-4" strokeWidth={2} />
             <span>Go Home</span>
           </button>

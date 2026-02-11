@@ -9,9 +9,14 @@ const VersionDescriptionModal = ({ versionDescriptionRef, handleCreateNewVersion
       MODAL_ID={MODAL_TYPE.VERSION_DESCRIPTION_MODAL}
       onClose={() => closeModal(MODAL_TYPE.VERSION_DESCRIPTION_MODAL)}
     >
-      <div id="version-description-modal-container" className="modal-box">
+      <div
+        id="version-description-modal-container"
+        data-testid="version-description-modal-container"
+        className="modal-box"
+      >
         <h3 className="font-bold text-lg mb-4">Create New Version</h3>
         <input
+          data-testid="version-description-input"
           id="version-description-input"
           type="text"
           placeholder="Enter version description"
@@ -21,6 +26,7 @@ const VersionDescriptionModal = ({ versionDescriptionRef, handleCreateNewVersion
         <div className="modal-action">
           <form method="dialog">
             <button
+              data-testid="version-description-close-button"
               id="version-description-close-button"
               className="btn btn-sm"
               onClick={() => {
@@ -31,6 +37,7 @@ const VersionDescriptionModal = ({ versionDescriptionRef, handleCreateNewVersion
               Close
             </button>
             <button
+              data-testid="version-description-create-button"
               id="version-description-create-button"
               className="btn btn-sm btn-primary ml-2"
               onClick={handleCreateNewVersion}

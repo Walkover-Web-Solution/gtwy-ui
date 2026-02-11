@@ -18,6 +18,7 @@ const DefaultVariablesSection = memo(({ prompt = "", customVariables = [], isPub
 
   return (
     <div
+      data-testid="default-variables-section"
       id="default-variables-section"
       className="bg-gradient-to-r bg-base-1 border-t-0 border border-base-content/10 rounded-t-none"
     >
@@ -51,6 +52,7 @@ const DefaultVariablesSection = memo(({ prompt = "", customVariables = [], isPub
           )}
 
           <button
+            data-testid="default-variables-manage-button"
             id="default-variables-manage-button"
             className="flex items-center btn btn-outline hover:bg-base-200 hover:text-base-content btn-xs gap-1 ml-auto"
             onClick={(e) => {

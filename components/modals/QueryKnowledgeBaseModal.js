@@ -60,6 +60,8 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
               <span className="label-text font-medium">Query</span>
             </label>
             <textarea
+              data-testid="query-kb-textarea"
+              id="query-kb-textarea"
               className="textarea textarea-bordered h-24"
               placeholder="Enter your query to test the knowledge base..."
               value={query}
@@ -69,10 +71,23 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={handleClose} className="btn btn-ghost" disabled={isLoading}>
+            <button
+              data-testid="query-kb-cancel-button"
+              id="query-kb-cancel-button"
+              type="button"
+              onClick={handleClose}
+              className="btn btn-ghost"
+              disabled={isLoading}
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={isLoading}>
+            <button
+              data-testid="query-kb-submit-button"
+              id="query-kb-submit-button"
+              type="submit"
+              className="btn btn-primary"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />

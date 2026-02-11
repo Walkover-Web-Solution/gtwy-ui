@@ -159,6 +159,7 @@ const ServiceDropdown = ({
 
   const renderServiceDropdown = () => (
     <Dropdown
+      testId="service-dropdown"
       id="service-dropdown"
       disabled={isReadOnly}
       options={serviceOptions}
@@ -186,7 +187,11 @@ const ServiceDropdown = ({
           : currentValue;
 
         return (
-          <div id="service-dropdown-trigger" className="flex justify-between w-full items-center gap-2">
+          <div
+            data-testid="service-dropdown-trigger"
+            id="service-dropdown-trigger"
+            className="flex justify-between w-full items-center gap-2"
+          >
             <span id="service-dropdown-selected" className="flex items-center gap-2">
               <span
                 id="service-dropdown-icon-wrapper"
@@ -206,7 +211,7 @@ const ServiceDropdown = ({
   );
 
   return (
-    <div id="service-dropdown-container" className="space-y-4">
+    <div data-testid="service-dropdown-container" id="service-dropdown-container" className="space-y-4">
       <div id="service-dropdown-form-control" className="form-control">
         <div id="service-dropdown-wrapper" className="flex items-center gap-2 z-auto">
           {isDisabled && (

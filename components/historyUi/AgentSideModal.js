@@ -17,7 +17,11 @@ export function AgentSideModal({ agent, top, onClose }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-2">
         <div className="text-xs font-semibold text-base-content/60">AGENT DETAILS</div>
-        <button onClick={onClose} className="text-xs text-base-content/40 hover:text-base-content">
+        <button
+          data-testid="agent-side-modal-close"
+          onClick={onClose}
+          className="text-xs text-base-content/40 hover:text-base-content"
+        >
           ✕
         </button>
       </div>

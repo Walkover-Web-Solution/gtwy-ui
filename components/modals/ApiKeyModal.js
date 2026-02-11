@@ -175,6 +175,7 @@ const ApiKeyModal = ({
                 {isRequired && RequiredItem()} <span className="opacity-55">{field === "apikey_limit" && "in $"}</span>
               </label>
               <input
+                data-testid={`apikey-modal-field-${field}-input`}
                 id={field}
                 required={isRequired}
                 onFocus={(e) => {
@@ -210,6 +211,7 @@ const ApiKeyModal = ({
             Service{RequiredItem()}
           </label>
           <select
+            data-testid="apikey-modal-service-select"
             id="service"
             name="service"
             className="select select-sm select-bordered"
@@ -229,10 +231,17 @@ const ApiKeyModal = ({
           </select>
         </div>
         <div id="apikey-modal-actions" className="modal-action">
-          <button id="apikey-modal-cancel-button" type="reset" className="btn btn-sm" onClick={handleClose}>
+          <button
+            data-testid="apikey-modal-cancel-button"
+            id="apikey-modal-cancel-button"
+            type="reset"
+            className="btn btn-sm"
+            onClick={handleClose}
+          >
             Cancel
           </button>
           <button
+            data-testid="apikey-modal-submit-button"
             id="apikey-modal-submit-button"
             type="submit"
             className={`btn btn-sm btn-primary ${

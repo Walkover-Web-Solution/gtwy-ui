@@ -17,6 +17,7 @@ const ModelUsageDetailsModal = ({ usageDetailsData, params }) => {
     <Modal MODAL_ID={MODAL_TYPE.USAGE_DETAILS_MODAL} onClose={handleClose}>
       <div className="flex items-center justify-center">
         <div
+          data-testid="model-usage-details-modal-container"
           id="model-usage-details-modal-container"
           className="w-full max-w-[50rem] bg-base-100 border border-base-300 rounded-lg p-6 mx-4"
           onClick={(e) => e.stopPropagation()}
@@ -29,10 +30,19 @@ const ModelUsageDetailsModal = ({ usageDetailsData, params }) => {
               {usageDetailsData?.agents?.length > 0 && (
                 <div>
                   <h3 className="font-medium text-base-content mb-2">Agents ({usageDetailsData.agents.length})</h3>
-                  <div id="model-usage-agents-list" className="bg-base-200 p-3 rounded">
+                  <div
+                    id="model-usage-agents-list"
+                    data-testid="model-usage-agents-list"
+                    className="bg-base-200 p-3 rounded"
+                  >
                     <ul className="list-disc pl-5">
                       {usageDetailsData.agents.map((agent, index) => (
-                        <li id={`model-usage-agent-${agent.id}`} key={index} className="text-sm py-1">
+                        <li
+                          id={`model-usage-agent-${agent.id}`}
+                          data-testid={`model-usage-agent-${agent.id}`}
+                          key={index}
+                          className="text-sm py-1"
+                        >
                           {agent.name} <span className="text-base-content">(ID: {agent.id})</span>
                         </li>
                       ))}
@@ -44,14 +54,23 @@ const ModelUsageDetailsModal = ({ usageDetailsData, params }) => {
               {usageDetailsData?.versions?.length > 0 && (
                 <div>
                   <h3 className="font-medium text-base-content mb-2">Versions ({usageDetailsData.versions.length})</h3>
-                  <div id="model-usage-versions-list" className="bg-base-200 p-3 rounded">
+                  <div
+                    id="model-usage-versions-list"
+                    data-testid="model-usage-versions-list"
+                    className="bg-base-200 p-3 rounded"
+                  >
                     <ul className="list-disc pl-5">
                       {usageDetailsData.versions.map((version, index) => {
                         const bridge = Object.values(allBridgesMap).find((bridge) =>
                           bridge.versions?.some((v) => v === version.id || v._id === version.id)
                         );
                         return (
-                          <li key={index} id={`model-usage-version-${version.id}`} className="text-sm py-1">
+                          <li
+                            key={index}
+                            id={`model-usage-version-${version.id}`}
+                            data-testid={`model-usage-version-${version.id}`}
+                            className="text-sm py-1"
+                          >
                             {bridge?.name}{" "}
                             <span className="text-base-content">
                               (Version #{index + 1}, ID: {version.id})
@@ -67,7 +86,13 @@ const ModelUsageDetailsModal = ({ usageDetailsData, params }) => {
           </div>
 
           <div className="flex justify-end mt-6">
-            <button id="model-usage-close-button" type="button" onClick={handleClose} className="btn btn-sm">
+            <button
+              id="model-usage-close-button"
+              data-testid="model-usage-close-button"
+              type="button"
+              onClick={handleClose}
+              className="btn btn-sm"
+            >
               Close
             </button>
           </div>

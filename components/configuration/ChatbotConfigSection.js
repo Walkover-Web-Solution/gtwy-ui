@@ -23,6 +23,7 @@ const ChatbotConfigSection = ({ isPublished, isEditor = true }) => {
   return (
     <div className="z-very-low mt-2 text-base-content w-full max-w-md cursor-pointer" tabIndex={0}>
       <div
+        data-testid="chatbot-config-accordion-toggle"
         id="chatbot-config-accordion-toggle"
         className={`info p-1 ${isChatbotAccordionOpen ? "border border-base-content/20" : "border border-base-content/20 "} flex items-center justify-between font-medium w-full !cursor-pointer input input-sm`}
         onClick={toggleChatbotAccordion}

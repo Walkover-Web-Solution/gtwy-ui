@@ -12,6 +12,7 @@ const Diff_Modal = ({ oldContent, newContent }) => {
         <div id="diff-modal-header" className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold">Compare Published Prompt and Current Prompt</h3>
           <button
+            data-testid="diff-modal-close-button"
             id="diff-modal-close-button"
             onClick={() => closeModal(MODAL_TYPE.DIFF_PROMPT)}
             className="btn btn-sm btn-ghost"

@@ -198,9 +198,10 @@ const ConnectedAgentFlowPanel = ({ isEmbedUser }) => {
   }, [params]);
 
   return (
-    <div id="connected-agent-flow-panel" className="w-full">
+    <div data-testid="connected-agent-flow-panel" id="connected-agent-flow-panel" className="w-full">
       <div className="flex justify-end mb-2">
         <button
+          data-testid="agent-flow-back-button"
           id="agent-flow-back-button"
           className="btn btn-xs btn-outline gap-1"
           onClick={() => switchView?.("config")}
@@ -209,6 +210,7 @@ const ConnectedAgentFlowPanel = ({ isEmbedUser }) => {
         </button>
       </div>
       <div
+        data-testid="agent-flow-canvas-container"
         id="agent-flow-canvas-container"
         className="w-full h-[calc(100vh-8rem)] min-h-[600px] border border-base-200 rounded-xl overflow-hidden bg-base-50"
       >

@@ -57,6 +57,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent }) => {
           <div className="flex items-start justify-between p-6 border-b border-base-300">
             <h3 className="text-2xl font-bold">Detailed View</h3>
             <button
+              data-testid="chat-details-close-button"
               id="chat-details-close-button"
               className="hover:text-error"
               onClick={() => closeModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL)}
@@ -67,6 +68,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent }) => {
 
           <div className="flex-1 overflow-auto p-6">
             <div
+              data-testid="chat-details-content-container"
               id="chat-details-content-container"
               className="bg-base-200 rounded-lg p-6 h-auto overflow-auto relative"
             >

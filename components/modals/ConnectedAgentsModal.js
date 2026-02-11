@@ -53,7 +53,7 @@ const ConnectedAgentsModal = ({ apiKey, orgId }) => {
         <h3 className="font-bold text-lg mb-4">Connected Agents for API Key: {apiKey.name}</h3>
 
         {connectedAgents.length > 0 ? (
-          <div id="connected-agents-list" className="overflow-y-auto max-h-96">
+          <div id="connected-agents-list" data-testid="connected-agents-list" className="overflow-y-auto max-h-96">
             {connectedAgents.map((agent) => (
               <AgentCard key={agent.bridgeId} agent={agent} />
             ))}
@@ -65,6 +65,7 @@ const ConnectedAgentsModal = ({ apiKey, orgId }) => {
         <div className="modal-action">
           <form method="dialog">
             <button
+              data-testid="connected-agents-close-button"
               id="connected-agents-close-button"
               className="btn focus:outline-none focus:ring-0"
               onClick={handleClose}
@@ -81,6 +82,7 @@ const ConnectedAgentsModal = ({ apiKey, orgId }) => {
 // Fixed AgentCard component to prevent scrolling text displacement
 const AgentCard = ({ agent }) => (
   <div
+    data-testid={`connected-agent-card-${agent.bridgeId}`}
     id={`connected-agent-card-${agent.bridgeId}`}
     className="mb-4 p-4 border rounded-lg bg-base-200"
     style={{
@@ -115,6 +117,7 @@ const AgentCard = ({ agent }) => (
 // Extracted empty state component
 const EmptyState = () => (
   <div
+    data-testid="connected-agents-empty-state"
     id="connected-agents-empty-state"
     className="flex flex-col items-center justify-center py-8 text-base-content/70"
   >

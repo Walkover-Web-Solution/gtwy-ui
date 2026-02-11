@@ -44,6 +44,7 @@ const LoginPage = ({ loading }) => {
           <div className="flex items-center justify-between mb-8">
             <div className="w-16 relative">
               <a
+                data-testid="login-page-logo-link"
                 id="login-page-logo-link"
                 href={process.env.NEXT_PUBLIC_FRONTEND_URL}
                 className="inline-block cursor-pointer relative"
@@ -126,6 +127,7 @@ const LoginPage = ({ loading }) => {
                 {/* Login Options */}
                 <div className="w-full flex flex-col items-center justify-center py-16 gap-4 [&_[data-create-account='true']]:whitespace-nowrap">
                   <div
+                    data-testid="login-container"
                     id={process.env.NEXT_PUBLIC_REFERENCEID}
                     className="w-full flex flex-col justify-center items-center"
                   />
@@ -151,6 +153,7 @@ const LoginPage = ({ loading }) => {
             <p className="mt-6 text-center text-xs text-base-content/30 tracking-wide leading-relaxed">
               By continuing, you agree to gtwy&apos;s{" "}
               <a
+                data-testid="login-page-terms-link"
                 id="login-page-terms-link"
                 href="https://gtwy.ai/terms/"
                 target="_blank"
@@ -162,6 +165,7 @@ const LoginPage = ({ loading }) => {
               <br />
               and acknowledge our{" "}
               <a
+                data-testid="login-page-privacy-link"
                 id="login-page-privacy-link"
                 href="https://gtwy.ai/privacy/"
                 target="_blank"

@@ -18,6 +18,7 @@ const LoginButton = () => {
 
   return (
     <button
+      data-testid="login-button"
       id="login-button"
       onClick={handleLogin}
       disabled={isLoading}

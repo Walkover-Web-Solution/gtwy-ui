@@ -15,7 +15,7 @@ const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title,
   const agentCreationvideoUrl = agentCreationTutorial?.videoUrl || "";
   const embedAgentCreationvideoUrl = embedAgentCreationTutorial?.videoUrl || "";
   return (
-    <div className=" mt-8 px-4">
+    <div data-testid="agent-empty-state-container" id="agent-empty-state-container" className=" mt-8 px-4">
       <div className=" mx-2 ">
         {/* Header Section with Overlapping Layout */}
         <div className="relative w-full">
@@ -45,6 +45,7 @@ const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title,
           <div className="absolute top-0 right-0">
             <div className="text-center flex flex-row gap-2">
               <button
+                data-testid="agent-empty-create-agent-button"
                 id="agent-empty-create-agent-button"
                 className="btn btn-primary btn-sm"
                 onClick={() => {
@@ -56,6 +57,7 @@ const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title,
 
               {!isEmbedUser ? (
                 <button
+                  data-testid="agent-empty-speak-to-us-button"
                   id="agent-empty-speak-to-us-button"
                   data-cal-namespace="30min"
                   data-cal-link="team/gtwy.ai/ai-consultation"
@@ -73,7 +75,11 @@ const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title,
 
         {/* Video Section */}
         <div className="flex justify-center">
-          <div className=" rounded-2xl p-6 border border-base-300/50">
+          <div
+            data-testid="agent-empty-video-section"
+            id="agent-empty-video-section"
+            className=" rounded-2xl p-6 border border-base-300/50"
+          >
             <div className="text-center mb-3">
               <h2 className="text-lg mb-4 font-bold text-base-content">Watch How to Create Your First Agent</h2>
             </div>

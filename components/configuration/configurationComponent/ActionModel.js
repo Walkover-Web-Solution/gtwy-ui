@@ -99,7 +99,7 @@ const ActionModel = ({ params, searchParams, actionId, setActionId, isPublished 
   }, [handleActionSubmit, selectedAction, handleModalClose]);
 
   return (
-    <div id="action-model-container" className="cursor-pointer">
+    <div data-testid="action-model-container" id="action-model-container" className="cursor-pointer">
       <button
         id="action-add-button"
         className="btn btn-outline btn-sm w-fit"
@@ -113,7 +113,11 @@ const ActionModel = ({ params, searchParams, actionId, setActionId, isPublished 
       </button>
 
       <dialog id={MODAL_TYPE.ACTION_MODAL} className="modal">
-        <div id="action-modal-box" className="modal-box w-full bg-base-100 text-base-content">
+        <div
+          data-testid="action-modal-box"
+          id="action-modal-box"
+          className="modal-box w-full bg-base-100 text-base-content"
+        >
           <ActionSelect
             isPublished={isPublished}
             isEditor={isEditor}
@@ -139,10 +143,16 @@ const ActionModel = ({ params, searchParams, actionId, setActionId, isPublished 
           )}
 
           <div className="modal-action">
-            <button id="action-modal-close-button" className="btn" onClick={handleModalClose}>
+            <button
+              data-testid="action-modal-close-button"
+              id="action-modal-close-button"
+              className="btn"
+              onClick={handleModalClose}
+            >
               Close
             </button>
             <button
+              data-testid="action-modal-submit-button"
               id="action-modal-submit-button"
               className="btn ml-2 btn-primary"
               disabled={isCreateButtonDisabled || isPublished || !isEditor}
@@ -163,6 +173,7 @@ const ActionSelect = ({ selectedAction, setSelectedAction, handleInputChange, is
       <span className="label-text text-lg">Select an Action</span>
     </div>
     <select
+      data-testid="action-type-select"
       id="action-type-select"
       disabled={isPublished || !isEditor}
       className="select select-sm select-bordered"
@@ -191,6 +202,7 @@ const ActionDescription = ({ descriptionRef, handleInputChange, isPublished, isE
       <span className="label-text text-lg">Description</span>
     </div>
     <textarea
+      data-testid="action-description-textarea"
       id="action-description-textarea"
       disabled={isPublished || !isEditor}
       className="textarea bg-white dark:bg-black/15 textarea-bordered h-24"
@@ -212,6 +224,7 @@ const ActionDataInput = ({ dataRef, handleInputChange, isPublished, isEditor = t
       <span className="label-text text-lg">Data Structure for Frontend</span>
     </div>
     <textarea
+      data-testid="action-data-structure-textarea"
       id="action-data-structure-textarea"
       disabled={isPublished || !isEditor}
       className="textarea bg-white dark:bg-black/15 textarea-bordered h-24"

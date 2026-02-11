@@ -178,6 +178,7 @@ const PromptHelper = ({
 
   return (
     <div
+      data-testid="prompt-helper-modal"
       ref={modalRef}
       className="fixed right-0 top-20 w-1/2 bottom-2 bg-base-100 border h-full rounded-l-md shadow-lg transition-all duration-300 ease-in-out z-50"
       onBlur={handleModalBlur}
@@ -207,7 +208,7 @@ const PromptHelper = ({
             onBlur={() => setFocusedSection(null)}
             tabIndex={0}
           >
-            <div id="notes-embed" className="w-full h-full">
+            <div data-testid="notes-embed" id="notes-embed" className="w-full h-full">
               {/* This will be populated by the docstar script */}
             </div>
           </div>

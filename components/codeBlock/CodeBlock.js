@@ -87,12 +87,13 @@ function CodeBlock({ inline, className, children, ...props }) {
   }, []);
 
   return !inline && match ? (
-    <div id="code-block-container" className={blockClasses}>
+    <div data-testid="code-block-container" id="code-block-container" className={blockClasses}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-base-300 bg-base-100/70">
         <span className="text-xs font-semibold uppercase tracking-wider text-base-content/70">
           {languageLabel || "Code"}
         </span>
         <button
+          data-testid="code-block-copy-button"
           id="code-block-copy-button"
           type="button"
           onClick={handleCopy}

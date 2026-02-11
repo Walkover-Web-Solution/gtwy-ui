@@ -68,6 +68,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
               All Responses &#40; including no feedback &#41;
             </span>
             <input
+              data-testid="fine-tune-all-responses-checkbox"
               id="fine-tune-all-responses-checkbox"
               type="checkbox"
               className="checkbox"
@@ -83,6 +84,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
               Positive Feedback Responses
             </span>
             <input
+              data-testid="fine-tune-positive-feedback-checkbox"
               id="fine-tune-positive-feedback-checkbox"
               type="checkbox"
               className="checkbox"
@@ -99,6 +101,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
               Negative Feedback Responses
             </span>
             <input
+              data-testid="fine-tune-negative-feedback-checkbox"
               id="fine-tune-negative-feedback-checkbox"
               type="checkbox"
               className="checkbox"
@@ -115,10 +118,11 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
         <div className="modal-action">
           <form method="dialog">
             {/* if there is a button in form, it will close the modal */}
-            <button id="fine-tune-close-button" className="btn mr-2">
+            <button data-testid="fine-tune-close-button" id="fine-tune-close-button" className="btn mr-2">
               Close
             </button>
             <button
+              data-testid="fine-tune-download-button"
               id="fine-tune-download-button"
               className="btn btn-primary"
               onClick={handleDownloadFineTuneData}

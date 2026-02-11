@@ -748,12 +748,14 @@ const CommandPalette = ({ isEmbedUser }) => {
 
   return (
     <div
+      data-testid="command-palette-backdrop"
       id="command-palette-backdrop"
       className="fixed inset-0 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={closePalette}
       style={{ zIndex: 999999 }}
     >
       <div
+        data-testid="command-palette-modal"
         id="command-palette-modal"
         className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -766,6 +768,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                 <span>Filter active on current page</span>
               </div>
               <button
+                data-testid="command-palette-clear-filter"
                 id="command-palette-clear-filter"
                 onClick={clearCurrentFilter}
                 className="btn btn-xs btn-ghost hover:bg-error hover:text-error-content"
@@ -778,6 +781,7 @@ const CommandPalette = ({ isEmbedUser }) => {
           <div className="flex items-center gap-2 p-3">
             <Search className="w-4 h-4 opacity-70" />
             <input
+              data-testid="command-palette-search-input"
               id="command-palette-search-input"
               autoFocus
               value={query}
@@ -785,7 +789,12 @@ const CommandPalette = ({ isEmbedUser }) => {
               placeholder="Search agents, bridges, API keys, docs..."
               className="flex-1 bg-transparent outline-none"
             />
-            <button id="command-palette-close-button" className="btn btn-sm" onClick={closePalette}>
+            <button
+              data-testid="command-palette-close-button"
+              id="command-palette-close-button"
+              className="btn btn-sm"
+              onClick={closePalette}
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -809,6 +818,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                       }`}
                     >
                       <button
+                        data-testid={`command-palette-category-${cat.key}`}
                         id={`command-palette-category-${cat.key}`}
                         data-nav-index={categoryNavIndex}
                         onClick={() => navigateCategory(cat.key)}
@@ -820,6 +830,7 @@ const CommandPalette = ({ isEmbedUser }) => {
 
                       {categoryItems.length > 0 && (
                         <button
+                          data-testid={`command-palette-toggle-${cat.key}`}
                           id={`command-palette-toggle-${cat.key}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -848,6 +859,7 @@ const CommandPalette = ({ isEmbedUser }) => {
 
                             return (
                               <li
+                                data-testid={`command-palette-item-${item.type}-${item.id}`}
                                 id={`command-palette-item-${item.type}-${item.id}`}
                                 key={`${item.type}-${item.id}`}
                                 data-nav-index={itemNavIndex}
@@ -901,6 +913,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                                 const active = globalIdx === activeIndex;
                                 return (
                                   <li
+                                    data-testid={`command-palette-result-${row.type}-${row.id}`}
                                     id={`command-palette-result-${row.type}-${row.id}`}
                                     key={`${row.type}-${row.id}`}
                                     data-nav-index={globalIdx}

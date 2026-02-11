@@ -397,6 +397,7 @@ const Navbar = ({ isEmbedUser, params }) => {
   const EllipsisMenu = () => (
     <div className="relative" ref={ellipsisMenuRef}>
       <button
+        data-testid="navbar-ellipsis-menu-toggle"
         id="navbar-ellipsis-menu-toggle"
         onClick={() => setShowEllipsisMenu(!showEllipsisMenu)}
         className="p-2 hover:bg-base-200 rounded-md transition-colors"
@@ -409,6 +410,7 @@ const Navbar = ({ isEmbedUser, params }) => {
         <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 border border-base-300 rounded-lg shadow-xl z-very-high">
           <div className="">
             <button
+              data-testid="navbar-pause-resume-button"
               id="navbar-pause-resume-button"
               onMouseDown={async (e) => {
                 e.preventDefault();
@@ -436,7 +438,8 @@ const Navbar = ({ isEmbedUser, params }) => {
           </div>
           <div className="">
             <button
-              id="navbar-pause-resume-button"
+              data-testid="navbar-archive-restore-button"
+              id="navbar-archive-restore-button"
               onMouseDown={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -482,7 +485,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 className="btn btn-xs sm:btn-sm gap-1 sm:gap-2 hover:bg-base-200 px-2 sm:px-3"
                 title="Go to Home"
               >
-                <Home id="navbar-home-button" size={14} className="sm:w-4 sm:h-4" />
+                <Home data-testid="navbar-home-button" id="navbar-home-button" size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline text-sm sm:text-sm">Home</span>
               </button>
             )}
@@ -494,6 +497,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                   {!isEditingName ? (
                     <div className="flex items-center gap-1.5" onClick={handleNameEdit}>
                       <span
+                        data-testid="navbar-agent-name-display"
                         id="navbar-agent-name-display"
                         className="font-semibold text-sm text-base-content truncate flex-shrink"
                         title={`${agentName} - Click to edit`}
@@ -507,6 +511,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                     </div>
                   ) : (
                     <input
+                      data-testid="navbar-agent-name-input"
                       id="navbar-agent-name-input"
                       type="text"
                       value={editedName}
@@ -529,6 +534,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                   {/* Published Button */}
                   {publishedVersion && (
                     <button
+                      data-testid="navbar-published-button"
                       id="navbar-published-button"
                       onClick={handlePublishedClick}
                       className={`btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap min-w-fit ${
@@ -623,6 +629,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                     const isActive = activeTab === tab.id;
                     return (
                       <button
+                        data-testid={`navbar-tab-${tab.id}`}
                         id={`navbar-tab-${tab.id}`}
                         key={tab.id}
                         onClick={() => handleTabChange(tab.id)}
@@ -655,6 +662,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 {!isEmbedUser && (
                   <div className="tooltip tooltip-bottom" data-tip="Updates History">
                     <button
+                      data-testid="navbar-history-button"
                       id="navbar-history-button"
                       className="p-1 bg-base-300 rounded-md hover:bg-base-200 transition-colors"
                       onClick={toggleConfigHistorySidebar}
@@ -670,6 +678,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 <div className="flex items-center">
                   <div className="dropdown dropdown-end">
                     <button
+                      data-testid="navbar-publish-dropdown-toggle"
                       id="navbar-publish-dropdown-toggle"
                       tabIndex={0}
                       role="button"
@@ -685,6 +694,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                     >
                       <li>
                         <button
+                          data-testid="navbar-publish-button"
                           id="navbar-publish-button"
                           onClick={handlePublish}
                           disabled={!isDrafted || isPublishing || isPublished}
@@ -697,6 +707,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                       {isDrafted && publishedVersionId != null && (
                         <li>
                           <button
+                            data-testid="navbar-revert-button"
                             id="navbar-revert-button"
                             onClick={() => openModal(MODAL_TYPE.DELETE_MODAL)}
                             disabled={isUpdatingBridge || isPublishing || isPublished}
@@ -731,6 +742,7 @@ const Navbar = ({ isEmbedUser, params }) => {
             <div className="flex items-center px-1 py-1 rounded-lg min-w-0 max-w-[120px] cursor-pointer group hover:bg-base-200/50 transition-colors">
               {!isEditingName ? (
                 <div
+                  data-testid="navbar-mobile-agent-name-display-inner"
                   id="navbar-mobile-agent-name-display-inner"
                   className="flex items-center gap-1.5"
                   onClick={handleNameEdit}
@@ -748,6 +760,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 </div>
               ) : (
                 <input
+                  data-testid="navbar-mobile-agent-name-input"
                   id="navbar-mobile-agent-name-input"
                   type="text"
                   value={editedName}
@@ -768,6 +781,7 @@ const Navbar = ({ isEmbedUser, params }) => {
               {/* Published Button */}
               {publishedVersion && (
                 <button
+                  data-testid="navbar-mobile-published-button"
                   id="navbar-mobile-published-button"
                   onClick={handlePublishedClick}
                   className={`btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap ${

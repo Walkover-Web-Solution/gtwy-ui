@@ -12,6 +12,7 @@ export function ResponseFullSlider({ response, onClose, onBack }) {
   return (
     <aside
       id="response-full-slider"
+      data-testid="response-full-slider"
       className={`sidebar-container fixed flex flex-col top-0 right-0 
                   w-full md:w-1/2 lg:w-[50vw] min-w-[600px] h-screen 
                   bg-base-100 transition-all duration-300 z-[999999] border-l border-base-300
@@ -20,7 +21,11 @@ export function ResponseFullSlider({ response, onClose, onBack }) {
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-base-300">
-        <button onClick={handleBack} className="flex items-center text-sm text-primary hover:text-primary/80">
+        <button
+          data-testid="response-full-slider-back"
+          onClick={handleBack}
+          className="flex items-center text-sm text-primary hover:text-primary/80"
+        >
           <ArrowLeft size={16} className="mr-1" />
           GO BACK TO FLOW EDITOR
         </button>
@@ -44,6 +49,7 @@ export function ResponseFullSlider({ response, onClose, onBack }) {
       {/* Footer */}
       <div className="flex justify-end p-4 border-t border-base-300 bg-base-200">
         <button
+          data-testid="response-full-slider-close"
           onClick={onClose}
           className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/80"
         >

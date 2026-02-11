@@ -40,6 +40,7 @@ const SchemaPropertyCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 justify-between w-full">
           <input
+            data-testid={`schema-prop-name-input-${currentPath}`}
             id={`schema-prop-name-input-${currentPath}`}
             disabled={isReadOnly}
             type="text"
@@ -73,6 +74,7 @@ const SchemaPropertyCard = ({
           <div className="flex items-center mr-4 gap-2">
             <label className="flex items-center gap-1 text-xs">
               <input
+                data-testid={`schema-prop-required-checkbox-${currentPath}`}
                 id={`schema-prop-required-checkbox-${currentPath}`}
                 type="checkbox"
                 className="checkbox checkbox-xs"
@@ -110,6 +112,7 @@ const SchemaPropertyCard = ({
 
         <div className="flex items-center gap-2 text-xs">
           <select
+            data-testid={`schema-prop-type-select-${currentPath}`}
             id={`schema-prop-type-select-${currentPath}`}
             disabled={isReadOnly}
             className="select select-xs select-bordered text-xs"
@@ -142,6 +145,7 @@ const SchemaPropertyCard = ({
             </>
           )}
           <button
+            data-testid={`schema-prop-delete-button-${currentPath}`}
             id={`schema-prop-delete-button-${currentPath}`}
             onClick={() => onDelete(currentPath)}
             className="btn btn-sm btn-ghost text-error text-xs"
@@ -155,6 +159,7 @@ const SchemaPropertyCard = ({
 
       <div className="text-xs mt-2">
         <textarea
+          data-testid={`schema-prop-description-textarea-${currentPath}`}
           id={`schema-prop-description-textarea-${currentPath}`}
           placeholder="Description of property..."
           className="col-[1] row-[1] m-0 w-full overflow-y-hidden whitespace-pre-wrap break-words outline-none bg-transparent p-0 caret-black placeholder:text-quaternary dark:caret-slate-200 text-xs resize-none"
@@ -733,6 +738,7 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-2">Schema Name</label>
               <input
+                data-testid="json-schema-name-input"
                 id="json-schema-name-input"
                 type="text"
                 value={schemaName}
@@ -746,6 +752,7 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-sm font-semibold">Properties</h4>
               <button
+                data-testid="json-schema-builder-add-property-button"
                 id="json-schema-builder-add-property-button"
                 onClick={handleAddProperty}
                 disabled={isReadOnly}
@@ -790,6 +797,7 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
         <div className="modal-action mt-2">
           <form method="dialog" className="flex flex-row gap-2">
             <button
+              data-testid="json-schema-builder-close-button"
               id="json-schema-builder-close-button"
               onClick={handleCloseModal}
               className="btn btn-sm"
@@ -798,6 +806,7 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
               Close
             </button>
             <button
+              data-testid="json-schema-builder-save-button"
               id="json-schema-builder-save-button"
               onClick={handleSave}
               className="btn btn-sm btn-primary"
