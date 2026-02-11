@@ -60,10 +60,10 @@ export const deleteTestCaseAction =
   };
 
 export const runTestCaseAction =
-  ({ versionId = null, bridgeId = null, testcase_id = null, testCaseData = null }) =>
+  ({ versionId = null, bridgeId = null, testcase_id = null, testCaseData = null, variables = null }) =>
   async (dispatch) => {
     try {
-      const response = await runTestCaseApi({ versionId, testcase_id, testCaseData, bridgeId });
+      const response = await runTestCaseApi({ versionId, testcase_id, testCaseData, bridgeId, variables });
 
       if (response?.success && response?.results) {
         // Transform the results array into the format the reducer expects

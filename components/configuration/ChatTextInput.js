@@ -17,6 +17,7 @@ import { SendHorizontalIcon, UploadIcon, LinkIcon, PlayIcon, CloseCircleIcon } f
 import { Paperclip } from "lucide-react";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { toggleSidebar } from "@/utils/utility";
+import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 import { buildUserUrls } from "@/utils/attachmentUtils";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
@@ -130,88 +131,13 @@ function ChatTextInput({
     setLocalDataToSend(dataToSend);
   }, [dataToSend]);
 
-  const variables = useMemo(() => {
-    const coerceValue = (rawValue, fallback, type) => {
-      const candidate = rawValue ?? fallback ?? "";
-      const trimmed = typeof candidate === "string" ? candidate.trim() : candidate;
-      if (trimmed === "") {
-        return undefined;
-      }
-      if (type === "number") {
-        const parsed = Number(trimmed);
-        return Number.isNaN(parsed) ? undefined : parsed;
-      }
-      if (type === "boolean") {
-        if (typeof trimmed === "boolean") return trimmed;
-        if (String(trimmed).toLowerCase() === "true") return true;
-        if (String(trimmed).toLowerCase() === "false") return false;
-        return undefined;
-      }
-      if (type === "object" || type === "array") {
-        try {
-          const parsed = typeof candidate === "string" ? JSON.parse(candidate) : candidate;
-          return parsed;
-        } catch {
-          return undefined;
-        }
-      }
-      return candidate;
-    };
-
-    return variablesKeyValue.reduce((acc, pair) => {
-      if (!pair?.key) {
-        return acc;
-      }
-      const resolved = pair.value && String(pair.value).length > 0 ? pair.value : pair.defaultValue;
-
-      if (resolved === undefined || (typeof resolved === "string" && resolved.trim() === "")) {
-        return acc;
-      }
-
-      const coerced = coerceValue(pair.value, pair.defaultValue, pair.type || "string");
-      if (coerced !== undefined) {
-        acc[pair.key] = coerced;
-      }
-      return acc;
-    }, {});
-  }, [variablesKeyValue]);
+  const variables = useMemo(() => buildVariablesObject(variablesKeyValue), [variablesKeyValue]);
 
   // Validate missing variables in prompt
-  const validatePromptVariables = useCallback(() => {
-    if (!prompt) return { isValid: true, missingVariables: [] };
-
-    // Extract variables from prompt using regex
-    const regex = /{{(.*?)}}/g;
-    const matches = [...prompt.matchAll(regex)];
-    const promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
-
-    if (!promptVariables.length) return { isValid: true, missingVariables: [] };
-
-    // Check which variables are missing values
-    const missingVariables = promptVariables.filter((varName) => {
-      const variable = variablesKeyValue.find((v) => v.key === varName);
-      if (!variable) {
-        return true; // Variable not defined at all
-      }
-
-      // Skip validation for optional variables
-      if (!variable.required) {
-        return false;
-      }
-
-      const hasValue = variable.value !== undefined && variable.value !== null && String(variable.value).trim() !== "";
-      const hasDefault =
-        variable.defaultValue !== undefined &&
-        variable.defaultValue !== null &&
-        String(variable.defaultValue).trim() !== "";
-      return !hasValue && !hasDefault; // Missing both value and default
-    });
-
-    return {
-      isValid: missingVariables.length === 0,
-      missingVariables,
-    };
-  }, [prompt, variablesKeyValue]);
+  const validateVariables = useCallback(
+    () => validatePromptVariables(prompt, variablesKeyValue),
+    [prompt, variablesKeyValue]
+  );
 
   const handleSendMessage = async (e, forceRun = false) => {
     if (inputRef.current) {
@@ -228,7 +154,7 @@ function ChatTextInput({
 
     // Validate variables in prompt
     if (!forceRun && !isSliderAutoOpenDisabled) {
-      const validation = validatePromptVariables();
+      const validation = validateVariables();
       if (!validation.isValid && (!isEmbedUser || (isEmbedUser && showVariables))) {
         const missingVars = validation.missingVariables.join(", ");
         const errorMsg = `Missing values for variables: ${missingVars}. Please provide values or default values.`;
