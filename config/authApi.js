@@ -6,7 +6,7 @@ const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
 // User Authentication APIs
-export const userdetails = async ({ exclude_role_ids = '18', role_ids } = {}) => {
+export const userdetails = async ({ exclude_role_ids = process.env.PROXY_USER_ROLE_ID, role_ids } = {}) => {
   try {
     let url = `${PROXY_URL}/api/c/getDetails`;
     const params = new URLSearchParams();
