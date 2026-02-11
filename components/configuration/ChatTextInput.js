@@ -669,7 +669,7 @@ function ChatTextInput({
             id="chat-message-textarea"
             ref={inputRef}
             placeholder="Type here"
-            className={`textarea bg-white dark:bg-black/15 textarea-bordered w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
+            className={`textarea bg-base-100 textarea-bordered w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
               validationError
                 ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                 : "focus:border-primary"

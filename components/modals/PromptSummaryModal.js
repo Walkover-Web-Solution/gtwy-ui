@@ -147,7 +147,7 @@ export const AgentSummaryContent = memo(
       return {
         hasValidationError: showValidationError && isEmpty,
         isDisabled: isGeneratingSummary || bridge_summary === displayValue,
-        textareaClassName: `textarea bg-white dark:bg-black/15 textarea-bordered w-full min-h-32 resize-y focus:border-primary caret-base-content p-2 ${
+        textareaClassName: `textarea bg-base-100 textarea-bordered w-full min-h-32 resize-y focus:border-primary caret-base-content p-2 ${
           showValidationError && isEmpty ? "border-red-500 focus:border-red-500" : ""
         }`,
       };

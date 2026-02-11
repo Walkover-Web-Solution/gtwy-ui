@@ -118,7 +118,7 @@ const PromptTextarea = memo(
         id="prompt-textarea-wrapper"
         ref={wrapperRef}
         className={`
-        bg-white dark:bg-black/15 border flex
+        bg-base-100 border flex
         w-full relative rounded-b-none
         transition-none p-0 m-0 overflow-hidden
         ring-2 ring-transparent
