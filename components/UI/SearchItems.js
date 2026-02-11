@@ -98,9 +98,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
   }, [filterData, setFilterItems]);
 
   const containerClasses = isWorkspaceItem ? `${item === "org" ? "w-full mt-2" : "max-w-xs ml-2"}` : "max-w-xs ml-2";
-  const inputClasses = style
-    ? style
-    : "input input-sm w-full border bg-white dark:bg-base-200 border-base-content/50 pr-16";
+  const inputClasses = style ? style : "input input-sm w-full border bg-base-200 border-base-content/50 pr-16";
 
   return (
     <div className={containerClasses}>

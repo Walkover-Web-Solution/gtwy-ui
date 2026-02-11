@@ -3,12 +3,12 @@ import CustomTable from "@/components/customTable/CustomTable";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { MODAL_TYPE } from "@/utils/enums";
-import React, { useCallback, useEffect, useState, use } from "react";
+import React, { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
+import { useRouter, useSearchParams } from "next/navigation";
 import MainLayout from "@/components/layoutComponents/MainLayout";
-import { openModal, toggleSidebar, closeModal, formatRelativeTime, formatDate } from "@/utils/utility";
+import { openModal, closeModal, formatRelativeTime, formatDate } from "@/utils/utility";
 import IntegrationModal from "@/components/modals/IntegrationModal";
-import GtwyIntegrationGuideSlider from "@/components/sliders/GtwyIntegrationGuideSlider";
 import SearchItems from "@/components/UI/SearchItems";
 import { EllipsisIcon, RefreshIcon } from "@/components/Icons";
 import { ClockFading } from "lucide-react";
@@ -21,6 +21,7 @@ export const runtime = "edge";
 
 const Page = ({ params }) => {
   const resolvedParams = use(params);
+  const router = useRouter();
 
   const dispatch = useDispatch();
   const { integrationData, descriptions, linksData } = useCustomSelector((state) => ({
@@ -29,10 +30,8 @@ const Page = ({ params }) => {
     linksData: state.flowDataReducer.flowData.linksData || [],
   }));
 
-  const [selectedIntegration, setSelectedIntegration] = useState(null);
   const [embedIntegrations, setEmbedIntegrations] = useState([]); // Type-filtered integrations
   const [filterIntegration, setFilterIntegration] = useState([]); // Search-filtered integrations
-  const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [selectedIntegrationForLimit, setSelectedIntegrationForLimit] = useState(null);
 
   // Use portal dropdown hook
@@ -72,14 +71,9 @@ const Page = ({ params }) => {
     originalItem: item,
   }));
 
-  const toggleGtwyIntegraionSlider = useCallback(() => {
-    setIsSliderOpen(!isSliderOpen);
-    toggleSidebar("gtwy-integration-slider", "right");
-  }, [isSliderOpen]);
-
   const handleClickIntegration = (item) => {
-    setSelectedIntegration(item);
-    toggleGtwyIntegraionSlider();
+    // Navigate to integration detail page using path params
+    router.push(`/org/${resolvedParams.org_id}/integration/${item.embed_id}`);
   };
 
   const handleSetIntegrationLimit = (item) => {
@@ -165,7 +159,7 @@ const Page = ({ params }) => {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-screen flex flex-col">
       {/* Header Section */}
       <div className="px-2 pt-4">
         <MainLayout>
@@ -183,22 +177,21 @@ const Page = ({ params }) => {
             />
           </div>
         </MainLayout>
+      </div>
 
-        {/* Controls Section */}
-
-        {/* Content Section */}
-        <div className="w-full">
-          <div className="flex flex-row gap-4">
-            {embedIntegrations?.length > 5 && (
-              <SearchItems data={embedIntegrations} setFilterItems={setFilterIntegration} item="Integration" />
-            )}
-            <div className={`flex-shrink-0 ${embedIntegrations?.length > 5 ? "mr-2" : "ml-2"}`}>
-              <button className="btn btn-primary btn-sm mr-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
-                + Create New Embed
-              </button>
-            </div>
-          </div>
+      {/* Controls Section */}
+      <div className="px-4 py-3 flex items-center">
+        <div>
+          {embedIntegrations?.length > 5 && (
+            <SearchItems data={embedIntegrations} setFilterItems={setFilterIntegration} item="Integration" />
+          )}
         </div>
+        <button
+          className="btn btn-primary btn-sm ml-2 mb-2"
+          onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}
+        >
+          + Create New Embed
+        </button>
       </div>
       {filterIntegration.length > 0 ? (
         <div className="w-full overflow-visible">
@@ -220,7 +213,6 @@ const Page = ({ params }) => {
       )}
 
       <IntegrationModal params={resolvedParams} type="embed" />
-      <GtwyIntegrationGuideSlider data={selectedIntegration} handleCloseSlider={toggleGtwyIntegraionSlider} />
       <UsageLimitModal data={selectedIntegrationForLimit} onConfirm={handleUpdateIntegrationLimit} item="Embed Name" />
 
       {/* Portal components from hook */}

@@ -44,3 +44,29 @@ export const generateGtwyAccessTokenApi = async () => {
     return error;
   }
 };
+
+export const generateEmbedTokenApi = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/utils/token`, {
+      type: "embed_preview",
+      ...data,
+    });
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
+
+export const generateRagEmbedTokenApi = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/utils/token`, {
+      type: "rag_embed_preview",
+      ...data,
+    });
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};

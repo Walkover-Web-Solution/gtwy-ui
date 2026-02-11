@@ -1,4 +1,10 @@
-import { createIntegrationApi, getAllIntegrationApi, updateIntegrationData } from "@/config/index";
+import {
+  createIntegrationApi,
+  generateEmbedTokenApi,
+  generateRagEmbedTokenApi,
+  getAllIntegrationApi,
+  updateIntegrationData,
+} from "@/config/index";
 import { toast } from "react-toastify";
 import {
   addIntegrationDataReducer,
@@ -45,6 +51,26 @@ export const updateIntegrationDataAction = (orgId, dataToSend) => async (dispatc
     }
   } catch (error) {
     toast.error("Something went Wrong");
+    console.error(error);
+  }
+};
+
+export const generateEmbedTokenAction = (data) => async (dispatch) => {
+  try {
+    const response = await generateEmbedTokenApi(data);
+    return response;
+  } catch (error) {
+    toast.error("something went wrong");
+    console.error(error);
+  }
+};
+
+export const generateRagEmbedTokenAction = (data) => async (dispatch) => {
+  try {
+    const response = await generateRagEmbedTokenApi(data);
+    return response;
+  } catch (error) {
+    toast.error("something went wrong");
     console.error(error);
   }
 };
