@@ -1,12 +1,7 @@
-/**
- * Utility functions for handling prompt formats (string vs structured object)
- */
+//Utility functions for handling prompt formats (string vs structured object)
 
-/**
- * Normalize prompt to structured format
- * - If string: convert to { role: "", goal: "", instruction: string }
- * - If object: ensure it has role, goal, instruction fields
- */
+// Normalize prompt to structured format If string: convert to  role: "", goal: "", instruction: string  If object: ensure it has role, goal, instruction fields
+
 export const normalizePromptToStructured = (prompt) => {
   if (!prompt) {
     return { role: "", goal: "", instruction: "" };
@@ -40,9 +35,7 @@ export const normalizePromptToStructured = (prompt) => {
   return { role: "", goal: "", instruction: "" };
 };
 
-/**
- * Convert structured prompt to string for backward compatibility
- */
+// Convert structured prompt to string for backward compatibility
 export const convertStructuredPromptToString = (promptObj) => {
   if (!promptObj || typeof promptObj !== "object") {
     return "";
@@ -68,35 +61,7 @@ export const convertStructuredPromptToString = (promptObj) => {
   return parts.join("\n\n");
 };
 
-/**
- * Check if prompt is in legacy string format
- * @param {string|object} prompt - The prompt to check
- * @returns {boolean} - True if string, false if object
- */
-export const isLegacyPromptFormat = (prompt) => {
-  return typeof prompt === "string";
-};
-
-/**
- * Safely convert prompt to string (handles both string and object formats)
- */
-export const promptToString = (prompt) => {
-  if (!prompt) return "";
-
-  if (typeof prompt === "string") {
-    return prompt;
-  }
-
-  if (typeof prompt === "object") {
-    return convertStructuredPromptToString(prompt);
-  }
-
-  return String(prompt);
-};
-
-/**
- * Extract text from prompt for variable extraction (works with both string and structured formats)
- */
+// Extract text from prompt for variable extraction (works with both string and structured formats)
 const extractTextFromPrompt = (prompt) => {
   if (!prompt) return "";
 
@@ -123,9 +88,7 @@ const extractTextFromPrompt = (prompt) => {
   return "";
 };
 
-/**
- * Extract variables from prompt (works with both string and structured formats)
- */
+// Extract variables from prompt (works with both string and structured formats)
 export const extractVariablesFromPrompt = (prompt) => {
   if (!prompt) return [];
 
@@ -144,9 +107,7 @@ export const extractVariablesFromPrompt = (prompt) => {
   return [...new Set(variables)];
 };
 
-/**
- * Preprocess content into granular fields so it can be compared consistently.
- */
+// Preprocess content into granular fields so it can be compared consistently.
 export const preprocessPrompt = (content) => {
   let obj = content;
 
@@ -185,12 +146,10 @@ export const preprocessPrompt = (content) => {
   return processed;
 };
 
-/**
- * Convert prompt to advanced view format (single string with values filled in)
- * For main users: "Role: [value]\nGoal: [value]\nInstruction: [value]"
- * For embed users: Replace {{variables}} with actual field values
- */
-export const convertPromptToAdvancedView = (prompt, isEmbedUser = false) => {
+// Convert prompt to advanced view format (single string with values filled in)
+// For main users: "Role: [value]\nGoal: [value]\nInstruction: [value]"
+// For embed users: "Label: [value]\nLabel: [value]" (visible fields only)
+export const convertPromptToAdvancedView = (prompt) => {
   if (!prompt) return "";
 
   // For string prompts (simple case)
@@ -200,19 +159,22 @@ export const convertPromptToAdvancedView = (prompt, isEmbedUser = false) => {
 
   // For object prompts
   if (typeof prompt === "object" && prompt !== null) {
-    // Embed user with custom prompt
-    if (isEmbedUser && prompt.customPrompt && prompt.embedFields) {
-      let result = prompt.customPrompt;
+    // Embed user with custom fields - show Label: Value format
+    if (prompt.customPrompt && prompt.embedFields) {
+      const parts = [];
 
-      // Replace {{variable}} with actual field values
+      // Add visible embed fields in Label: Value format
       const fields = Array.isArray(prompt.embedFields) ? prompt.embedFields : [];
       fields.forEach((field) => {
-        const placeholder = `{{${field.name}}}`;
-        const value = field.value || "";
-        result = result.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), value);
+        if (!field.hidden && field.value) {
+          const label = field.label || field.name;
+          if (label) {
+            parts.push(`${label}: ${field.value}`);
+          }
+        }
       });
 
-      return result;
+      return parts.join("\n");
     }
 
     // Main user structured format (role, goal, instruction)

@@ -436,23 +436,13 @@ const EmbedPromptBuilder = ({ configuration, onChange, onValidate }) => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* Show/Hide Toggle */}
-                        <label className="label cursor-pointer gap-1">
-                          <input
-                            type="checkbox"
-                            className="toggle toggle-xs"
-                            checked={field.hidden}
-                            onChange={(e) => handleFieldVisibilityToggle(field.name, e.target.checked)}
-                          />
-                          <span className="label-text text-xs">Hide</span>
-                        </label>
                         {/* Field Type Selector (shown when visible) */}
                         {/* {!field.hidden && ( */}
                         <div className="space-y-1">
                           {!field.hidden ? (
                             <div className="flex items-center gap-2">
                               <select
-                                className="select select-xs select-bordered"
+                                className="select select-xs select-bordered min-w-[150px]"
                                 value={field.type}
                                 onChange={(e) => handleFieldTypeChange(field.name, e.target.value)}
                               >
@@ -472,7 +462,16 @@ const EmbedPromptBuilder = ({ configuration, onChange, onValidate }) => {
                             </div>
                           )}
                         </div>
-                        {/* )} */}
+                        {/* Show/Hide Toggle */}
+                        <label className="label cursor-pointer gap-1">
+                          <span className="label-text text-xs">Hide</span>
+                          <input
+                            type="checkbox"
+                            className="toggle toggle-xs"
+                            checked={field.hidden}
+                            onChange={(e) => handleFieldVisibilityToggle(field.name, e.target.checked)}
+                          />
+                        </label>
                       </div>
                     </div>
                   </div>

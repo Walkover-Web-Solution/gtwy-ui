@@ -17,10 +17,11 @@ const PromptHeader = memo(
     isEditor = true,
     prompt = "",
     isFocused = false,
-    setIsTextareaFocused = () => { },
+    setIsTextareaFocused = () => {},
     viewMode = "simple",
-    onViewModeChange = () => { },
+    onViewModeChange = () => {},
     showDiffButton = true,
+    isEmbedUser = false,
   }) => {
     const handleOpenDiff = useCallback(() => {
       onOpenDiff?.();
@@ -80,8 +81,9 @@ const PromptHeader = memo(
             <span
               data-testid="prompt-header-diff-button"
               id="prompt-header-diff-button"
-              className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
-                }`}
+              className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${
+                isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
+              }`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleOpenDiff();
@@ -95,8 +97,9 @@ const PromptHeader = memo(
             <span
               data-testid="prompt-header-open-helper-button"
               id="prompt-header-open-helper-button"
-              className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
-                }`}
+              className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${
+                isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
+              }`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 onOpenPromptHelper();
@@ -110,10 +113,11 @@ const PromptHeader = memo(
           <div className="flex items-center bg-base-200 rounded-lg p-0.5">
             <button
               type="button"
-              className={`px-3 py-1 text-xs rounded-md transition-all ${viewMode === "simple"
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                viewMode === "simple"
                   ? "bg-base-100 shadow-sm text-base-content font-medium"
                   : "text-base-content/60 hover:text-base-content"
-                } ${isPublished || !isEditor ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              } ${isPublished || !isEditor ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               onMouseDown={(e) => {
                 if (isPublished || !isEditor) return;
                 e.preventDefault();
@@ -124,10 +128,11 @@ const PromptHeader = memo(
             </button>
             <button
               type="button"
-              className={`px-3 py-1 text-xs rounded-md transition-all ${viewMode === "advanced"
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                viewMode === "advanced"
                   ? "bg-base-100 shadow-sm text-base-content font-medium"
                   : "text-base-content/60 hover:text-base-content"
-                } ${isPublished || !isEditor ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              } ${isPublished || !isEditor ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               onMouseDown={(e) => {
                 if (isPublished || !isEditor) return;
                 e.preventDefault();

@@ -9,6 +9,7 @@ import PromptTextarea from "./PromptTextarea";
 import StructuredPromptInput from "./StructuredPromptInput";
 import EmbedPromptFields from "./EmbedPromptFields";
 import DefaultVariablesSection from "./DefaultVariablesSection";
+import { useCustomSelector } from "@/customHooks/customSelector";
 import {
   normalizePromptToStructured,
   extractVariablesFromPrompt,
@@ -34,6 +35,7 @@ const InputConfigComponent = memo(
     isEditor,
     isEmbedUser,
   }) => {
+    const { showVariables } = useCustomSelector((state) => state.appInfoReducer.embedUserDetails);
     // Optimized Redux selector with memoization and shallow comparison
     const { prompt: reduxPrompt, oldContent } = usePromptSelector(params, searchParams);
     // Refs for zero-render typing experience
@@ -196,12 +198,8 @@ const InputConfigComponent = memo(
       const currentValue = textareaRef.current?.value || reduxPrompt;
 
       // Convert both values to strings for comparison
-      const oldStr = typeof oldContent === 'object'
-        ? JSON.stringify(oldContent)
-        : (oldContent || '');
-      const currentStr = typeof currentValue === 'object'
-        ? JSON.stringify(currentValue)
-        : (currentValue || '');
+      const oldStr = typeof oldContent === "object" ? JSON.stringify(oldContent) : oldContent || "";
+      const currentStr = typeof currentValue === "object" ? JSON.stringify(currentValue) : currentValue || "";
 
       return oldStr.trim() !== currentStr.trim();
     }, [oldContent, reduxPrompt]);
@@ -245,6 +243,7 @@ const InputConfigComponent = memo(
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           showDiffButton={showDiffButton}
+          isEmbedUser={isEmbedUser}
         />
 
         <div className="form-control relative">
@@ -266,8 +265,12 @@ const InputConfigComponent = memo(
             const allVariables = extractVariablesFromPrompt(currentPromptValue);
             const customVariables = allVariables.filter((varName) => !allEmbedFieldNames.includes(varName));
 
-            // Always show variables section in all cases
-            const variablesSection = (
+            // Conditionally render variables section based on user type and showVariables setting
+            // Main users: always show
+            // Embed users: only show if showVariables is enabled
+            const shouldShowVariables = (isEmbedUser && showVariables) || !isEmbedUser;
+
+            const variablesSection = shouldShowVariables ? (
               <DefaultVariablesSection
                 isPublished={isPublished}
                 prompt={currentPromptValue}
@@ -276,54 +279,14 @@ const InputConfigComponent = memo(
                 hiddenFields={hiddenFields}
                 isEmbedUser={isEmbedUser}
               />
-            );
+            ) : null;
 
-            // ADVANCED VIEW: Show single textarea with compiled prompt
-            if (viewMode === "advanced") {
-              const advancedPromptValue = convertPromptToAdvancedView(currentPromptValue, isEmbedUser);
-              return (
-                <>
-                  <PromptTextarea
-                    textareaRef={textareaRef}
-                    initialValue={advancedPromptValue}
-                    onChange={handlePromptChange}
-                    isPromptHelperOpen={uiState.isPromptHelperOpen}
-                    onKeyDown={handleKeyDown}
-                    isPublished={isPublished}
-                    isEditor={isEditor}
-                    onSave={handleSavePrompt}
-                    onFocus={handleTextareaFocus}
-                    onTextAreaBlur={handleTextareaBlur}
-                    variablesSection={variablesSection}
-                  />
-                  <div className="alert alert-info mt-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      className="stroke-current shrink-0 w-6 h-6"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
-                    <span className="text-xs">
-                      Advanced view: Showing compiled prompt with values. Switch to Simple mode to edit individual
-                      fields.
-                    </span>
-                  </div>
-                </>
-              );
-            }
-
-            // SIMPLE VIEW: Show structured fields
-            if (!isEmbedUser) {
+            // SIMPLE VIEW: Show structured fields (for main users in simple mode)
+            if (!isEmbedUser && viewMode === "simple") {
               // Main User: Structured Prompt Input (Role, Goal, Instruction)
               return (
                 <StructuredPromptInput
+                  key="main-simple"
                   prompt={currentPromptValue}
                   onChange={handlePromptChange}
                   onSave={handleSavePrompt}
@@ -337,15 +300,101 @@ const InputConfigComponent = memo(
               );
             }
 
-            // Embed User
-            const promptToUse = currentPromptValue;
+            // ADVANCED VIEW: Show single textarea with compiled prompt (for main users in advanced mode)
+            if (!isEmbedUser && viewMode === "advanced") {
+              const advancedPromptValue = convertPromptToAdvancedView(currentPromptValue);
+              return (
+                <>
+                  <PromptTextarea
+                    key="main-advanced"
+                    textareaRef={textareaRef}
+                    initialValue={advancedPromptValue}
+                    onChange={handlePromptChange}
+                    isPromptHelperOpen={uiState.isPromptHelperOpen}
+                    onKeyDown={handleKeyDown}
+                    isPublished={isPublished}
+                    isEditor={isEditor}
+                    onSave={handleSavePrompt}
+                    onFocus={handleTextareaFocus}
+                    onTextAreaBlur={handleTextareaBlur}
+                    variablesSection={variablesSection}
+                  />
+                </>
+              );
+            }
 
-            // If prompt is a string, show single textarea (useDefaultPrompt = true)
-            if (typeof promptToUse === "string") {
+            // EMBED USER - SIMPLE VIEW: Show custom fields
+            if (isEmbedUser && viewMode === "simple") {
+              const promptToUse = currentPromptValue;
+
+              // If prompt is a string, show single textarea (useDefaultPrompt = true)
+              if (typeof promptToUse === "string") {
+                return (
+                  <PromptTextarea
+                    key="embed-simple-string"
+                    textareaRef={textareaRef}
+                    initialValue={promptToUse}
+                    onChange={handlePromptChange}
+                    isPromptHelperOpen={uiState.isPromptHelperOpen}
+                    onKeyDown={handleKeyDown}
+                    isPublished={isPublished}
+                    isEditor={isEditor}
+                    onSave={handleSavePrompt}
+                    onFocus={handleTextareaFocus}
+                    onTextAreaBlur={handleTextareaBlur}
+                    variablesSection={variablesSection}
+                  />
+                );
+              }
+
+              // If prompt is an object, check if it's custom prompt mode
+              if (typeof promptToUse === "object" && promptToUse !== null) {
+                // If it has customPrompt and useDefaultPrompt is false, show fields
+                if (promptToUse.customPrompt && promptToUse.useDefaultPrompt === false) {
+                  return (
+                    <EmbedPromptFields
+                      key="embed-simple-fields"
+                      prompt={promptToUse}
+                      onChange={handlePromptChange}
+                      onSave={handleSavePrompt}
+                      isPublished={isPublished}
+                      isEditor={isEditor}
+                      onFocus={handleTextareaFocus}
+                      onBlur={handleTextareaBlur}
+                      variablesSection={variablesSection}
+                    />
+                  );
+                }
+
+                // If it's structured format (role/goal/instruction), show structured input
+                if (
+                  promptToUse.role !== undefined ||
+                  promptToUse.goal !== undefined ||
+                  promptToUse.instruction !== undefined
+                ) {
+                  return (
+                    <StructuredPromptInput
+                      key="embed-simple-structured"
+                      prompt={promptToUse}
+                      onChange={handlePromptChange}
+                      onSave={handleSavePrompt}
+                      isPublished={isPublished}
+                      isEditor={isEditor}
+                      onFocus={handleTextareaFocus}
+                      onBlur={handleTextareaBlur}
+                      isPromptHelperOpen={uiState.isPromptHelperOpen}
+                      variablesSection={variablesSection}
+                    />
+                  );
+                }
+              }
+
+              // Fallback: show single textarea
               return (
                 <PromptTextarea
+                  key="embed-simple-fallback"
                   textareaRef={textareaRef}
-                  initialValue={promptToUse}
+                  initialValue={typeof promptToUse === "string" ? promptToUse : ""}
                   onChange={handlePromptChange}
                   isPromptHelperOpen={uiState.isPromptHelperOpen}
                   onKeyDown={handleKeyDown}
@@ -359,62 +408,31 @@ const InputConfigComponent = memo(
               );
             }
 
-            // If prompt is an object, check if it's custom prompt mode
-            if (typeof promptToUse === "object" && promptToUse !== null) {
-              // If it has customPrompt and useDefaultPrompt is false, show fields
-              if (promptToUse.customPrompt && promptToUse.useDefaultPrompt === false) {
-                return (
-                  <EmbedPromptFields
-                    prompt={promptToUse}
+            // EMBED USER - ADVANCED VIEW: Show compiled textarea
+            if (isEmbedUser && viewMode === "advanced") {
+              const advancedPromptValue = convertPromptToAdvancedView(currentPromptValue, isEmbedUser);
+              return (
+                <>
+                  <PromptTextarea
+                    key="embed-advanced"
+                    textareaRef={textareaRef}
+                    initialValue={advancedPromptValue}
                     onChange={handlePromptChange}
-                    onSave={handleSavePrompt}
-                    isPublished={isPublished}
-                    isEditor={isEditor}
-                    onFocus={handleTextareaFocus}
-                    onBlur={handleTextareaBlur}
-                    variablesSection={variablesSection}
-                  />
-                );
-              }
-
-              // If it's structured format (role/goal/instruction), show structured input
-              if (
-                promptToUse.role !== undefined ||
-                promptToUse.goal !== undefined ||
-                promptToUse.instruction !== undefined
-              ) {
-                return (
-                  <StructuredPromptInput
-                    prompt={promptToUse}
-                    onChange={handlePromptChange}
-                    onSave={handleSavePrompt}
-                    isPublished={isPublished}
-                    isEditor={isEditor}
-                    onFocus={handleTextareaFocus}
-                    onBlur={handleTextareaBlur}
                     isPromptHelperOpen={uiState.isPromptHelperOpen}
+                    onKeyDown={handleKeyDown}
+                    isPublished={isPublished}
+                    isEditor={isEditor}
+                    onSave={handleSavePrompt}
+                    onFocus={handleTextareaFocus}
+                    onTextAreaBlur={handleTextareaBlur}
                     variablesSection={variablesSection}
                   />
-                );
-              }
+                </>
+              );
             }
 
-            // Fallback: show single textarea
-            return (
-              <PromptTextarea
-                textareaRef={textareaRef}
-                initialValue={typeof promptToUse === "string" ? promptToUse : ""}
-                onChange={handlePromptChange}
-                isPromptHelperOpen={uiState.isPromptHelperOpen}
-                onKeyDown={handleKeyDown}
-                isPublished={isPublished}
-                isEditor={isEditor}
-                onSave={handleSavePrompt}
-                onFocus={handleTextareaFocus}
-                onTextAreaBlur={handleTextareaBlur}
-                variablesSection={variablesSection}
-              />
-            );
+            // Fallback
+            return null;
           })()}
         </div>
 
