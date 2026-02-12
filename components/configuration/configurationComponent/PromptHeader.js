@@ -18,7 +18,10 @@ const PromptHeader = memo(
     prompt = "",
     isFocused = false,
     setIsTextareaFocused = () => {},
+    viewMode = "simple",
+    onViewModeChange = () => {},
     showDiffButton = true,
+    isEmbedUser = false,
   }) => {
     const handleOpenDiff = useCallback(() => {
       onOpenDiff?.();
@@ -106,6 +109,39 @@ const PromptHeader = memo(
               Prompt Helper
             </span>
           )}
+          {/* View Mode Selector */}
+          <div className="flex items-center bg-base-200 rounded-lg p-0.5">
+            <button
+              type="button"
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                viewMode === "simple"
+                  ? "bg-base-100 shadow-sm text-base-content font-medium"
+                  : "text-base-content/60 hover:text-base-content"
+              } ${isPublished || !isEditor ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              onMouseDown={(e) => {
+                if (isPublished || !isEditor) return;
+                e.preventDefault();
+                onViewModeChange("simple");
+              }}
+            >
+              Simple
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1 text-xs rounded-md transition-all ${
+                viewMode === "advanced"
+                  ? "bg-base-100 shadow-sm text-base-content font-medium"
+                  : "text-base-content/60 hover:text-base-content"
+              } ${isPublished || !isEditor ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              onMouseDown={(e) => {
+                if (isPublished || !isEditor) return;
+                e.preventDefault();
+                onViewModeChange("advanced");
+              }}
+            >
+              Advanced
+            </button>
+          </div>
         </div>
       </div>
     );

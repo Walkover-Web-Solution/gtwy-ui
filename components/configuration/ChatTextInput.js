@@ -17,7 +17,7 @@ import { SendHorizontalIcon, UploadIcon, LinkIcon, PlayIcon, CloseCircleIcon } f
 import { Paperclip } from "lucide-react";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { toggleSidebar } from "@/utils/utility";
-import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
+import { buildVariablesObject } from "@/utils/variableValidation";
 import { buildUserUrls } from "@/utils/attachmentUtils";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
@@ -134,17 +134,104 @@ function ChatTextInput({
   const variables = useMemo(() => buildVariablesObject(variablesKeyValue), [variablesKeyValue]);
 
   // Validate missing variables in prompt
-  const validateVariables = useCallback(
-    () => validatePromptVariables(prompt, variablesKeyValue),
-    [prompt, variablesKeyValue]
-  );
+  const validateVariables = useCallback(() => {
+    if (!prompt) return { isValid: true, missingVariables: [] };
+
+    // Extract variables from prompt using regex
+    const regex = /{{(.*?)}}/g;
+    // Handle both string and object formats
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object") {
+      // Check if this is embed user format (has customPrompt and useDefaultPrompt is false)
+      const isEmbedFormat = prompt.customPrompt && prompt.useDefaultPrompt === false;
+
+      if (isEmbedFormat) {
+        // For embed users: use customPrompt template to find variables, and only check visible embedFields
+        if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+        // Note: We use customPrompt to find variables, but validation will check visible embedFields
+      } else {
+        // For main users: extract from default fields (role, goal, instruction)
+        if (prompt.role) promptText += prompt.role + " ";
+        if (prompt.goal) promptText += prompt.goal + " ";
+        if (prompt.instruction) promptText += prompt.instruction + " ";
+        // Also extract from embedFields if present (for backward compatibility)
+        if (Array.isArray(prompt.embedFields)) {
+          prompt.embedFields.forEach((field) => {
+            if (field.value) promptText += field.value + " ";
+          });
+        }
+      }
+    }
+    const matches = promptText ? [...promptText.matchAll(regex)] : [];
+    const promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
+
+    if (!promptVariables.length) return { isValid: true, missingVariables: [] };
+
+    // Check which variables are missing values
+    const missingVariables = promptVariables.filter((varName) => {
+      const variable = variablesKeyValue.find((v) => v.key === varName);
+      if (!variable) {
+        return true; // Variable not defined at all
+      }
+
+      // Skip validation for optional variables
+      if (!variable.required) {
+        return false;
+      }
+
+      const hasValue = variable.value !== undefined && variable.value !== null && String(variable.value).trim() !== "";
+      const hasDefault =
+        variable.defaultValue !== undefined &&
+        variable.defaultValue !== null &&
+        String(variable.defaultValue).trim() !== "";
+      return !hasValue && !hasDefault; // Missing both value and default
+    });
+
+    return {
+      isValid: missingVariables.length === 0,
+      missingVariables,
+    };
+  }, [prompt, variablesKeyValue]);
 
   const handleSendMessage = async (e, forceRun = false) => {
     if (inputRef.current) {
       inputRef.current.style.height = "40px"; // Set initial height
     }
     // Skip prompt validation for chat models - they don't require a system prompt
-    if (prompt?.trim() === "" && modelType !== "completion" && modelType !== "embedding" && modelType !== "chat") {
+    // Extract text from prompt (handle both string and object formats)
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object" && prompt !== null) {
+      // Check if this is embed user format (has customPrompt and useDefaultPrompt is false)
+      const isEmbedFormat = prompt.customPrompt && prompt.useDefaultPrompt === false;
+
+      if (isEmbedFormat) {
+        // For embed users: only extract from visible embedFields (not hidden)
+        if (Array.isArray(prompt.embedFields)) {
+          prompt.embedFields.forEach((field) => {
+            // Only include visible fields (not hidden)
+            if (!field.hidden && field.value) {
+              promptText += field.value + " ";
+            }
+          });
+        }
+      } else {
+        // For main users: extract from default fields (role, goal, instruction)
+        if (prompt.role) promptText += prompt.role + " ";
+        if (prompt.goal) promptText += prompt.goal + " ";
+        if (prompt.instruction) promptText += prompt.instruction + " ";
+        // Also extract from embedFields if present (for backward compatibility)
+        if (Array.isArray(prompt.embedFields)) {
+          prompt.embedFields.forEach((field) => {
+            if (field.value) promptText += field.value + " ";
+          });
+        }
+      }
+    }
+    if (promptText.trim() === "" && modelType !== "completion" && modelType !== "embedding" && modelType !== "chat") {
       dispatch(setChatError(channelIdentifier, "Prompt is required"));
       return;
     }

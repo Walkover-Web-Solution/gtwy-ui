@@ -16,12 +16,15 @@ const PromptTextarea = memo(
     isPublished = false,
     isEditor = true,
     onSave,
+    variablesSection,
+    readOnly = false,
   }) => {
     const isComposingRef = useRef(false);
     const lastExternalValueRef = useRef(initialValue);
     const hasInitializedRef = useRef(false);
     const wrapperRef = useRef(null);
     const smallHeightRef = useRef(DEFAULT_SMALL_HEIGHT);
+    console.log("variablesSection", variablesSection);
     useEffect(() => {
       const textarea = textareaRef.current;
       if (!textarea || isComposingRef.current) return;
@@ -114,43 +117,54 @@ const PromptTextarea = memo(
     );
 
     return (
-      <div
-        data-testid="prompt-textarea-wrapper"
-        id="prompt-textarea-wrapper"
-        ref={wrapperRef}
-        className={`
-        bg-base-100 border flex
-        w-full relative rounded-b-none
-        transition-none p-0 m-0 overflow-hidden
-        ring-2 ring-transparent
-        focus-within:ring-2 focus-within:ring-base-content/20 box-border
-        ${
-          isPromptHelperOpen
-            ? "h-[calc(100vh-50px)] w-[700px] border-primary shadow-md resize-none"
-            : "h-96 min-h-96 border-base-content/20 resize-y"
-        }
-      `}
-      >
-        <textarea
-          data-testid="prompt-textarea"
-          id="prompt-textarea"
-          ref={textareaRef}
-          disabled={isPublished || !isEditor}
-          contentEditable={!isPublished && isEditor}
+      <div className="w-full">
+        <div
+          data-testid="prompt-textarea-wrapper"
+          id="prompt-textarea-wrapper"
+          ref={wrapperRef}
           className={`
-          w-full text-sm h-full min-h-full max-h-full resize-none bg-transparent border-none
-          caret-base-content outline-none overflow-auto p-2
-          ${className}
+          bg-base-100 border flex
+          w-full relative rounded-b-none
+          transition-none p-0 m-0 overflow-hidden
+          ring-2 ring-transparent
+          focus-within:ring-2 focus-within:ring-base-content/20 box-border
+          ${
+            isPromptHelperOpen
+              ? "h-[calc(100vh-50px)] w-[700px] border-primary shadow-md resize-none"
+              : "h-96 min-h-96 border-base-content/20 resize-y"
+          }
         `}
-          onBlur={handleBlur}
-          onChange={handleChange}
-          onFocus={handleFocus}
-          onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-          placeholder={placeholder}
-          title={isPublished ? "Cannot edit in published mode" : ""}
-        />
+        >
+          <textarea
+            data-testid="prompt-textarea"
+            id="prompt-textarea"
+            ref={textareaRef}
+            disabled={isPublished || !isEditor || readOnly}
+            readOnly={readOnly}
+            contentEditable={!isPublished && isEditor && !readOnly}
+            className={`
+            w-full text-sm h-full min-h-full max-h-full resize-none bg-transparent border-none
+            caret-base-content outline-none overflow-auto p-2
+            ${readOnly ? "cursor-not-allowed opacity-70" : ""}
+            ${className}
+          `}
+            onBlur={handleBlur}
+            onChange={handleChange}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
+            placeholder={placeholder}
+            title={
+              isPublished
+                ? "Cannot edit in published mode"
+                : readOnly
+                  ? "Read-only in advanced view. Switch to Simple mode to edit."
+                  : ""
+            }
+          />
+        </div>
+        {variablesSection}
       </div>
     );
   }

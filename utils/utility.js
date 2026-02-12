@@ -422,8 +422,54 @@ export const simulateStreaming = (text, setStreamed, setIsStreaming, callback) =
 };
 
 export const createDiff = (oldText, newText) => {
-  const oldLines = oldText?.split("\n");
-  const newLines = newText?.split("\n");
+  // Helper to format prompt object into string
+  const formatPromptObject = (textObj) => {
+    if (typeof textObj === "string") return textObj;
+    if (typeof textObj !== "object" || textObj === null) return String(textObj || "");
+
+    const parts = [];
+
+    // Case 1: Embed User (with embedFields)
+    if (Array.isArray(textObj.embedFields)) {
+      // If custom prompt text exists, add it first
+      if (textObj.customPrompt) {
+        parts.push(`[Custom Prompt Template]\n${textObj.customPrompt}`);
+      } else if (textObj.defaultPromptText) {
+        parts.push(`[Default Prompt]\n${textObj.defaultPromptText}`);
+      }
+
+      // Add visible fields
+      textObj.embedFields.forEach((field) => {
+        if (!field.hidden) {
+          parts.push(`[${field.name}]\n${field.value || ""}`);
+        }
+      });
+
+      if (parts.length > 0) return parts.join("\n\n");
+    }
+
+    // Case 2: Main User (Role, Goal, Instruction)
+    if (textObj.role || textObj.goal || textObj.instruction) {
+      if (textObj.role) parts.push(`[Role]\n${textObj.role}`);
+      if (textObj.goal) parts.push(`[Goal]\n${textObj.goal}`);
+      if (textObj.instruction) parts.push(`[Instruction]\n${textObj.instruction}`);
+      return parts.join("\n\n");
+    }
+
+    // Case 3: Simple Custom Prompt wrapper
+    if (textObj.customPrompt) {
+      return textObj.customPrompt;
+    }
+
+    // Fallback: JSON string
+    return JSON.stringify(textObj, null, 2);
+  };
+
+  const oldTextStr = formatPromptObject(oldText);
+  const newTextStr = formatPromptObject(newText);
+
+  const oldLines = oldTextStr?.split("\n");
+  const newLines = newTextStr?.split("\n");
   const maxLines = Math.max(oldLines?.length, newLines?.length);
 
   const diffLines = [];
@@ -902,10 +948,31 @@ export const useOutsideClick = (elementRef, triggerRef, onOutsideClick, isActive
 
 export const extractPromptVariables = (prompt) => {
   if (!prompt) return [];
+
+  // Handle both string and object formats
+  let promptText = "";
+  if (typeof prompt === "string") {
+    promptText = prompt;
+  } else if (typeof prompt === "object") {
+    // Extract text from structured prompt object
+    if (prompt.role) promptText += prompt.role + " ";
+    if (prompt.goal) promptText += prompt.goal + " ";
+    if (prompt.instruction) promptText += prompt.instruction + " ";
+    if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+    // Extract from embedFields if present
+    if (Array.isArray(prompt.embedFields)) {
+      prompt.embedFields.forEach((field) => {
+        if (field.value) promptText += field.value + " ";
+      });
+    }
+  }
+
+  if (!promptText) return [];
+
   const variableRegex = /\{\{([^}]+)\}\}/g;
   const matches = [];
   let match;
-  while ((match = variableRegex.exec(prompt)) !== null) {
+  while ((match = variableRegex.exec(promptText)) !== null) {
     if (!matches.includes(match[1])) {
       matches.push(match[1]);
     }

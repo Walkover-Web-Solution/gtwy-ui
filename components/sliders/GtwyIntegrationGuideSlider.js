@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CloseIcon } from "@/components/Icons";
 import { Save, ChevronDown, AlertTriangle } from "lucide-react";
 import ConfirmationModal from "../UI/ConfirmationModal";
@@ -12,6 +12,7 @@ import CopyButton from "../copyButton/CopyButton";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import { closeModal, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
+import EmbedPromptBuilder from "./EmbedPromptBuilder";
 
 const COLOR_LABEL_MAP = {
   "base-100": "Page Background",
@@ -592,6 +593,9 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedConfig, setLastSavedConfig] = useState(null);
 
+  // Track previous prompt value to prevent unnecessary updates
+  const prevPromptRef = useRef(null);
+
   // Get config and root-level data from Redux store
   const integrationData = useCustomSelector((state) =>
     state?.integrationReducer?.integrationData?.[data?.org_id]?.find((f) => f.folder_id === data?.embed_id)
@@ -628,6 +632,13 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
       embed_id: data?.embed_id,
     };
   });
+
+  // Initialize prevPromptRef with initial prompt value
+  useEffect(() => {
+    if (prevPromptRef.current === null && configuration?.prompt !== undefined) {
+      prevPromptRef.current = configuration.prompt;
+    }
+  }, [configuration?.prompt]);
 
   const [themeEditorValue, setThemeEditorValue] = useState(stringifyTheme(cloneTheme(defaultUserTheme)));
   const themeEditorDiffers = useMemo(() => {
@@ -864,10 +875,56 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
   };
 
   const handleConfigChange = (key, value) => {
-    setConfiguration((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setConfiguration((prev) => {
+      const currentValue = prev[key];
+
+      // For prompt, do deep comparison to avoid unnecessary updates that cause sync loops
+      if (key === "prompt") {
+        // Check if this is the same value we just processed
+        if (prevPromptRef.current !== null) {
+          if (typeof prevPromptRef.current === "string" && typeof value === "string") {
+            if (prevPromptRef.current === value) {
+              return prev; // Same as what we just set, don't update
+            }
+          } else if (typeof prevPromptRef.current === "object" && typeof value === "object") {
+            if (JSON.stringify(prevPromptRef.current) === JSON.stringify(value)) {
+              return prev; // Same as what we just set, don't update
+            }
+          }
+        }
+
+        // Check if values are actually different from current
+        if (typeof currentValue === "string" && typeof value === "string") {
+          if (currentValue === value) {
+            prevPromptRef.current = value;
+            return prev; // No change, don't update
+          }
+        } else if (
+          typeof currentValue === "object" &&
+          typeof value === "object" &&
+          currentValue !== null &&
+          value !== null
+        ) {
+          // Both are objects, compare them
+          const currentStr = JSON.stringify(currentValue);
+          const newStr = JSON.stringify(value);
+          if (currentStr === newStr) {
+            prevPromptRef.current = value;
+            return prev; // No change, don't update
+          }
+        }
+        // Different types or actually different values - update
+        prevPromptRef.current = value;
+      } else if (currentValue === value) {
+        // For other keys, simple comparison
+        return prev; // No change, don't update
+      }
+
+      return {
+        ...prev,
+        [key]: value,
+      };
+    });
   };
 
   // Check if configuration has changed from the last saved state
@@ -923,7 +980,11 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
   }, {});
 
   const configChanged = isConfigChanged();
-  const themeSaveDisabled = isSaving || (!configChanged && !themeEditorDiffers);
+
+  /* New Prompt Validation State */
+  const [isPromptValid, setIsPromptValid] = useState(true);
+
+  const themeSaveDisabled = isSaving || (!configChanged && !themeEditorDiffers) || !isPromptValid;
   useEffect(() => {
     const sidebar = document.getElementById("gtwy-integration-slider");
     if (sidebar) {
@@ -931,8 +992,6 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
       sidebar.setAttribute("data-confirmation-modal", MODAL_TYPE.UNSAVED_CHANGES_MODAL);
     }
   }, [configChanged, themeEditorDiffers]);
-
-  // Add event listener for outside clicks AFTER configChanged is defined
 
   const jwtPayload = `{
   "org_id": "${data?.org_id}",
@@ -1039,6 +1098,20 @@ window.openGtwy({
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* Embed Prompt Builder Section */}
+              <div className="card bg-base-100 shadow-sm">
+                <div className="card-body p-3">
+                  <EmbedPromptBuilder
+                    configuration={configuration}
+                    onChange={(promptValue) => {
+                      // promptValue can be string (useDefaultPrompt=true) or object (useDefaultPrompt=false)
+                      handleConfigChange("prompt", promptValue);
+                    }}
+                    onValidate={setIsPromptValid}
+                  />
                 </div>
               </div>
 
