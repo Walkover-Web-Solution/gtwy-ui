@@ -17,6 +17,7 @@ import {
   MessageSquareMoreIcon,
   Cog,
   Code2,
+  LayoutTemplate,
 } from "lucide-react";
 import { AddIcon, KeyIcon } from "@/components/Icons";
 import GiftIcon from "@/icons/GiftIcon";
@@ -49,6 +50,7 @@ export const ITEM_ICONS = {
   auth: <KeyIcon size={15} />,
   addModel: <AddIcon size={15} />,
   prebuiltPrompts: <Bot size={15} />,
+  widgets: <LayoutTemplate size={15} />,
 };
 
 export const DISPLAY_NAMES = (key) => {
@@ -83,6 +85,8 @@ export const DISPLAY_NAMES = (key) => {
       return "Auth Key";
     case "apikeys":
       return "API Keys";
+    case "widgets":
+      return "Widgets";
     case "keyboard-shortcuts":
       return "Keyboard Shortcuts";
     default:
@@ -92,7 +96,7 @@ export const DISPLAY_NAMES = (key) => {
 
 export const NAV_SECTIONS = [
   { title: "AGENT TYPES", items: ["api", "chatbot"] },
-  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base"] },
+  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets"] },
   { title: "SECURITY & ACCESS", items: ["pauthkey", "apikeys"] },
   { title: "MONITORING & SUPPORT", items: ["alerts", "metrics"] },
   { title: "Developer", items: ["integration", "RAG_embed"] },
@@ -102,6 +106,7 @@ export const NAV_ITEM_CONFIG = {
   api: { path: "agents", query: { type: "api" } },
   chatbot: { path: "agents", query: { type: "chatbot" } },
 };
+
 
 export const HRCollapsed = React.memo(() => <hr className="my-2 w-6 border-base-content/30 mx-auto" />);
 

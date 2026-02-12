@@ -70,7 +70,7 @@ export const userFeedbackCountAction =
   ({ bridge_id, user_feedback }) =>
   async (dispatch) => {
     try {
-      const data = await userFeedbackCount({ bridge_id, user_feedback });
+      const _data = await userFeedbackCount({ bridge_id, user_feedback });
     } catch (error) {
       console.error(error);
     }

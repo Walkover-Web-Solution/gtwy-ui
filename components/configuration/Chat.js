@@ -266,7 +266,38 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
   // Opens the embedded chatbot panel and sends any necessary data beforehand
 
-  const renderMessageAttachments = (message) => {
+  // ----------------- RICH UI ACTIONS -----------------
+  const handleRichUIActions = (event) => {
+    // Event delegation: find closest element with data-action
+    const target = event.target.closest("[data-action]");
+    if (!target) return;
+
+    event.preventDefault();
+
+    const actionDataStr = target.getAttribute("data-action");
+    const elementId = target.getAttribute("id");
+    try {
+      const actionPayload = JSON.parse(actionDataStr);
+      // 1. Show loading state
+      target.classList.add("loading", "loading-spinner", "btn-disabled"); // DaisyUI classes
+
+      // 2. Send to parent
+      if (typeof window !== "undefined") {
+        window.parent.postMessage(
+          {
+            type: "GTWY_ACTION",
+            payload: actionPayload,
+            elementId: elementId,
+          },
+          "*"
+        );
+      }
+    } catch (e) {
+      console.error("Failed to parse action data", e);
+    }
+  };
+
+  const _renderMessageAttachments = (message) => {
     // Check for both image_urls (user images) and llm_urls (assistant images)
     const isAssistant = message?.sender === "assistant" || message?.role === "assistant";
     const hasUserImages = !isAssistant && Array.isArray(message?.image_urls) && message.image_urls.length > 0;
@@ -479,6 +510,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               id="chat-messages-container"
               ref={messagesContainerRef}
               className="flex flex-col w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-1 mb-4 pr-2"
+              onClick={handleRichUIActions}
             >
               {messages.map((message, index) => {
                 return (
@@ -679,7 +711,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   : message.sender === "error"
                                     ? "bg-error/10 border border-error/30 text-error"
                                     : ""
-                              }`}
+                              } ${message?.type === "template" ? "!bg-transparent" : ""}`}
                             >
                               {/* Show loader overlay if this is the message being tested */}
                               {isRunningTestCase && currentRunIndex !== null && index === currentRunIndex + 1 && (
@@ -767,12 +799,20 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       }}
                                     >
                                       {/* Show model's actual response if testcase was run, otherwise show original content */}
-                                      {message.testCaseResult && message.sender === "assistant"
-                                        ? message.testCaseResult.actual_result || message.content
-                                        : message.content}
+                                      {message.type !== "template" &&
+                                        (message.testCaseResult && message.sender === "assistant"
+                                          ? message.testCaseResult.actual_result || message.content
+                                          : message.content)}
                                     </ReactMarkdown>
                                   )}
-                                  {renderMessageAttachments(message)}
+
+                                  {/* Render Template Content (without HTML) */}
+                                  {message?.type === "template" && message?.content && (
+                                    <div
+                                      className="mt-4 template-html-container w-full"
+                                      dangerouslySetInnerHTML={{ __html: message.content }}
+                                    />
+                                  )}
                                 </div>
                               )}
                             </div>
