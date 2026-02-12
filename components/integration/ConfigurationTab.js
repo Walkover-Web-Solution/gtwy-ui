@@ -4,11 +4,13 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { updateIntegrationDataAction, generateEmbedTokenAction } from "@/store/action/integrationAction";
+import { updateIntegrationDataAction } from "@/store/action/integrationAction";
 import { setEmbedUserDetailsAction } from "@/store/action/appInfoAction";
 import { toast } from "react-toastify";
+import { RefreshCw } from "lucide-react";
 import ThemePaletteEditor, { hexToOklchString } from "./ThemePaletteEditor";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
+import EmbedPreview from "./EmbedPreview";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -168,53 +170,6 @@ const CONFIG_SCHEMA = [
   },
 ];
 
-// Config Input Component
-const ConfigInput = ({ config, value, onChange }) => {
-  const { key, type, label, description, options } = config;
-
-  const renderInput = () => {
-    switch (type) {
-      case "toggle":
-        return (
-          <input
-            type="checkbox"
-            className="toggle toggle-sm toggle-primary"
-            checked={value || false}
-            onChange={(e) => onChange(key, e.target.checked)}
-          />
-        );
-
-      case "select":
-        return (
-          <select
-            className="select select-bordered select-sm w-full"
-            value={value ?? config.defaultValue}
-            onChange={(e) => onChange(key, e.target.value)}
-          >
-            {options?.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="form-control bg-base-200 rounded-lg p-3">
-      <label className={`label ${type === "toggle" ? "cursor-pointer" : ""} py-1`}>
-        <span className="label-text text-sm font-medium">{label}</span>
-        {type === "toggle" && renderInput()}
-      </label>
-      {type !== "toggle" && <div className="mt-2">{renderInput()}</div>}
-      <p className="text-xs text-base-content/70 mt-1">{description}</p>
-    </div>
-  );
-};
-
 // API Keys Input Component
 const ApiKeysInput = ({ configuration, onChange, orgId }) => {
   const SERVICES = useCustomSelector((state) => state?.serviceReducer?.services);
@@ -267,39 +222,15 @@ const ApiKeysInput = ({ configuration, onChange, orgId }) => {
   );
 };
 
-// Config Section Component
-const ConfigSection = ({ title, configs, configuration, onChange, orgId }) => {
-  return (
-    <div className="space-y-3">
-      <h5 className="text-sm font-semibold text-primary border-b border-base-300 pb-2">{title}</h5>
-      <div className="space-y-3">
-        {configs.map((config) => (
-          <ConfigInput key={config.key} config={config} value={configuration[config.key]} onChange={onChange} />
-        ))}
-      </div>
-
-      {/* Show API Keys input section when addDefaultApiKeys is enabled */}
-      {title === "Display Settings" && configuration.addDefaultApiKeys && (
-        <div className="mt-4 p-4 bg-base-200 rounded-lg border border-base-300">
-          <ApiKeysInput configuration={configuration} onChange={onChange} orgId={orgId} />
-        </div>
-      )}
-    </div>
-  );
-};
-
 const ConfigurationTab = ({ data, isConfigMode }) => {
   const dispatch = useDispatch();
-  const [embedToken, setEmbedToken] = useState("");
-  const [isLoadingToken, setIsLoadingToken] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const isLocalChangeRef = useRef(false);
+  const [autoReload, setAutoReload] = useState(true);
+  const saveTimeoutRef = useRef(null);
 
-  const { currentUser, reduxThemeConfig } = useCustomSelector((state) => ({
-    currentUser: state.userDetailsReducer.userDetails,
-    reduxThemeConfig: state.appInfoReducer?.embedUserDetails?.theme_config,
+  const { embedToken } = useCustomSelector((state) => ({
+    embedToken: state?.integrationReducer?.embedTokens?.[data?.folder_id],
   }));
 
   const integrationData = useCustomSelector((state) =>
@@ -323,121 +254,43 @@ const ConfigurationTab = ({ data, isConfigMode }) => {
 
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 
-  // Reload embed when Redux theme_config changes (from external sources)
+  // Cleanup on unmount
   useEffect(() => {
-    if (reduxThemeConfig && !isLocalChangeRef.current) {
-      setTheme(reduxThemeConfig);
-      setReloadTrigger((prev) => prev + 1);
-    }
-    // Reset the flag after processing
-    isLocalChangeRef.current = false;
-  }, [reduxThemeConfig]);
-
-  // Fetch embed token on component mount
-  useEffect(() => {
-    const fetchEmbedToken = async () => {
-      if (embedToken) return; // Already loaded
-      if (!data?.org_id || !data?.folder_id) {
-        setIsLoadingToken(false);
-        return;
-      }
-
-      try {
-        setIsLoadingToken(true);
-        const response = await dispatch(
-          generateEmbedTokenAction({
-            user_id: currentUser?.id || "test_user",
-            folder_id: data.folder_id,
-          })
-        );
-
-        if (response?.data?.embedToken) {
-          setEmbedToken(response.data.embedToken);
-        }
-      } catch (error) {
-        console.error("Error generating embed token:", error);
-      } finally {
-        setIsLoadingToken(false);
-      }
-    };
-
-    fetchEmbedToken();
-  }, [data?.org_id, data?.folder_id, currentUser?.id, embedToken, dispatch]);
-
-  // Load embed script when token is available or when reload is triggered
-  useEffect(() => {
-    if (!embedToken) return;
-
-    // Remove existing script if it exists (for reload)
-    const existingScript = document.getElementById("gtwy-main-script");
-    if (existingScript) {
-      try {
-        document.body.removeChild(existingScript);
-
-        // Remove embed container if it exists
-        const embedContainer = document.getElementById("iframe-viasocket-embed-parent-container");
-        if (embedContainer && embedContainer.parentNode === document.body) {
-          document.body.removeChild(embedContainer);
-        }
-      } catch (error) {
-        console.warn("Error removing existing embed scripts:", error);
-      }
-    }
-
-    // Create and load the embed script
-    const script = document.createElement("script");
-    script.id = "gtwy-main-script";
-    script.setAttribute("embedToken", embedToken);
-    script.src = "http://localhost:3000/gtwy_embed_local.js";
-    script.setAttribute("parentId", "alert-embed-parent");
-    script.setAttribute("defaultOpen", "true");
-    document.body.appendChild(script);
-
-    // Cleanup function when component unmounts
     return () => {
-      try {
-        const scriptElement = document.getElementById("gtwy-main-script");
-        if (scriptElement && scriptElement.parentNode === document.body) {
-          document.body.removeChild(scriptElement);
-        }
-
-        // Remove embed container if it exists
-        const embedContainer = document.getElementById("iframe-viasocket-embed-parent-container");
-        if (embedContainer && embedContainer.parentNode === document.body) {
-          document.body.removeChild(embedContainer);
-        }
-
-        // Clear isEmbedUser from Redux to prevent it from affecting main layout
-        dispatch(setEmbedUserDetailsAction({ isEmbedUser: false }));
-      } catch (error) {
-        console.warn("Error removing embed scripts:", error);
-      }
+      // Clear isEmbedUser from Redux to prevent it from affecting main layout
+      dispatch(setEmbedUserDetailsAction({ isEmbedUser: false }));
     };
-  }, [embedToken, reloadTrigger, dispatch]);
+  }, [dispatch]);
 
-  // Manual save function to persist to database
-  const handleManualSave = useCallback(async () => {
-    try {
-      setIsSaving(true);
-      const dataToSend = {
-        folder_id: data?.folder_id,
-        orgId: data?.org_id,
-        config: {
-          ...configuration,
-          theme_config: theme,
-        },
-      };
+  // Auto-save function with API call and conditional script reload
+  const autoSave = useCallback(
+    async (configToSave, themeToSave, shouldReload = autoReload) => {
+      try {
+        setIsSaving(true);
+        const dataToSend = {
+          folder_id: data?.folder_id,
+          orgId: data?.org_id,
+          config: {
+            ...configToSave,
+            theme_config: themeToSave,
+          },
+        };
 
-      await dispatch(updateIntegrationDataAction(data?.org_id, dataToSend));
-      setHasUnsavedChanges(false);
-      toast.success("Configuration saved successfully");
-    } catch (error) {
-      console.error("Failed to save configuration:", error);
-      toast.error("Failed to save configuration");
-    } finally {
-      setIsSaving(false);
-    }
-  }, [data?.folder_id, data?.org_id, dispatch, configuration, theme]);
+        await dispatch(updateIntegrationDataAction(data?.org_id, dataToSend));
+
+        // Trigger embed script reload only if auto-reload is enabled
+        if (shouldReload) {
+          setReloadTrigger((prev) => prev + 1);
+        }
+      } catch (error) {
+        console.error("Failed to save configuration:", error);
+        toast.error("Failed to save configuration");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [data?.folder_id, data?.org_id, dispatch, autoReload]
+  );
 
   const handleConfigChange = (key, value) => {
     const newConfig = {
@@ -445,12 +298,14 @@ const ConfigurationTab = ({ data, isConfigMode }) => {
       [key]: value,
     };
     setConfiguration(newConfig);
-    setHasUnsavedChanges(true);
 
-    // Send to embed immediately for live preview
-    if (window.GtwyEmbed && window.GtwyEmbed.sendDataToGtwy) {
-      window.GtwyEmbed.sendDataToGtwy({ [key]: value });
+    // Debounce auto-save with API call and reload
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(newConfig, theme);
+    }, 1000);
   };
 
   const handleColorChange = (mode, token, hexValue) => {
@@ -462,37 +317,42 @@ const ConfigurationTab = ({ data, isConfigMode }) => {
         [token]: oklchValue,
       },
     };
-
-    // Mark this as a local change to prevent reload loop
-    isLocalChangeRef.current = true;
-
     setTheme(newTheme);
-    setHasUnsavedChanges(true);
 
-    // Send theme to embed immediately for live preview
-    if (window.GtwyEmbed && window.GtwyEmbed.sendDataToGtwy) {
-      window.GtwyEmbed.sendDataToGtwy({ theme_config: newTheme });
+    // Debounce auto-save with API call and reload
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(configuration, newTheme);
+    }, 1000);
   };
 
   const handleThemeReset = () => {
     const resetTheme = JSON.parse(JSON.stringify(defaultUserTheme));
-
-    // Mark this as a local change to prevent reload loop
-    isLocalChangeRef.current = true;
-
     setTheme(resetTheme);
     setConfiguration((prev) => ({
       ...prev,
       theme_config: resetTheme,
     }));
-    setHasUnsavedChanges(true);
 
-    // Send reset theme to embed immediately
-    if (window.GtwyEmbed && window.GtwyEmbed.sendDataToGtwy) {
-      window.GtwyEmbed.sendDataToGtwy({ theme_config: resetTheme });
-    }
+    // Auto-save immediately on reset with API call and conditional reload
+    autoSave(configuration, resetTheme);
   };
+
+  // Manual reload function
+  const handleManualReload = () => {
+    setReloadTrigger((prev) => prev + 1);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // State to track if portal target is ready
   const [portalTarget, setPortalTarget] = useState(null);
@@ -527,39 +387,50 @@ const ConfigurationTab = ({ data, isConfigMode }) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      <div className="flex items-center justify-between mb-4 pt-6 px-8">
+        <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-primary">Live Preview</h3>
+          <div className="flex items-center gap-2">
+            <div className="form-control">
+              <label className="label cursor-pointer gap-2 py-0">
+                <span className="label-text text-xs">Auto</span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-xs toggle-primary"
+                  checked={autoReload}
+                  onChange={(e) => setAutoReload(e.target.checked)}
+                />
+              </label>
+            </div>
+            {!autoReload && (
+              <button
+                onClick={handleManualReload}
+                className="btn btn-ghost btn-xs gap-1"
+                title="Reload embed"
+                disabled={isSaving}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reload
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {hasUnsavedChanges && !isSaving && <span className="text-xs text-warning">Unsaved changes</span>}
-          {isSaving && (
-            <span className="text-xs text-base-content/60 flex items-center gap-2">
-              <span className="loading loading-spinner loading-xs"></span>
-              Saving...
-            </span>
-          )}
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleManualSave}
-            disabled={isSaving || !hasUnsavedChanges}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
-        </div>
+        {isSaving && (
+          <span className="text-xs text-base-content/60 flex items-center gap-2">
+            <span className="loading loading-spinner loading-xs"></span>
+            Saving...
+          </span>
+        )}
       </div>
 
       {/* Embed Preview Container */}
-      {isLoadingToken ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <span className="loading loading-spinner loading-lg text-primary"></span>
-            <p className="text-sm text-base-content/70 mt-4">Loading embed preview...</p>
-          </div>
-        </div>
-      ) : (
-        <div id="alert-embed-parent" className="w-full h-full"></div>
-      )}
+      <EmbedPreview
+        embedToken={embedToken}
+        showHeader={false}
+        parentId="alert-embed-parent"
+        reloadTrigger={reloadTrigger}
+        isLoading={!embedToken}
+      />
 
       {/* Configuration Settings - Portal to parent sidebar when in config mode */}
       {isConfigMode &&
@@ -601,6 +472,14 @@ const ConfigurationTab = ({ data, isConfigMode }) => {
                     </div>
                   ))}
                 </div>
+
+                {/* Show API Keys input when addDefaultApiKeys is enabled in Display Settings */}
+                {sectionName === "Display Settings" && configuration.addDefaultApiKeys && (
+                  <div className="mt-3 p-3 bg-base-200 rounded-lg border border-base-300">
+                    <ApiKeysInput configuration={configuration} onChange={handleConfigChange} orgId={data?.org_id} />
+                  </div>
+                )}
+
                 {sectionName !== Object.keys(groupedConfigs)[Object.keys(groupedConfigs).length - 1] && (
                   <div className="divider my-2"></div>
                 )}

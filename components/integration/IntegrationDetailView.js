@@ -10,16 +10,16 @@ import TestingTab from "./TestingTab";
 const IntegrationDetailView = ({ data, onClose }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Get tab from URL params, default to "integration"
-  const tabFromUrl = searchParams.get('tab') || 'integration';
+  const tabFromUrl = searchParams.get("tab") || "integration";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const [isConfigMode, setIsConfigMode] = useState(tabFromUrl === 'configuration');
+  const [isConfigMode, setIsConfigMode] = useState(tabFromUrl === "configuration");
 
   // Sync activeTab with URL params
   useEffect(() => {
     setActiveTab(tabFromUrl);
-    setIsConfigMode(tabFromUrl === 'configuration');
+    setIsConfigMode(tabFromUrl === "configuration");
   }, [tabFromUrl]);
 
   // Early return AFTER all hooks
@@ -29,9 +29,9 @@ const IntegrationDetailView = ({ data, onClose }) => {
   const handleTabClick = (tabId) => {
     // Update URL params with new tab
     const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tabId);
+    params.set("tab", tabId);
     router.push(`?${params.toString()}`);
-    
+
     if (tabId === "configuration") {
       setIsConfigMode(true);
     } else {
@@ -44,9 +44,9 @@ const IntegrationDetailView = ({ data, onClose }) => {
   const handleBackFromConfig = () => {
     // Update URL to integration tab
     const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', 'integration');
+    params.set("tab", "integration");
     router.push(`?${params.toString()}`);
-    
+
     setIsConfigMode(false);
     setActiveTab("integration");
   };
@@ -153,12 +153,11 @@ const IntegrationDetailView = ({ data, onClose }) => {
       `}</style>
 
       <div className="w-full h-full flex flex-col">
-
         {/* Main Content Area with Sidebar */}
         <div className="flex-1 flex overflow-hidden px-2 mt-2">
           {/* Sidebar */}
           <div className="w-80 flex-shrink-0 h-full">
-            <div className="bg-base-100 scroll-hidden border border-base-300 rounded-lg p-2 h-full flex flex-col">
+            <div className="bg-base-100 pt-6 scroll-hidden border border-base-300 rounded-lg p-2 h-full flex flex-col">
               {!isConfigMode ? (
                 // Main Navigation Tabs with slide from left animation
                 <nav
@@ -175,9 +174,11 @@ const IntegrationDetailView = ({ data, onClose }) => {
                         key={tab.id}
                         onClick={() => handleTabClick(tab.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                          ${isActive 
-                            ? "bg-primary text-primary-content" 
-                            : "text-base-content/70 hover:bg-base-200 hover:text-base-content"}`}
+                          ${
+                            isActive
+                              ? "bg-primary text-primary-content"
+                              : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                          }`}
                       >
                         {tab.icon}
                         <span>{tab.label}</span>
@@ -217,7 +218,9 @@ const IntegrationDetailView = ({ data, onClose }) => {
 
           {/* Content Area */}
           <div className="flex-1 overflow-hidden">
-            <div className={`h-full border border-base-300 rounded-lg p-6 bg-base-100 ${activeTab !== "configuration" ? "overflow-y-auto" : ""}`}>
+            <div
+              className={`h-full border border-base-300 rounded-lg bg-base-100 ${activeTab !== "configuration" ? "overflow-y-auto" : ""}`}
+            >
               {activeTab === "integration" && <IntegrationTab data={data} />}
               {activeTab === "configuration" && <ConfigurationTab data={data} isConfigMode={isConfigMode} />}
               {activeTab === "testing" && <TestingTab data={data} />}

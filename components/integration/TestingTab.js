@@ -1,26 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Send, Users } from "lucide-react";
-import { useDispatch } from "react-redux";
+import { Send, Users, ArrowRight, X } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { generateEmbedTokenAction } from "@/store/action/integrationAction";
 import EmbedPreview from "./EmbedPreview";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 const TestingTab = ({ data }) => {
-  const dispatch = useDispatch();
   const [eventLogs, setEventLogs] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
-  const [embedToken, setEmbedToken] = useState("");
-  const [isLoadingToken, setIsLoadingToken] = useState(true);
 
   // Function test states
   const [sendData, setSendData] = useState("{}");
   const [isEmbedOpen, setIsEmbedOpen] = useState(false);
 
-  const { currentUser } = useCustomSelector((state) => ({
-    currentUser: state.userDetailsReducer.userDetails,
+  const { embedToken } = useCustomSelector((state) => ({
+    embedToken: state?.integrationReducer?.embedTokens?.[data?.folder_id],
   }));
 
   const addLog = (type, message, data = null) => {
@@ -37,38 +32,12 @@ const TestingTab = ({ data }) => {
     ]);
   };
 
-  // Fetch embed token on mount
+  // Log when embedToken is available
   useEffect(() => {
-    const fetchEmbedToken = async () => {
-      if (!data?.org_id || !data?.folder_id) {
-        setIsLoadingToken(false);
-        return;
-      }
-
-      try {
-        setIsLoadingToken(true);
-        const response = await dispatch(
-          generateEmbedTokenAction({
-            user_id: "test_user",
-            folder_id: data.folder_id,
-          })
-        );
-        console.log(response, "response");
-        if (response?.data?.embedToken) {
-          setEmbedToken(response.data.embedToken);
-          addLog("success", "Embed token generated successfully");
-        } else {
-          addLog("error", "Failed to generate embed token");
-        }
-      } catch (error) {
-        addLog("error", "Error generating embed token", error.message);
-      } finally {
-        setIsLoadingToken(false);
-      }
-    };
-
-    fetchEmbedToken();
-  }, [data?.org_id, data?.folder_id, currentUser?.id]);
+    if (embedToken) {
+      addLog("success", "Embed token loaded from Redux");
+    }
+  }, [embedToken]);
 
   // Listen for gtwy message events
   useEffect(() => {
@@ -203,11 +172,11 @@ const TestingTab = ({ data }) => {
   };
 
   return (
-    <div className="h-full -m-6">
+    <div className="h-full">
       <PanelGroup direction="horizontal">
         {/* Left Side - Testing Controls */}
-        <Panel defaultSize={50} minSize={30}>
-          <div className="h-full overflow-y-auto p-6 space-y-6">
+        <Panel defaultSize={25} minSize={10}>
+          <div className="h-full overflow-y-auto">
             <div>
               <h3 className="text-lg font-semibold text-base-content mb-2">Testing Environment</h3>
               <p className="text-sm text-base-content/70">Test embed functions and interactions in real-time</p>
@@ -219,27 +188,11 @@ const TestingTab = ({ data }) => {
                 <h4 className="card-title text-base">Basic Controls</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <button onClick={testOpenGtwy} className="btn btn-primary btn-sm gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
+                    <ArrowRight className="h-4 w-4" />
                     Open Embed
                   </button>
                   <button onClick={testCloseGtwy} className="btn btn-error btn-sm gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="h-4 w-4" />
                     Close Embed
                   </button>
                 </div>
@@ -350,17 +303,16 @@ const TestingTab = ({ data }) => {
         <PanelResizeHandle className="w-2 bg-base-300 hover:bg-primary transition-colors cursor-col-resize" />
 
         {/* Right Side - Live Preview */}
-        <Panel defaultSize={50} minSize={30}>
+        <Panel defaultSize={75} minSize={30}>
           <div className="h-full bg-base-100">
-            {isLoadingToken ? (
-              <div className="flex items-center justify-center h-full">
-                <span className="loading loading-spinner loading-lg"></span>
-              </div>
-            ) : embedToken ? (
+            {embedToken ? (
               <EmbedPreview data={data} embedToken={embedToken} />
             ) : (
-              <div className="flex items-center justify-center h-full text-base-content/60">
-                <p>Failed to load embed token. Please try again.</p>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <span className="loading loading-spinner loading-lg text-primary"></span>
+                  <p className="mt-4 text-base-content/70">Loading embed token...</p>
+                </div>
               </div>
             )}
           </div>

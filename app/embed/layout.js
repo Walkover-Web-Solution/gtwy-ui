@@ -297,15 +297,12 @@ const Layout = ({ children, isEmbedUser }) => {
         createNewAgent("", orgId, messageData.agent_purpose);
       }
 
-     
-        // Set new theme config
-        if(messageData?.theme_config){
-          console.log("theme_config", messageData.theme_config)
+      // Set new theme config
+      if (messageData?.theme_config) {
         dispatch(setEmbedUserDetailsAction({ theme_config: messageData.theme_config }));
-        }
+      }
 
       if (messageData) {
-        console.log("messageData", messageData)
         dispatch(setEmbedUserDetailsAction(messageData));
       }
     };

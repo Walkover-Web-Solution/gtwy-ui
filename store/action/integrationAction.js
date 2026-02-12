@@ -10,6 +10,7 @@ import {
   addIntegrationDataReducer,
   fetchAllIntegrationData,
   updateIntegrationDataReducer,
+  setEmbedToken,
 } from "../reducer/integrationReducer";
 
 export const createIntegrationAction = (data) => async (dispatch) => {
@@ -55,9 +56,21 @@ export const updateIntegrationDataAction = (orgId, dataToSend) => async (dispatc
   }
 };
 
-export const generateEmbedTokenAction = (data) => async (dispatch) => {
+export const generateEmbedTokenAction = (folderId, userId) => async (dispatch) => {
   try {
-    const response = await generateEmbedTokenApi(data);
+    // Construct request data with folder_id and org_id (userId)
+    const requestData = {
+      folder_id: folderId,
+      user_id: userId,
+    };
+
+    const response = await generateEmbedTokenApi(requestData);
+
+    // Store token in Redux if folderId is provided
+    if (response?.data?.embedToken && folderId) {
+      dispatch(setEmbedToken({ folderId, token: response.data.embedToken }));
+    }
+
     return response;
   } catch (error) {
     toast.error("something went wrong");

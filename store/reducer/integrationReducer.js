@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   integrationData: {},
   gtwyAccessToken: "",
+  embedTokens: {}, // Store embedTokens by folder_id
   loading: false,
 };
 
@@ -33,10 +34,23 @@ export const integrationReducer = createSlice({
         });
       }
     },
+    setEmbedToken: (state, action) => {
+      const { folderId, token } = action.payload;
+      state.embedTokens[folderId] = token;
+    },
+    clearEmbedToken: (state, action) => {
+      const { folderId } = action.payload;
+      delete state.embedTokens[folderId];
+    },
   },
 });
 
-export const { fetchAllIntegrationData, addIntegrationDataReducer, updateIntegrationDataReducer } =
-  integrationReducer.actions;
+export const {
+  fetchAllIntegrationData,
+  addIntegrationDataReducer,
+  updateIntegrationDataReducer,
+  setEmbedToken,
+  clearEmbedToken,
+} = integrationReducer.actions;
 
 export default integrationReducer.reducer;

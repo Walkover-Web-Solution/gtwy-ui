@@ -100,7 +100,6 @@ const Navbar = ({ isEmbedUser, params }) => {
       showAgentName: state?.appInfoReducer?.embedUserDetails?.showAgentName,
     };
   });
-  console.log(showAgentName, "showAgentName");
   // Define tabs based on user type
   const TABS = useMemo(() => {
     const baseTabs = [

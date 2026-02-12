@@ -128,7 +128,7 @@ window.addEventListener('message', (event) => {
                   </pre>
                   <pre data-prefix=">">
                     <code className="text-error">folder_id=</code>
-                    <code className="text-warning">{data?.embed_id}</code>
+                    <code className="text-warning">{data?.folder_id}</code>
                   </pre>
                   <pre data-prefix=">">
                     <code className="text-error">user_id=</code>
