@@ -17,6 +17,7 @@ const PromptTextarea = memo(
     isEditor = true,
     onSave,
     variablesSection,
+    readOnly = false,
   }) => {
     const isComposingRef = useRef(false);
     const lastExternalValueRef = useRef(initialValue);
@@ -137,11 +138,13 @@ const PromptTextarea = memo(
             data-testid="prompt-textarea"
             id="prompt-textarea"
             ref={textareaRef}
-            disabled={isPublished || !isEditor}
-            contentEditable={!isPublished && isEditor}
+            disabled={isPublished || !isEditor || readOnly}
+            readOnly={readOnly}
+            contentEditable={!isPublished && isEditor && !readOnly}
             className={`
             w-full text-sm h-full min-h-full max-h-full resize-none bg-transparent border-none
             caret-base-content outline-none overflow-auto p-2
+            ${readOnly ? "cursor-not-allowed opacity-70" : ""}
             ${className}
           `}
             onBlur={handleBlur}
@@ -151,7 +154,13 @@ const PromptTextarea = memo(
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
             placeholder={placeholder}
-            title={isPublished ? "Cannot edit in published mode" : ""}
+            title={
+              isPublished
+                ? "Cannot edit in published mode"
+                : readOnly
+                  ? "Read-only in advanced view. Switch to Simple mode to edit."
+                  : ""
+            }
           />
         </div>
         {variablesSection}

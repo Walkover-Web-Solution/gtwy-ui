@@ -318,6 +318,7 @@ const InputConfigComponent = memo(
                     onFocus={handleTextareaFocus}
                     onTextAreaBlur={handleTextareaBlur}
                     variablesSection={variablesSection}
+                    readOnly={true}
                   />
                 </>
               );
@@ -426,6 +427,7 @@ const InputConfigComponent = memo(
                     onFocus={handleTextareaFocus}
                     onTextAreaBlur={handleTextareaBlur}
                     variablesSection={variablesSection}
+                    readOnly={true}
                   />
                 </>
               );
