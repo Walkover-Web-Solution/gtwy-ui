@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Info, XCircle } from "lucide-react";
 import { extractVariablesFromPrompt } from "@/utils/promptUtils";
 
 /**
@@ -379,19 +380,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onValidate }) => {
       {/* Default Prompt Info (shown when useDefaultPrompt is true) */}
       {promptConfig.useDefaultPrompt && (
         <div className="alert alert-info mt-4">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            className="stroke-current shrink-0 w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
-          </svg>
+          <Info className="stroke-current shrink-0 w-6 h-6" />
           <span className="text-sm">
             Using default system prompt from backend. The prompt will be automatically applied when creating agents.
           </span>
@@ -483,38 +472,14 @@ const EmbedPromptBuilder = ({ configuration, onChange, onValidate }) => {
           {/* Validation Error */}
           {validationError && (
             <div className="alert alert-error text-sm py-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="stroke-current shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <XCircle className="stroke-current shrink-0 h-6 w-6" />
               <span>{validationError}</span>
             </div>
           )}
 
           {/* Info Message */}
           <div className="alert alert-info">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="stroke-current shrink-0 w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
+            <Info className="stroke-current shrink-0 w-6 h-6" />
             <span className="text-xs">
               Default fields (role, goal, instruction) are always available but hidden by default. You can enable them
               manually.

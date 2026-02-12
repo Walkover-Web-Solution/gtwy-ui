@@ -24,6 +24,7 @@ const PromptTextarea = memo(
     const hasInitializedRef = useRef(false);
     const wrapperRef = useRef(null);
     const smallHeightRef = useRef(DEFAULT_SMALL_HEIGHT);
+    console.log("variablesSection", variablesSection);
     useEffect(() => {
       const textarea = textareaRef.current;
       if (!textarea || isComposingRef.current) return;
