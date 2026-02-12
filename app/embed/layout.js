@@ -297,24 +297,13 @@ const Layout = ({ children, isEmbedUser }) => {
         createNewAgent("", orgId, messageData.agent_purpose);
       }
 
-      const uiUpdates = {};
-      if (messageData?.showGuide !== undefined) uiUpdates.showGuide = messageData.showGuide;
-      if (messageData?.showConfigType !== undefined) uiUpdates.showConfigType = messageData.showConfigType;
+      // Set new theme config
       if (messageData?.theme_config) {
-        let incomingTheme = messageData.theme_config;
-        if (typeof incomingTheme === "string") {
-          try {
-            incomingTheme = JSON.parse(incomingTheme);
-          } catch (err) {
-            console.error("Invalid theme_config JSON from message data", err);
-          }
-        }
-        // Set new theme config
-        dispatch(setEmbedUserDetailsAction({ theme_config: incomingTheme }));
+        dispatch(setEmbedUserDetailsAction({ theme_config: messageData.theme_config }));
       }
 
-      if (Object.keys(uiUpdates).length > 0) {
-        dispatch(setEmbedUserDetailsAction(uiUpdates));
+      if (messageData) {
+        dispatch(setEmbedUserDetailsAction(messageData));
       }
     };
 

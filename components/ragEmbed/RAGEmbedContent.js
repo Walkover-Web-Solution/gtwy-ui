@@ -4,7 +4,7 @@ import { generateAccessKeyAction } from "@/store/action/orgAction";
 import React from "react";
 import { useDispatch } from "react-redux";
 
-function RAGEmbedContent({ params, folderId }) {
+function RAGEmbedContent({ params, folderId, embedToken }) {
   const dispatch = useDispatch();
   const access_key = useCustomSelector(
     (state) => state?.userDetailsReducer?.organizations?.[params.org_id]?.meta?.auth_token || ""
@@ -32,34 +32,38 @@ function RAGEmbedContent({ params, folderId }) {
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 1: Connect Knowledge Base" caption="Use the following API configuration and access key." />
-        <div id="rag-embed-step1-api-config" className="mockup-code">
-          <CopyButton data={apiConfig} />
-          <pre data-prefix=">" className="text-error">
-            <code>org_id=</code>
-            <code className="text-warning">{orgId}</code>
-          </pre>
-          {folderId && (
+        <div className="relative">
+          <div id="rag-embed-step1-api-config" className="mockup-code">
             <pre data-prefix=">" className="text-error">
-              <code>folder_id=</code>
-              <code className="text-warning">"{folderId}"</code>
+              <code>org_id=</code>
+              <code className="text-warning">{orgId}</code>
             </pre>
-          )}
-          <pre data-prefix=">" className="text-error">
-            <code>user_id=</code>
-            <code className="text-warning">"unique_user_id"</code>
-          </pre>
+            {folderId && (
+              <pre data-prefix=">" className="text-error">
+                <code>folder_id=</code>
+                <code className="text-warning">"{folderId}"</code>
+              </pre>
+            )}
+            <pre data-prefix=">" className="text-error">
+              <code>user_id=</code>
+              <code className="text-warning">"unique_user_id"</code>
+            </pre>
+          </div>
+          <CopyButton data={apiConfig} />
         </div>
         <div className="form-control">
           <label className="label">
             <span className="label-text font-medium">JWT Access Key</span>
           </label>
           {access_key ? (
-            <div id="rag-embed-access-key-display" className="mockup-code">
+            <div className="relative">
+              <div id="rag-embed-access-key-display" className="mockup-code">
+                <pre data-prefix=">" className="text-error">
+                  <code>Access Key: </code>
+                  <code className="text-warning">{access_key}</code>
+                </pre>
+              </div>
               <CopyButton data={access_key} />
-              <pre data-prefix=">" className="text-error">
-                <code>Access Key: </code>
-                <code className="text-warning">{access_key}</code>
-              </pre>
             </div>
           ) : (
             <button
@@ -77,44 +81,46 @@ function RAGEmbedContent({ params, folderId }) {
 
   const renderStepTwo = () => {
     const DataObject = {
-      script: `<script\n      id="rag-main-script"\n      embedToken=" <embed token here> "\n      src=${process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}\n     ></script>`,
+      script: `<script\n      id="rag-main-script"\n      embedToken="${embedToken}"\n      src=${process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}\n     ></script>`,
     };
 
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 2" caption="Add below code in your product." />
-        <div className="mockup-code">
+        <div className="relative">
+          <div className="mockup-code">
+            <pre data-prefix=">" className="text-error">
+              <code>&lt;script </code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code className="text-error"> id= </code>
+              <code className="text-warning">"rag-main-script"</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code> embedToken=</code>
+              <code className="text-warning pr-4">{embedToken || "Enter Embed Token here"}</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code> src=</code>
+              <code className="text-warning">"{process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}"</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code> parentId=</code>
+              <code className="text-warning">"Id of parent Container"</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code> theme=</code>
+              <code className="text-warning">"dark/light"</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code> defaultOpen=</code>
+              <code className="text-warning">"true/false" /* true for open list by default */</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code>&lt;/script&gt;</code>
+            </pre>
+          </div>
           <CopyButton data={DataObject.script} />
-          <pre data-prefix=">" className="text-error">
-            <code>&lt;script </code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code className="text-error"> id= </code>
-            <code className="text-warning">"rag-main-script"</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code> embedToken=</code>
-            <code className="text-warning">"Enter Embed Token here"</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code> src=</code>
-            <code className="text-warning">"{process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}"</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code> parentId=</code>
-            <code className="text-warning">"Id of parent Container"</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code> theme=</code>
-            <code className="text-warning">"dark/light"</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code> defaultOpen=</code>
-            <code className="text-warning">"true/false" /* true for open list by default */</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code>&lt;/script&gt;</code>
-          </pre>
         </div>
       </div>
     );

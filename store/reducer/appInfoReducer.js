@@ -14,7 +14,14 @@ export const appInfoReducer = createSlice({
     setEmbedUserDetails: (state, action) => {
       const validUpdates = Object.entries(action.payload).reduce((acc, [key, value]) => {
         if (value !== null && value !== undefined) {
-          acc[key] = value;
+          // Convert string booleans to actual booleans
+          if (value === 'true') {
+            acc[key] = true;
+          } else if (value === 'false') {
+            acc[key] = false;
+          } else {
+            acc[key] = value;
+          }
         }
         return acc;
       }, {});
