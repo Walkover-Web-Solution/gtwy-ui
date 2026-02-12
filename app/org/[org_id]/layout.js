@@ -18,6 +18,7 @@ import {
   updateBridgeVersionAction,
 } from "@/store/action/bridgeAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
+import { getRichUiTemplatesAction } from "@/store/action/richUiTemplateAction";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import { updateUserMetaOnboarding, updateOrgMetaAction, getUsersAction } from "@/store/action/orgAction";
 import { getServiceAction } from "@/store/action/serviceAction";
@@ -265,6 +266,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         dispatch(getPrebuiltPromptsAction());
         dispatch(getUsersAction());
       }
+      dispatch(getRichUiTemplatesAction(resolvedParams.org_id));
     }
   }, [isValidOrg, dispatch, resolvedParams?.org_id]);
 

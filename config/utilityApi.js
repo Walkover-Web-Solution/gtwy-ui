@@ -345,3 +345,26 @@ export const getLinks = async () => {
     throw new Error(error);
   }
 };
+
+export const generateRichUITemplate = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/utils/call-gtwy`, {
+      type: "rich_ui_template",
+      ...data,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};
+
+export const createRichUiTemplateApi = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/rich_ui_templates`, data);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};

@@ -4,17 +4,6 @@ import { toast } from "react-toastify";
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
-// Model and Service APIs
-// export const getSingleModels = async () => {
-//   try {
-//     const getSingleModels = await axios.get(`${URL}/api/v1/agentConfig/models`)
-//     return getSingleModels
-//   } catch (error) {
-//     console.error(error)
-//     throw new Error(error)
-//   }
-// }
-
 export const getAllModels = async (service) => {
   try {
     const response = await axios.get(`${URL}/api/service/${service}`);

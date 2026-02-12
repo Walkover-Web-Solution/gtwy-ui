@@ -12,3 +12,4 @@ export * from "./metricsApi";
 export * from "./utilityApi";
 export * from "./historyApi";
 export * from "./integrationApi";
+export * from "./richUiTemplateApi";
