@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import RAGEmbedContent from "@/components/ragEmbed/RAGEmbedContent";
 import { generateRagEmbedTokenAction } from "@/store/action/integrationAction";
@@ -45,58 +45,6 @@ const RAGEmbedGuideSlider = ({ data, handleCloseSlider, params }) => {
 
     generateEmbedToken();
   }, [data?.embed_id]);
-
-  // Generate preview HTML with dynamic data
-  const previewHtml = useMemo(() => {
-    const scriptSrc =
-      process.env.NEXT_PUBLIC_ENV !== "PROD"
-        ? `${process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC}/rag-local.js`
-        : process.env.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC || "https://chatbot.gtwy.ai/rag-local.js";
-
-    return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; overflow: hidden; }
-      body { font-family: Arial, sans-serif; background: #ffffff; }
-      #rag-container { width: 100%; height: 100%; position: relative; }
-    </style>
-  </head>
-  <body>
-    <div id="rag-container"></div>
-    <script
-      id="rag-main-script"
-      embedToken="${embedToken || ""}"
-      src="${scriptSrc}"
-      parentId="rag-container"
-      theme="light"
-      defaultOpen="true"
-    ></script>
-    <script>
-      window.addEventListener("message", (event) => {
-        if (event.data?.type === "rag") {
-          console.log("✅ Preview RAG event:", event.data);
-        }
-      });
-
-      // Auto-open RAG when script loads
-      function tryOpenRag() {
-        if (window.openRag) {
-          window.openRag();
-        } else {
-          setTimeout(tryOpenRag, 100);
-        }
-      }
-      
-      // Wait for script to load then open
-      setTimeout(tryOpenRag, 500);
-    </script>
-  </body>
-</html>`;
-  }, [embedToken]);
 
   const closeRagInIframe = () => {
     try {

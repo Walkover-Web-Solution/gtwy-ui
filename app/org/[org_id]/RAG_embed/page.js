@@ -1,13 +1,13 @@
 "use client";
-import React, { useState, useEffect, use, useCallback } from "react";
+import React, { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import CustomTable from "@/components/customTable/CustomTable";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { toggleSidebar, formatRelativeTime, formatDate, openModal } from "@/utils/utility";
+import { formatRelativeTime, formatDate, openModal } from "@/utils/utility";
 import SearchItems from "@/components/UI/SearchItems";
-import RAGEmbedGuideSlider from "@/components/sliders/RAGEmbedGuideSlider";
 import IntegrationModal from "@/components/modals/IntegrationModal";
 import Protected from "@/components/Protected";
 
@@ -15,6 +15,7 @@ export const runtime = "edge";
 
 const Page = ({ params }) => {
   const resolvedParams = use(params);
+  const router = useRouter();
 
   const { integrationData, descriptions, linksData } = useCustomSelector((state) => ({
     integrationData: state?.integrationReducer?.integrationData?.[resolvedParams?.org_id] || [],
@@ -22,7 +23,6 @@ const Page = ({ params }) => {
     linksData: state.flowDataReducer.flowData.linksData || [],
   }));
 
-  const [selectedIntegration, setSelectedIntegration] = useState(null);
   const [ragEmbedIntegrations, setRagEmbedIntegrations] = useState([]); // Type-filtered integrations
   const [filterIntegration, setFilterIntegration] = useState([]); // Search-filtered integrations
 
@@ -60,13 +60,9 @@ const Page = ({ params }) => {
     originalItem: item,
   }));
 
-  const toggleRAGEmbedGuideSlider = useCallback(() => {
-    toggleSidebar("rag-embed-guide-slider", "right");
-  }, []);
-
   const handleClickIntegration = (item) => {
-    setSelectedIntegration(item);
-    toggleRAGEmbedGuideSlider();
+    // Navigate to RAG embed detail page with folder_id
+    router.push(`/org/${resolvedParams.org_id}/RAG_embed/${item.embed_id}`);
   };
 
   return (
@@ -120,11 +116,6 @@ const Page = ({ params }) => {
       )}
 
       <IntegrationModal params={resolvedParams} type="rag_embed" />
-      <RAGEmbedGuideSlider
-        data={selectedIntegration}
-        handleCloseSlider={toggleRAGEmbedGuideSlider}
-        params={resolvedParams}
-      />
     </div>
   );
 };

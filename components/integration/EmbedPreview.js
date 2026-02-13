@@ -8,37 +8,90 @@ const EmbedPreview = ({
   parentId = "alert-embed-parent",
   reloadTrigger = 0,
   isLoading = false,
+  embedType = "gtwy", // "gtwy" or "rag"
+  theme = "light", // Theme for RAG embed: "light" or "dark"
 }) => {
   useEffect(() => {
     if (!embedToken) return;
 
+    // Determine script configuration based on embed type
+    const scriptConfig =
+      embedType === "rag"
+        ? {
+            id: "rag-main-script",
+            src: process.env.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC || "https://chatbot.gtwy.ai/rag-dev.js",
+            containerId: "rag-embed-container",
+            appendTo: "head",
+          }
+        : {
+            id: "gtwy-main-script",
+            src: "http://localhost:3000/gtwy_dev.js",
+            containerId: "iframe-viasocket-embed-parent-container",
+            appendTo: "body",
+          };
+
+    // Clear container and remove existing script before loading (important for theme changes)
+    const container = document.getElementById(parentId);
+    if (container) {
+      container.innerHTML = "";
+    }
+
+    const existingScript = document.getElementById(scriptConfig.id);
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    // Remove existing embed container if it exists
+    const existingContainer = document.getElementById(scriptConfig.containerId);
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+
     // Create and load the embed script
     const script = document.createElement("script");
-    script.id = "gtwy-main-script";
+    script.id = scriptConfig.id;
     script.setAttribute("embedToken", embedToken);
-    script.src = "http://localhost:3000/gtwy_dev.js";
+    script.src = scriptConfig.src;
     script.setAttribute("parentId", parentId);
     script.setAttribute("defaultOpen", "true");
-    document.body.appendChild(script);
+
+    // Add RAG-specific attributes
+    if (embedType === "rag") {
+      script.setAttribute("theme", theme);
+    }
+
+    // Append to head for RAG, body for GTWY
+    if (scriptConfig.appendTo === "head") {
+      document.head.appendChild(script);
+    } else {
+      document.body.appendChild(script);
+    }
 
     // Cleanup function
     return () => {
       try {
-        const scriptElement = document.getElementById("gtwy-main-script");
-        if (scriptElement && scriptElement.parentNode === document.body) {
-          document.body.removeChild(scriptElement);
+        // Clear container
+        const container = document.getElementById(parentId);
+        if (container) {
+          container.innerHTML = "";
+        }
+
+        // Remove script
+        const scriptElement = document.getElementById(scriptConfig.id);
+        if (scriptElement) {
+          scriptElement.remove();
         }
 
         // Remove embed container if it exists
-        const embedContainer = document.getElementById("iframe-viasocket-embed-parent-container");
-        if (embedContainer && embedContainer.parentNode === document.body) {
-          document.body.removeChild(embedContainer);
+        const embedContainer = document.getElementById(scriptConfig.containerId);
+        if (embedContainer) {
+          embedContainer.remove();
         }
       } catch (error) {
         console.warn("Error removing embed scripts:", error);
       }
     };
-  }, [embedToken, parentId, reloadTrigger]);
+  }, [embedToken, parentId, reloadTrigger, embedType, theme]);
 
   if (isLoading) {
     return (

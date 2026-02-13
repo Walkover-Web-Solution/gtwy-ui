@@ -5,7 +5,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { MODAL_TYPE } from "@/utils/enums";
 import React, { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import { openModal, closeModal, formatRelativeTime, formatDate } from "@/utils/utility";
 import IntegrationModal from "@/components/modals/IntegrationModal";
@@ -186,10 +186,7 @@ const Page = ({ params }) => {
             <SearchItems data={embedIntegrations} setFilterItems={setFilterIntegration} item="Integration" />
           )}
         </div>
-        <button
-          className="btn btn-primary btn-sm ml-2 mb-2"
-          onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}
-        >
+        <button className="btn btn-primary btn-sm ml-2 mb-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
           + Create New Embed
         </button>
       </div>

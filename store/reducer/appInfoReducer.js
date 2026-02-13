@@ -15,9 +15,9 @@ export const appInfoReducer = createSlice({
       const validUpdates = Object.entries(action.payload).reduce((acc, [key, value]) => {
         if (value !== null && value !== undefined) {
           // Convert string booleans to actual booleans
-          if (value === 'true') {
+          if (value === "true") {
             acc[key] = true;
-          } else if (value === 'false') {
+          } else if (value === "false") {
             acc[key] = false;
           } else {
             acc[key] = value;

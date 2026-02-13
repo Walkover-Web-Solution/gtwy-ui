@@ -78,9 +78,12 @@ export const generateEmbedTokenAction = (folderId, userId) => async (dispatch) =
   }
 };
 
-export const generateRagEmbedTokenAction = (data) => async (dispatch) => {
+export const generateRagEmbedTokenAction = (folderId, userId) => async (dispatch) => {
   try {
-    const response = await generateRagEmbedTokenApi(data);
+    const response = await generateRagEmbedTokenApi({ folder_id: folderId, user_id: userId });
+    if (response?.data?.embedToken && folderId) {
+      dispatch(setEmbedToken({ folderId, token: response.data.embedToken }));
+    }
     return response;
   } catch (error) {
     toast.error("something went wrong");
