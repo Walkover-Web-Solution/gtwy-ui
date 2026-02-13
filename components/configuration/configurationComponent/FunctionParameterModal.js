@@ -3,7 +3,7 @@ import { updateFuntionApiAction } from "@/store/action/bridgeAction";
 import { closeModal } from "@/utils/utility";
 import { isEqual } from "lodash";
 import { CopyIcon, InfoIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "@/components/UI/Modal";
@@ -490,12 +490,16 @@ function FunctionParameterModal({
     }
   }, [tool_name, isToolNameManuallyChanged]);
 
+  // Only sync variablesPath when functionName changes (i.e., different function selected)
+  // Don't sync when variables_path prop changes to avoid resetting user input
+  const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
-    const newVariablesPath = variables_path[functionName] || {};
-    if (!isEqual(variablesPath, newVariablesPath)) {
+    if (prevFunctionNameRef.current !== functionName) {
+      const newVariablesPath = variables_path[functionName] || {};
       setVariablesPath(newVariablesPath);
+      prevFunctionNameRef.current = functionName;
     }
-  }, [variables_path, functionName]);
+  }, [functionName, variables_path]);
 
   useEffect(() => {
     if (!toolData) {
@@ -865,10 +869,19 @@ function FunctionParameterModal({
     if (tool_name?.trim() !== toolName?.trim()) {
       handleToolNameChange();
     }
-    handleSave();
+    handleSave(functionId);
     resetModalData();
     closeModal(Model_Name);
-  }, [toolData?.description, function_details?.description, toolName, tool_name, Model_Name, toolData, variablesPath]);
+  }, [
+    toolData?.description,
+    function_details?.description,
+    toolName,
+    tool_name,
+    Model_Name,
+    toolData,
+    variablesPath,
+    functionId,
+  ]);
 
   const resetModalData = useCallback(() => {
     setToolData(function_details);
