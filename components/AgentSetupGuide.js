@@ -51,11 +51,41 @@ const AgentSetupGuide = ({
   const [showError, setShowError] = useState(false);
   const [errorType, setErrorType] = useState("");
 
+  // Helper to check if prompt has meaningful content
+  const hasPromptContent = (promptValue) => {
+    if (!promptValue) return false;
+
+    // String format
+    if (typeof promptValue === "string") {
+      return promptValue.trim() !== "";
+    }
+
+    // Object format
+    if (typeof promptValue === "object") {
+      // Embed user with default prompt enabled
+      if (promptValue.useDefaultPrompt === true) {
+        return true;
+      }
+
+      // Embed user with custom prompt
+      if (promptValue.customPrompt?.trim()) {
+        return true;
+      }
+
+      // Main user format - check for instruction field
+      if (promptValue.instruction?.trim()) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   // Track step completion
   const getStepCompletion = (stepNumber) => {
     switch (stepNumber) {
       case "1": // Define Agent's Purpose
-        return prompt !== "" || promptTextAreaRef?.current?.querySelector("textarea")?.value?.trim() !== "";
+        return hasPromptContent(prompt) || promptTextAreaRef?.current?.querySelector("textarea")?.value?.trim() !== "";
       case "2": // Configure API Access
         return !!bridgeApiKey || (modelName === "gpt-5-nano" && bridgeType === "chatbot");
       case "3": // Connect External Functions (optional)
@@ -93,12 +123,12 @@ const AgentSetupGuide = ({
   };
 
   useEffect(() => {
-    if (isEmbedUser && showDefaultApikeys && prompt !== "") {
+    if (isEmbedUser && showDefaultApikeys && hasPromptContent(prompt)) {
       setIsVisible(false);
       return;
     }
     const hasPrompt =
-      prompt !== "" ||
+      hasPromptContent(prompt) ||
       !shouldPromptShow ||
       (promptTextAreaRef.current && promptTextAreaRef.current.querySelector("textarea").value.trim() !== "");
     const hasApiKey = !!bridgeApiKey;
@@ -145,7 +175,7 @@ const AgentSetupGuide = ({
 
   // Function to handle chatbot open/close with delay
   const checkConfigToOpenChatbot = () => {
-    const hasPrompt = prompt !== "" || !shouldPromptShow;
+    const hasPrompt = hasPromptContent(prompt) || !shouldPromptShow;
     const hasApiKey = bridgeApiKey;
     if (
       bridgeType === "chatbot" &&
@@ -171,14 +201,14 @@ const AgentSetupGuide = ({
   }, [isVisible, onVisibilityChange]);
 
   const handleStart = () => {
-    if (isEmbedUser && showDefaultApikeys && prompt !== "") {
+    if (isEmbedUser && showDefaultApikeys && hasPromptContent(prompt)) {
       setIsVisible(false);
       return;
     }
     if (
       shouldPromptShow &&
       promptTextAreaRef.current &&
-      prompt === "" &&
+      !hasPromptContent(prompt) &&
       promptTextAreaRef.current.querySelector("textarea").value.trim() === ""
     ) {
       setShowError(true);
@@ -203,8 +233,8 @@ const AgentSetupGuide = ({
 
   if (
     !isVisible ||
-    (bridgeApiKey && prompt !== "") ||
-    (modelName === "gpt-5-nano" && prompt !== "" && bridgeType === "chatbot")
+    (bridgeApiKey && hasPromptContent(prompt)) ||
+    (modelName === "gpt-5-nano" && hasPromptContent(prompt) && bridgeType === "chatbot")
   ) {
     resetBorder(promptTextAreaRef, "textarea");
     resetBorder(apiKeySectionRef, "select");

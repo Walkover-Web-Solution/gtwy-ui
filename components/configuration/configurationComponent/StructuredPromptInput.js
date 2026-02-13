@@ -66,7 +66,7 @@ const StructuredPromptInput = memo(
             type="text"
             id="prompt-role-input"
             className="input input-bordered w-full"
-            placeholder="e.g., You are a helpful assistant"
+            placeholder="Enter the role of the AI agent"
             value={localPrompt.role}
             onChange={(e) => handleFieldChange("role", e.target.value)}
             onFocus={onFocus}
@@ -85,7 +85,7 @@ const StructuredPromptInput = memo(
             type="text"
             id="prompt-goal-input"
             className="input input-bordered w-full"
-            placeholder="e.g., Help users with their questions"
+            placeholder="Enter the goal of the AI agent"
             value={localPrompt.goal}
             onChange={(e) => handleFieldChange("goal", e.target.value)}
             onFocus={onFocus}

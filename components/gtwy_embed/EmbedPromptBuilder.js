@@ -357,24 +357,20 @@ const EmbedPromptBuilder = ({ configuration, onChange, onValidate }) => {
   }, [configuration?.prompt]);
 
   return (
-    <div className="space-y-4 p-4 bg-base-200 rounded-lg border border-base-300">
+    <div className="space-y-4 p-2 bg-base-200 rounded-lg border border-base-300">
       <h5 className="text-sm font-semibold text-primary border-b border-base-300 pb-2">Prompt Configuration</h5>
 
       {/* Toggle: Use Default Prompt */}
-      <div className="form-control">
-        <label className="label cursor-pointer justify-start gap-2">
+      <div className="form-control bg-base-200 rounded p-2">
+        <label className="label cursor-pointer py-1">
+          <span className="label-text text-sm">Use default prompt</span>
           <input
             type="checkbox"
-            className="toggle toggle-primary"
+            className="toggle toggle-sm"
             checked={promptConfig.useDefaultPrompt}
             onChange={(e) => handleUseDefaultToggle(e.target.checked)}
           />
-          <span className="label-text">Use default prompt</span>
         </label>
-        <span className="text-xs text-base-content/60 ml-12">
-          When enabled, uses the default system prompt from backend (no textarea shown). When disabled, shows custom
-          prompt builder.
-        </span>
       </div>
 
       {/* Default Prompt Info (shown when useDefaultPrompt is true) */}
