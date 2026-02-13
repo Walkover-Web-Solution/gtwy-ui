@@ -6,9 +6,16 @@ const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL;
 const _PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
 // User Authentication APIs
-export const userdetails = async () => {
+export const userdetails = async ({ exclude_role_ids = process.env.PROXY_USER_ROLE_ID, role_ids } = {}) => {
   try {
-    const details = await axios.get(`${PROXY_URL}/api/c/getDetails`);
+    let url = `${PROXY_URL}/api/c/getDetails`;
+    const params = new URLSearchParams();
+    if (exclude_role_ids) params.append('exclude_role_ids', exclude_role_ids);
+    if (role_ids) params.append('role_ids', role_ids);
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    const details = await axios.get(url);
     return details;
   } catch (error) {
     console.error(error);
