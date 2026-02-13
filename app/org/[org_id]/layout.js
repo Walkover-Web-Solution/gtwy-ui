@@ -209,7 +209,11 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   }, []);
 
   useEmbedScriptLoader(
-    pathName.includes("agents") ? embedToken : pathName.includes("alerts") && !isEmbedUser ? alertingEmbedToken : "",
+    pathName.includes("agents") || pathName.includes("integration")
+      ? embedToken
+      : pathName.includes("alerts") && !isEmbedUser
+        ? alertingEmbedToken
+        : "",
     isEmbedUser,
     currrentOrgDetail?.role_name === "Viewer"
   );
@@ -362,7 +366,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         status: e?.data?.action,
       };
       dispatch(integrationAction(dataToSend, resolvedParams?.org_id));
-      if (e?.data?.action === "deleted") {
+      if (e?.data?.action === "deleted" && pathName.includes("agents")) {
         if (versionData && typeof versionData === "object" && !Array.isArray(versionData)) {
           const selectedVersionData = Object.values(versionData).find((fn) => fn.script_id === e?.data?.id);
           if (selectedVersionData) {
@@ -418,7 +422,11 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           title: e?.data?.title,
         };
         dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
-          if (!versionData?.[data?._id] && (!Array.isArray(preTools) || !preTools?.includes(data?._id))) {
+          if (
+            !versionData?.[data?._id] &&
+            (!Array.isArray(preTools) || !preTools?.includes(data?._id)) &&
+            pathName.includes("agents")
+          ) {
             {
               e?.data?.metadata?.createFrom && e.data.metadata.createFrom === "preFunction"
                 ? dispatch(

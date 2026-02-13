@@ -54,15 +54,15 @@ const RenderEmbed = ({
         >
           <div
             className="p-2 flex-1 flex items-center"
-            onClick={() =>
+            onClick={() => {
               openViasocket(functionName, {
                 embedToken,
                 meta: {
                   type: "tool",
                   bridge_id: params?.id,
                 },
-              })
-            }
+              });
+            }}
           >
             <div className="flex items-center gap-2 w-full">
               {integrationData?.[functionName]?.serviceIcons?.length > 0 ? (

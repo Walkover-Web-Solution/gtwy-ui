@@ -107,7 +107,6 @@ export const NAV_ITEM_CONFIG = {
   chatbot: { path: "agents", query: { type: "chatbot" } },
 };
 
-
 export const HRCollapsed = React.memo(() => <hr className="my-2 w-6 border-base-content/30 mx-auto" />);
 
 export const BetaBadge = React.memo(() => (

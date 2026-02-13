@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CloseIcon } from "@/components/Icons";
-import { Save, ChevronDown, AlertTriangle } from "lucide-react";
+import { Save, AlertTriangle } from "lucide-react";
 import ConfirmationModal from "../UI/ConfirmationModal";
 import { generateGtwyAccessTokenAction } from "@/store/action/orgAction";
 import { useDispatch } from "react-redux";
@@ -12,499 +12,23 @@ import CopyButton from "../copyButton/CopyButton";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import { closeModal, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
-import EmbedPromptBuilder from "./EmbedPromptBuilder";
+import EmbedPromptBuilder from "../gtwy_embed/EmbedPromptBuilder";
+import ThemePaletteEditor from "../gtwy_embed/ThemePaletteEditor";
+import ApiKeysInput from "./ApiKeysInput";
+import ToolsConfiguration from "../gtwy_embed/ToolsConfiguration";
+import { hexToOklchString } from "@/utils/colorUtils";
+import {
+  CONFIG_SCHEMA,
+  cloneTheme,
+  stringifyTheme,
+  normalizeThemeConfig,
+  sortObjectKeys,
+  enforceThemeStructure,
+  generateInitialConfig,
+} from "@/utils/integrationSliderUtils";
 
-const COLOR_LABEL_MAP = {
-  "base-100": "Page Background",
-  "base-200": "Section Background",
-  "base-300": "Card / Block Background",
-  "base-400": "Surface Accent",
-  "base-content": "Primary Text",
-  primary: "Primary",
-  "primary-content": "Primary Text Contrast",
-  secondary: "Secondary",
-  "secondary-content": "Secondary Text Contrast",
-  accent: "Accent",
-  "accent-content": "Accent Text Contrast",
-  neutral: "Neutral",
-  "neutral-content": "Neutral Text Contrast",
-  info: "Info",
-  "info-content": "Info Text Contrast",
-  success: "Success",
-  "success-content": "Success Text Contrast",
-  warning: "Warning",
-  "warning-content": "Warning Text Contrast",
-  error: "Error",
-  "error-content": "Error Text Contrast",
-};
+// Configuration and theme utilities imported from integrationSliderUtils
 
-const MODE_TITLES = {
-  light: "Light Theme Palette",
-  dark: "Dark Theme Palette",
-};
-
-const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
-
-const hexToRgb = (hex) => {
-  if (!hex) return null;
-  let normalized = hex.replace("#", "");
-  if (normalized.length === 3) {
-    normalized = normalized
-      .split("")
-      .map((char) => char + char)
-      .join("");
-  }
-  if (normalized.length !== 6) return null;
-  const intValue = parseInt(normalized, 16);
-  if (Number.isNaN(intValue)) return null;
-  return {
-    r: ((intValue >> 16) & 255) / 255,
-    g: ((intValue >> 8) & 255) / 255,
-    b: (intValue & 255) / 255,
-  };
-};
-
-const srgbToLinear = (value) => (value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4));
-
-const linearToSrgb = (value) => (value <= 0.0031308 ? 12.92 * value : 1.055 * Math.pow(value, 1 / 2.4) - 0.055);
-
-const rgbToOklch = ({ r, g, b }) => {
-  if ([r, g, b].some((v) => typeof v !== "number")) return null;
-  const rl = srgbToLinear(r);
-  const gl = srgbToLinear(g);
-  const bl = srgbToLinear(b);
-
-  const l = 0.4122214708 * rl + 0.5363325363 * gl + 0.0514459929 * bl;
-  const m = 0.2119034982 * rl + 0.6806995451 * gl + 0.1073969566 * bl;
-  const s = 0.0883024619 * rl + 0.2817188376 * gl + 0.6299787005 * bl;
-
-  const l_ = Math.cbrt(l);
-  const m_ = Math.cbrt(m);
-  const s_ = Math.cbrt(s);
-
-  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
-  const a = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_;
-  const bVal = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
-
-  const C = Math.sqrt(a * a + bVal * bVal);
-  let h = (Math.atan2(bVal, a) * 180) / Math.PI;
-  if (h < 0) h += 360;
-
-  return { L, C, h };
-};
-
-const formatOklchString = ({ L, C, h }) => `oklch(${(L * 100).toFixed(2)}% ${C.toFixed(4)} ${h.toFixed(2)})`;
-
-const parseOklchString = (value) => {
-  if (!value) return null;
-  const normalized = value.replace(/,/g, " ");
-  const match = normalized.match(/oklch\(\s*([0-9.+-]+)(%?)\s+([0-9.+-]+)\s+([0-9.+-]+)\s*\)/i);
-  if (!match) return null;
-  let L = parseFloat(match[1]);
-  if (Number.isNaN(L)) return null;
-  if (match[2] === "%") {
-    L = L / 100;
-  }
-  const C = parseFloat(match[3]);
-  const h = parseFloat(match[4]);
-  if ([C, h].some((n) => Number.isNaN(n))) return null;
-  return { L, C, h };
-};
-
-const oklchToRgb = ({ L, C, h }) => {
-  const hRad = (h * Math.PI) / 180;
-  const a = Math.cos(hRad) * C;
-  const bVal = Math.sin(hRad) * C;
-
-  const l_ = L + 0.3963377774 * a + 0.2158037573 * bVal;
-  const m_ = L - 0.1055613458 * a - 0.0638541728 * bVal;
-  const s_ = L - 0.0894841775 * a - 1.291485548 * bVal;
-
-  const l = l_ ** 3;
-  const m = m_ ** 3;
-  const s = s_ ** 3;
-
-  let r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-  let g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-  let bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
-
-  r = clamp(linearToSrgb(r));
-  g = clamp(linearToSrgb(g));
-  bl = clamp(linearToSrgb(bl));
-
-  return { r, g, b: bl };
-};
-
-const rgbToHex = ({ r, g, b }) =>
-  `#${[r, g, b]
-    .map((v) =>
-      clamp(Math.round(v * 255), 0, 255)
-        .toString(16)
-        .padStart(2, "0")
-    )
-    .join("")}`;
-
-const oklchToHex = (value, fallback = "#000000") => {
-  const parsed = parseOklchString(value);
-  if (!parsed) return fallback;
-  const rgb = oklchToRgb(parsed);
-  if (!rgb) return fallback;
-  return rgbToHex(rgb);
-};
-
-const hexToOklchString = (hex, fallback = "") => {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return fallback;
-  const oklch = rgbToOklch(rgb);
-  if (!oklch) return fallback;
-  return formatOklchString(oklch);
-};
-
-const getMissingThemeKeys = (theme, reference, path = "") => {
-  if (!reference || typeof reference !== "object" || Array.isArray(reference)) {
-    return [];
-  }
-
-  return Object.keys(reference).reduce((missing, key) => {
-    const currentPath = path ? `${path}.${key}` : key;
-    const referenceValue = reference[key];
-    const targetValue = theme?.[key];
-
-    if (referenceValue && typeof referenceValue === "object" && !Array.isArray(referenceValue)) {
-      if (!targetValue || typeof targetValue !== "object" || Array.isArray(targetValue)) {
-        return [...missing, currentPath];
-      }
-      return [...missing, ...getMissingThemeKeys(targetValue, referenceValue, currentPath)];
-    }
-
-    if (targetValue === undefined) {
-      return [...missing, currentPath];
-    }
-
-    return missing;
-  }, []);
-};
-
-const sortObjectKeys = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(sortObjectKeys);
-  }
-  if (value && typeof value === "object") {
-    return Object.keys(value)
-      .sort()
-      .reduce((acc, key) => {
-        acc[key] = sortObjectKeys(value[key]);
-        return acc;
-      }, {});
-  }
-  return value;
-};
-
-const enforceThemeStructure = (theme) => {
-  const missingKeys = getMissingThemeKeys(theme, defaultUserTheme);
-  if (missingKeys.length) {
-    throw new Error(`Theme JSON missing keys: ${missingKeys.join(", ")}`);
-  }
-};
-
-const ThemePaletteEditor = ({ theme, onColorChange }) => {
-  const [openModes, setOpenModes] = useState(() =>
-    Object.keys(MODE_TITLES).reduce((acc, mode) => ({ ...acc, [mode]: false }), {})
-  );
-
-  const toggleMode = (mode) => {
-    setOpenModes((prev) => ({ ...prev, [mode]: !prev[mode] }));
-  };
-
-  return (
-    <div className="space-y-3 mt-4">
-      {Object.keys(MODE_TITLES).map((mode) => {
-        const tokens = Object.keys(defaultUserTheme?.[mode] || {});
-        const isOpen = openModes[mode];
-        return (
-          <div key={mode} className=" rounded bg-base-200">
-            <button
-              id={`theme-palette-toggle-${mode}`}
-              type="button"
-              className="w-full flex items-center justify-between px-3 py-2 text-left"
-              onClick={() => toggleMode(mode)}
-            >
-              <div>
-                <p className="text-sm text-base-content/70">{MODE_TITLES[mode]}</p>
-              </div>
-              <ChevronDown
-                size={16}
-                className={`text-base-content/70 transition-transform ${isOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {isOpen && (
-              <div className="px-3 pb-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {tokens.map((token) => {
-                    const value = theme?.[mode]?.[token] || "";
-                    const hexValue = oklchToHex(value, "#000000");
-                    return (
-                      <div
-                        key={`${mode}-${token}`}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-base-200 p-2"
-                      >
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold">{COLOR_LABEL_MAP[token] || token}</p>
-                          <p className="text-[10px] font-mono text-base-content/60 break-all">{value || "—"}</p>
-                        </div>
-                        <input
-                          id={`theme-color-${mode}-${token}`}
-                          type="color"
-                          className="w-10 h-10 border border-base-300 rounded cursor-pointer bg-transparent shrink-0"
-                          value={hexValue}
-                          onChange={(e) => onColorChange(mode, token, e.target.value)}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// Configuration Schema - easily extensible
-// ---------------------------------------------
-const CONFIG_SCHEMA = [
-  {
-    key: "hideHomeButton",
-    type: "toggle",
-    label: "Hide Home Button",
-    description: "Removes the home navigation button",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showAgentTypeOnCreateAgent",
-    type: "toggle",
-    label: "Show Agent Type on Create Agent",
-    description: "Display agent type on create agent",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showHistory",
-    type: "toggle",
-    label: "Show History",
-    description: "Display conversation history",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showConfigType",
-    type: "toggle",
-    label: "Show Config Type",
-    description: "Show configuration type indicators",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "hideAdvancedParameters",
-    type: "toggle",
-    label: "Hide Advanced Parameters",
-    description: "Display advanced parameters",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "hideCreateManuallyButton",
-    type: "toggle",
-    label: "Hide Create Agent Manually Button",
-    description: "Display create agent manually button",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "hideAdvancedConfigurations",
-    type: "toggle",
-    label: "Hide Advanced Configurations",
-    description: "Display advanced configurations",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "hidePreTool",
-    type: "toggle",
-    label: "Hide Pre Tool",
-    description: "Display pre tool",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "slide",
-    type: "select",
-    label: "Slide Position",
-    description: "Choose where GTWY appears on screen",
-    defaultValue: "right",
-    options: [
-      { value: "left", label: "Left" },
-      { value: "right", label: "Right" },
-      { value: "full", label: "Full" },
-    ],
-    section: "Display Settings",
-  },
-  {
-    key: "defaultOpen",
-    type: "toggle",
-    label: "Default Open",
-    description: "Open GTWY automatically on page load",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "hideFullScreenButton",
-    type: "toggle",
-    label: "Hide Full Screen",
-    description: "Remove the full screen toggle button",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "hideCloseButton",
-    type: "toggle",
-    label: "Hide Close Button",
-    description: "Remove the close button",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "hideHeader",
-    type: "toggle",
-    label: "Hide Header",
-    description: "Hide the header section completely",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "addDefaultApiKeys",
-    type: "toggle",
-    label: "Add Default ApiKeys",
-    description: "Add default api keys",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "showResponseType",
-    type: "toggle",
-    label: "Show Response Type",
-    description: "Show response type",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showVariables",
-    type: "toggle",
-    label: "Show Variables",
-    description: "Show variables",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showAgentName",
-    type: "toggle",
-    label: "Show Agent Name",
-    description: "Show agent name",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "themeMode",
-    type: "select",
-    label: "Theme Mode",
-    description: "Choose the color theme for the embedded GTWY interface",
-    defaultValue: "system",
-    options: [
-      { value: "system", label: "System" },
-      { value: "light", label: "Light" },
-      { value: "dark", label: "Dark" },
-    ],
-    section: "Display Settings",
-  },
-];
-
-const cloneTheme = (theme) => JSON.parse(JSON.stringify(theme || defaultUserTheme));
-const stringifyTheme = (theme) => JSON.stringify(theme, null, 2);
-const normalizeThemeConfig = (value) => {
-  if (!value) return cloneTheme(defaultUserTheme);
-  if (typeof value === "string") {
-    try {
-      return cloneTheme(JSON.parse(value));
-    } catch (error) {
-      console.error("Invalid stored theme_config JSON", error);
-      return cloneTheme(defaultUserTheme);
-    }
-  }
-  return cloneTheme(value);
-};
-
-// ---------------------------------------------
-// API Keys Input Component
-// ---------------------------------------------
-const ApiKeysInput = ({ configuration, onChange, orgId }) => {
-  const SERVICES = useCustomSelector((state) => state?.serviceReducer?.services);
-
-  const { apikeydata } = useCustomSelector((state) => {
-    const apikeys = state?.apiKeysReducer?.apikeys?.[orgId] || [];
-    return { apikeydata: apikeys };
-  });
-
-  const handleApiKeyChange = (serviceKey, value) => {
-    const currentApiKeys = configuration?.apikey_object_id || {};
-    onChange("apikey_object_id", {
-      ...currentApiKeys,
-      [serviceKey]: value,
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="text-sm font-medium text-base-content mb-3">Configure API Keys for Services</div>
-
-      {Array.isArray(SERVICES)
-        ? SERVICES.map(({ value: serviceKey, displayName }) => {
-            // Get currently selected API key ID for this service
-            const selectedId = configuration?.apikey_object_id?.[serviceKey] || "";
-
-            // Filter API keys for this specific service
-            const serviceApiKeys = (apikeydata || []).filter((apiKey) => apiKey?.service === serviceKey);
-
-            return (
-              <div key={serviceKey} className="flex items-center gap-3">
-                <div className="w-32 text-sm font-medium text-base-content">{displayName}:</div>
-
-                <select
-                  id={`api-key-select-${serviceKey}`}
-                  className="select select-bordered select-primary w-full select-sm"
-                  value={selectedId}
-                  onChange={(e) => handleApiKeyChange(serviceKey, e.target.value)}
-                >
-                  <option value="" disabled>
-                    Select API key
-                  </option>
-                  {serviceApiKeys.map((apiKey) => (
-                    <option key={apiKey._id} value={apiKey._id}>
-                      {apiKey.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            );
-          })
-        : null}
-    </div>
-  );
-};
-
-// ---------------------------------------------
 // Generic Input Component
 // ---------------------------------------------
 const ConfigInput = ({ config, value, onChange }) => {
@@ -557,13 +81,32 @@ const ConfigInput = ({ config, value, onChange }) => {
 
 // Configuration Section Component
 // ---------------------------------------------
-const ConfigSection = ({ title, configs, configuration, onChange, orgId }) => {
+const ConfigSection = ({ title, configs, configuration, onChange, orgId, params }) => {
   return (
     <div className="space-y-2">
       <h5 className="text-sm font-semibold text-primary border-b border-base-300 pb-1">{title}</h5>
       <div className="space-y-2">
-        {configs.map((config) => (
-          <ConfigInput key={config.key} config={config} value={configuration[config.key]} onChange={onChange} />
+        {configs.map((config, index) => (
+          <React.Fragment key={config.key}>
+            <ConfigInput config={config} value={configuration[config.key]} onChange={onChange} />
+
+            {/* Show Pre-Tool Configuration immediately after hidePreTool toggle */}
+            {config.key === "hidePreTool" && configuration.hidePreTool && (
+              <div className="mt-2 p-4 bg-base-200 rounded-lg border border-base-300">
+                <ToolsConfiguration
+                  singleToolMode={true}
+                  selectedToolId={configuration.pre_tool_id}
+                  onToolChange={(toolId) => onChange("pre_tool_id", toolId)}
+                  orgId={orgId}
+                  params={params}
+                  configuration={configuration}
+                  onConfigChange={onChange}
+                  title="Pre-Tool Configuration"
+                  modalType={MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL}
+                />
+              </div>
+            )}
+          </React.Fragment>
         ))}
       </div>
 
@@ -603,16 +146,6 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
 
   const config = integrationData?.config;
 
-  // Generate initial config from schema
-  const generateInitialConfig = () => {
-    const initialConfig = {};
-    CONFIG_SCHEMA.forEach((item) => {
-      initialConfig[item.key] = item.defaultValue;
-    });
-    initialConfig.theme_config = cloneTheme(defaultUserTheme);
-    return initialConfig;
-  };
-
   // Initialize configuration state
   const [configuration, setConfiguration] = useState(() => {
     const defaults = generateInitialConfig();
@@ -623,12 +156,20 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
     const apiKeyIds =
       merged.addDefaultApiKeys && integrationData?.apikey_object_id ? integrationData.apikey_object_id : {};
 
+    // Read tools_id, pre_tool_id, variables_path from config only
+    const toolsIds = merged.tools_id || [];
+    const preToolId = merged.pre_tool_id || null;
+    const variablesPath = merged.variables_path || {};
+
     const resolvedTheme = normalizeThemeConfig(merged.theme_config);
 
     return {
       ...merged,
       theme_config: resolvedTheme,
       apikey_object_id: apiKeyIds,
+      tools_id: toolsIds,
+      pre_tool_id: preToolId,
+      variables_path: variablesPath,
       embed_id: data?.embed_id,
     };
   });
@@ -670,11 +211,19 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
       }
       // Otherwise, keep empty object (no API keys)
 
+      // Read tools_id, pre_tool_id, variables_path from config only
+      const toolsIds = merged.tools_id || [];
+      const preToolId = merged.pre_tool_id || null;
+      const variablesPath = merged.variables_path || {};
+
       const resolvedTheme = normalizeThemeConfig(merged.theme_config);
       const newConfig = {
         ...merged,
         theme_config: resolvedTheme,
         apikey_object_id: finalApiKeyIds,
+        tools_id: toolsIds,
+        pre_tool_id: preToolId,
+        variables_path: variablesPath,
         embed_id: data?.embed_id,
       };
 
@@ -827,19 +376,20 @@ function GtwyIntegrationGuideSlider({ data, handleCloseSlider }) {
         }));
       }
 
-      const {
-        apikey_object_id, // move to root
-        ...restConfig
-      } = configuration;
+      // Extract only apikey_object_id and embed_id from config (these go to root level)
+      const { apikey_object_id, embed_id, ...restConfig } = configuration;
+
+      // Config contains all settings including tools_id, pre_tool_id, variables_path
       const cleanedConfig = {
         ...restConfig,
         theme_config: parsedTheme,
-      }; // strictly visual/config flags
+      };
 
+      // Build dataToSend - tools_id, pre_tool_id, variables_path stay in config
       const dataToSend = {
         folder_id: data?.embed_id,
         orgId: data?.org_id,
-        config: cleanedConfig.config ? cleanedConfig.config : cleanedConfig, // no api keys inside config
+        config: cleanedConfig.config ? cleanedConfig.config : cleanedConfig,
       };
 
       // Only include apikey_object_id if addDefaultApiKeys is true
@@ -1091,6 +641,7 @@ window.openGtwy({
                           configuration={configuration}
                           onChange={handleConfigChange}
                           orgId={data?.org_id}
+                          params={{ org_id: data?.org_id }}
                         />
                         {sectionName !== Object.keys(groupedConfigs)[Object.keys(groupedConfigs).length - 1] && (
                           <div className="divider my-2"></div>
@@ -1111,6 +662,21 @@ window.openGtwy({
                       handleConfigChange("prompt", promptValue);
                     }}
                     onValidate={setIsPromptValid}
+                  />
+                </div>
+              </div>
+
+              {/* Tools Configuration Section */}
+              <div className="card bg-base-100 shadow-sm">
+                <div className="card-body p-3">
+                  <ToolsConfiguration
+                    selectedTools={configuration.tools_id || []}
+                    onToolsChange={(tools) => handleConfigChange("tools_id", tools)}
+                    orgId={data?.org_id}
+                    params={{ org_id: data?.org_id }}
+                    configuration={configuration}
+                    onConfigChange={handleConfigChange}
+                    modalType={MODAL_TYPE.TOOL_FUNCTION_PARAMETER_MODAL}
                   />
                 </div>
               </div>
