@@ -1303,7 +1303,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               id={`variable-delete-button-${index}`}
                               type="button"
                               className="btn btn-ghost btn-xs text-error"
-                              disabled={!isCurrentRowEnabled || !variable.key.trim()}
+                              disabled={
+                                !isCurrentRowEnabled ||
+                                !variable.key.trim() ||
+                                promptKeySet.has(trimmedKey) ||
+                                variablesPathKeySet.has(trimmedKey)
+                              }
                               onClick={() => handleDeleteVariable(index)}
                               title="Delete variable"
                             >
