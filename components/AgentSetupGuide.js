@@ -11,6 +11,8 @@ const AgentSetupGuide = ({
   isEmbedUser,
   searchParams,
   onVisibilityChange = () => {},
+  onSwitchToModelTab = () => {},
+  setApiKeyError = () => {},
 }) => {
   const { bridgeApiKey, prompt, shouldPromptShow, service, showDefaultApikeys, modelName, bridgeType } =
     useCustomSelector((state) => {
@@ -68,19 +70,10 @@ const AgentSetupGuide = ({
         return false;
     }
   };
-  const resetBorder = (ref, selector) => {
-    if (ref?.current) {
-      const element = ref.current.querySelector(selector);
-      if (element) {
-        element.style.borderColor = "";
-      }
-    }
-  };
-
   const setErrorBorder = (ref, selector, scrollToView = false) => {
     if (ref?.current) {
       if (scrollToView) {
-        ref.current.scrollIntoView({ behavior: "smooth" });
+        ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
       }
       setTimeout(() => {
         const element = ref.current.querySelector(selector);
@@ -106,11 +99,18 @@ const AgentSetupGuide = ({
       setShowError(false);
     }
     if (hasPrompt) {
-      resetBorder(promptTextAreaRef, "textarea");
+      if (errorType === "prompt") {
+        setShowError(false);
+        setErrorType("");
+      }
     }
 
     if (hasApiKey) {
-      resetBorder(apiKeySectionRef, "select");
+      if (errorType === "apikey") {
+        setShowError(false);
+        setErrorType("");
+        setApiKeyError(false);
+      }
     }
 
     // Hide guide if:
@@ -189,7 +189,13 @@ const AgentSetupGuide = ({
     if (!bridgeApiKey && !(modelName === "gpt-5-nano" && bridgeType === "chatbot")) {
       setShowError(true);
       setErrorType("apikey");
-      setErrorBorder(apiKeySectionRef, "button", true);
+      onSwitchToModelTab();
+      setApiKeyError(true);
+      setTimeout(() => {
+        if (apiKeySectionRef?.current) {
+          apiKeySectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 400);
       return;
     }
 
@@ -206,8 +212,6 @@ const AgentSetupGuide = ({
     (bridgeApiKey && prompt !== "") ||
     (modelName === "gpt-5-nano" && prompt !== "" && bridgeType === "chatbot")
   ) {
-    resetBorder(promptTextAreaRef, "textarea");
-    resetBorder(apiKeySectionRef, "select");
     return null;
   }
 

@@ -25,6 +25,7 @@ const ModelTab = () => {
     bridgeType,
     isPublished,
     isEditor,
+    apiKeyError,
   } = useConfigurationContext();
   const shouldRenderApiKey = useMemo(
     () => (!showDefaultApikeys && isEmbedUser) || !isEmbedUser,
@@ -87,6 +88,7 @@ const ModelTab = () => {
               hideAdvancedParameters={hideAdvancedParameters}
               isPublished={isPublished}
               isEditor={isEditor}
+              hasError={apiKeyError}
             />
             <p className="text-xs text-base-content/50 mt-2">Your API key is encrypted and stored securely</p>
           </div>

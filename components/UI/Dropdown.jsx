@@ -24,6 +24,7 @@ const Dropdown = ({
   renderTriggerContent,
   children,
   testId = "dropdown",
+  hasError = false,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -182,7 +183,22 @@ const Dropdown = ({
   const placementCls = placement === "bottom-end" ? "dropdown-end" : "";
 
   return (
-    <div className={cx("dropdown rounded-md border-base-content/10 w-full", placementCls, open ? "dropdown-open" : "")}>
+    <div
+      className={cx(
+        "dropdown rounded-md border-base-content/10 w-full",
+        placementCls,
+        open ? "dropdown-open" : "",
+        hasError ? "ring-2 ring-red-500 ring-offset-2" : ""
+      )}
+      style={
+        hasError
+          ? {
+              border: "2px solid red",
+              boxShadow: "0 0 0 3px rgba(255, 0, 0, 0.2)",
+            }
+          : {}
+      }
+    >
       {TriggerWrapper}
 
       <div

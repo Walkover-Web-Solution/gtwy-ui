@@ -23,10 +23,13 @@ const ConfigurationPage = ({
   closeHelperButtonLocation,
   onViewChange,
   viewOverride,
+  apiKeyError,
+  setApiKeyError,
 }) => {
   const router = useRouter();
   const view = searchParams?.view || "config";
   const [currentView, setCurrentView] = useState(viewOverride || view);
+  const onTabSwitchRequestRef = React.useRef(null);
 
   const configState = useConfigurationState(params, searchParams);
 
@@ -174,6 +177,9 @@ const ConfigurationPage = ({
       switchView: handleNavigation,
       isPublished,
       isEditor,
+      onTabSwitchRequest: onTabSwitchRequestRef,
+      apiKeyError,
+      setApiKeyError,
     }),
     [
       configState,
@@ -194,6 +200,7 @@ const ConfigurationPage = ({
       isEditor,
       currentView,
       handleNavigation,
+      apiKeyError,
     ]
   );
 
