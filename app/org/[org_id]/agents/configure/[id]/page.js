@@ -110,6 +110,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const resolvedParams = use(params);
   const resolvedSearchParams = use(searchParams);
   const promptTextAreaRef = useRef(null);
+  const apiKeySectionRef = useRef(null);
   const router = useRouter();
   const mountRef = useRef(false);
   const dispatch = useDispatch();
@@ -136,6 +137,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }));
 
   const [isGuideVisible, setIsGuideVisible] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState(false);
 
   // Ref for the main container to calculate percentage-based width
   const containerRef = useRef(null);
@@ -321,6 +323,14 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
       return "notes"; // Show in Notes panel
     }
   }, [uiState.isConfigCollapsed, uiState.isPromptHelperCollapsed, uiState.isPromptHelperOpen]);
+
+  const handleSwitchToModelTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "model");
+    const search = current.toString();
+    const query = search ? `?${search}` : "";
+    router.push(`${window.location.pathname}${query}`, { scroll: false });
+  }, [router]);
 
   const [isAgentFlowView, setIsAgentFlowView] = useState(() => resolvedSearchParams?.view === "agent-flow");
   useEffect(() => {
@@ -624,6 +634,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="agent-flow-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -677,6 +688,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   <ConfigurationPage
                     id="configuration-page"
                     promptTextAreaRef={promptTextAreaRef}
+                    apiKeySectionRef={apiKeySectionRef}
                     params={resolvedParams}
                     searchParams={resolvedSearchParams}
                     isEmbedUser={isEmbedUser}
@@ -691,6 +703,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                     bridgeName={bridgeName}
                     onViewChange={handleViewChange}
                     viewOverride={isAgentFlowView ? "agent-flow" : undefined}
+                    apiKeyError={apiKeyError}
+                    setApiKeyError={setApiKeyError}
                   />
                 </div>
               </div>
@@ -737,9 +751,12 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                         <AgentSetupGuide
                           id="agent-setup-guide"
                           promptTextAreaRef={promptTextAreaRef}
+                          apiKeySectionRef={apiKeySectionRef}
                           params={resolvedParams}
                           searchParams={resolvedSearchParams}
                           onVisibilityChange={setIsGuideVisible}
+                          onSwitchToModelTab={handleSwitchToModelTab}
+                          setApiKeyError={setApiKeyError}
                         />
                         {/* Only show experimental Chat for non-chatbot types */}
                         {bridgeType !== "chatbot" && (
@@ -912,6 +929,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="mobile-agent-flow-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -939,6 +957,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="mobile-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -963,8 +982,11 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <AgentSetupGuide
                 id="mobile-agent-setup-guide"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
+                onSwitchToModelTab={handleSwitchToModelTab}
+                setApiKeyError={setApiKeyError}
               />
 
               {/* Only show experimental Chat for non-chatbot types */}
