@@ -1047,7 +1047,6 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         );
       }
     });
-    console.log("promptVariables", promptVariables);
   }, [dispatch, params?.id, prompt, variableGroups, versionId]);
 
   const variableCount = draftVariables.length;
