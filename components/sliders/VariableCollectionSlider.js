@@ -223,11 +223,16 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       if (prompt.role) promptText += prompt.role + " ";
       if (prompt.goal) promptText += prompt.goal + " ";
       if (prompt.instruction) promptText += prompt.instruction + " ";
+      // For embed users: extract from customPrompt
       if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
-      // Extract from embedFields if present
+
+      // Extract from embedFields - ONLY hidden fields (visible fields are shown in embed UI)
       if (Array.isArray(prompt.embedFields)) {
         prompt.embedFields.forEach((field) => {
-          if (field.value) promptText += field.value + " ";
+          // Only include hidden fields in variable extraction
+          if (field.hidden && field.value) {
+            promptText += field.value + " ";
+          }
         });
       }
     }
@@ -241,6 +246,17 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       return new Set();
     }
     const keys = matches.map((match) => match.replace(/[{}]/g, "").trim()).filter(Boolean);
+
+    // For embed users: filter out variables that match visible embedField names
+    // Visible fields are shown in the embed UI, so they shouldn't appear in the variable slider
+    if (typeof prompt === "object" && Array.isArray(prompt.embedFields)) {
+      const visibleFieldNames = new Set(prompt.embedFields.filter((field) => !field.hidden).map((field) => field.name));
+
+      // Only include variables that are NOT visible embed fields
+      const filteredKeys = keys.filter((key) => !visibleFieldNames.has(key));
+      return new Set(filteredKeys);
+    }
+
     return new Set(keys);
   }, [prompt]);
 
@@ -978,10 +994,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       if (prompt.role) promptText += prompt.role + " ";
       if (prompt.goal) promptText += prompt.goal + " ";
       if (prompt.instruction) promptText += prompt.instruction + " ";
-      // Extract from embedFields if present
+      // For embed users: extract from customPrompt
+      if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+      // Extract from embedFields - ONLY hidden fields (visible fields are shown in embed UI)
       if (Array.isArray(prompt.embedFields)) {
         prompt.embedFields.forEach((field) => {
-          if (field.value) promptText += field.value + " ";
+          // Only include hidden fields in variable extraction
+          if (field.hidden && field.value) {
+            promptText += field.value + " ";
+          }
         });
       }
     }
@@ -990,7 +1011,17 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
     const regex = /{{(.*?)}}/g;
     const matches = [...promptText.matchAll(regex)];
-    const promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
+    let promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
+
+    // For embed users: filter out variables that match visible embedField names
+    // Visible fields are shown in the embed UI, so they shouldn't appear in the variable slider
+    if (typeof prompt === "object" && Array.isArray(prompt.embedFields)) {
+      const visibleFieldNames = new Set(prompt.embedFields.filter((field) => !field.hidden).map((field) => field.name));
+
+      // Only include variables that are NOT visible embed fields
+      promptVariables = promptVariables.filter((key) => !visibleFieldNames.has(key));
+    }
+
     if (!promptVariables.length) return;
 
     variableGroups.forEach((group) => {
