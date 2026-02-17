@@ -67,10 +67,10 @@ export const updateApikey = async (dataToSend) => {
   }
 };
 
-export const deleteApikey = async (id) => {
+export const deleteApikey = async (id, service) => {
   try {
     const response = await axios.delete(`${URL}/api/apikeys`, {
-      data: { apikey_object_id: id },
+      data: { apikey_object_id: id, service },
     });
     return response;
   } catch (error) {
