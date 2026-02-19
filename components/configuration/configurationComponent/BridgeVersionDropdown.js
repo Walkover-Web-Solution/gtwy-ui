@@ -13,17 +13,14 @@ import {
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, sendDataToParent } from "@/utils/utility";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
-
-// Global tracking to prevent duplicate calls across component instances
-const globalFetchTracker = {
-  inProgress: new Set(),
-};
 import { useDispatch } from "react-redux";
+import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { TrashIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+
+const fetchInProgress = new Set();
 
 function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions = 2, shouldFetch = true }) {
   const router = useRouter();
@@ -32,7 +29,6 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   const versionDescriptionRef = useRef("");
   const hasInitialized = useRef(false);
   const [showVersionDropdown, setShowVersionDropdown] = useState(false);
-  const [maxVisibleVersions, setMaxVisibleVersions] = useState(maxVersions);
   const [selectedDataToDelete, setselectedDataToDelete] = useState();
   const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE.DELETE_VERSION_MODAL);
   const dropdownRef = useRef(null);
@@ -42,20 +38,14 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
       bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions || [],
       publishedVersion: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.published_version_id || null,
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
-      versionDescription:
-        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.get?.("version")]
-          ?.version_description || "",
+      versionDescription: (() => {
+        const v = searchParams?.get?.("version");
+        const resolvedV =
+          !v || v === "null" ? state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions?.[0] || null : v;
+        return state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[resolvedV]?.version_description || "";
+      })(),
       bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id] || {},
     }));
-
-  const bridgeVersionMappingRef = useRef(bridgeVersionMapping);
-  useEffect(() => {
-    bridgeVersionMappingRef.current = bridgeVersionMapping;
-  }, [bridgeVersionMapping]);
-
-  useEffect(() => {
-    setMaxVisibleVersions(maxVersions);
-  }, [maxVersions]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -75,59 +65,33 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   const debounceTimers = useRef(new Map());
   const fetchVersionData = useCallback(
     (versionId) => {
-      // Don't fetch if versionId is null, "null" string, or empty
       if (!versionId || versionId === "null" || !params?.id || !shouldFetch) return;
-      if (globalFetchTracker.inProgress.has(versionId)) {
-        return;
-      }
+      if (fetchInProgress.has(versionId)) return;
       if (debounceTimers.current.has(versionId)) {
         clearTimeout(debounceTimers.current.get(versionId));
       }
-
       const timerId = setTimeout(() => {
-        if (globalFetchTracker.inProgress.has(versionId)) {
-          return;
-        }
-        globalFetchTracker.inProgress.add(versionId);
+        fetchInProgress.add(versionId);
         dispatch(getBridgeVersionAction({ versionId, version_description: versionDescriptionRef })).finally(() => {
-          globalFetchTracker.inProgress.delete(versionId);
+          fetchInProgress.delete(versionId);
         });
-
         debounceTimers.current.delete(versionId);
       }, 100);
-
       debounceTimers.current.set(versionId, timerId);
     },
     [dispatch, params?.id, shouldFetch]
   );
 
-  // Helper function to get version description
-  const getVersionDescription = useCallback(
-    (versionId) => {
-      return bridgeVersionMapping?.[versionId]?.version_description || "";
-    },
-    [bridgeVersionMapping]
-  );
-
-  // Helper function to get version display name
   const getVersionDisplayName = useCallback(
-    (version) => {
-      // Find the index in the original array (this maintains consistent numbering)
-      const originalIndex = bridgeVersionsArray.indexOf(version);
-
-      if (version === publishedVersion) {
-        // For published version, show "V{number} Published"
-        return `V${originalIndex + 1} `;
-      } else {
-        // For non-published versions, show "V{number}"
-        return `V${originalIndex + 1}`;
-      }
-    },
+    (version) => `V${bridgeVersionsArray.indexOf(version) + 1}${version === publishedVersion ? " " : ""}`,
     [bridgeVersionsArray, publishedVersion]
   );
 
   // Memoize current version and isPublished to prevent unnecessary re-renders
-  const currentVersion = useMemo(() => searchParams?.get?.("version"), [searchParams]);
+  const currentVersion = useMemo(() => {
+    const v = searchParams?.get?.("version");
+    return !v || v === "null" ? bridgeVersionsArray[0] || null : v;
+  }, [searchParams, bridgeVersionsArray]);
   const currentIsPublished = useMemo(() => searchParams?.get?.("isPublished") === "true", [searchParams]);
 
   // SendDataToChatbot effect - only runs when version changes
@@ -224,8 +188,6 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
       return;
     }
 
-    // Use current version, published version, or first available version as parent
-    const currentVersion = searchParams?.get?.("version");
     const parentVersionId = currentVersion || publishedVersion || bridgeVersionsArray[0];
 
     if (!parentVersionId) {
@@ -285,7 +247,6 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
           org_id: params.org_id,
         })
       );
-      const currentVersion = searchParams?.get?.("version");
       if (currentVersion === selectedDataToDelete?.version) {
         const remainingVersions = bridgeVersionsArray.filter((v) => v !== selectedDataToDelete?.version);
         const nextVersion =
@@ -299,7 +260,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   }, [
     bridgeVersionsArray,
     publishedVersion,
-    searchParams?.get?.("version"),
+    currentVersion,
     params,
     router,
     selectedDataToDelete,
@@ -307,96 +268,34 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
     executeDelete,
   ]);
 
-  // Determine which versions to show with published version always on left
-  const getVersionsToShow = () => {
-    // Create array with published version first, then other versions
+  const versionsToShow = useMemo(() => {
     const otherVersions = bridgeVersionsArray.filter((v) => v !== publishedVersion);
     const orderedVersions = publishedVersion ? [publishedVersion, ...otherVersions] : bridgeVersionsArray;
 
-    if (orderedVersions.length <= maxVisibleVersions) {
-      return orderedVersions;
+    if (orderedVersions.length <= maxVersions) return orderedVersions;
+
+    if (!publishedVersion) {
+      const idx = orderedVersions.findIndex((v) => v === currentVersion);
+      if (idx === -1) return orderedVersions.slice(0, maxVersions);
+      const half = Math.floor(maxVersions / 2);
+      let start = Math.max(0, idx - half);
+      let end = Math.min(orderedVersions.length, start + maxVersions);
+      if (end - start < maxVersions) start = Math.max(0, orderedVersions.length - maxVersions);
+      return orderedVersions.slice(start, end);
     }
 
-    const currentVersion = searchParams?.get?.("version");
+    const slots = maxVersions - 1;
+    if (currentVersion === publishedVersion) return [publishedVersion, ...otherVersions.slice(0, slots)];
+    const idx = otherVersions.findIndex((v) => v === currentVersion);
+    if (idx === -1) return [publishedVersion, ...otherVersions.slice(0, slots)];
+    const half = Math.floor(slots / 2);
+    let start = Math.max(0, idx - half);
+    let end = Math.min(otherVersions.length, start + slots);
+    if (end - start < slots) start = Math.max(0, otherVersions.length - slots);
+    return [publishedVersion, ...otherVersions.slice(start, end)];
+  }, [bridgeVersionsArray, publishedVersion, currentVersion, maxVersions]);
 
-    // If published version exists, always ensure it's included first
-    if (publishedVersion) {
-      // Always include published version as first item
-      const remainingSlots = maxVisibleVersions - 1;
-
-      // Find where the current version is in the other versions array
-      const currentVersionIndexInOthers = otherVersions.findIndex((v) => v === currentVersion);
-
-      if (currentVersion === publishedVersion) {
-        // Current version is published, show published + first other versions
-        const additionalVersions = otherVersions.slice(0, remainingSlots);
-        return [publishedVersion, ...additionalVersions];
-      } else if (currentVersionIndexInOthers !== -1) {
-        // Current version is not published but exists in other versions
-        // Create a window that includes the current version
-        let startIndex = 0;
-        let endIndex = remainingSlots;
-
-        // If current version is within first remainingSlots, show from start
-        if (currentVersionIndexInOthers < remainingSlots) {
-          startIndex = 0;
-          endIndex = remainingSlots;
-        } else {
-          // Current version is beyond initial window, center it
-          const halfWindow = Math.floor(remainingSlots / 2);
-          startIndex = Math.max(0, currentVersionIndexInOthers - halfWindow);
-          endIndex = Math.min(otherVersions.length, startIndex + remainingSlots);
-
-          // Adjust if we're near the end
-          if (endIndex - startIndex < remainingSlots) {
-            startIndex = Math.max(0, otherVersions.length - remainingSlots);
-            endIndex = otherVersions.length;
-          }
-        }
-
-        const selectedVersions = otherVersions.slice(startIndex, endIndex);
-        return [publishedVersion, ...selectedVersions];
-      } else {
-        // Current version not found, show published + first other versions
-        const additionalVersions = otherVersions.slice(0, remainingSlots);
-        return [publishedVersion, ...additionalVersions];
-      }
-    } else {
-      // No published version - use sliding window approach for current version
-      const currentVersionIndex = orderedVersions.findIndex((v) => v === currentVersion);
-
-      if (currentVersionIndex === -1) {
-        // No current version found, show first versions
-        return orderedVersions.slice(0, maxVisibleVersions);
-      }
-
-      // Calculate window that includes current version
-      let startIndex = 0;
-      let endIndex = maxVisibleVersions;
-
-      if (currentVersionIndex < maxVisibleVersions) {
-        // Current version is in first window
-        startIndex = 0;
-        endIndex = maxVisibleVersions;
-      } else {
-        // Current version is beyond first window, center it
-        const halfWindow = Math.floor(maxVisibleVersions / 2);
-        startIndex = Math.max(0, currentVersionIndex - halfWindow);
-        endIndex = Math.min(orderedVersions.length, startIndex + maxVisibleVersions);
-
-        // Adjust if we're near the end
-        if (endIndex - startIndex < maxVisibleVersions) {
-          startIndex = Math.max(0, orderedVersions.length - maxVisibleVersions);
-          endIndex = orderedVersions.length;
-        }
-      }
-
-      return orderedVersions.slice(startIndex, endIndex);
-    }
-  };
-
-  const versionsToShow = getVersionsToShow();
-  const hasMoreVersions = bridgeVersionsArray.length > maxVisibleVersions;
+  const hasMoreVersions = bridgeVersionsArray.length > maxVersions;
 
   if (!bridgeVersionsArray.length) {
     return (
@@ -428,10 +327,10 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
       {/* Version Tabs Container */}
       <div data-testid="bridge-version-tabs" id="bridge-version-tabs" className="flex items-center gap-1">
         {versionsToShow.map((version, index) => {
-          const isActive = searchParams.get?.("version") === version;
+          const isActive = currentVersion === version;
           const isPublished = version === publishedVersion;
           const versionDisplayName = getVersionDisplayName(version);
-          const versionDesc = getVersionDescription(version);
+          const versionDesc = bridgeVersionMapping?.[version]?.version_description || "";
           const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
           return (
             <div key={version} className="relative group">
@@ -512,10 +411,10 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                     All Versions
                   </div>
                   {bridgeVersionsArray.map((version, index) => {
-                    const isActive = searchParams?.get?.("version") === version;
+                    const isActive = currentVersion === version;
                     const isPublished = version === publishedVersion;
                     const versionDisplayName = getVersionDisplayName(version);
-                    const versionDesc = getVersionDescription(version);
+                    const versionDesc = bridgeVersionMapping?.[version]?.version_description || "";
                     const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
 
                     return (
