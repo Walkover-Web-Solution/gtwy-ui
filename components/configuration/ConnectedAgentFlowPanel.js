@@ -204,7 +204,7 @@ const ConnectedAgentFlowPanel = ({ isEmbedUser }) => {
           data-testid="agent-flow-back-button"
           id="agent-flow-back-button"
           className="btn btn-xs btn-outline gap-1"
-          onClick={() => switchView?.("config")}
+          onClick={() => switchView?.("settings")}
         >
           ⬅ Back to Config
         </button>
