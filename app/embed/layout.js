@@ -212,19 +212,13 @@ const Layout = ({ children, isEmbedUser }) => {
 
       if (hasAgentParams && urlParamsObj.org_id) {
         setIsLoading(true);
-
-        if (urlParamsObj?.agent_name) {
-          if (currentAgentName) {
-            handleAgentNavigation(currentAgentName, urlParamsObj.org_id);
-          }
-        } else if (urlParamsObj?.agent_id) {
+        if (urlParamsObj?.agent_id) {
           router.push(`/org/${urlParamsObj.org_id}/agents/configure/${urlParamsObj.agent_id}?isEmbedUser=true`);
         } else if (urlParamsObj?.agent_purpose) {
           createNewAgent("", urlParamsObj.org_id, urlParamsObj.agent_purpose);
         }
         return;
       }
-
       if (!openGtwyReceived) {
         return;
       }
