@@ -230,9 +230,7 @@ const AgentSetupGuide = ({
 
     const hasPrompt = hasPromptContent(effectivePrompt) || !shouldPromptShow;
     const hasApiKey = bridgeApiKey;
-    const shouldOpen =
-      bridgeType === "chatbot" && hasPrompt && (hasApiKey || (modelName === "gpt-5-nano" && bridgeType === "chatbot"));
-
+    const shouldOpen = bridgeType === "chatbot" && hasPrompt && (hasApiKey || modelName === "gpt-5-nano");
     chatbotTimerRef.current = setTimeout(() => {
       const iframeContainer = document.getElementById("iframe-parent-container");
       const isChatbotOpen = iframeContainer?.style?.display === "block";
@@ -245,7 +243,16 @@ const AgentSetupGuide = ({
     }, 2000);
 
     return () => clearTimeout(chatbotTimerRef.current);
-  }, [bridgeApiKey, effectivePrompt, shouldPromptShow, modelName, bridgeType, draftPrompt, hasDraftPromptChanges]);
+  }, [
+    bridgeApiKey,
+    effectivePrompt,
+    shouldPromptShow,
+    modelName,
+    bridgeType,
+    draftPrompt,
+    hasDraftPromptChanges,
+    hasPromptContent,
+  ]);
   useEffect(() => {
     if (typeof onVisibilityChange === "function") {
       onVisibilityChange(isVisible);
