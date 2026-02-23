@@ -1,5 +1,4 @@
 /* eslint-disable */
-// IIFE Scope (optimized for performance and size)
 (function () {
     class GtwyEmbedManager {
         constructor() {
@@ -7,17 +6,25 @@
             this.parentContainer = null;
             this.scriptIds = {};
             this.config = {
-                height: '100', heightUnit: 'vh', width: '100', widthUnit: 'vw',
-                buttonName: '', slide: 'full', hideCloseButton: 'false',
-                hideFullScreenButton: 'false', hideHeader: 'false', skipLoadGtwy: false
+                height: '100', heightUnit: 'vh',
+                width: '100', widthUnit: 'vw',
+                buttonName: '', 
+                slide: 'full', 
+                hideCloseButton: 'false',
+                hideFullScreenButton: 'false', 
+                hideHeader: 'false', 
+                skipLoadGtwy: false
             };
             this.urls = {
                 gtwyUrl: 'http://localhost:3000/embed',
-                login: 'https://dev-db.gtwy.ai/api/embed/login',
+                login: 'http://localhost:7072/api/embed/login',
                 cssUrl: 'http://localhost:3000/gtwy.css'
             };
             this.state = {
-                bodyLoaded: false, fullscreen: false, isInitialized: false, hasParentContainer: false,
+                bodyLoaded: false, 
+                fullscreen: false, 
+                isInitialized: false, 
+                hasParentContainer: false,
                 tempDataToSend: {}
             };
             this.initializeEventListeners();
@@ -27,14 +34,10 @@
             const script = document.getElementById('gtwy-user-script') || document.getElementById('gtwy-main-script');
             if (!script) return {};
 
-            const attrs = ['embedToken', 'hideCloseButton', 'parentId', 'hideFullScreenButton', 'hideHeader', 'defaultOpen', 'slide', 'agent_id', 'agent_name', 'version_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId'];
+            const attrs = ['embedToken', 'hideCloseButton', 'parentId', 'hideFullScreenButton', 'hideHeader', 'defaultOpen', 'slide', 'agent_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId'];
             return attrs.reduce((props, attr) => {
                 if (script.hasAttribute(attr)) {
-                    let value = script.getAttribute(attr);
-                    
-                    if (['config', 'headerButtons', 'eventsToSubscribe'].includes(attr)) {
-                        try { value = JSON.parse(value); } catch (e) { console.error(`Error parsing ${attr}:`, e); }
-                    }
+                    const value = script.getAttribute(attr);
                     
                     if (attr === 'defaultOpen') this.config.defaultOpen = value || false;
                     if (attr === 'slide' && ['full', 'left', 'right'].includes(value)) this.config.slide = value;
@@ -42,7 +45,6 @@
                     if (['hideHeader', 'hideCloseButton', 'hideFullScreenButton'].includes(attr)) this.config[attr] = value;
                     
                     props[attr] = value;
-                    this.state.tempDataToSend = { ...this.state.tempDataToSend, [attr]: value };
                 }
                 return props;
             }, {});
@@ -258,7 +260,7 @@
 
         loadContent() {
             if (this.state.bodyLoaded) return;
-            this.extractScriptProps();
+            this.state.tempDataToSend = { ...this.state.tempDataToSend, ...this.extractScriptProps() };
             this.createIframeContainer();
             
             if (!this.config.skipLoadGtwy && !this.state.tempDataToSend?.gtwy_user) {
@@ -275,16 +277,14 @@
             const iframe = document.getElementById('iframe-component-gtwyInterfaceEmbed');
             if (!iframe) return;
 
-            if (this.state.tempDataToSend?.gtwy_user === 'true') {
-                const customId = this.scriptIds.customIframeId || this.props.customIframeId;
-                if (customId) {
-                    window.open(customId, '_blank', 'noopener,noreferrer');
-                    this.closeGtwy();
-                    return;
-                }
+            const customId = this.scriptIds.customIframeId || this.props.customIframeId;
+
+            if (this.state.tempDataToSend?.gtwy_user === 'true' && customId) {
+                window.open(customId, '_blank', 'noopener,noreferrer');
+                this.closeGtwy();
+                return;
             }
 
-            const customId = this.scriptIds.customIframeId || this.props.customIframeId;
             iframe.src = customId || `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(this.state.tempDataToSend))}`;
             
             this.applyConfig(this.config);
@@ -453,23 +453,19 @@
 
         updateProps(newProps) {
             this.props = { ...this.props, ...newProps };
-            this.setPropValues(newProps);
-        }
-
-        setPropValues(props) {
-            if ([true, 'true'].includes(props.fullScreen)) {
+            if ([true, 'true'].includes(newProps.fullScreen)) {
                 document.getElementById('gtwy-iframe-parent-container')?.classList.add('full-screen-gtwyInterfaceEmbed');
                 this.state.tempDataToSend = { ...this.state.tempDataToSend, hideFullScreenButton: true };
                 sendMessageToGtwy({ type: 'gtwyInterfaceData', data: { hideFullScreenButton: true } });
             }
-            if ('slide' in props) this.props.slide = props.slide;
+            if ('slide' in newProps) this.props.slide = newProps.slide;
         }
 
         sendInitialData() {
             setTimeout(() => {
                 if (this.state.tempDataToSend) {
                     sendMessageToGtwy({ type: 'gtwyInterfaceData', data: this.state.tempDataToSend });
-                    const shouldOpen = [this.state.tempDataToSend?.defaultOpen, this.state.config?.defaultOpen, this.config.defaultOpen]
+                    const shouldOpen = [this.state.tempDataToSend?.defaultOpen, this.config.defaultOpen]
                         .some(val => [true, 'true'].includes(val));
                     if (shouldOpen) this.openGtwy();
                     this.state.tempDataToSend = null;
@@ -492,24 +488,18 @@
         }
 
         if ('parentId' in dataToSend) {
-            gtwyEmbedManager.state.tempDataToSend = { ...gtwyEmbedManager.state.tempDataToSend, ...dataToSend };
             const prevParentId = gtwyEmbedManager.props['parentId'];
             const existingParent = document.getElementById(prevParentId);
 
-            if (existingParent?.contains(gtwyEmbedManager.parentContainer)) {
-                if (prevParentId !== dataToSend.parentId) {
-                    if (prevParentId && existingParent?.contains(gtwyEmbedManager.parentContainer)) {
-                        existingParent.removeChild(gtwyEmbedManager.parentContainer);
-                    } else if (document.body.contains(gtwyEmbedManager.parentContainer)) {
-                        document.body.removeChild(gtwyEmbedManager.parentContainer);
-                    }
-                    gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
-                    gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
+            if (prevParentId !== dataToSend.parentId) {
+                if (existingParent?.contains(gtwyEmbedManager.parentContainer)) {
+                    existingParent.removeChild(gtwyEmbedManager.parentContainer);
+                } else if (document.body.contains(gtwyEmbedManager.parentContainer)) {
+                    document.body.removeChild(gtwyEmbedManager.parentContainer);
                 }
-            } else {
-                gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
-                gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
             }
+            gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
+            gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
         }
 
         const propsToUpdate = {};
