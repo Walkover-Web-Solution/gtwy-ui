@@ -22,6 +22,7 @@ const DefaultVariablesSection = memo(
       { name: "current_time_date_and_current_identifier", description: "To access the current date and time" },
       { name: "pre_function", description: "Use this variable if you are using the pre_function" },
       { name: "timezone", description: "Access the timezone using a timezone identifier" },
+      { name: "pre_function_rag", description: "Use this variable to access knowledge base chunks retrieved by the pre-function" },
     ];
 
     return (

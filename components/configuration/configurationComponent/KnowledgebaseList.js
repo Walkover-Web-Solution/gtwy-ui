@@ -16,7 +16,7 @@ import useTutorialVideos from "@/hooks/useTutorialVideos";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { CircleQuestionMark, SquarePenIcon } from "lucide-react";
 
-const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true }) => {
+const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true ,docIdsKey = "doc_ids", maxItems = Infinity}) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   // Use the tutorial videos hook
@@ -35,7 +35,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
 
     return {
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
-      knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
+      knowbaseVersionData: isPublished ? bridgeDataFromState?.[docIdsKey] || [] : versionData?.[docIdsKey] || [],
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
     };
   });
@@ -55,6 +55,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   const handleAddKnowledgebase = (id) => {
     // Find the knowledge base item to get collectionId
     const knowledgeBaseItem = knowledgeBaseData?.find((item) => item._id === id);
+      console.log("handleAddKnowledgebase called", id, knowledgeBaseItem, "docIdsKey:", docIdsKey);
     if (!knowledgeBaseItem) return;
 
     // Check if ID already exists in the current doc_ids
@@ -70,11 +71,11 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
       description: knowledgeBaseItem.description,
       name: knowledgeBaseItem.title,
     };
-
+console.log("Saving to:", docIdsKey, [...(knowbaseVersionData || []), newDocItem]);
     dispatch(
       updateBridgeVersionAction({
         versionId: searchParams?.version,
-        dataToSend: { doc_ids: [...(knowbaseVersionData || []), newDocItem] },
+        dataToSend: { [docIdsKey]: [...(knowbaseVersionData || []), newDocItem] },
       })
     );
     // Close dropdown after selection
@@ -90,7 +91,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         updateBridgeVersionAction({
           versionId: searchParams?.version,
           dataToSend: {
-            doc_ids: knowbaseVersionData.filter((docItem) => {
+            [docIdsKey]: knowbaseVersionData.filter((docItem) => {
               // Handle both old format (string) and new format (object)
               if (typeof docItem === "string") {
                 return docItem !== item?._id;
@@ -306,14 +307,14 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
       <div className="flex flex-col gap-2 w-full ">
         {!hasKnowledgebases ? (
           <div className="dropdown dropdown-end w-full max-w-md">
-            <div className="border-2 border-base-200 border-dashed p-4 text-center">
-              <p className="text-sm text-base-content/70">No knowledge base found.</p>
+            <div className={`border-2 border-base-200 border-dashed ${docIdsKey === "pre_tools_doc_ids" ? "p-2" : "p-4"} text-center`}>
+              {docIdsKey !== "pre_tools_doc_ids" && <p className="text-sm text-base-content/70">No knowledge base found.</p>}
               <button
                 data-testid="knowledgebase-add-button"
                 id="knowledgebase-add-button"
                 tabIndex={0}
                 className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                disabled={!shouldToolsShow || isReadOnly}
+                disabled={!shouldToolsShow || isReadOnly|| knowbaseVersionData.length >= maxItems}
               >
                 <AddIcon className="w-3 h-3" />
                 Add
@@ -324,7 +325,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         ) : (
           <>
             {renderKnowledgebase}
-            {hasKnowledgebases && (
+            {hasKnowledgebases && knowbaseVersionData.length < maxItems && (
               <div className="dropdown dropdown-end w-full max-w-md">
                 <div className="border-2 border-base-200 border-dashed text-center">
                   <button

@@ -12,6 +12,7 @@ import { isEqual } from "lodash";
 import { AddIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import KnowledgebaseList from "./KnowledgebaseList";
 
 const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEmbedUser = false }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -21,31 +22,42 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [preFunctionName, setPreFunctionName] = useState(null);
   const [preToolData, setPreToolData] = useState(null);
   const [variablesPath, setVariablesPath] = useState({});
-  const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path } = useCustomSelector(
-    (state) => {
-      const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-      const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
-      const isPublished = searchParams?.isPublished === "true";
-      const orgData = state?.bridgeReducer?.org?.[params?.org_id];
+  const {
+    integrationData,
+    function_data,
+    bridge_pre_tools,
+    model,
+    embedToken,
+    variables_path,
+    knowledgeBaseData,
+    pre_tools_doc_ids,
+  } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const isPublished = searchParams?.isPublished === "true";
+    const orgData = state?.bridgeReducer?.org?.[params?.org_id];
 
-      // Use bridgeData when isPublished=true, otherwise use versionData
-      const activeData = isPublished ? bridgeDataFromState : versionData;
-      const serviceName = activeData?.service;
-      const modelTypeName = activeData?.configuration?.type?.toLowerCase();
-      const modelName = activeData?.configuration?.model;
+    // Use bridgeData when isPublished=true, otherwise use versionData
+    const activeData = isPublished ? bridgeDataFromState : versionData;
+    const serviceName = activeData?.service;
+    const modelTypeName = activeData?.configuration?.type?.toLowerCase();
+    const modelName = activeData?.configuration?.model;
 
-      return {
-        integrationData: orgData?.integrationData || {},
-        function_data: orgData?.functionData || {},
-        bridge_pre_tools: isPublished ? bridgeDataFromState?.pre_tools || [] : versionData?.pre_tools || [],
-        modelType: modelTypeName,
-        model: modelName,
-        service: serviceName,
-        embedToken: orgData?.embed_token,
-        variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
-      };
-    }
-  );
+    return {
+      integrationData: orgData?.integrationData || {},
+      function_data: orgData?.functionData || {},
+      bridge_pre_tools: isPublished ? bridgeDataFromState?.pre_tools || [] : versionData?.pre_tools || [],
+      modelType: modelTypeName,
+      model: modelName,
+      service: serviceName,
+      embedToken: orgData?.embed_token,
+      variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
+      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
+      pre_tools_doc_ids: isPublished
+        ? bridgeDataFromState?.pre_tools_doc_ids || []
+        : versionData?.pre_tools_doc_ids || [],
+    };
+  });
   const dispatch = useDispatch();
 
   // Delete operation hook
@@ -271,6 +283,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                   handleChangePreTool={handleChangePreTool}
                   halfLength={1}
                 />
+
                 {bridgePreFunctions.length > 0 && (
                   <div
                     data-testid="pre-embed-add-more-dropdown"
@@ -291,6 +304,14 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                 )}
               </div>
             )}
+            <KnowledgebaseList
+              params={params}
+              searchParams={searchParams}
+              isPublished={isPublished}
+              isEditor={isEditor}
+              docIdsKey="pre_tools_doc_ids"
+              maxItems={1}
+            />
           </div>
         </div>
       </div>
