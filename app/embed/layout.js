@@ -205,18 +205,15 @@ const Layout = ({ children, isEmbedUser }) => {
           messageData.agent_purpose || null,
           messageData.meta || null
         );
-      } else if (messageData?.agent_id && orgId && messageData?.meta) {
+      } else if (messageData?.agent_id && orgId) {
         const bridges = await getBridges();
         const bridge = bridges.find((b) => b._id === messageData.agent_id);
         if (!bridge) return;
-        dispatch(updateBridgeAction({ dataToSend: { meta: messageData.meta }, bridgeId: messageData.agent_id }));
-        setIsLoading(true);
-        const bridgeData = bridges.find((b) => b._id === messageData.agent_id);
-        if (!bridgeData) {
-          router.push(`/org/${orgId}/agents`);
-          return;
+        if (messageData?.meta) {
+          dispatch(updateBridgeAction({ dataToSend: { meta: messageData.meta }, bridgeId: messageData.agent_id }));
         }
-        const version = bridgeData.published_version_id || bridgeData.versions[0];
+        setIsLoading(true);
+        const version = bridge.published_version_id || bridge.versions[0];
         if (messageData?.history) {
           router.push(
             `/org/${orgId}/agents/history/${messageData.agent_id}?version=${version}&message_id=${messageData.history.message_id}`
@@ -266,7 +263,7 @@ const Layout = ({ children, isEmbedUser }) => {
   // Memoize loading component to avoid unnecessary re-renders
   const LoadingComponent = useMemo(
     () => (
-      <div className="flex items-center justify-center min-h-screen bg-neutral">
+      <div className="flex items-center justify-center min-h-screen bg-base-100">
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Zap size={20} className="text-success" />
