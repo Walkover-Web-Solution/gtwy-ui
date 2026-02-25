@@ -15,6 +15,8 @@ function EmbedListSuggestionDropdownMenu({
   onSelect = () => {},
   onSelectPrebuiltTool = () => {},
   connectedFunctions = [],
+  queryRefinerEnabled = false,
+  onSelectQueryRefiner = () => {},
   shouldToolsShow,
   modelName,
   prebuiltToolsData,
@@ -175,6 +177,24 @@ function EmbedListSuggestionDropdownMenu({
             ) : (
               <li className="text-center mt-2">No tools found</li>
             )}
+            {name === "preFunction" && (
+  <>
+    <li className="text-sm font-semibold disabled mt-2">Prebuilt Tools</li>
+    <li
+      onClick={() => !queryRefinerEnabled && onSelectQueryRefiner()}
+      className={queryRefinerEnabled ? "opacity-40 cursor-not-allowed pointer-events-none" : ""}
+    >
+      <div className="flex justify-between items-center w-full">
+        <div className="flex items-center gap-2">
+          <span>Query Refiner</span>
+        </div>
+        {queryRefinerEnabled && (
+          <span className="text-xs text-base-content/50">Active</span>
+        )}
+      </div>
+    </li>
+  </>
+)}
             {name != "preFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Prebuilt Tools</li>

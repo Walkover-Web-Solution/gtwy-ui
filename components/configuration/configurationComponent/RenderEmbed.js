@@ -55,6 +55,7 @@ const RenderEmbed = ({
           <div
             className="p-2 flex-1 flex items-center"
             onClick={() => {
+              if (value?._id === "query_refiner") return;
               openViasocket(functionName, {
                 embedToken,
                 meta: {
@@ -99,6 +100,7 @@ const RenderEmbed = ({
 
           {/* Action buttons that appear on hover */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+            {value?._id !== "query_refiner" && (
             <button
               data-testid={`render-embed-config-button-${value?._id}`}
               id={`render-embed-config-button-${value?._id}`}
@@ -111,6 +113,7 @@ const RenderEmbed = ({
             >
               <SettingsIcon size={16} />
             </button>
+            )}
             {name === "preFunction" && handleChangePreTool && (
               <button
                 data-testid={`render-embed-refresh-button-${value?._id}`}

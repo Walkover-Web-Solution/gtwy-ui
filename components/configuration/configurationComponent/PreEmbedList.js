@@ -21,8 +21,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [preFunctionName, setPreFunctionName] = useState(null);
   const [preToolData, setPreToolData] = useState(null);
   const [variablesPath, setVariablesPath] = useState({});
-  const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path } = useCustomSelector(
-    (state) => {
+  const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path, query_refiner } =
+    useCustomSelector((state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
       const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
       const isPublished = searchParams?.isPublished === "true";
@@ -43,9 +43,9 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         service: serviceName,
         embedToken: orgData?.embed_token,
         variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
+        query_refiner: isPublished ? bridgeDataFromState?.query_refiner || false : versionData?.query_refiner || false,
       };
-    }
-  );
+    });
   const dispatch = useDispatch();
 
   // Delete operation hook
@@ -56,6 +56,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     [bridge_pre_tools, function_data, params]
   );
   const handleOpenModal = (functionId) => {
+    if (functionId === "query_refiner") return;
     setPreFunctionId(functionId);
     setPreFunctionName(function_data?.[functionId]?.script_id || function_data?.[functionId]?.title || "");
     setPreToolData(function_data?.[functionId]);
@@ -63,7 +64,22 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     setVariablesPath(variables_path[preFunctionName] || {});
     openModal(MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL);
   };
+
+  const handleToggleQueryRefiner = () => {
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend: { query_refiner: !query_refiner },
+      })
+    );
+  };
+
   const handleOpenDeleteModal = (functionId, functionName) => {
+    if (functionId === "query_refiner") {
+      handleToggleQueryRefiner(); // directly remove, no modal needed
+      return;
+    }
     setPreFunctionId(functionId);
     setPreFunctionName(functionName);
     openModal(MODAL_TYPE.DELETE_PRE_TOOL_MODAL);
@@ -216,7 +232,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
               </div>
             </div>
           )}
-          {bridgePreFunctions.length === 0 && (
+          {bridgePreFunctions.length === 0 && !query_refiner && (
             <div
               data-testid="pre-embed-empty-dropdown"
               id="pre-embed-empty-dropdown"
@@ -245,12 +261,14 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                 connectedFunctions={bridge_pre_tools}
                 shouldToolsShow={true}
                 modelName={model}
+                queryRefinerEnabled={query_refiner}
+                onSelectQueryRefiner={handleToggleQueryRefiner}
               />
             </div>
           )}
           <div className="flex flex-col gap-2 w-full">
             {/* Render pre-tool cards */}
-            {bridgePreFunctions.length > 0 && (
+            {(bridgePreFunctions.length > 0 || query_refiner) && (
               <div
                 data-testid="pre-embed-functions-container"
                 id="pre-embed-functions-container"
@@ -259,7 +277,19 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                 <RenderEmbed
                   isPublished={isPublished}
                   isEditor={isEditor}
-                  bridgeFunctions={bridgePreFunctions}
+                  bridgeFunctions={[
+                    ...bridgePreFunctions,
+                    ...(query_refiner
+                      ? [
+                          {
+                            _id: "query_refiner",
+                            title: "Query Refiner",
+                            script_id: "query_refiner",
+                            description: "pre-built",
+                          },
+                        ]
+                      : []),
+                  ]}
                   integrationData={integrationData}
                   getStatusClass={getStatusClass}
                   handleOpenModal={handleOpenModal}
@@ -271,6 +301,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                   handleChangePreTool={handleChangePreTool}
                   halfLength={1}
                 />
+
                 {bridgePreFunctions.length > 0 && (
                   <div
                     data-testid="pre-embed-add-more-dropdown"
@@ -286,6 +317,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                       connectedFunctions={bridge_pre_tools}
                       shouldToolsShow={true}
                       modelName={model}
+                      queryRefinerEnabled={query_refiner}
+                      onSelectQueryRefiner={handleToggleQueryRefiner}
                     />
                   </div>
                 )}
