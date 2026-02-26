@@ -17,11 +17,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import {
-  updateBridgeAction,
-  dicardBridgeVersionAction,
-  deleteBridgeAction,
-} from "@/store/action/bridgeAction";
+import { updateBridgeAction, dicardBridgeVersionAction, deleteBridgeAction } from "@/store/action/bridgeAction";
 import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
@@ -234,7 +230,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     },
     [handleNameSave, handleNameCancel]
   );
-  
+
   const handleDiscardChanges = useCallback(async () => {
     await executeDelete(async () => {
       dispatch(
@@ -375,7 +371,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     });
   }, [executeDelete, dispatch, bridgeId, orgId, router]);
 
-    const EllipsisMenu = () => (
+  const EllipsisMenu = () => (
     <AgentActionMenu
       menuRef={ellipsisMenuRef}
       bridge={bridge}

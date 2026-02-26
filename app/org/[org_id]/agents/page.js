@@ -14,7 +14,6 @@ import {
   clearBridgeUsageMetricsAction,
   deleteBridgeAction,
   fetchBridgeUsageMetricsAction,
-  updateBridgeAction,
 } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
@@ -29,17 +28,12 @@ import { toast } from "react-toastify";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
 import AgentEmptyState from "@/components/AgentEmptyState";
-import { Funnel, Pause, Play, Settings2, Trash2, Undo2, Users, Infinity } from "lucide-react";
+import { Funnel, Undo2, Infinity } from "lucide-react";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 export const runtime = "edge";
-const BRIDGE_STATUS = {
-  ACTIVE: 1,
-  PAUSED: 0,
-};
-
 const ModelBadge = ({ model, service, modelsConfig }) => {
   if (!model) return null;
 
@@ -61,16 +55,6 @@ const formatUsageNumber = (value, maximumFractionDigits = 2) => {
   const numericValue = Number(value ?? 0);
   if (!Number.isFinite(numericValue)) return "0";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(numericValue);
-};
-
-const getUsageStatsForRow = (row) => {
-  const limitValue = Number(row?.agent_limit_original ?? 0);
-  const usageValue = Number(row?.agent_usage ?? 0);
-  const totalTokens = Number(row?.totalTokens ?? 0);
-  const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
-  const usagePercent = hasLimit ? Math.min(100, Math.max(0, (usageValue / limitValue) * 100)) : 0;
-  const remaining = hasLimit ? Math.max(limitValue - usageValue, 0) : null;
-  return { limitValue, usageValue, totalTokens, hasLimit, usagePercent, remaining };
 };
 
 const UsageProgressDonut = ({ percent, label }) => (
@@ -820,37 +804,6 @@ function Home({ params, searchParams, isEmbedUser }) {
     // Include the type parameter to maintain sidebar selection
     router.push(`/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}`);
   };
-  const handlePauseBridge = async (bridgeId) => {
-    const newStatus =
-      bridgeStatus[bridgeId]?.bridge_status === BRIDGE_STATUS.PAUSED ? BRIDGE_STATUS.ACTIVE : BRIDGE_STATUS.PAUSED;
-
-    try {
-      await dispatch(
-        updateBridgeAction({
-          bridgeId,
-          dataToSend: { bridge_status: newStatus },
-        })
-      );
-      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update agent status");
-    }
-  };
-
-  const handleUpdateBridgeLimit = async (bridge, limit) => {
-    const dataToSend = {
-      bridge_limit: limit,
-    };
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridge._id, dataToSend }));
-    if (res?.success) toast.success("Agent Usage Limit Updated Successfully");
-  };
-
-  const resetUsage = async (bridge) => {
-    const dataToSend = { bridge_usage: 0 };
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridge._id, dataToSend }));
-    if (res?.success) toast.success("Agent Usage Reset Successfully");
-  };
 
   const closeUsageFilterPopover = () => {
     setUsageFilterPopover((prev) => ({ ...prev, open: false }));
@@ -990,9 +943,8 @@ function Home({ params, searchParams, isEmbedUser }) {
       (currentOrgRole === "Viewer" && row.users?.some((user) => user.id === currentUser.id)) ||
       currentOrgRole === "Creator" ||
       isAdminOrOwner;
-    const usageStats = getUsageStatsForRow(row);
 
-      const handleDropdownClick = (e) => {
+    const handleDropdownClick = (e) => {
       e.preventDefault();
       e.stopPropagation();
 

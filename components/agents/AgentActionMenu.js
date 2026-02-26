@@ -1,9 +1,8 @@
 "use client";
 import { useCallback, useState } from "react";
 import { useDispatch } from "react-redux";
-import { useRouter } from "next/navigation";
 import { ArchiveRestore, MoreVertical, Pause, Play, Settings2, Trash2, Users } from "lucide-react";
-import { archiveBridgeAction, deleteBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
+import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import { toast } from "react-toastify";
@@ -30,7 +29,6 @@ export const AgentMenuItems = ({
   handlePortalCloseImmediate,
 }) => {
   const dispatch = useDispatch();
-  const router = useRouter();
 
   const getUsageStatsForRow = (row) => {
     const limitValue = Number(row?.agent_limit_original ?? row?.bridge_limit ?? 0);
@@ -77,7 +75,6 @@ export const AgentMenuItems = ({
       );
       onClose?.();
       handlePortalOpen?.(e.currentTarget, usageContent);
-      
     },
     [bridge, bridgeData, isEmbedUser, handlePortalOpen, handlePortalCloseImmediate, onClose]
   );
@@ -93,11 +90,6 @@ export const AgentMenuItems = ({
       toast.error("Failed to update agent status");
     }
   }, [dispatch, bridge, bridgeStatus, onClose]);
-
-//   const handleDeleteAgent = useCallback(() => {
-//     onClose?.();
-//     openModal(MODAL_TYPE.DELETE_AGENT_MODAL);
-//   }, [onClose]);
 
   const handleDeleteAgent = useCallback(() => {
     onClose?.();

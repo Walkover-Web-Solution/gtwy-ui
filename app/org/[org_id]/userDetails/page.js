@@ -1,4 +1,3 @@
-
 "use client";
 import { getFromCookies, openModal } from "@/utils/utility";
 import { useEffect } from "react";
@@ -33,7 +32,7 @@ const page = () => {
   useEffect(() => {
     loadProxyScript({
       authToken: getFromCookies("proxy_token") || "",
-      success: () => { },
+      success: () => {},
       failure: (error) => console.error("failure reason", error),
     });
 
@@ -44,8 +43,8 @@ const page = () => {
           pass: true,
           type: "user-management",
           exclude_role_ids: process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID,
-          success: () => { },
-          failure: () => { },
+          success: () => {},
+          failure: () => {},
         },
         document.head
       );
