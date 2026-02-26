@@ -138,6 +138,14 @@ export const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
+    key: "hidePromptHelper",
+    type: "toggle",
+    label: "Hide Prompt Helper",
+    description: "Hide the prompt helper",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
     key: "migratePrompt",
     type: "toggle",
     label: "Migrate Prompt",

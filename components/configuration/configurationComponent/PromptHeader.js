@@ -1,4 +1,6 @@
 import React, { memo, useCallback } from "react";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import Protected from "@/components/Protected";
 
 // Optimized header component with memoization
 const PromptHeader = memo(
@@ -29,6 +31,10 @@ const PromptHeader = memo(
     const handleOpenDiff = useCallback(() => {
       onOpenDiff?.();
     }, [onOpenDiff]);
+
+    const hidePromptHelper = useCustomSelector(
+      (state) => state.appInfoReducer?.embedUserDetails?.hidePromptHelper || false
+    );
 
     // Conditional styling based on isPromptHelperOpen
     if (isPromptHelperOpen && !isMobileView) {
@@ -96,7 +102,7 @@ const PromptHeader = memo(
               Diff
             </span>
           )}
-          {!isPromptHelperOpen && (
+          {!isPromptHelperOpen && ((isEmbedUser && !hidePromptHelper) || !isEmbedUser) && (
             <span
               data-testid="prompt-header-open-helper-button"
               id="prompt-header-open-helper-button"
@@ -168,4 +174,4 @@ const PromptHeader = memo(
 
 PromptHeader.displayName = "PromptHeader";
 
-export default PromptHeader;
+export default Protected(PromptHeader);
