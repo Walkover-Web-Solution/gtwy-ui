@@ -34,12 +34,7 @@ const page = () => {
     document.body.appendChild(scriptSrc);
 
     return () => {
-      const existingScript = document.querySelector(
-        'script[src="https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js"]'
-      );
-      if (existingScript) {
-        document.body.removeChild(existingScript);
-      }
+      scriptSrc.parentNode?.removeChild(scriptSrc);
     };
   }, []);
 
