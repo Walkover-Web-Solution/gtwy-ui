@@ -92,35 +92,20 @@ function Page({ params, searchParams }) {
       const result = await dispatch(
         getHistoryAction(resolvedParams.id, 1, filterOption, isErrorTrue, selectedVersion, keyword, startDate, endDate)
       );
-
-      if (resolvedSearchParams?.thread_id) {
-        const threadId = resolvedSearchParams?.thread_id;
-        const thread = result?.find((item) => item?.thread_id === threadId);
-        if (thread) {
-          const messageId = resolvedSearchParams?.message_id;
+      const version = search.get("version") || selectedVersion;
+      const type = search.get("type") || resolvedSearchParams?.type || "";
+      const messageId = resolvedSearchParams?.message_id;
+      const firstThreadId = result?.[0]?.thread_id;
+      if (firstThreadId) {
+        if (isErrorTrue) {
           router.push(
-            `${pathName}?version=${resolvedSearchParams.version}&thread_id=${threadId}&start=${startDate || ""}&end=${endDate || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${resolvedSearchParams.type}&type=${resolvedSearchParams.type}`,
+            `${pathName}?version=${version}&thread_id=${firstThreadId}&subThread_id=${firstThreadId}&error=true${messageId ? `&message_id=${messageId}` : ""}&type=${type}`,
             undefined,
             { shallow: true }
           );
-        }
-      } else if (!resolvedSearchParams?.thread_id && result?.length > 0) {
-        const firstThreadId = result[0]?.thread_id;
-        if (firstThreadId) {
-          const messageId = resolvedSearchParams?.message_id;
+        } else {
           router.push(
-            `${pathName}?version=${resolvedSearchParams.version}&thread_id=${firstThreadId}&start=${startDate || ""}&end=${endDate || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${resolvedSearchParams.type}&type=${resolvedSearchParams.type}`,
-            undefined,
-            { shallow: true }
-          );
-        }
-      }
-      if (isErrorTrue) {
-        const firstThreadId = result[0]?.thread_id;
-        if (firstThreadId) {
-          const messageId = resolvedSearchParams?.message_id;
-          router.push(
-            `${pathName}?version=${resolvedSearchParams.version}&thread_id=${firstThreadId}&subThread_id=${firstThreadId}&error=true${messageId ? `&message_id=${messageId}` : ""}&type=${resolvedSearchParams.type}`,
+            `${pathName}?version=${version}&thread_id=${firstThreadId}&start=${startDate || ""}&end=${endDate || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${type}`,
             undefined,
             { shallow: true }
           );
@@ -162,7 +147,7 @@ function Page({ params, searchParams }) {
         const messageId = search.get("message_id");
         const encodedThreadId = encodeURIComponent(thread_id.replace(/&/g, "%26"));
         router.push(
-          `${pathName}?version=${resolvedSearchParams.version}&thread_id=${encodedThreadId}&subThread_id=${encodedThreadId}&start=${start || ""}&end=${end || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${resolvedSearchParams.type}&type=${resolvedSearchParams.type}`,
+          `${pathName}?version=${search.get("version") || selectedVersion}&thread_id=${encodedThreadId}&subThread_id=${encodedThreadId}&start=${start || ""}&end=${end || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${search.get("type") || resolvedSearchParams.type || ""}`,
           undefined,
           { shallow: true }
         );
@@ -246,7 +231,7 @@ function Page({ params, searchParams }) {
             hasMore={hasMore}
             loading={loading}
             params={resolvedParams}
-            searchParams={resolvedSearchParams}
+            searchParams={Object.fromEntries(search.entries())}
             setSearchMessageId={setSearchMessageId}
             setPage={setPage}
             setHasMore={setHasMore}

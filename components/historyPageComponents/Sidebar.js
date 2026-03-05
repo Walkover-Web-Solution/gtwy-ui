@@ -52,6 +52,7 @@ const Sidebar = memo(
     const [expandedThreads, setExpandedThreads] = useState([]);
     const [loadingSubThreads, setLoadingSubThreads] = useState(true);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [searchFilterBy, setSearchFilterBy] = useState("all");
     const searchQuery = (searchRef?.current && searchRef.current.value) || searchParams?.message_id || "";
     const dispatch = useDispatch();
     const pathName = usePathname();
@@ -84,6 +85,7 @@ const Sidebar = memo(
 
     const handleVersionChange = async (event) => {
       const version = event.target.value;
+      dispatch(clearSubThreadData());
       dispatch(setSelectedVersion(version));
     };
 
@@ -104,30 +106,23 @@ const Sidebar = memo(
     }, [searchParams?.thread_id]);
 
     useEffect(() => {
-      if (subThreads?.length > 0 && searchParams?.thread_id) {
+      const p = new URLSearchParams(window.location.search);
+      const liveVersion = p.get("version");
+      const liveThreadId = p.get("thread_id");
+      const versionMismatch = selectedVersion !== "all" && liveVersion !== selectedVersion;
+      if (!liveThreadId || !liveVersion || versionMismatch) {
+        setTimeout(() => setLoadingSubThreads(false), 1000);
+        return;
+      }
+      if (subThreads?.length > 0) {
         const firstSubThreadId = subThreads[0]?.sub_thread_id;
         if (firstSubThreadId) {
-          const start = searchParams?.start;
-          const end = searchParams?.end;
-          router.push(
-            `${pathName}?version=${searchParams.version}&thread_id=${searchParams.thread_id}&subThread_id=${firstSubThreadId}&start=${start || ""}&end=${end || ""}${searchParams?.message_id ? `&message_id=${searchParams.message_id}` : ""}&type=${searchParams?.type || ""}`,
-            undefined,
-            { shallow: true }
-          );
-        }
-      } else {
-        if (searchParams?.thread_id) {
-          router.push(
-            `${pathName}?version=${searchParams.version}&thread_id=${searchParams.thread_id}&subThread_id=${searchParams.thread_id}&start=${searchParams.start || ""}&end=${searchParams.end || ""}${searchParams?.message_id ? `&message_id=${searchParams.message_id}` : ""}&type=${searchParams?.type || ""}`,
-            undefined,
-            { shallow: true }
-          );
+          const url = `${pathName}?version=${liveVersion}&thread_id=${liveThreadId}&subThread_id=${firstSubThreadId}&start=${p.get("start") || ""}&end=${p.get("end") || ""}${p.get("message_id") ? `&message_id=${p.get("message_id")}` : ""}&type=${p.get("type") || ""}`;
+          router.push(url, undefined, { shallow: true });
         }
       }
-      setTimeout(() => {
-        setLoadingSubThreads(false);
-      }, 1000);
-    }, [subThreads]);
+      setTimeout(() => setLoadingSubThreads(false), 1000);
+    }, [subThreads, selectedVersion]);
     const debounce = (func, delay) => {
       let timeoutId;
       return (...args) => {
@@ -145,14 +140,14 @@ const Sidebar = memo(
       }
     }, [searchParams?.message_id]);
     const handleChange = useCallback(
-      debounce((e) => {
-        const value = e?.target?.value || searchParams?.message_id || "";
-        handleSearch(e, value);
+      debounce((e, filterBy) => {
+        const value = e?.target?.value.trim() || searchParams?.message_id || "";
+        handleSearch(e, value, filterBy);
       }, 500),
       [searchParams?.message_id]
     );
 
-    const handleSearch = async (e, directValue) => {
+    const handleSearch = async (e, directValue, filterBy) => {
       e?.preventDefault();
       const searchValue = directValue !== undefined ? directValue : searchRef?.current?.value || "";
       if (!searchValue.trim()) {
@@ -183,7 +178,17 @@ const Sidebar = memo(
         const endDate = searchParams?.end;
 
         const result = await dispatch(
-          getHistoryAction(params?.id, 1, "all", isErrorTrue, selectedVersion, searchValue, startDate, endDate)
+          getHistoryAction(
+            params?.id,
+            1,
+            "all",
+            isErrorTrue,
+            selectedVersion,
+            searchValue,
+            startDate,
+            endDate,
+            filterBy
+          )
         );
 
         setThreadPage(1);
@@ -458,6 +463,29 @@ const Sidebar = memo(
               ))}
             </select>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-base-content/70 whitespace-nowrap">Search by:</span>
+            <select
+              data-testid="history-sidebar-filter-by-select"
+              id="history-sidebar-filter-by-select"
+              className="select select-bordered select-sm flex-1 text-xs"
+              value={searchFilterBy}
+              onChange={(e) => {
+                const newFilterBy = e.target.value;
+                setSearchFilterBy(newFilterBy);
+                handleSearch(e, newFilterBy);
+              }}
+            >
+              <option value="all">All</option>
+              <option value="thread_id">Thread ID</option>
+              <option value="sub_thread_id">Sub Thread ID</option>
+              <option value="message_id">Message ID</option>
+              <option value="user">User Message</option>
+              <option value="llm_message">LLM Message</option>
+              <option value="updated_llm_message">Edited LLM Message</option>
+              <option value="variables">Variables</option>
+            </select>
+          </div>
           <form onSubmit={handleSearch} className="relative">
             <input
               data-testid="history-sidebar-search-input"
@@ -465,7 +493,7 @@ const Sidebar = memo(
               type="text"
               ref={searchRef}
               placeholder="Search..."
-              onChange={handleChange}
+              onChange={(e) => handleChange(e, searchFilterBy)}
               className="input input-bordered input-sm w-full pr-6 text-xs"
             />
             {searchQuery && (
