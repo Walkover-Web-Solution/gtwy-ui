@@ -1,5 +1,5 @@
-import React, { useCallback, useState, useMemo, useEffect } from "react";
-import { X, AlertTriangle, Settings, CircleX, ArrowRightLeft, Check, Bot } from "lucide-react";
+import React, { useCallback, useState, useMemo, useEffect, useRef } from "react";
+import { X, AlertTriangle, Settings, CircleX, ArrowRightLeft, Check, Bot, ChevronDown } from "lucide-react";
 import {
   getAllBridgesAction,
   getBridgeVersionAction,
@@ -7,6 +7,7 @@ import {
   publishBulkVersionAction,
   updateBridgeAction,
 } from "@/store/action/bridgeAction";
+import { convertAgentToTemplate } from "@/config/bridgeApi";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
@@ -29,6 +30,10 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [showSummaryValidation, setShowSummaryValidation] = useState(false);
   const [summaryAccordionOpen, setSummaryAccordionOpen] = useState(false);
+  const [convertToTemplate, setConvertToTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [showPublishDropdown, setShowPublishDropdown] = useState(false);
+  const publishDropdownRef = useRef(null);
 
   const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } =
     useCustomSelector((state) => {
@@ -386,9 +391,21 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   }, [differences, extractedConfigChanges]);
 
   // Event handlers
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (publishDropdownRef.current && !publishDropdownRef.current.contains(e.target)) {
+        setShowPublishDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleCloseModal = useCallback((e) => {
     e?.preventDefault();
     closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
+    setConvertToTemplate(false);
+    setTemplateName("");
   }, []);
 
   const handleChange = useCallback((e) => {
@@ -603,114 +620,134 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     [params?.id, agentList, selectedAgentsToPublish, toggleAgentSelection, isLoading, getVersionIndexToPublish]
   );
 
-  const handlePublishBridge = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const handlePublishBridge = useCallback(
+    async (shouldConvertToTemplate = false) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      // Require a summary before publishing
-      if (!bridge_summary || (typeof bridge_summary === "string" && bridge_summary.trim().length === 0)) {
-        // Show validation error and redirect to summary section
-        setShowSummaryValidation(true);
-        setSummaryAccordionOpen(true);
-        setIsLoading(false);
-        // Scroll to summary section
-        setTimeout(() => {
-          const summarySection = document.querySelector(".summary-accordion");
-          if (summarySection) {
-            summarySection.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }, 100);
-        return;
-      }
-
-      if (isPublicAgent) {
-        if (!formData.url_slugname.trim()) {
-          toast.error("Slug Name is required.");
+      try {
+        // Require a summary before publishing
+        if (!bridge_summary || (typeof bridge_summary === "string" && bridge_summary.trim().length === 0)) {
+          // Show validation error and redirect to summary section
+          setShowSummaryValidation(true);
+          setSummaryAccordionOpen(true);
           setIsLoading(false);
+          // Scroll to summary section
+          setTimeout(() => {
+            const summarySection = document.querySelector(".summary-accordion");
+            if (summarySection) {
+              summarySection.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }, 100);
           return;
         }
 
-        const payload = {
-          page_config: {
-            url_slugname: formData.url_slugname,
-            availability: formData.availability,
-            description: formData.description,
-            allowedUsers: formData.availability === "private" ? formData.allowedUsers : [],
-          },
-        };
-
-        try {
-          await dispatch(
-            updateBridgeAction({
-              bridgeId: params?.id,
-              dataToSend: payload,
-            })
-          );
-          toast.success("Configuration saved successfully!");
-        } catch (error) {
-          if (error?.response?.data?.detail?.includes("DuplicateKey")) {
-            setError({ error: "This slug name already exists. Please choose a different one." });
+        if (isPublicAgent) {
+          if (!formData.url_slugname.trim()) {
+            toast.error("Slug Name is required.");
+            setIsLoading(false);
+            return;
           }
-          setIsLoading(false);
-          return;
+
+          const payload = {
+            page_config: {
+              url_slugname: formData.url_slugname,
+              availability: formData.availability,
+              description: formData.description,
+              allowedUsers: formData.availability === "private" ? formData.allowedUsers : [],
+            },
+          };
+
+          try {
+            await dispatch(
+              updateBridgeAction({
+                bridgeId: params?.id,
+                dataToSend: payload,
+              })
+            );
+            toast.success("Configuration saved successfully!");
+          } catch (error) {
+            if (error?.response?.data?.detail?.includes("DuplicateKey")) {
+              setError({ error: "This slug name already exists. Please choose a different one." });
+            }
+            setIsLoading(false);
+            return;
+          }
         }
-      }
 
-      const data = await dispatch(
-        publishBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.get("version"),
-          orgId: params?.org_id,
-          isPublic: isPublicAgent,
-        })
-      );
-
-      if (data && isEmbedUser) {
-        sendDataToParent(
-          "published",
-          {
-            name: agent_name,
-            agent_description: agent_description,
-            agent_id: params?.id,
-            agent_version_id: searchParams?.get("version"),
-          },
-          "Agent Published Successfully"
+        const data = await dispatch(
+          publishBridgeVersionAction({
+            bridgeId: params?.id,
+            versionId: searchParams?.get("version"),
+            orgId: params?.org_id,
+            isPublic: isPublicAgent,
+          })
         );
-      }
 
-      // Publish selected connected agents in bulk if available
-      if (selectedAgentsToPublish.size > 0) {
-        try {
-          await dispatch(publishBulkVersionAction(Array.from(selectedAgentsToPublish)));
-          toast.success(`Successfully published ${selectedAgentsToPublish.size} connected agent(s)`);
-        } catch (error) {
-          console.error("Error publishing connected agents:", error);
-          toast.warning("Main agent published, but some connected agents failed to publish");
+        if (data && isEmbedUser) {
+          sendDataToParent(
+            "published",
+            {
+              name: agent_name,
+              agent_description: agent_description,
+              agent_id: params?.id,
+              agent_version_id: searchParams?.get("version"),
+            },
+            "Agent Published Successfully"
+          );
         }
+
+        // Publish selected connected agents in bulk if available
+        if (selectedAgentsToPublish.size > 0) {
+          try {
+            await dispatch(publishBulkVersionAction(Array.from(selectedAgentsToPublish)));
+            toast.success(`Successfully published ${selectedAgentsToPublish.size} connected agent(s)`);
+          } catch (error) {
+            console.error("Error publishing connected agents:", error);
+            toast.warning("Main agent published, but some connected agents failed to publish");
+          }
+        }
+        if (shouldConvertToTemplate) {
+          if (!templateName.trim()) {
+            toast.error("Template name is required");
+            setIsLoading(false);
+            return;
+          }
+          try {
+            await convertAgentToTemplate(params?.id, templateName.trim());
+          } catch (err) {
+            console.error("Error converting to template:", err);
+            toast.warning("Published successfully but failed to convert to template");
+          }
+        }
+
+        dispatch(getAllBridgesAction());
+        setConvertToTemplate(false);
+        setTemplateName("");
+        closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
+      } catch (error) {
+        if (isPublicAgent) {
+          toast.error("Failed to save configuration. The slug name may already be in use.");
+        }
+        console.error("Error publishing bridge:", error);
+      } finally {
+        setIsLoading(false);
       }
-      dispatch(getAllBridgesAction());
-      closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
-    } catch (error) {
-      if (isPublicAgent) {
-        toast.error("Failed to save configuration. The slug name may already be in use.");
-      }
-      console.error("Error publishing bridge:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    dispatch,
-    params,
-    searchParams,
-    isPublicAgent,
-    formData,
-    agent_name,
-    agent_description,
-    isEmbedUser,
-    selectedAgentsToPublish,
-    bridge_summary,
-  ]);
+    },
+    [
+      dispatch,
+      params,
+      searchParams,
+      isPublicAgent,
+      formData,
+      agent_name,
+      agent_description,
+      isEmbedUser,
+      selectedAgentsToPublish,
+      bridge_summary,
+      templateName,
+    ]
+  );
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.PUBLISH_BRIDGE_VERSION} onClose={handleCloseModal}>
@@ -1036,27 +1073,98 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
             )}
           </div>
 
+          {/* Template name input shown when Publish & Convert to Template is selected */}
+          {convertToTemplate && (
+            <div className="pt-3 border-t border-base-300">
+              <label className="text-xs font-medium text-base-content/70 mb-1 block">
+                Template Name <span className="text-error">*</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered input-sm w-full"
+                placeholder="Enter template name"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-base-300">
             <button id="publish-cancel-button" className="btn btn-sm" onClick={handleCloseModal} disabled={isLoading}>
               Cancel
             </button>
-            <button
-              id="publish-confirm-button"
-              className={`btn btn-primary btn-sm ${isLoading ? "loading" : ""}`}
-              onClick={handlePublishBridge}
-              disabled={isLoading || (isPublicAgent && !formData.url_slugname.trim()) || isReadOnly}
-              title={isReadOnly ? "You don't have permission to publish" : ""}
-            >
-              {isLoading ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  {isPublicAgent ? "Saving & Publishing..." : "Publishing..."}
-                </>
-              ) : (
-                <>{isPublicAgent ? "Save & Publish" : "Confirm Publish"}</>
+
+            {/* Split publish button */}
+            <div className="relative" ref={publishDropdownRef}>
+              <div className="join">
+                <button
+                  id="publish-confirm-button"
+                  className={`btn btn-primary btn-sm join-item`}
+                  onClick={() => handlePublishBridge(convertToTemplate)}
+                  disabled={
+                    isLoading ||
+                    (isPublicAgent && !formData.url_slugname.trim()) ||
+                    isReadOnly ||
+                    (convertToTemplate && !templateName.trim())
+                  }
+                  title={isReadOnly ? "You don't have permission to publish" : ""}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm"></span>
+                      {convertToTemplate ? "Publishing..." : isPublicAgent ? "Saving & Publishing..." : "Publishing..."}
+                    </>
+                  ) : (
+                    <>
+                      {convertToTemplate
+                        ? "Publish & Save as Template"
+                        : isPublicAgent
+                          ? "Save & Publish"
+                          : "Confirm Publish"}
+                    </>
+                  )}
+                </button>
+                <button
+                  id="publish-dropdown-toggle"
+                  className="btn btn-primary btn-sm join-item px-2"
+                  onClick={() => setShowPublishDropdown((prev) => !prev)}
+                  disabled={isLoading || isReadOnly}
+                  title="More publish options"
+                >
+                  <ChevronDown size={14} />
+                </button>
+              </div>
+
+              {showPublishDropdown && (
+                <ul className="absolute right-0 bottom-full mb-1 z-50 menu menu-sm bg-base-100 border border-base-300 rounded-lg shadow-lg w-56">
+                  <li>
+                    <button
+                      onClick={() => {
+                        setConvertToTemplate(false);
+                        setTemplateName("");
+                        setShowPublishDropdown(false);
+                      }}
+                      className={`flex items-center gap-2 ${!convertToTemplate ? "bg-base-200 font-medium" : ""}`}
+                    >
+                      Publish
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => {
+                        setConvertToTemplate(true);
+                        setShowPublishDropdown(false);
+                      }}
+                      className={`flex items-center gap-2 ${convertToTemplate ? "bg-base-200 font-medium" : ""}`}
+                    >
+                      Publish & Save as Template
+                    </button>
+                  </li>
+                </ul>
               )}
-            </button>
+            </div>
           </div>
         </div>
       </div>
