@@ -27,14 +27,6 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key: "showAgentTypeOnCreateAgent",
-    type: "toggle",
-    label: "Show Agent Type on Create Agent",
-    description: "Display agent type on create agent",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
     key: "showHistory",
     type: "toggle",
     label: "Show History",
@@ -293,6 +285,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     pre_tool_id: config?.pre_tool_id || null,
     variables_path: config?.variables_path || {},
     models: config?.models || {},
+    apikey_object_id: config?.apikey_object_id || {},
   }));
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 

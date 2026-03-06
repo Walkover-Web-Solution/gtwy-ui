@@ -104,12 +104,16 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     }
   }, [isMobile]);
 
+  // Pages at depth 4 that should collapse the sidebar (detail/full-screen pages)
+  const COLLAPSE_AT_DEPTH_4 = ["chatbotConfig"];
+  const shouldCollapse = pathParts.length > 4 || (pathParts.length === 4 && COLLAPSE_AT_DEPTH_4.includes(pathParts[3]));
+
   // Effect to handle sidebar state when path changes
   useEffect(() => {
-    if (isSideBySideMode) {
+    if (shouldCollapse) {
+      setIsOpen(false); // Automatically close for detail pages
+    } else if (isSideBySideMode) {
       setIsOpen(true); // Always open in side-by-side mode
-    } else if (pathParts.length > 4) {
-      setIsOpen(false); // Automatically close when pathParts length > 4
     }
 
     // Hide on mobile by default when path changes
@@ -117,7 +121,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
       setIsOpen(false);
       setIsMobileVisible(false);
     }
-  }, [isSideBySideMode, pathParts.length, isMobile]);
+  }, [shouldCollapse, isSideBySideMode, isMobile]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

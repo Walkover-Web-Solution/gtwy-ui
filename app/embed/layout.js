@@ -98,16 +98,8 @@ const Layout = ({ children, isEmbedUser }) => {
   const handleAgentNavigation = useCallback(
     async (agentName, orgId, agentPurpose, meta) => {
       setIsLoading(true);
-      const trimmedAgentName = agentName.trim();
       try {
-        const bridges = await getBridges();
-        const existingAgent = bridges?.find((agent) => agent?.name?.trim() === trimmedAgentName);
-        if (existingAgent?._id) {
-          router.push(`/org/${orgId}/agents/configure/${existingAgent._id}`);
-          setIsLoading(false);
-        } else {
-          createNewAgent(agentName, orgId, agentPurpose, meta);
-        }
+        createNewAgent(agentName, orgId, agentPurpose, meta);
       } catch (error) {
         console.error("Error fetching bridges, falling back to create a new agent:", error);
         createNewAgent(agentName, orgId, agentPurpose, meta);
@@ -193,10 +185,8 @@ const Layout = ({ children, isEmbedUser }) => {
     const handleMessage = async (event) => {
       if (event?.data?.data?.type === "openGtwy") setOpenGtwyReceived(true);
       if (event.data?.data?.type !== "gtwyInterfaceData") return;
-
       const messageData = event.data.data.data;
       const orgId = sessionStorage.getItem("gtwy_org_id");
-
       if (messageData?.agent_name) {
         handleAgentNavigation(
           messageData.agent_name,
@@ -204,11 +194,13 @@ const Layout = ({ children, isEmbedUser }) => {
           messageData.agent_purpose || null,
           messageData.meta || null
         );
-      } else if (messageData?.agent_id && orgId && messageData?.meta) {
+      } else if (messageData?.agent_id && orgId) {
         const bridges = await getBridges();
         const bridge = bridges.find((b) => b._id === messageData.agent_id);
         if (!bridge) return;
-        dispatch(updateBridgeAction({ dataToSend: { meta: messageData.meta }, bridgeId: messageData.agent_id }));
+        if (messageData.meta) {
+          dispatch(updateBridgeAction({ dataToSend: { meta: messageData.meta }, bridgeId: messageData.agent_id }));
+        }
         setIsLoading(true);
         const bridgeData = bridges.find((b) => b._id === messageData.agent_id);
         if (!bridgeData) {

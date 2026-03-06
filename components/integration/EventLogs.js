@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Trash2, Copy, Check } from "lucide-react";
 
 const LOG_BADGE = {
@@ -18,12 +18,7 @@ const LOG_COLOR = {
 };
 
 const EventLogs = ({ logs = [], onClear, maxHeight = "max-h-48" }) => {
-  const logsEndRef = useRef(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
-
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
 
   const copyToClipboard = (text, index) => {
     navigator.clipboard.writeText(text);
@@ -74,7 +69,6 @@ const EventLogs = ({ logs = [], onClear, maxHeight = "max-h-48" }) => {
               </div>
             ))
           )}
-          <div ref={logsEndRef} />
         </div>
       </div>
     </div>

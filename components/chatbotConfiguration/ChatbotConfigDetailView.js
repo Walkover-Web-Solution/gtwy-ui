@@ -145,7 +145,7 @@ const ChatbotConfigDetailView = ({ params, embedToken }) => {
                   </div>
                 </div>
               ) : (
-                // Testing sidebar panel with slide from right animation
+                // Testing sidebar panel
                 <div
                   key="testing-nav"
                   className="flex flex-col flex-1 min-h-0"
@@ -167,7 +167,7 @@ const ChatbotConfigDetailView = ({ params, embedToken }) => {
                   <div
                     id="chatbot-testing-sidebar-content"
                     data-testid="chatbot-testing-sidebar-content"
-                    className="space-y-2 overflow-y-auto flex-1 min-h-0"
+                    className="overflow-y-auto flex-1 min-h-0"
                   ></div>
                 </div>
               )}
@@ -182,12 +182,7 @@ const ChatbotConfigDetailView = ({ params, embedToken }) => {
               {activeTab === "integration" && <ChatbotIntegrationGuideTab params={params} chatBotId={chatBotId} />}
               {activeTab === "configuration" && <ChatbotPreview embedToken={embedToken} params={params} />}
               {activeTab === "testing" && (
-                <ChatbotTestingTab
-                  params={params}
-                  chatBotId={chatBotId}
-                  isTestingMode={isTestingMode}
-                  embedToken={embedToken}
-                />
+                <ChatbotTestingTab params={params} chatBotId={chatBotId} embedToken={embedToken} />
               )}
             </div>
           </div>
