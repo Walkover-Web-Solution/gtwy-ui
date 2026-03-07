@@ -483,7 +483,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
               e?.data?.metadata?.createFrom && e.data.metadata.createFrom === "preFunction"
                 ? dispatch(
                     updateApiAction(path[5], {
-                      pre_tools: data?._id,
+                      pre_tools: { type: "custom_function", config: { function_id: data?._id, script_id: data?.script_id,  required_params:data?.required_params || [] } },
                       status: "1",
                       version_id: resolvedSearchParams?.get("version"),
                     })
