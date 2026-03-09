@@ -70,15 +70,6 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
 
   const bridgePreFunctions = useMemo(() => {
     return bridge_pre_tools.map((tool) => {
-      // backward compat: old format was a plain string ID
-      if (typeof tool === "string") {
-        return {
-          _id: tool,
-          _type: PRE_TOOL_TYPES.custom_function,
-          _isLegacy: true,
-          ...function_data?.[tool],
-        };
-      }
       if (tool.type === PRE_TOOL_TYPES.custom_function) {
         const fn = function_data?.[tool.config?.function_id];
         return {
@@ -167,7 +158,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     for (const toolItem of bridgePreFunctions) {
       await dispatch(
         updateApiAction(params.id, {
-          pre_tools: toolItem._toolEntry || { type: "custom_function", config: { function_id: toolItem._id } },
+          pre_tools: toolItem._toolEntry ,
           version_id: searchParams?.version,
           status: "0",
         })
@@ -237,12 +228,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     }
     // Save args inline in the pre_tools array entry
     const updatedPreTools = bridge_pre_tools.map((t) => {
-      if (typeof t === "string" && t === preFunctionId) {
-        return { type: PRE_TOOL_TYPES.custom_function, config: { function_id: preFunctionId }, args: variablesPath };
-      }
-      if (
-        typeof t === "object" &&
-        t.type === PRE_TOOL_TYPES.custom_function &&
+      if (t.type === PRE_TOOL_TYPES.custom_function &&
         t.config?.function_id === preFunctionId
       ) {
         return { ...t, args: variablesPath };
@@ -260,7 +246,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
 
   const handleSaveBuiltInPreTool = (updatedToolEntry) => {
     const updatedPreTools = bridge_pre_tools.map((t) => {
-      if (typeof t === "object" && t.type === updatedToolEntry.type) {
+      if (t.type === updatedToolEntry.type) {
         return updatedToolEntry;
       }
       return t;
