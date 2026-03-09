@@ -1,4 +1,5 @@
 ## Project Overview
+
 **GTWY-AI Frontend** is a Next.js application that serves as the user interface for an GTWY platform. It enables users to manage AI agents, configure models, handle integrations, and monitor metrics across multiple AI services.
 
 ### Tech Stack
@@ -48,6 +49,7 @@ app/
 ```
 
 **Key Features:**
+
 - Dynamic routing with organization scoping
 - Protected routes with authentication
 - Embed-specific layouts for widget integration
@@ -79,6 +81,7 @@ store/
 ```
 
 **Key Reducers:**
+
 - `bridgeReducer`: Agent/bridge management
 - `userDetailsReducer`: User and organization data
 - `chatReducer`: Chat interface state
@@ -86,6 +89,7 @@ store/
 - `variableReducer`: Dynamic variables
 
 **State Persistence:**
+
 - Uses Redux Persist with localStorage
 - Selective persistence (whitelist approach)
 - Handles SSR with no-op storage fallback
@@ -106,6 +110,7 @@ config/
 ```
 
 **HTTP Configuration:**
+
 - Axios with custom interceptors (`/utils/interceptor.js`)
 - Automatic token management (local_token vs proxy_auth_token)
 - Request/response transformation
@@ -125,6 +130,7 @@ customHooks/
 ```
 
 **Key Hook: `useCustomSelector`**
+
 - Wraps Redux `useSelector` with deep equality comparison
 - Prevents unnecessary re-renders
 - Used throughout the app instead of standard `useSelector`
@@ -145,6 +151,7 @@ utils/
 ## Data Flow Architecture
 
 Step-by-Step Process
+
 1. **User Interaction**: Button click, form submission, page load
 2. **Component Dispatch**: `dispatch(actionName())`
 3. **Action Creator**: Located in `/store/action/`
@@ -154,22 +161,25 @@ Step-by-Step Process
 7. **Reducer Update**: State mutation in `/store/reducer/`
 8. **Component Update**: `useCustomSelector` triggers re-render
 
-
 ## Key Architectural Patterns
 
 ### 1. Redux Pattern with Custom Selector
+
 - Use `useCustomSelector()` instead of `useSelector()`
 - Access state: `state.bridgeReducer.allBridges`, `state.bridgeReducer.loading`
 
 ### 2. API Action Pattern
+
 - Functions: `fetchDataAction()`, `setLoading()`, `setData()`, `setError()`
 - Pattern: try/catch with loading states
 
 ### 3. Component Composition Pattern
+
 - Functions: `useConfigurationState()`, `ConfigurationProvider`
 - Components: `ConfigurationHeader`, `ConfigurationBody`, `ConfigurationFooter`
 
 ### 4. Modal Management Pattern
+
 - Functions: `openModal()`, `closeModal()` from `@/utils/utility`
 
 ## Routing Architecture
@@ -192,6 +202,7 @@ All main application routes are scoped under `/org/[org_id]/`:
 - `/chatbotPreview` - Chatbot preview interface
 
 ### Route Protection
+
 - Component: `<Protected>` wrapper for authenticated routes
 
 ## Performance Optimizations
@@ -199,11 +210,13 @@ All main application routes are scoped under `/org/[org_id]/`:
 ### 1. Component Splitting
 
 Large components are split into smaller, focused components:
+
 - Reduces bundle size
 - Improves maintainability
 - Enables better memoization
 
 ### 2. Dynamic Imports
+
 - Function: `dynamic()` for lazy loading
 - Components: `LoadingSkeleton` for loading states
 
@@ -221,6 +234,7 @@ Only essential state is persisted to localStorage using a whitelist approach.
 4. **Update Documentation**: Document new patterns or significant changes
 
 ### Component Creation Guidelines
+
 - Import: `useCustomSelector` from `@/customHooks/customSelector`
 - Import: Actions from `@/store/action/[actionName]`
 - Pattern: Check loading states, handle errors
@@ -229,15 +243,16 @@ Only essential state is persisted to localStorage using a whitelist approach.
 ## Common Patterns and Conventions
 
 ### File Naming
+
 - Components: PascalCase (`MyComponent.js`)
 - Hooks: camelCase with 'use' prefix (`useMyHook.js`)
 - Utilities: camelCase (`myUtility.js`)
 - Constants: UPPER_SNAKE_CASE
 
 ### Import Organization
+
 - External libraries first
 - Internal imports: hooks, actions, components
 - Use `@/` path aliases
-
 
 This architecture guide provides the foundation for understanding and contributing to the GTWY Frontend project. Always refer to existing implementations when adding new features to maintain consistency and follow established patterns.

@@ -58,7 +58,7 @@ import {
 } from "../reducer/bridgeReducer";
 import { getAllResponseTypeSuccess } from "../reducer/responseTypeReducer";
 import { markUpdateInitiatedByCurrentTab } from "@/utils/utility";
-import { callViasocketCreateFullFlow } from '@/config/utilityApi';
+import { callViasocketCreateFullFlow } from "@/config/utilityApi";
 //   ---------------------------------------------------- ADMIN ROUTES ---------------------------------------- //
 export const getSingleBridgesAction =
   ({ id, version }) =>
@@ -362,24 +362,25 @@ export const getAllFunctions = () => async (dispatch) => {
   }
 };
 
-export const updateFuntionApiAction = ({ function_id, dataToSend,embedToken = null }) => async (dispatch) => {
-  try {
-    const description= dataToSend?.description || ""
-    const response = await updateFunctionApi({ function_id, dataToSend });
-    dispatch(updateFunctionReducer({ org_id: response.data.org_id, data: response.data }))
+export const updateFuntionApiAction =
+  ({ function_id, dataToSend, embedToken = null }) =>
+  async (dispatch) => {
+    try {
+      const description = dataToSend?.description || "";
+      const response = await updateFunctionApi({ function_id, dataToSend });
+      dispatch(updateFunctionReducer({ org_id: response.data.org_id, data: response.data }));
 
-    if (embedToken && description) {
-      const regenerateResult = await callViasocketCreateFullFlow(embedToken, description);
-      if (!regenerateResult.success) {
-        console.warn('Failed to regenerate ViaSocket flow:', regenerateResult.error);
+      if (embedToken && description) {
+        const regenerateResult = await callViasocketCreateFullFlow(embedToken, description);
+        if (!regenerateResult.success) {
+          console.warn("Failed to regenerate ViaSocket flow:", regenerateResult.error);
+        }
       }
+    } catch (error) {
+      dispatch(isError());
+      console.error(error);
     }
-  } catch (error) {
-    dispatch(isError())
-    console.error(error);
-
-  }
-}
+  };
 
 export const getAllResponseTypesAction = (orgId) => async (dispatch, getState) => {
   try {

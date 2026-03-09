@@ -126,16 +126,18 @@ export const getAllFunctionsApi = async () => {
 export const callViasocketCreateFullFlow = async (embedToken, description) => {
   try {
     const response = await axios.post(
-      'https://flow-api.viasocket.com/embed/create-full-flow', { description }, {
+      "https://flow-api.viasocket.com/embed/create-full-flow",
+      { description },
+      {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': embedToken
-        }
+          "Content-Type": "application/json",
+          Authorization: embedToken,
+        },
       }
     );
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('Error calling ViaSocket create-full-flow:', error);
+    console.error("Error calling ViaSocket create-full-flow:", error);
     return { success: false, error: error.response?.data || error.message };
   }
 };

@@ -4,7 +4,6 @@
 
 /* Global Input and Textarea Styles - Theme Aware */
 @layer components {
-
   .input,
   input[type="text"],
   input[type="email"],
@@ -77,7 +76,6 @@ html {
 
 /* Responsive font sizing for mobile screens */
 @media (max-width: 640px) {
-
   html,
   body {
     font-size: 87.5%;
@@ -112,7 +110,6 @@ html {
 
 /* Even smaller font size for very small screens */
 @media (max-width: 375px) {
-
   html,
   body {
     font-size: 81.25%;
