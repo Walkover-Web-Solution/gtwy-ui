@@ -1,7 +1,7 @@
 import { useCustomSelector } from "@/customHooks/customSelector.js";
 import { getHistoryAction, getSubThreadsAction } from "@/store/action/historyAction.js";
 import { clearSubThreadData, clearThreadData, setSelectedVersion } from "@/store/reducer/historyReducer.js";
-import { USER_FEEDBACK_FILTER_OPTIONS } from "@/utils/enums.js";
+import { USER_FEEDBACK_FILTER_OPTIONS, HISTORY_FILTER_BY_FIELDS } from "@/utils/enums.js";
 import { formatDate, formatRelativeTime } from "@/utils/utility.js";
 import {
   ThumbsDownIcon,
@@ -52,6 +52,7 @@ const Sidebar = memo(
     const [expandedThreads, setExpandedThreads] = useState([]);
     const [loadingSubThreads, setLoadingSubThreads] = useState(true);
     const [searchLoading, setSearchLoading] = useState(false);
+    const [filterByText, setFilterByText] = useState(JSON.stringify(HISTORY_FILTER_BY_FIELDS, null, 2));
     const searchQuery = (searchRef?.current && searchRef.current.value) || searchParams?.message_id || "";
     const dispatch = useDispatch();
     const pathName = usePathname();
@@ -84,6 +85,7 @@ const Sidebar = memo(
 
     const handleVersionChange = async (event) => {
       const version = event.target.value;
+      dispatch(clearSubThreadData());
       dispatch(setSelectedVersion(version));
     };
 
@@ -104,30 +106,23 @@ const Sidebar = memo(
     }, [searchParams?.thread_id]);
 
     useEffect(() => {
-      if (subThreads?.length > 0 && searchParams?.thread_id) {
+      const p = new URLSearchParams(window.location.search);
+      const liveVersion = p.get("version");
+      const liveThreadId = p.get("thread_id");
+      const versionMismatch = selectedVersion !== "all" && liveVersion !== selectedVersion;
+      if (!liveThreadId || !liveVersion || versionMismatch) {
+        setTimeout(() => setLoadingSubThreads(false), 1000);
+        return;
+      }
+      if (subThreads?.length > 0) {
         const firstSubThreadId = subThreads[0]?.sub_thread_id;
         if (firstSubThreadId) {
-          const start = searchParams?.start;
-          const end = searchParams?.end;
-          router.push(
-            `${pathName}?version=${searchParams.version}&thread_id=${searchParams.thread_id}&subThread_id=${firstSubThreadId}&start=${start || ""}&end=${end || ""}${searchParams?.message_id ? `&message_id=${searchParams.message_id}` : ""}&type=${searchParams?.type || ""}`,
-            undefined,
-            { shallow: true }
-          );
-        }
-      } else {
-        if (searchParams?.thread_id) {
-          router.push(
-            `${pathName}?version=${searchParams.version}&thread_id=${searchParams.thread_id}&subThread_id=${searchParams.thread_id}&start=${searchParams.start || ""}&end=${searchParams.end || ""}${searchParams?.message_id ? `&message_id=${searchParams.message_id}` : ""}&type=${searchParams?.type || ""}`,
-            undefined,
-            { shallow: true }
-          );
+          const url = `${pathName}?version=${liveVersion}&thread_id=${liveThreadId}&subThread_id=${firstSubThreadId}&start=${p.get("start") || ""}&end=${p.get("end") || ""}${p.get("message_id") ? `&message_id=${p.get("message_id")}` : ""}&type=${p.get("type") || ""}`;
+          router.push(url, undefined, { shallow: true });
         }
       }
-      setTimeout(() => {
-        setLoadingSubThreads(false);
-      }, 1000);
-    }, [subThreads]);
+      setTimeout(() => setLoadingSubThreads(false), 1000);
+    }, [subThreads, selectedVersion]);
     const debounce = (func, delay) => {
       let timeoutId;
       return (...args) => {
@@ -146,21 +141,30 @@ const Sidebar = memo(
     }, [searchParams?.message_id]);
     const handleChange = useCallback(
       debounce((e) => {
-        const value = e?.target?.value || searchParams?.message_id || "";
-        handleSearch(e, value);
+        const value = e?.target?.value.trim() || searchParams?.message_id || "";
+        let parsedFilterBy;
+        try {
+          parsedFilterBy = JSON.parse(filterByText);
+        } catch {
+          parsedFilterBy = undefined;
+        }
+        handleSearch(e, value, parsedFilterBy);
       }, 500),
-      [searchParams?.message_id]
+      [searchParams?.message_id, filterByText]
     );
 
-    const handleSearch = async (e, directValue) => {
+    const handleSearch = async (e, directValue, filterBy) => {
       e?.preventDefault();
       const searchValue = directValue !== undefined ? directValue : searchRef?.current?.value || "";
-      if (!searchValue.trim()) {
+      const hasActiveFilterBy =
+        filterBy && typeof filterBy === "object" && Object.values(filterBy).some((v) => v && v.trim() !== "");
+
+      if (!searchValue.trim() && !hasActiveFilterBy) {
         clearInput();
         setSearchLoading(false);
         return;
       }
-      if (!searchValue && !searchParams?.start && !searchParams?.end) {
+      if (!searchValue && !hasActiveFilterBy && !searchParams?.start && !searchParams?.end) {
         if (searchParams?.message_id || searchParams?.start || searchParams?.end) {
           clearInput();
           setSearchLoading(false);
@@ -182,8 +186,23 @@ const Sidebar = memo(
         const startDate = searchParams?.start;
         const endDate = searchParams?.end;
 
+        const activeFilterBy =
+          filterBy && typeof filterBy === "object"
+            ? Object.fromEntries(Object.entries(filterBy).filter(([_key, v]) => v && v.trim() !== ""))
+            : undefined;
+
         const result = await dispatch(
-          getHistoryAction(params?.id, 1, "all", isErrorTrue, selectedVersion, searchValue, startDate, endDate)
+          getHistoryAction(
+            params?.id,
+            1,
+            "all",
+            isErrorTrue,
+            selectedVersion,
+            searchValue,
+            startDate,
+            endDate,
+            Object.keys(activeFilterBy || {}).length > 0 ? activeFilterBy : undefined
+          )
         );
 
         setThreadPage(1);
@@ -439,6 +458,49 @@ const Sidebar = memo(
                     />
                   </div>
                 </div>
+
+                <div className="p-2 bg-base-200 rounded-lg">
+                  <p className="text-center mb-2 text-xs font-medium">Search by Fields</p>
+                  <p className="text-xs text-base-content/60 mb-2">
+                    Fill in values for fields you want to search. Leave empty to skip that field.
+                  </p>
+                  <textarea
+                    data-testid="history-sidebar-filter-by-textarea"
+                    id="history-sidebar-filter-by-textarea"
+                    className="textarea textarea-bordered w-full text-xs font-mono"
+                    rows={10}
+                    value={filterByText}
+                    onChange={(e) => setFilterByText(e.target.value)}
+                    spellCheck={false}
+                  />
+                  <button
+                    data-testid="history-sidebar-filter-by-apply"
+                    id="history-sidebar-filter-by-apply"
+                    className="btn btn-primary btn-xs w-full mt-2"
+                    onClick={() => {
+                      let parsedFilterBy;
+                      try {
+                        parsedFilterBy = JSON.parse(filterByText);
+                      } catch {
+                        parsedFilterBy = undefined;
+                      }
+                      handleSearch(null, searchRef?.current?.value || "", parsedFilterBy);
+                    }}
+                  >
+                    Apply Filter
+                  </button>
+                  <button
+                    data-testid="history-sidebar-filter-by-reset"
+                    id="history-sidebar-filter-by-reset"
+                    className="btn btn-ghost btn-xs w-full mt-1"
+                    onClick={() => {
+                      setFilterByText(JSON.stringify(HISTORY_FILTER_BY_FIELDS, null, 2));
+                      clearInput();
+                    }}
+                  >
+                    Reset Fields
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -458,14 +520,25 @@ const Sidebar = memo(
               ))}
             </select>
           </div>
-          <form onSubmit={handleSearch} className="relative">
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              let pf;
+              try {
+                pf = JSON.parse(filterByText);
+              } catch {}
+              handleSearch(e, searchRef?.current?.value || "", pf);
+            }}
+            className="relative"
+          >
             <input
               data-testid="history-sidebar-search-input"
               id="history-sidebar-search-input"
               type="text"
               ref={searchRef}
               placeholder="Search..."
-              onChange={handleChange}
+              onChange={(e) => handleChange(e)}
               className="input input-bordered input-sm w-full pr-6 text-xs"
             />
             {searchQuery && (

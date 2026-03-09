@@ -50,7 +50,6 @@ export const MODAL_TYPE = {
   DELETE_PREBUILT_TOOL_MODAL: "DELETE_PREBUILT_TOOL_MODAL",
   DELETE_TOOL_MODAL: "DELETE_TOOL_MODAL",
   DELETE_AGENT_MODAL: "DELETE_AGENT_MODAL",
-  REMOVE_AGENT_MODAL: "REMOVE_AGENT_MODAL",
   DELETE_PRE_TOOL_MODAL: "DELETE_PRE_TOOL_MODAL",
   DELETE_KNOWLEDGE_BASE_MODAL: "DELETE_KNOWLEDGE_BASE_MODAL",
   BRIDGE_TYPE_MODAL: "BRIDGE_TYPE_MODAL",
@@ -233,6 +232,16 @@ export const TUTORIALS = [
     icon: TestTubeDiagonalIcon,
   },
 ];
+export const HISTORY_FILTER_BY_FIELDS = {
+  thread_id: "",
+  sub_thread_id: "",
+  message_id: "",
+  user: "",
+  llm_message: "",
+  updated_llm_message: "",
+  variables: "",
+};
+
 export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id"]);
 export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
 export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide"]);
