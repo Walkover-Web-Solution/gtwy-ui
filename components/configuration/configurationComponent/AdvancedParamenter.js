@@ -5,7 +5,7 @@ import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { generateRandomID, openModal, trimPropertyNames } from "@/utils/utility";
 import { getDefaultJsonSchema, generateCombinedSchema } from "@/utils/defaultJsonSchemas";
-import { ChevronDownIcon, ChevronUpIcon } from "@/components/Icons";
+import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -17,6 +17,7 @@ import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import InfoTooltip from "@/components/InfoTooltip";
 import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
 import { Check, CircleQuestionMark, ExternalLink } from "lucide-react";
+import RenderNode from "@/components/richUI/RenderNode";
 
 const AdvancedParameters = ({
   params,
@@ -42,6 +43,7 @@ const AdvancedParameters = ({
     showSuggestion: false,
   });
   const [messages, setMessages] = useState([]);
+  const [activeWidgetButtons, setActiveWidgetButtons] = useState([]);
   const dropdownContainerRef = useRef(null);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -246,6 +248,7 @@ const AdvancedParameters = ({
       ? {
           configuration: {
             [key]: {
+              ...configuration?.[key],
               [defaultValue?.key]: e.target.value,
             },
           },
@@ -259,6 +262,7 @@ const AdvancedParameters = ({
       updatedDataToSend = {
         configuration: {
           [key]: {
+            ...configuration?.[key],
             [defaultValue?.key]: e.target.value,
             [e.target.value]: typeof newValue === "string" ? JSON.parse(newValue) : newValue,
           },
@@ -342,6 +346,81 @@ const AdvancedParameters = ({
     }
   }, [configuration?.response_type?.template_id]);
 
+  const widgetHasButton = useCallback((widgetObj) => {
+    const template = widgetObj?.ui || widgetObj?.template_format;
+    if (!template) return false;
+    const search = (node) => {
+      if (!node || typeof node !== "object") return false;
+      if (Array.isArray(node)) return node.some(search);
+      if (node.type === "Button") return true;
+      if (Array.isArray(node.children)) return node.children.some(search);
+      return false;
+    };
+    return search(template);
+  }, []);
+
+  // filterWidgetId: when provided, only returns actionData nodes from the anyOf entry
+  // whose widget_id.enum[0] matches this id (i.e. only this widget's nodes).
+  const extractActionDataNodesFromSchema = useCallback((schemaNode, filterWidgetId = null) => {
+    const nodes = [];
+
+    const search = (node, path = []) => {
+      if (!node || typeof node !== "object") return;
+
+      // Traverse anyOf / oneOf / allOf so combined schemas are handled
+      for (const combinator of ["anyOf", "oneOf", "allOf"]) {
+        if (Array.isArray(node[combinator])) {
+          node[combinator].forEach((subNode, index) => {
+            // If filtering by widget, skip anyOf entries that belong to a different widget
+            if (
+              filterWidgetId &&
+              subNode?.properties?.widget_id?.enum?.[0] !== undefined &&
+              subNode.properties.widget_id.enum[0] !== filterWidgetId
+            ) {
+              return;
+            }
+            search(subNode, [...path, combinator, index]);
+          });
+        }
+      }
+
+      if (node.type === "object" && node.properties) {
+        const actionKey = node.properties.actionData
+          ? "actionData"
+          : node.properties.action_data
+            ? "action_data"
+            : null;
+
+        if (actionKey && node.properties[actionKey].properties?.data) {
+          let label = "action";
+          for (let i = path.length - 1; i >= 0; i--) {
+            const seg = path[i];
+            if (typeof seg === "string" && !["properties", "items", "anyOf", "oneOf", "allOf"].includes(seg)) {
+              label = seg;
+              break;
+            }
+          }
+          nodes.push({ key: path.join("."), label, actionDataKey: actionKey, path });
+        }
+
+        Object.entries(node.properties).forEach(([k, v]) => {
+          search(v, [...path, "properties", k]);
+        });
+      } else if (node.type === "array" && node.items) {
+        search(node.items, [...path, "items"]);
+      }
+    };
+
+    const rootSchema = schemaNode?.schema || schemaNode;
+    if (rootSchema) search(rootSchema);
+
+    const seen = new Set();
+    return nodes.filter((n) => {
+      if (seen.has(n.key)) return false;
+      seen.add(n.key);
+      return true;
+    });
+  }, []);
   // Helper function to render parameter fields
   const renderParameterField = (key, { field, min = 0, max, step, default: defaultValue, options }) => {
     const isDeafaultObject = typeof modelInfoData?.[key]?.default === "object";
@@ -649,25 +728,65 @@ const AdvancedParameters = ({
                             }}
                           >
                             {/* Content Preview */}
-                            {widgetObj.html && (
-                              <div className="relative w-full h-40 bg-base-100 rounded border border-base-300 overflow-hidden pointer-events-none mb-2">
+                            <div className="relative w-full h-40 bg-base-100 rounded border border-base-300 overflow-hidden pointer-events-none mb-2">
+                              {widgetObj.ui || widgetObj.template_format ? (
+                                <div className="absolute inset-0 w-full h-full overflow-hidden p-2">
+                                  <div className="transform scale-[0.5] origin-top-left w-[200%]">
+                                    <RenderNode node={widgetObj.ui || widgetObj.template_format} />
+                                  </div>
+                                </div>
+                              ) : widgetObj.html ? (
                                 <div className="absolute inset-0 w-full h-full overflow-hidden">
                                   <div
                                     className="transform scale-[0.5] origin-top-left w-[200%]"
                                     dangerouslySetInnerHTML={{ __html: widgetObj.html }}
                                   />
                                 </div>
-                              </div>
-                            )}
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-base-content/40 text-xs">
+                                  No Preview
+                                </div>
+                              )}
+                            </div>
 
-                            <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center justify-between w-full mt-1">
                               <span className="text-sm font-medium capitalize truncate">{widgetName}</span>
-                              {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
+                              <div className="flex items-center gap-2">
+                                {isSelected && widgetHasButton(widgetObj) && (
+                                  <span
+                                    className="cursor-pointer text-primary hover:opacity-80 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const actionNodes = extractActionDataNodesFromSchema(
+                                        configuration?.response_type?.json_schema,
+                                        widgetObj._id
+                                      );
+                                      setActiveWidgetButtons(actionNodes);
+                                      openModal(MODAL_TYPE.BUTTON_SCHEMA_BUILDER);
+                                    }}
+                                    title="Configure Button Payload Schema"
+                                  >
+                                    <SettingsIcon size={14} />
+                                  </span>
+                                )}
+                                {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
+                              </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
+                    {/* Button Schema Builder Modal */}
+                    <JsonSchemaBuilderModal
+                      params={params}
+                      searchParams={searchParams}
+                      isReadOnly={isReadOnly}
+                      schemaKey="json_schema"
+                      modalId={MODAL_TYPE.BUTTON_SCHEMA_BUILDER}
+                      title="Configure Button Payload Schema"
+                      hideName
+                      widgetButtons={activeWidgetButtons}
+                    />
                   </div>
                 )}
                 {/* JSON Schema textarea and modal - positioned below the key/label */}

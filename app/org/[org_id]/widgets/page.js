@@ -1,9 +1,10 @@
 "use client";
+import RenderNode from "@/components/richUI/RenderNode";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { MODAL_TYPE } from "@/utils/enums";
-import { openModal, closeModal, formatRelativeTime, formatDate } from "@/utils/utility";
+import { openModal, closeModal, formatRelativeTime, formatDate, generateRandomID } from "@/utils/utility";
 import { PlayIcon, Sparkles, X, SendHorizontal, Send } from "lucide-react";
 import React, { useEffect, useState, use, useRef } from "react";
 import SearchItems from "@/components/UI/SearchItems";
@@ -51,6 +52,7 @@ const TemplatesPage = ({ params }) => {
   const [widgetToSave, setWidgetToSave] = useState(null);
   const [widgetName, setWidgetName] = useState("");
   const [widgetDescription, setWidgetDescription] = useState("");
+  const [thread_id, setThread_id] = useState(generateRandomID());
 
   useEffect(() => {
     setFilterWidgets(widgetsData || []);
@@ -68,17 +70,11 @@ const TemplatesPage = ({ params }) => {
     if (createParam === "true") {
       setViewMode("create_prompt");
     } else {
-      // Only reset to list if we were in create_prompt mode to allow internal navigation changes
-      // without fighting URL. But usually we want URL to drive this or sync.
-      // For simplicity, let's treat URL as entry point only for now, or primary driver.
-      // If we want full sync:
       if (viewMode === "create_prompt") {
         setViewMode("list");
       }
     }
   }, [createParam]);
-
-  // --- Actions ---
 
   const handleOpenPlayground = (item) => {
     const originalItem = widgetsData.find((widget) => widget._id === item._id);
@@ -98,6 +94,7 @@ const TemplatesPage = ({ params }) => {
     setCurrentInput("");
     setChatStarted(false);
     setIsAnimating(false);
+    setThread_id(generateRandomID());
   };
 
   const handleSendMessage = async () => {
@@ -133,14 +130,16 @@ const TemplatesPage = ({ params }) => {
       const data = await generateRichUITemplate({
         message: userMessage.content,
         context: "template_generation",
+        thread_id: thread_id,
       });
 
       const aiMessage = {
         id: Date.now() + 1,
         type: "assistant",
         content: data.result || data.response || "Sorry, I could not generate a response.",
-        html: data.html || null,
-        template_format: data.result || data.card_json || null,
+        template_format: data.template_format,
+        preview_ui: data.result,
+        variables: data.variables || {}, // seed for default_json
         timestamp: new Date(),
       };
 
@@ -160,12 +159,11 @@ const TemplatesPage = ({ params }) => {
   };
 
   const handleSaveFromChat = (message) => {
-    if (!message.template_format && !message.html) {
+    if (!message.template_format) {
       toast.error("No template data to save");
       return;
     }
 
-    // Open modal to ask for name and description
     setWidgetToSave(message);
     setWidgetName("");
     setWidgetDescription("");
@@ -177,20 +175,21 @@ const TemplatesPage = ({ params }) => {
       toast.error("Please enter a widget name");
       return;
     }
-
     if (!widgetToSave) return;
-
     setSavingMessageId(widgetToSave.id);
     closeModal(MODAL_TYPE.SAVE_WIDGET_MODAL);
-
-    const template_format = JSON.parse(widgetToSave.template_format) || {};
+    const template_format =
+      typeof widgetToSave.template_format === "string"
+        ? JSON.parse(widgetToSave.template_format)
+        : widgetToSave.template_format || {};
 
     try {
       const payload = {
         name: widgetName.trim(),
         description: widgetDescription.trim() || "AI generated widget",
-        html: widgetToSave.html || "",
         template_format: template_format,
+        ui: widgetToSave.preview_ui || widgetToSave.template_format,
+        variables: widgetToSave.variables || {},
       };
 
       await dispatch(createRichUiTemplateAction(payload));
@@ -212,12 +211,8 @@ const TemplatesPage = ({ params }) => {
     setWidgetName("");
     setWidgetDescription("");
   };
-
-  // --- RENDERERS ---
-
   return (
     <>
-      {/* Modal - Always rendered so it's available in DOM */}
       <SaveWidgetModal
         widgetName={widgetName}
         widgetDescription={widgetDescription}
@@ -251,12 +246,12 @@ const TemplatesPage = ({ params }) => {
                             : "bg-base-100 text-base-content border border-base-200"
                         }`}
                       >
-                        {/* Show HTML Preview with Save button for assistant messages with HTML */}
-                        {message.type === "assistant" && message.html ? (
+                        {/* Show JSON Preview with Save button for assistant messages with template_format */}
+                        {message.type === "assistant" && message.template_format ? (
                           <div>
                             <div className="text-sm font-medium text-base-content/80 mb-3">Widget Preview</div>
                             <div className="bg-base-200 rounded-lg p-4 border border-base-300 overflow-auto max-h-96 mb-4">
-                              <div dangerouslySetInnerHTML={{ __html: message.html }} />
+                              <RenderNode node={message.preview_ui} />
                             </div>
                             {!savedMessageIds.has(message.id) && (
                               <button
@@ -466,7 +461,13 @@ const TemplatesPage = ({ params }) => {
                 >
                   {/* Widget Preview */}
                   <div className="h-32 bg-base-200 border-b border-base-300 relative overflow-hidden">
-                    {widget.html ? (
+                    {widget.ui || widget.template_format ? (
+                      <div className="absolute inset-0 p-2 overflow-hidden pointer-events-none">
+                        <div className="transform scale-[0.5] origin-top-left w-[200%]">
+                          <RenderNode node={widget.ui || widget.template_format} />
+                        </div>
+                      </div>
+                    ) : widget.html ? (
                       <div className="absolute inset-0 p-2 text-xs overflow-hidden">
                         <div
                           className="w-full h-full transform scale-100 origin-top-left"

@@ -1,8 +1,8 @@
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { closeModal, trimPropertyNames } from "@/utils/utility";
-import { MODAL_TYPE, PARAMETER_TYPES } from "@/utils/enums";
+import { MODAL_TYPE, ON_CLICK_ACTION_TYPES, PARAMETER_TYPES } from "@/utils/enums";
 import { TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "@/components/UI/Modal";
@@ -195,7 +195,7 @@ const SchemaPropertyCard = ({
 
           {isExpanded && property.items?.properties && Object.keys(property.items.properties).length > 0 && (
             <div className="space-y-1 mt-2">
-              {Object.entries(property.items.properties).map(([childKey, childProperty], index) => (
+              {Object.entries(property.items.properties).map(([childKey, childProperty]) => (
                 <SchemaPropertyCard
                   key={childKey}
                   isReadOnly={isReadOnly}
@@ -243,7 +243,7 @@ const SchemaPropertyCard = ({
 
           {isExpanded && hasChildren && (
             <div className="space-y-1 mt-2">
-              {Object.entries(property.properties).map(([childKey, childProperty], index) => (
+              {Object.entries(property.properties).map(([childKey, childProperty]) => (
                 <SchemaPropertyCard
                   key={childKey}
                   isReadOnly={isReadOnly}
@@ -269,14 +269,27 @@ const SchemaPropertyCard = ({
   );
 };
 
-function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
+function JsonSchemaBuilderModal({
+  params,
+  searchParams,
+  isReadOnly = false,
+  schemaKey = "json_schema",
+  modalId = MODAL_TYPE.JSON_SCHEMA_BUILDER,
+  title = "Build JSON Schema",
+  hideName = false,
+  // When provided, shows a button dropdown and filters schema to only the selected button's vars
+  widgetButtons = [],
+}) {
   const dispatch = useDispatch();
 
-  const { json_schema } = useCustomSelector((state) => ({
-    json_schema:
-      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type
-        ?.json_schema,
-  }));
+  const { json_schema, response_type } = useCustomSelector((state) => {
+    const rt =
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type;
+    return {
+      json_schema: rt?.[schemaKey],
+      response_type: rt,
+    };
+  });
 
   const [schemaName, setSchemaName] = useState("");
   const [schemaData, setSchemaData] = useState({
@@ -285,14 +298,94 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
     required: [],
     additionalProperties: false,
   });
+  const [selectedButtonKey, setSelectedButtonKey] = useState(null);
+  const [buttonOnClickTypes, setButtonOnClickTypes] = useState({});
+  const schemaCacheRef = useRef({});
+
+  // Reset button selection when widgetButtons changes
+  useEffect(() => {
+    setSelectedButtonKey(widgetButtons.length > 0 ? (widgetButtons[0]?.key ?? null) : null);
+    schemaCacheRef.current = {};
+  }, [widgetButtons]);
+
+  // Helper to navigate to the button's schema node and return its `onClickType` property node.
+  const getOnClickTypeNode = useCallback((schema, buttonConfig) => {
+    if (!buttonConfig || !schema) return null;
+    let curr = schema;
+    for (const seg of buttonConfig.path || []) {
+      if (curr == null) return null;
+      const next = Array.isArray(curr) ? curr[Number(seg)] : curr[seg];
+      if (next == null) return null;
+      curr = next;
+    }
+    return curr?.properties?.onClickType ?? null;
+  }, []);
+
+  const getActionDataNode = useCallback((schema, buttonConfig) => {
+    if (!buttonConfig || !schema) return null;
+    let curr = schema;
+    for (const seg of buttonConfig.path || []) {
+      if (curr == null) return null;
+      // Arrays use numeric index, objects use string key
+      const next = Array.isArray(curr) ? curr[Number(seg)] : curr[seg];
+      if (next == null) return null;
+      curr = next;
+    }
+    const actionKey = buttonConfig.actionDataKey || "actionData";
+    if (curr?.properties?.[actionKey]?.properties?.data) {
+      return curr.properties[actionKey].properties.data;
+    }
+    return null;
+  }, []);
 
   useEffect(() => {
-    if (json_schema && typeof json_schema === "object") {
+    if (!json_schema || widgetButtons.length === 0) return;
+    const rootSchema = json_schema.schema || json_schema;
+    const types = {};
+    widgetButtons.forEach((btn) => {
+      const node = getOnClickTypeNode(rootSchema, btn);
+      if (node?.enum?.length === 1) {
+        types[btn.key] = node.enum[0];
+      } else {
+        types[btn.key] = "";
+      }
+    });
+    setButtonOnClickTypes(types);
+  }, [widgetButtons]); // intentionally excludes json_schema & getOnClickTypeNode to avoid resetting on schema changes
+
+  useEffect(() => {
+    if (!json_schema || typeof json_schema !== "object") return;
+
+    if (widgetButtons.length > 0) {
+      // Resolve the active button from the primitive key — avoids stale derived-ref issues
+      const activeBtn = widgetButtons.find((b) => b.key === selectedButtonKey) ?? widgetButtons[0];
+
+      if (schemaCacheRef.current[activeBtn.key]) {
+        setSchemaName("ActionData");
+        setSchemaData(schemaCacheRef.current[activeBtn.key]);
+      } else {
+        const dataNode = getActionDataNode(json_schema.schema || json_schema, activeBtn);
+        setSchemaName("ActionData");
+        setSchemaData(
+          dataNode
+            ? {
+                type: "object",
+                properties: dataNode.properties || {},
+                required: dataNode.required || [],
+                additionalProperties: false,
+              }
+            : { type: "object", properties: {}, required: [], additionalProperties: false }
+        );
+      }
+    } else {
+      // Normal (non-widget-button) mode
+      const fullProps = json_schema.schema?.properties || json_schema.properties || {};
+      const fullRequired = json_schema.schema?.required || json_schema.required || [];
       setSchemaName(json_schema.name);
       setSchemaData({
         type: json_schema.schema?.type || json_schema.type || "object",
-        properties: json_schema.schema?.properties || json_schema.properties || {},
-        required: json_schema.schema?.required || json_schema.required || [],
+        properties: fullProps,
+        required: fullRequired,
         additionalProperties:
           json_schema.schema?.additionalProperties !== undefined
             ? json_schema.schema.additionalProperties
@@ -301,7 +394,7 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
               : false,
       });
     }
-  }, [json_schema]);
+  }, [json_schema, selectedButtonKey, widgetButtons, getActionDataNode]);
 
   const updateProperty = useCallback((properties, keyParts, updateFn) => {
     const propertiesClone = JSON.parse(JSON.stringify(properties));
@@ -690,64 +783,210 @@ function JsonSchemaBuilderModal({ params, searchParams, isReadOnly = false }) {
   );
 
   const handleSave = useCallback(() => {
-    const trimmedSchemaData = {
-      ...schemaData,
-      properties: trimPropertyNames(schemaData.properties),
-    };
+    const trimmedProperties = trimPropertyNames(schemaData.properties);
 
-    const jsonSchemaOutput = {
-      name: schemaName?.trim(),
-      schema: trimmedSchemaData,
-      strict: true,
-    };
+    if (widgetButtons.length > 0) {
+      const activeBtn = widgetButtons.find((b) => b.key === selectedButtonKey) ?? widgetButtons[0];
+      let mergedSchema = JSON.parse(JSON.stringify(json_schema));
+      const mergedRoot = mergedSchema.schema || mergedSchema;
 
-    dispatch(
-      updateBridgeVersionAction({
-        bridgeId: params?.id,
-        versionId: searchParams?.version,
-        dataToSend: {
-          configuration: {
-            response_type: {
-              type: "json_schema",
-              json_schema: jsonSchemaOutput,
+      // Update current active button to cache
+      schemaCacheRef.current[activeBtn.key] = {
+        ...schemaData,
+        properties: trimmedProperties,
+      };
+
+      // Apply all cached button changes
+      Object.keys(schemaCacheRef.current).forEach((cacheKey) => {
+        const btn = widgetButtons.find((b) => b.key === cacheKey);
+        if (btn) {
+          const foundNode = getActionDataNode(mergedRoot, btn);
+          if (foundNode) {
+            foundNode.properties = trimPropertyNames(schemaCacheRef.current[cacheKey].properties || {});
+            foundNode.required = schemaCacheRef.current[cacheKey].required || [];
+          }
+        }
+      });
+
+      // Patch onClickType.enum for all buttons that have a selected type
+      widgetButtons.forEach((btn) => {
+        const selectedType = buttonOnClickTypes[btn.key];
+        if (!selectedType) return;
+        const onClickNode = getOnClickTypeNode(mergedRoot, btn);
+        if (onClickNode) {
+          onClickNode.enum = [selectedType];
+        }
+      });
+      dispatch(
+        updateBridgeVersionAction({
+          bridgeId: params?.id,
+          versionId: searchParams?.version,
+          dataToSend: {
+            configuration: {
+              response_type: { ...response_type, json_schema: mergedSchema },
             },
           },
-        },
-      })
-    );
+        })
+      );
+    } else {
+      // Normal mode: replace the whole schema at schemaKey
+      dispatch(
+        updateBridgeVersionAction({
+          bridgeId: params?.id,
+          versionId: searchParams?.version,
+          dataToSend: {
+            configuration: {
+              response_type: {
+                ...response_type,
+                [schemaKey]: {
+                  name: schemaName?.trim(),
+                  schema: { ...schemaData, properties: trimmedProperties },
+                  strict: true,
+                },
+              },
+            },
+          },
+        })
+      );
+    }
     toast.success("JSON Schema saved successfully");
-    closeModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
-  }, [dispatch, params, searchParams, schemaData, schemaName]);
+    schemaCacheRef.current = {};
+    setSelectedButtonKey(widgetButtons.length > 0 ? (widgetButtons[0]?.key ?? null) : null);
+    closeModal(modalId);
+  }, [
+    dispatch,
+    params,
+    searchParams,
+    schemaData,
+    schemaName,
+    schemaKey,
+    modalId,
+    selectedButtonKey,
+    widgetButtons,
+    json_schema,
+    response_type,
+    getActionDataNode,
+    getOnClickTypeNode,
+    buttonOnClickTypes,
+  ]);
 
   const handleCloseModal = () => {
-    closeModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
+    schemaCacheRef.current = {};
+    setSelectedButtonKey(widgetButtons.length > 0 ? (widgetButtons[0]?.key ?? null) : null);
+    closeModal(modalId);
   };
 
   return (
-    <Modal MODAL_ID={MODAL_TYPE.JSON_SCHEMA_BUILDER} onClose={handleCloseModal}>
+    <Modal MODAL_ID={modalId} onClose={handleCloseModal}>
       <div
         id="json-schema-builder-modal-container"
         className="modal-box max-w-4xl overflow-hidden text-xs max-h-[90%] my-20 flex flex-col"
       >
         <div className="mb-4 pt-3">
-          <h3 className="font-bold text-lg">Build JSON Schema</h3>
+          <h3 className="font-bold text-lg">{title}</h3>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           <div className="mb-4">
-            <div className="mb-4">
-              <label className="block text-sm font-semibold mb-2">Schema Name</label>
-              <input
-                data-testid="json-schema-name-input"
-                id="json-schema-name-input"
-                type="text"
-                value={schemaName}
-                onChange={(e) => setSchemaName(e.target.value)}
-                className="input input-sm input-bordered w-full"
-                placeholder="Enter schema name..."
-                disabled={isReadOnly}
-              />
-            </div>
+            {widgetButtons.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {(() => {
+                  const activeKey = selectedButtonKey ?? widgetButtons[0]?.key;
+                  const activeBtn = widgetButtons.find((b) => b.key === activeKey) ?? widgetButtons[0];
+                  const rootSchema = json_schema?.schema || json_schema;
+                  const onClickNode = activeBtn ? getOnClickTypeNode(rootSchema, activeBtn) : null;
+                  const currentType = activeBtn
+                    ? (buttonOnClickTypes[activeBtn.key] ??
+                      (onClickNode?.enum?.length === 1 ? onClickNode.enum[0] : ""))
+                    : "";
+
+                  return (
+                    <div className="flex items-end gap-2">
+                      {/* Button dropdown — only shown when multiple buttons */}
+                      {widgetButtons.length > 1 && (
+                        <div className="flex-1">
+                          <label className="block text-xs font-semibold mb-1">Button</label>
+                          <select
+                            className="select select-sm select-bordered w-full"
+                            value={activeKey}
+                            onChange={(e) => {
+                              schemaCacheRef.current[activeKey] = schemaData;
+                              setSelectedButtonKey(e.target.value);
+                            }}
+                          >
+                            {widgetButtons.map((btn) => {
+                              const dataNode = getActionDataNode(json_schema?.schema || json_schema, btn);
+                              const cachedProps = schemaCacheRef.current[btn.key]?.properties;
+                              const currentProps = cachedProps || dataNode?.properties;
+                              const _count = currentProps ? Object.keys(currentProps).length : 0;
+                              return (
+                                <option key={btn.key} value={btn.key}>
+                                  {btn.label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* onClickType dropdown */}
+                      {onClickNode && (
+                        <div className={widgetButtons.length > 1 ? "flex-1" : "w-full"}>
+                          <label className="block text-xs font-semibold mb-1">
+                            {widgetButtons.length === 1 ? `${activeBtn.label} — ` : ""}Action Type
+                          </label>
+                          <select
+                            className="select select-sm select-bordered w-full"
+                            value={currentType}
+                            disabled={isReadOnly}
+                            onChange={(e) =>
+                              setButtonOnClickTypes((prev) => ({ ...prev, [activeBtn.key]: e.target.value }))
+                            }
+                          >
+                            {onClickNode?.enum?.length > 1 && (
+                              <option value="" disabled>
+                                Select action type
+                              </option>
+                            )}
+                            {(onClickNode?.enum?.length > 0 ? onClickNode.enum : ON_CLICK_ACTION_TYPES).map(
+                              (actionType) => (
+                                <option key={actionType} value={actionType}>
+                                  {actionType === "reply"
+                                    ? "Reply"
+                                    : actionType === "sendDataToFrontend"
+                                      ? "Send to Frontend"
+                                      : actionType}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <p className="text-xs text-base-content/50">
+                  Editing the data payload for this button. Save merges changes into the widget schema.
+                </p>
+              </div>
+            )}
+
+            {!hideName && (
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Schema Name</label>
+                <input
+                  data-testid="json-schema-name-input"
+                  id="json-schema-name-input"
+                  type="text"
+                  value={schemaName}
+                  onChange={(e) => setSchemaName(e.target.value)}
+                  className="input input-sm input-bordered w-full"
+                  placeholder="Enter schema name..."
+                  disabled={isReadOnly}
+                />
+              </div>
+            )}
 
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-sm font-semibold">Properties</h4>

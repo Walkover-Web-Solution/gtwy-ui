@@ -840,12 +840,22 @@ export const createConversationForTestCase = (conversationData) => {
 
   conversation = conversationMessages.map((message) => ({
     role: message.sender === "assistant" ? "assistant" : "user",
-    content: message.content,
+    content:
+      (message.sender === "assistant" || message.role === "assistant") &&
+      typeof message.content === "object" &&
+      message.content !== null
+        ? JSON.stringify(message.content)
+        : message.content,
   }));
 
   const lastMessage = conversationData[conversationData.length - 1];
   expected_response = {
-    response: lastMessage.content,
+    response:
+      (lastMessage.sender === "assistant" || lastMessage.role === "assistant") &&
+      typeof lastMessage.content === "object" &&
+      lastMessage.content !== null
+        ? JSON.stringify(lastMessage.content)
+        : lastMessage.content,
   };
 
   return { conversation, expected: expected_response };

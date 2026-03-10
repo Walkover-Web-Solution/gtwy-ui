@@ -65,8 +65,18 @@ export const chatReducer = createSlice({
         // Add to conversation for backend
         const conversationMessage = {
           role: message.role || "assistant",
-          content: message.content,
+          content:
+            message.type === "richui_json"
+              ? typeof message.ai_response === "object" && message.ai_response !== null
+                ? JSON.stringify(message.ai_response)
+                : message.ai_response
+              : (message.role === "assistant" || !message.role) &&
+                  typeof message.content === "object" &&
+                  message.content !== null
+                ? JSON.stringify(message.content)
+                : message.content,
           fallback: message.fallback,
+
           firstAttemptError: message.firstAttemptError,
           llm_urls: message.llm_urls || [],
           model: message.model,
@@ -99,7 +109,17 @@ export const chatReducer = createSlice({
           if (conversationIndex !== -1) {
             state.conversationsByChannel[channelId][conversationIndex] = {
               ...state.conversationsByChannel[channelId][conversationIndex],
-              content,
+              content:
+                state.messagesByChannel[channelId][messageIndex]?.type === "richui_json"
+                  ? typeof additionalData?.ai_response === "object" && additionalData?.ai_response !== null
+                    ? JSON.stringify(additionalData.ai_response)
+                    : additionalData?.ai_response || content
+                  : (state.conversationsByChannel[channelId][conversationIndex].role === "assistant" ||
+                        state.conversationsByChannel[channelId][conversationIndex].role === "expected") &&
+                      typeof content === "object" &&
+                      content !== null
+                    ? JSON.stringify(content)
+                    : content,
               ...additionalData,
             };
           }
@@ -125,7 +145,14 @@ export const chatReducer = createSlice({
             if (msg.sender === "user" || msg.sender === "assistant") {
               updatedConversation.push({
                 role: msg.sender === "user" ? "user" : "assistant",
-                content: msg.content,
+                content:
+                  msg.type === "richui_json"
+                    ? typeof msg.ai_response === "object" && msg.ai_response !== null
+                      ? JSON.stringify(msg.ai_response)
+                      : msg.ai_response
+                    : msg.sender === "assistant" && typeof msg.content === "object" && msg.content !== null
+                      ? JSON.stringify(msg.content)
+                      : msg.content,
               });
             }
           });
@@ -147,7 +174,12 @@ export const chatReducer = createSlice({
           if (msg.sender === "user" || msg.sender === "assistant") {
             updatedConversation.push({
               role: msg.sender === "user" ? "user" : "assistant",
-              content: msg.content,
+              content:
+                msg.type === "richui_json"
+                  ? typeof msg.ai_response === "object" && msg.ai_response !== null
+                    ? JSON.stringify(msg.ai_response)
+                    : msg.ai_response
+                  : msg.content,
             });
           }
         });
@@ -231,7 +263,14 @@ export const chatReducer = createSlice({
       if (messageType === "user" || messageType === "assistant") {
         const conversationMessage = {
           role: messageType,
-          content: message.content,
+          content:
+            message.type === "richui_json"
+              ? typeof message.ai_response === "object" && message.ai_response !== null
+                ? JSON.stringify(message.ai_response)
+                : message.ai_response
+              : messageType === "assistant" && typeof message.content === "object" && message.content !== null
+                ? JSON.stringify(message.content)
+                : message.content,
           ...(messageType === "assistant" && {
             fallback: message.fallback,
             firstAttemptError: message.firstAttemptError,
@@ -308,7 +347,17 @@ export const chatReducer = createSlice({
               conversationIndex >= 0 &&
               state.conversationsByChannel[channelId][conversationIndex].role === "assistant"
             ) {
-              state.conversationsByChannel[channelId][conversationIndex].content = content;
+              state.conversationsByChannel[channelId][conversationIndex].content =
+                state.messagesByChannel[channelId][messageIndex]?.type === "richui_json"
+                  ? typeof state.messagesByChannel[channelId][messageIndex]?.ai_response === "object" &&
+                    state.messagesByChannel[channelId][messageIndex]?.ai_response !== null
+                    ? JSON.stringify(state.messagesByChannel[channelId][messageIndex]?.ai_response)
+                    : state.messagesByChannel[channelId][messageIndex]?.ai_response
+                  : state.conversationsByChannel[channelId][conversationIndex].role === "assistant" &&
+                      typeof content === "object" &&
+                      content !== null
+                    ? JSON.stringify(content)
+                    : content;
             }
           }
         }
