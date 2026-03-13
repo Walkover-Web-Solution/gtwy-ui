@@ -20,25 +20,34 @@ const DefaultVariablesSection = memo(
     }, [prompt]);
 
     const PRE_TOOL_VARIABLE_MAP = {
-  custom_function: { name: "pre_function", description: "Use this variable to access the output of your connected pre-function" },
-  rag_knowledgebase: { name: "rag_pre_result", description: "Use this variable to access the knowledge base results retrieved for the user query"},
-  gtwy_web_search: { name: "web_search_pre_result", description: "Use this variable to access the web search results fetched"},
-};
+      custom_function: {
+        name: "pre_function",
+        description: "Use this variable to access the output of your connected pre-function",
+      },
+      rag_knowledgebase: {
+        name: "rag_pre_result",
+        description: "Use this variable to access the knowledge base results retrieved for the user query",
+      },
+      gtwy_web_search: {
+        name: "web_search_pre_result",
+        description: "Use this variable to access the web search results fetched",
+      },
+    };
 
-const defaultVariables = [
-  { name: "current_time_date_and_current_identifier", description: "To access the current date and time" },
-  { name: "timezone", description: "Access the timezone using a timezone identifier" },
-];
+    const defaultVariables = [
+      { name: "current_time_date_and_current_identifier", description: "To access the current date and time" },
+      { name: "timezone", description: "Access the timezone using a timezone identifier" },
+    ];
 
-const preToolVariables = useMemo(() => {
-  if (!preTools?.length) return [];
-  return preTools
-    .map((t) => {
-      const type = typeof t === "string" ? "custom_function" : t.type;
-      return PRE_TOOL_VARIABLE_MAP[type];
-    })
-    .filter(Boolean);
-}, [preTools]);
+    const preToolVariables = useMemo(() => {
+      if (!preTools?.length) return [];
+      return preTools
+        .map((t) => {
+          const type = typeof t === "string" ? "custom_function" : t.type;
+          return PRE_TOOL_VARIABLE_MAP[type];
+        })
+        .filter(Boolean);
+    }, [preTools]);
 
     return (
       <div
@@ -116,15 +125,14 @@ const preToolVariables = useMemo(() => {
                   </div>
                 ))}
                 {preToolVariables.map((variable) => (
-      <div key={variable.name} className="flex items-start gap-2">
-        <code className="text-xs bg-base-200 px-2 py-1 rounded text-base-content font-mono">
-          {`{{${variable.name}}}`}
-        </code>
-        <span className="text-xs py-1 text-base-content/70">{variable.description}</span>
-      </div>
-    ))}
+                  <div key={variable.name} className="flex items-start gap-2">
+                    <code className="text-xs bg-base-200 px-2 py-1 rounded text-base-content font-mono">
+                      {`{{${variable.name}}}`}
+                    </code>
+                    <span className="text-xs py-1 text-base-content/70">{variable.description}</span>
+                  </div>
+                ))}
               </div>
- 
             </div>
 
             {/* Custom Variables Info */}

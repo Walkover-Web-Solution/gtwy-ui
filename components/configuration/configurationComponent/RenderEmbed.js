@@ -56,14 +56,14 @@ const RenderEmbed = ({
             className="p-2 flex-1 flex items-center"
             onClick={() => {
               if (value?._type === "custom_function" || !value?._type) {
-              openViasocket(functionName, {
-                embedToken,
-                meta: {
-                  type: "tool",
-                  bridge_id: params?.id,
-                },
-              });
-            }
+                openViasocket(functionName, {
+                  embedToken,
+                  meta: {
+                    type: "tool",
+                    bridge_id: params?.id,
+                  },
+                });
+              }
             }}
           >
             <div className="flex items-center gap-2 w-full">
