@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import PageHeader from "@/components/Pageheader";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -12,7 +13,10 @@ export const runtime = "edge";
 
 const coerceArray = (value) => {
   if (Array.isArray(value)) return value;
+  if (value?.result && Array.isArray(value.result)) return value.result;
   if (value?.data && Array.isArray(value.data)) return value.data;
+  if (value?.data?.result && Array.isArray(value.data.result)) return value.data.result;
+  if (value?.data?.data && Array.isArray(value.data.data)) return value.data.data;
   return [];
 };
 
@@ -96,11 +100,12 @@ export default function TemplatesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-6">
             {filteredTemplates.map((tpl, idx) => {
               const preview = getTemplatePreview(tpl);
-              return (
-                <div
-                  key={tpl?._id || tpl?.id || idx}
-                  className="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-200 group"
-                >
+              const templateId = tpl?._id || tpl?.id;
+              const visible = tpl?.visible ?? tpl?.isVisible;
+              const href = templateId ? `/new?template_id=${encodeURIComponent(templateId)}` : null;
+
+              const CardInner = (
+                <>
                   <div className="h-32 bg-base-200 border-b border-base-300 relative overflow-hidden">
                     {preview ? (
                       <div className="absolute inset-0 p-3 text-xs text-base-content/80 overflow-hidden">
@@ -119,8 +124,13 @@ export default function TemplatesPage() {
                   </div>
 
                   <div className="card-body p-4">
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="card-title text-base-content truncate flex-1 text-sm">{getTemplateTitle(tpl)}</h3>
+                      {typeof visible === "boolean" ? (
+                        <span className={`badge badge-sm ${visible ? "badge-success" : "badge-ghost"}`}>
+                          {visible ? "Visible" : "Hidden"}
+                        </span>
+                      ) : null}
                     </div>
 
                     <p className="text-xs text-base-content/70 mb-3 line-clamp-2 min-h-[2.5em]">
@@ -134,6 +144,25 @@ export default function TemplatesPage() {
                       {formatDate(tpl?.createdAt || tpl?.created_at)}
                     </div>
                   </div>
+                </>
+              );
+
+              return href ? (
+                <Link
+                  key={templateId || idx}
+                  href={href}
+                  className="card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-200 group cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  {CardInner}
+                </Link>
+              ) : (
+                <div
+                  key={templateId || idx}
+                  className="card bg-base-100 shadow-lg transition-shadow duration-200 group opacity-70 cursor-not-allowed"
+                  aria-disabled="true"
+                  title="Template id missing"
+                >
+                  {CardInner}
                 </div>
               );
             })}
