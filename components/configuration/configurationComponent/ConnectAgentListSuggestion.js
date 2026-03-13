@@ -101,7 +101,17 @@ function ConnectedAgentListSuggestion({
           onChange={handleInputChange}
           className="input input-bordered w-full input-sm"
         />
-        {renderBridgeSuggestions}
+        {renderBridgeSuggestions?.length ? (
+          renderBridgeSuggestions
+        ) : (
+          <li
+            data-testid="connect-agent-suggestion-empty-state"
+            id="connect-agent-suggestion-empty-state"
+            className="text-sm text-base-content/60 disabled"
+          >
+            No agent found
+          </li>
+        )}
       </div>
     </ul>
   );

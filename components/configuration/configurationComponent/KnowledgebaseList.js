@@ -147,20 +147,32 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
           onChange={handleInputChange}
           className="input input-bordered w-full input-sm"
         />
-        {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
-          .filter((item) => {
+        {(() => {
+          const availableKnowledgebases = (Array.isArray(knowledgeBaseData) ? knowledgeBaseData : []).filter((item) => {
             const matchesSearch = item?.title?.toLowerCase()?.includes(searchQuery?.toLowerCase());
             // Check if item already exists in knowbaseVersionData (handle both old and new format)
             const alreadyExists = knowbaseVersionData?.some((docItem) => {
               if (typeof docItem === "string") {
                 return docItem === item?._id;
-              } else {
-                return docItem.resource_id === item?._id;
               }
+              return docItem.resource_id === item?._id;
             });
             return matchesSearch && !alreadyExists;
-          })
-          .map((item) => (
+          });
+
+          if (!availableKnowledgebases.length) {
+            return (
+              <li
+                data-testid="knowledgebase-empty-state"
+                id="knowledgebase-empty-state"
+                className="text-sm text-base-content/60 disabled"
+              >
+                No knowledge base found
+              </li>
+            );
+          }
+
+          return availableKnowledgebases.map((item) => (
             <li
               data-testid={`knowledgebase-dropdown-item-${item?._id}`}
               id={`knowledgebase-dropdown-item-${item?._id}`}
@@ -180,7 +192,8 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
                 </div>
               </div>
             </li>
-          ))}
+          ));
+        })()}
         <li
           data-testid="knowledgebase-add-new-button"
           id="knowledgebase-add-new-button"
@@ -314,6 +327,12 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
                 tabIndex={0}
                 className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
                 disabled={!shouldToolsShow || isReadOnly}
+                onClick={() => {
+                  // When the dropdown opens, focus the search input so users can type immediately.
+                  setTimeout(() => {
+                    document?.getElementById?.("knowledgebase-search-input")?.focus?.();
+                  }, 0);
+                }}
               >
                 <AddIcon className="w-3 h-3" />
                 Add
@@ -333,6 +352,12 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
                     tabIndex={0}
                     className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
                     disabled={isReadOnly}
+                    onClick={() => {
+                      // When the dropdown opens, focus the search input so users can type immediately.
+                      setTimeout(() => {
+                        document?.getElementById?.("knowledgebase-search-input")?.focus?.();
+                      }, 0);
+                    }}
                   >
                     <AddIcon className="w-3 h-3" />
                     Add Knowledge Base
