@@ -40,6 +40,7 @@ export const updateApikeyAction = (dataToSend) => async (dispatch) => {
       comment: dataToSend.comment,
       apikey_limit: dataToSend.apikey_limit,
       apikey_usage: dataToSend.apikey_usage,
+      apikey_limit_reset_period: dataToSend.apikey_limit_reset_period,
     })
   );
 
@@ -56,6 +57,7 @@ export const updateApikeyAction = (dataToSend) => async (dispatch) => {
           comment: dataToSend.comment,
           apikey_limit: dataToSend.apikey_limit,
           apikey_usage: dataToSend.apikey_usage,
+          apikey_limit_reset_period: dataToSend.apikey_limit_reset_period,
         })
       );
       trackUserAction("api_key_updated", {

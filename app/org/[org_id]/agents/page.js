@@ -74,13 +74,20 @@ const UsageProgressDonut = ({ percent, label }) => (
 export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsage }) => {
   const { hasLimit, usagePercent, usageValue, limitValue, remaining } = stats;
   const [limit, setLimit] = useState(limitValue ?? "");
+  const [resetPeriod, setResetPeriod] = useState(item?.bridge_limit_reset_period ?? "");
   const [isLimitDirty, setIsLimitDirty] = useState(false);
 
   const handleLimitChange = (e) => {
     const value = e.target.value;
     setLimit(value);
     const original = limitValue ?? "";
-    setIsLimitDirty(String(value) !== String(original));
+    setIsLimitDirty(String(value) !== String(original) || resetPeriod !== (item?.bridge_limit_reset_period ?? ""));
+  };
+
+  const handleResetPeriodChange = (e) => {
+    const value = e.target.value;
+    setResetPeriod(value);
+    setIsLimitDirty(String(limit) !== String(limitValue ?? "") || value !== (item?.bridge_limit_reset_period ?? ""));
   };
 
   return (
@@ -122,10 +129,22 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
 
       {!isEmbedUser && (
         <div className="flex flex-col gap-2">
+          <div className="flex gap-1 items-center justify-between text-sm">
+            <span className="text-base-content/60">Reset Period</span>
+            <select
+              className="select select-bordered select-sm w-36"
+              value={resetPeriod}
+              onChange={handleResetPeriodChange}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
           <button
             className="btn btn-primary btn-sm"
             onClick={() => {
-              onSetLimit(item, limit);
+              onSetLimit(item, limit, resetPeriod);
             }}
             disabled={!isLimitDirty}
           >
@@ -689,6 +708,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <EmptyCell />
         ),
         updated_at_original: updatedAt,
+        bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
       };
     });
 

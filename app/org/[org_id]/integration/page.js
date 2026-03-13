@@ -80,18 +80,20 @@ const Page = ({ params }) => {
     // Transform the data to match what UsageLimitModal expects
     const transformedData = {
       ...item,
-      item_limit: item.embed_limit, // Map integration_limit to bridge_limit
-      actualName: item.actualName || item.originalName, // Ensure actualName is available
+      item_limit: item.embed_limit,
+      item_limit_reset_period: item.originalItem?.folder_limit_reset_period || "",
+      actualName: item.actualName || item.originalName,
     };
     setSelectedIntegrationForLimit(transformedData);
     openModal(MODAL_TYPE.API_KEY_LIMIT_MODAL);
   };
 
-  const handleUpdateIntegrationLimit = async (integration, limit) => {
+  const handleUpdateIntegrationLimit = async (integration, limit, resetPeriod) => {
     closeModal(MODAL_TYPE?.API_KEY_LIMIT_MODAL);
     const dataToSend = {
       ...integration.originalItem,
       folder_limit: limit,
+      folder_limit_reset_period: resetPeriod,
     };
     const res = await dispatch(updateIntegrationDataAction(resolvedParams.org_id, dataToSend));
     if (res?.data) toast.success("Integration Usage Limit Updated Successfully");

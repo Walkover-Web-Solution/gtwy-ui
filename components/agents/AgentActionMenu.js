@@ -40,8 +40,12 @@ export const AgentMenuItems = ({
     return { limitValue, usageValue, totalTokens, hasLimit, usagePercent, remaining };
   };
 
-  const handleUpdateBridgeLimit = async (bridgeItem, limit) => {
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend: { bridge_limit: limit } }));
+  const handleUpdateBridgeLimit = async (bridgeItem, limit, resetPeriod) => {
+    const dataToSend = { bridge_limit: limit };
+    if (resetPeriod) {
+      dataToSend.bridge_limit_reset_period = resetPeriod;
+    }
+    const res = await dispatch(updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend }));
     if (res?.success) toast.success("Agent Usage Limit Updated Successfully");
   };
 
@@ -63,9 +67,9 @@ export const AgentMenuItems = ({
           stats={getUsageStatsForRow(bridgeData || bridge)}
           item={bridge}
           isEmbedUser={isEmbedUser}
-          onSetLimit={(bridgeItem, limit) => {
+          onSetLimit={(bridgeItem, limit, resetPeriod) => {
             handlePortalCloseImmediate?.();
-            handleUpdateBridgeLimit(bridgeItem, limit);
+            handleUpdateBridgeLimit(bridgeItem, limit, resetPeriod);
           }}
           onResetUsage={() => {
             handlePortalCloseImmediate?.();

@@ -6,6 +6,7 @@ import { closeModal } from "@/utils/utility";
 
 const UsageLimitModal = ({ data, onConfirm, item }) => {
   const [limit, setLimit] = useState(data?.item_limit);
+  const [resetPeriod, setResetPeriod] = useState(data?.item_limit_reset_period || "daily");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,6 +16,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
     } else {
       setLimit("");
     }
+    setResetPeriod(data?.item_limit_reset_period || "daily");
   }, [data]);
 
   const handleClose = () => {
@@ -33,7 +35,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
     setError("");
 
     try {
-      await onConfirm(data, parseFloat(limit));
+      await onConfirm(data, parseFloat(limit), resetPeriod);
       handleClose();
     } catch (err) {
       setError(err.message || "Failed to set API key limit");
@@ -72,6 +74,19 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
                 step="0.0001"
               />
               {error && <p className="text-error text-sm mt-1">{error}</p>}
+            </div>
+
+            <div className="form-control w-full mt-4">
+              <label className="label-text mb-1">Reset Period</label>
+              <select
+                className="select select-bordered w-full select-sm"
+                value={resetPeriod}
+                onChange={(e) => setResetPeriod(e.target.value)}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
