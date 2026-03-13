@@ -371,12 +371,12 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                 <div className="space-y-2">
                   {promptConfig.embedFields.map((field) => (
                     <div key={field.name} className="p-3 bg-base-100 rounded border border-base-300 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <code className="text-sm bg-base-200 px-2 py-1 rounded font-mono">{`{{${field.name}}}`}</code>
-                          <span className="text-sm text-base-content/70">(Custom)</span>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <code className="text-sm bg-base-200 px-2 py-1 rounded font-mono truncate">{`{{${field.name}}}`}</code>
+                          <span className="text-sm text-base-content/70 shrink-0">(Custom)</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           {/* Field Type Selector (shown when visible) */}
                           {/* {!field.hidden && ( */}
                           <div className="space-y-1">

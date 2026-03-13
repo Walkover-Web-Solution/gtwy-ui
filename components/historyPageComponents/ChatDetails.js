@@ -18,6 +18,10 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
           : selectedItem["AiConfig"]?.system;
   }
   const variablesKeyValue = selectedItem && selectedItem["variables"] ? selectedItem["variables"] : {};
+  const batchData =
+    selectedItem && typeof selectedItem["batch_data"] === "object" && selectedItem["batch_data"] !== null
+      ? selectedItem["batch_data"]
+      : null;
   const [modalContent, setModalContent] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const sidebarRef = useRef(null);
@@ -246,6 +250,45 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                         </div>
                       );
                     })}
+
+                  {batchData && (
+                    <div className="border-b border-base-300 bg-base-100 transition-colors duration-150">
+                      <div className="pt-4 px-4 text-sm font-semibold capitalize">Batch Details</div>
+                      <div className="py-4 px-4">
+                        <div className="relative">
+                          <pre
+                            id="chat-details-batch-data-value"
+                            className={`bg-base-200 p-4 rounded-lg text-sm overflow-auto whitespace-pre-wrap border border-base-200 ${
+                              JSON.stringify(batchData).length > 200
+                                ? "cursor-pointer hover:border-primary transition-colors duration-200"
+                                : ""
+                            }`}
+                            onClick={() => handleObjectClick("batch_data", batchData)}
+                          >
+                            {truncate(JSON.stringify(batchData, null, 2), 210)}
+                          </pre>
+                          <div className="absolute top-2 right-2">
+                            <button
+                              data-testid="chat-details-copy-batch-data"
+                              id="chat-details-copy-batch-data"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(batchData, "Batch data copied to clipboard", "batch-data");
+                              }}
+                              className="btn btn-ghost btn-sm p-1.5 rounded-md hover:bg-base-300"
+                              title="Copy batch data"
+                            >
+                              {copiedId === "batch-data" ? (
+                                <Check size={16} className="text-success" />
+                              ) : (
+                                <CopyIcon size={16} className="text-base-content" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-base-200">
                     <div className="py-2 px-6 text-sm font-semibold text-base-content border-b border-base-300">

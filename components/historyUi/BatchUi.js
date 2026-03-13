@@ -40,7 +40,11 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
   const renderToolGrid = (tools, depth = 0) => {
     if (!Array.isArray(tools) || tools.length === 0) return null;
     return (
-      <div className="grid grid-cols-2 gap-2" style={{ marginLeft: depth * 12 }}>
+      <div
+        data-testid={`batch-ui-tool-grid-${depth}`}
+        className="grid grid-cols-2 gap-2"
+        style={{ marginLeft: depth * 12 }}
+      >
         {tools.map((tool, index) => {
           const isLastOdd = tools.length % 2 !== 0 && index === tools.length - 1;
           const toolName = typeof tool === "string" ? tool : tool?.name || tool?.id || `tool_${index + 1}`;
@@ -77,6 +81,7 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
                   {isAgentNode ? "AGENT" : "TOOL"}
                   {!isAgentNode && (
                     <button
+                      data-testid={`batch-ui-tool-log-${depth}-${index}`}
                       type="button"
                       onClick={(event) => handleToolSliderClick(event, tool)}
                       className="p-1 border border-base-300 rounded hover:border-primary hover:text-primary"
@@ -166,19 +171,20 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
 
   if (isLoading || isBatchEmpty) {
     return (
-      <div className="flex items-center gap-2 text-xs text-base-content/60">
+      <div data-testid="batch-ui-loading" className="flex items-center gap-2 text-xs text-base-content/60">
         <span
+          data-testid="batch-ui-loading-spinner"
           className="h-4 w-4 border-2 hover:border-primary border-t-transparent rounded-full animate-spin"
           aria-label="Loading"
         />
-        <span>Loading batch data...</span>
+        <span data-testid="batch-ui-loading-text">Loading batch data...</span>
       </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-4 bg-base-100">
+      <div data-testid="batch-ui" className="space-y-4 bg-base-100">
         {agents?.map((agent, agentIndex) => {
           const agentKey = `${agentIndex}`;
 
@@ -213,11 +219,17 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
 
               {/* Show FUNCTIONS label for non-agent groups */}
               {!isActualAgent && agent.name === "FUNCTIONS" && (
-                <div className="text-xs font-semibold text-base-content/60 mb-1">MAIN AGENT TOOLS</div>
+                <div
+                  data-testid="batch-ui-main-agent-tools-label"
+                  className="text-xs font-semibold text-base-content/60 mb-1"
+                >
+                  MAIN AGENT TOOLS
+                </div>
               )}
 
               {isActualAgent && agent.isLoading && (
                 <div
+                  data-testid={`batch-ui-agent-loading-${agentKey}`}
                   className={`flex items-center gap-2 text-[10px] text-base-content/60 ${isActualAgent ? "ml-4" : ""}`}
                 >
                   <span className="h-3 w-3 border-2 hover:border-primary border-t-transparent rounded-full animate-spin" />
@@ -227,7 +239,10 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
 
               {/* PARALLEL TOOLS */}
               {Array.isArray(agent.parallelTools) && agent.parallelTools.length > 0 && (
-                <div className={`space-y-1 ${isActualAgent ? "ml-4" : ""}`}>
+                <div
+                  data-testid={`batch-ui-parallel-tools-${agentKey}`}
+                  className={`space-y-1 ${isActualAgent ? "ml-4" : ""}`}
+                >
                   {isActualAgent &&
                     (() => {
                       const toolCount = agent.parallelTools.filter((t) => t?.nodeType !== "agent").length;
@@ -259,6 +274,7 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
         selectedFunctionData &&
         createPortal(
           <div
+            data-testid="batch-ui-function-data-popup"
             ref={popupRef}
             className="fixed z-[9999] w-[420px] overflow-y-auto bg-base-100 border hover:border-primary shadow-xl p-4 text-xs text-base-content"
             style={{
@@ -268,7 +284,12 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
               overscrollBehavior: "contain",
             }}
           >
-            <div className="text-[11px] font-semibold text-base-content tracking-wide mb-3">FUNCTION DATA:</div>
+            <div
+              data-testid="batch-ui-function-data-title"
+              className="text-[11px] font-semibold text-base-content tracking-wide mb-3"
+            >
+              FUNCTION DATA:
+            </div>
 
             <div className="space-y-3">
               <div>

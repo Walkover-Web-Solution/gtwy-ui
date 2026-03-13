@@ -9,8 +9,11 @@ import AdvancedConfiguration from "../configurationComponent/AdvancedConfigurati
 import BridgeTypeToggle from "../configurationComponent/BridgeTypeToggle";
 import ChatbotConfigSection from "../ChatbotConfigSection";
 import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
+import { useDispatch } from "react-redux";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 
 const SettingsTab = () => {
+  const dispatch = useDispatch();
   const {
     params,
     searchParams,
@@ -23,6 +26,7 @@ const SettingsTab = () => {
     showConfigType,
     isPublished,
     isEditor,
+    cacheOn,
   } = useConfigurationContext();
 
   const shouldShowTriggers = useMemo(() => bridgeType === "trigger" && !isEmbedUser, [bridgeType, isEmbedUser]);
@@ -33,6 +37,16 @@ const SettingsTab = () => {
   );
 
   const isReadOnly = isPublished || !isEditor;
+
+  const handleCachedResponseToggle = () => {
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { cache_on: !cacheOn },
+      })
+    );
+  };
 
   if (isEmbedUser && hideAdvancedConfigurations && modelType === "image") {
     return (
@@ -90,6 +104,33 @@ const SettingsTab = () => {
                       const newView = currentView === "agent-flow" ? "config" : "agent-flow";
                       switchView?.(newView);
                     }}
+                  />
+                </label>
+              </div>
+            )}
+            {!isEmbedUser && (
+              <div
+                data-testid="cached-response-section"
+                id="cached-response-section"
+                className="border border-base-200 p-3 flex items-center justify-between gap-4"
+              >
+                <div>
+                  <p className="text-sm font-medium text-base-content">Allow Cached Response</p>
+                  <p className="text-xs text-base-content/60">
+                    Enabling this will allow GTWY to send cached responses without AI call reducing cost for frequently
+                    asked queries.
+                  </p>
+                </div>
+                <label className="label cursor-pointer gap-2">
+                  <span className="text-xs font-semibold">{cacheOn ? "On" : "Off"}</span>
+                  <input
+                    data-testid="cached-response-toggle"
+                    id="cached-response-toggle"
+                    type="checkbox"
+                    disabled={isReadOnly}
+                    className="toggle toggle-sm"
+                    checked={cacheOn}
+                    onChange={handleCachedResponseToggle}
                   />
                 </label>
               </div>

@@ -35,7 +35,10 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       if (Array.isArray(content)) {
         return content?.[0]?.text ?? "";
       }
-      return typeof content === "string" ? content : "";
+      if (typeof content === "object" && content !== null) {
+        return JSON.stringify(content);
+      }
+      return typeof content === "string" ? content : String(content || "");
     };
 
     // If it's a single object with AiConfig, extract the conversation from AiConfig input/messages

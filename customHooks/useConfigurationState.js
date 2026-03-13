@@ -39,6 +39,7 @@ export const useConfigurationState = (params, searchParams) => {
       service: service,
       hidePreTool: state.appInfoReducer.embedUserDetails.hidePreTool,
       validationConfig: validationConfig, // Expose full validationConfig
+      cacheOn: activeData?.cache_on ?? false,
     };
   });
 };

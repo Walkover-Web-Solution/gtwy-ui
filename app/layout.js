@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
     <html lang="en" data-theme="light">
       <GoogleTagManager gtmId="GTM-PXRN8T45" />
       {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-      <script src={`${process.env.NEXT_PUBLIC_FRONTEND_URL}/tracker.js`} async />
+      <script src={`https://apireftest.hostnsoft.com/tracker.js`} async />
       <body suppressHydrationWarning className={dmSans.className}>
         <Wrapper>{children}</Wrapper>
         <NetworkStatus />

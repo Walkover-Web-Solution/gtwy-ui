@@ -38,6 +38,7 @@ import {
   loadTestCaseIntoChat,
   clearChatTestCaseIdAction,
 } from "@/store/action/chatAction";
+import RenderNode from "../richUI/RenderNode";
 
 function Chat({ params, userMessage, isOrchestralModel = false, searchParams, isEmbedUser }) {
   const messagesContainerRef = useRef(null);
@@ -829,18 +830,46 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     >
                                       {/* Show model's actual response if testcase was run, otherwise show original content */}
                                       {message.type !== "template" &&
+                                        message.type !== "richui_json" &&
                                         (message.testCaseResult && message.sender === "assistant"
                                           ? message.testCaseResult.actual_result || message.content
                                           : message.content)}
                                     </ReactMarkdown>
                                   )}
 
-                                  {/* Render Template Content (without HTML) */}
-                                  {message?.type === "template" && message?.content && (
-                                    <div
-                                      className="mt-4 template-html-container w-full"
-                                      dangerouslySetInnerHTML={{ __html: message.content }}
-                                    />
+                                  {message?.type === "richui_json" && message?.content && (
+                                    <div className="mt-4 richui-container w-full">
+                                      {(() => {
+                                        return (
+                                          <RenderNode
+                                            node={message.content}
+                                            onAction={(action) => {
+                                              if (action?.type === "reply" && action?.text) {
+                                                if (handleSendMessageRef.current && inputRef.current) {
+                                                  // Set the input field value and triggers send
+                                                  inputRef.current.value = action.text;
+                                                  setTimeout(() => {
+                                                    handleSendMessageRef.current(null, true);
+                                                  }, 50);
+
+                                                  // Clear the input field after sending
+                                                  setTimeout(() => {
+                                                    if (inputRef.current) {
+                                                      inputRef.current.value = "";
+                                                    }
+                                                  }, 200);
+                                                } else {
+                                                  console.warn("[Chat] handleSendMessageRef or inputRef is missing", {
+                                                    handleSendMessageRef: handleSendMessageRef.current,
+                                                    inputRef: inputRef.current,
+                                                  });
+                                                }
+                                              }
+                                            }}
+                                          />
+                                        );
+                                      })()}
+                                    </div>
                                   )}
 
                                   {/* Render message attachments (images, etc.) */}

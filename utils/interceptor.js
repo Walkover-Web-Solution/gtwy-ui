@@ -18,7 +18,10 @@ axios.interceptors.request.use(
       config.headers["proxy_auth_token"] = proxyToken;
     } else {
       // For other backend APIs, use local_token in Authorization header
-      let localToken = sessionStorage.getItem("local_token") || getFromCookies("local_token");
+      let localToken = getFromCookies("local_token");
+      if (window.location.hostname.includes("embed")) {
+        localToken = sessionStorage.getItem("local_token") || localToken;
+      }
       config.headers["Authorization"] = localToken;
     }
     return config;

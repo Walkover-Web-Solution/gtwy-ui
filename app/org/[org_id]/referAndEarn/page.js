@@ -36,7 +36,7 @@ export default function ReferAndEarnPage() {
         }
 
         const script = document.createElement("script");
-        script.src = `/affiliate-embed.js`;
+        script.src = `https://main.d2f49esifpcbwh.amplifyapp.com/affiliate-embed.js`;
         script.setAttribute("email", userdetails.email);
         script.setAttribute("password", "12345676789");
         script.setAttribute("token", embedToken);

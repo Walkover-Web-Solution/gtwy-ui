@@ -116,7 +116,7 @@ const EmbedPreview = ({
         </div>
       )}
 
-      <div className={`flex-1 ${showHeader ? "p-4 bg-base-200" : "w-full h-full"}`}>
+      <div className={`flex-1 ${showHeader ? "" : "w-full h-full"}`}>
         {embedToken ? (
           <div
             id={parentId}

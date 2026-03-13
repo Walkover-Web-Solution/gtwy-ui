@@ -1,10 +1,24 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { RotateCcw } from "lucide-react";
 
 const ChatbotPreview = ({ showHeader = true, embedToken }) => {
   const scriptLoadedRef = useRef(false);
   const scriptId = "chatbot-main-script";
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [isReloading, setIsReloading] = useState(false);
+
+  const handleReload = () => {
+    setIsReloading(true);
+    scriptLoadedRef.current = false;
+    const container = document.getElementById("chatbot-preview-container");
+    if (container) container.innerHTML = "";
+    const existing = document.getElementById(scriptId);
+    if (existing) document.head.removeChild(existing);
+    setReloadTrigger((prev) => prev + 1);
+    setTimeout(() => setIsReloading(false), 800);
+  };
 
   useEffect(() => {
     if (!embedToken) return;
@@ -32,7 +46,7 @@ const ChatbotPreview = ({ showHeader = true, embedToken }) => {
       }
       scriptLoadedRef.current = false;
     };
-  }, [embedToken]);
+  }, [embedToken, reloadTrigger]);
 
   useEffect(() => {
     if (!embedToken) return;
@@ -48,7 +62,7 @@ const ChatbotPreview = ({ showHeader = true, embedToken }) => {
     }, 100);
 
     return () => clearInterval(checkChatbot);
-  }, [embedToken]);
+  }, [embedToken, reloadTrigger]);
 
   if (!embedToken) {
     return null;
@@ -57,8 +71,16 @@ const ChatbotPreview = ({ showHeader = true, embedToken }) => {
   return (
     <div className="h-full flex flex-col bg-base-100">
       {showHeader && (
-        <div className="p-4 border-b border-base-300">
+        <div className="p-4 border-b border-base-300 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-base-content">Live Preview</h3>
+          <button
+            onClick={handleReload}
+            className="btn btn-ghost btn-xs gap-1"
+            disabled={isReloading}
+            title="Reload preview"
+          >
+            <RotateCcw className={`h-3 w-3 ${isReloading ? "animate-spin" : ""}`} />
+          </button>
         </div>
       )}
 

@@ -17,12 +17,17 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
     <dialog
       data-testid="tools-data-modal"
       id="tools-data-modal"
-      className="modal modal-middle mx-auto outline-none"
+      className="modal modal-middle p-4 outline-none z-[1000]"
       ref={toolsDataModalRef}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          handleClose();
+        }
+      }}
     >
-      <div className="relative bg-base-100 rounded-lg shadow-lg p-6 w-[80%] max-w-[80vw] overscroll-none">
+      <div className="modal-box relative bg-base-100 rounded-lg shadow-lg p-6 w-full max-w-5xl max-h-[85vh] overflow-hidden">
         <h2 className="font-bold mb-1">Function Data:</h2>
-        <div className="overflow-y-scroll max-h-[70vh] max-w-auto break-words">
+        <div className="overflow-y-auto max-h-[70vh] max-w-auto break-words pr-1">
           {toolsData ? (
             <>
               <div className="mt-4">

@@ -118,7 +118,7 @@ const TestingTab = ({ data, isTestingMode }) => {
   const getAllAgents = async () => {
     setIsLoadingAgents(true);
     try {
-      const response = await fetch("http://localhost:7072/api/embed/getAgents", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/embed/getAgents`, {
         method: "GET",
         headers: {
           Authorization: embedToken,

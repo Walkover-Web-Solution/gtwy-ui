@@ -213,18 +213,29 @@ const ChatbotTestingControlsInner = ({ chatBotId }) => {
 
 export const ChatbotTestingControls = React.memo(ChatbotTestingControlsInner);
 
-const ChatbotTestingTab = ({ params, chatBotId, isTestingMode, embedToken }) => {
+const ChatbotTestingTab = ({ params, chatBotId, embedToken }) => {
   const dispatch = useDispatch();
   const [portalTarget, setPortalTarget] = useState(null);
 
   useEffect(() => {
-    if (isTestingMode) {
+    // Wait for sidebar slide-in animation (300ms) before mounting portal content
+    const timer = setTimeout(() => {
       const el = document.getElementById("chatbot-testing-sidebar-content");
-      setPortalTarget(el);
-    } else {
-      setPortalTarget(null);
-    }
-  }, [isTestingMode]);
+      if (el) {
+        setPortalTarget(el);
+        return;
+      }
+      const interval = setInterval(() => {
+        const el = document.getElementById("chatbot-testing-sidebar-content");
+        if (el) {
+          setPortalTarget(el);
+          clearInterval(interval);
+        }
+      }, 50);
+      return () => clearInterval(interval);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   const { chatBotConfig } = useCustomSelector((state) => ({
     chatBotConfig: state?.ChatBot?.ChatBotMap?.[chatBotId]?.config,
@@ -236,16 +247,12 @@ const ChatbotTestingTab = ({ params, chatBotId, isTestingMode, embedToken }) => 
     }
   }, [chatBotId, dispatch]);
 
-  if (isTestingMode && portalTarget) {
-    return (
-      <>
-        {createPortal(<ChatbotTestingControls chatBotId={chatBotId} />, portalTarget)}
-        <ChatbotPreview chatbotConfig={chatBotConfig} embedToken={embedToken} params={params} />
-      </>
-    );
-  }
-
-  return <ChatbotPreview chatbotConfig={chatBotConfig} embedToken={embedToken} params={params} />;
+  return (
+    <>
+      {portalTarget && createPortal(<ChatbotTestingControls chatBotId={chatBotId} />, portalTarget)}
+      <ChatbotPreview chatbotConfig={chatBotConfig} embedToken={embedToken} params={params} />
+    </>
+  );
 };
 
 export default ChatbotTestingTab;

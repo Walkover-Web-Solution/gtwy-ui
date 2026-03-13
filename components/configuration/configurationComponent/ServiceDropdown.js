@@ -26,6 +26,7 @@ const ServiceDropdown = ({
     service,
     SERVICES,
     DEFAULT_MODEL,
+    bridgeApikeyObjectId,
     prompt,
     bridgeApiKey,
     shouldPromptShow,
@@ -49,6 +50,7 @@ const ServiceDropdown = ({
       DEFAULT_MODEL: state?.serviceReducer?.default_model,
       bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
       service: service,
+      bridgeApikeyObjectId: activeData?.apikey_object_id || {},
       prompt: isPublished ? bridgeDataFromState?.configuration?.prompt || "" : versionData?.configuration?.prompt || "",
       bridgeApiKey: isPublished
         ? bridgeDataFromState?.apikey_object_id?.[service]
@@ -142,17 +144,23 @@ const ServiceDropdown = ({
     (serviceValue) => {
       const newService = serviceValue;
       const defaultModel = DEFAULT_MODEL?.[newService]?.model;
+      const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
       setSelectedService(newService);
+
+      const dataToSend = { service: newService, configuration: { model: defaultModel } };
+      if (!hasApiKeyForNewService) {
+        dataToSend.auto_model_select = false;
+      }
 
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { service: newService, configuration: { model: defaultModel } },
+          dataToSend,
         })
       );
     },
-    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL]
+    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL, bridgeApikeyObjectId]
   );
 
   const isDisabled = bridgeType === "batch" && service === "openai";

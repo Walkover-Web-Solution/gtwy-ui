@@ -23,21 +23,36 @@ export function MainAgentUI({
   };
 
   return (
-    <div className="space-y-3 z-10">
+    <div data-testid="main-agent-ui" className="space-y-3 z-10">
       {/* Agent Header */}
-      <div className="flex flex-col items-center gap-2">
-        <div className="w-8 h-8 flex items-center justify-center border border-primary rounded-none bg-base-200">
+      <div data-testid="main-agent-header" className="flex flex-col items-center gap-2">
+        <div
+          data-testid="main-agent-icon"
+          className="w-8 h-8 flex items-center justify-center border border-primary rounded-none bg-base-200"
+        >
           <Bot size={16} className="text-base-content" />
         </div>
-        <div className="text-xs text-base-content/60 font-semibold">MAIN AGENT</div>
-        <div className="font-semibold border border-primary text-primary text-sm p-2 bg-primary/10">{name}</div>
+        <div data-testid="main-agent-label" className="text-xs text-base-content/60 font-semibold">
+          MAIN AGENT
+        </div>
+        <div
+          data-testid="main-agent-name"
+          className="font-semibold border border-primary text-primary text-sm p-2 bg-primary/10"
+        >
+          {name}
+        </div>
       </div>
 
       {/* Tools Section */}
       {tools.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-center text-xs tracking-widest text-base-content/60">TOOL CALLS</div>
-          <div className="space-y-2">
+        <div data-testid="main-agent-tools-section" className="space-y-2">
+          <div
+            data-testid="main-agent-tools-label"
+            className="text-center text-xs tracking-widest text-base-content/60"
+          >
+            TOOL CALLS
+          </div>
+          <div data-testid="main-agent-tools-list" className="space-y-2">
             {tools.map((tool, index) => (
               <div
                 key={`${tool?.name || "tool"}-${index}`}
@@ -45,11 +60,16 @@ export function MainAgentUI({
                 className="flex items-center justify-between border border-base-300 hover:border-primary p-2 hover:bg-primary/10 cursor-pointer"
                 onClick={() => handleToolClick(tool)}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-primary">🔧</span>
-                  <span className="text-sm text-base-content truncate">{tool?.name || "Unknown Tool"}</span>
+                <div data-testid={`main-agent-tool-content-${index}`} className="flex items-center gap-2">
+                  <span data-testid={`main-agent-tool-icon-${index}`} className="text-primary">
+                    🔧
+                  </span>
+                  <span data-testid={`main-agent-tool-name-${index}`} className="text-sm text-base-content truncate">
+                    {tool?.name || "Unknown Tool"}
+                  </span>
                 </div>
                 <button
+                  data-testid={`main-agent-tool-log-${index}`}
                   type="button"
                   onClick={(event) => handleToolSliderClick(event, tool)}
                   className="p-1 border border-base-300 rounded hover:border-primary hover:text-primary"
@@ -65,9 +85,14 @@ export function MainAgentUI({
 
       {/* Response Section */}
       {responsePreview && (
-        <div className="space-y-2">
-          <div className="text-center text-xs tracking-widest text-base-content/60">RESPONSE</div>
-          <div className="text-[10px] text-base-content/60 text-center">
+        <div data-testid="main-agent-response-section" className="space-y-2">
+          <div
+            data-testid="main-agent-response-label"
+            className="text-center text-xs tracking-widest text-base-content/60"
+          >
+            RESPONSE
+          </div>
+          <div data-testid="main-agent-response-summary" className="text-[10px] text-base-content/60 text-center">
             {agentCount} agent{agentCount === 1 ? "" : "s"} • {toolCount} tool{toolCount === 1 ? "" : "s"} called
           </div>
           <div
@@ -75,11 +100,17 @@ export function MainAgentUI({
             className="border border-base-300 hover:border-success p-3 hover:bg-success/10 cursor-pointer transition-all"
             onClick={onResponseClick}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-success">✓</span>
-              <span className="text-xs font-semibold text-success">Delivered</span>
+            <div data-testid="main-agent-response-status" className="flex items-center gap-2 mb-2">
+              <span data-testid="main-agent-response-status-icon" className="text-success">
+                ✓
+              </span>
+              <span data-testid="main-agent-response-status-text" className="text-xs font-semibold text-success">
+                Delivered
+              </span>
             </div>
-            <p className="text-sm text-base-content/80 line-clamp-3">{responsePreview}</p>
+            <p data-testid="main-agent-response-preview-text" className="text-sm text-base-content/80 line-clamp-3">
+              {responsePreview}
+            </p>
           </div>
         </div>
       )}

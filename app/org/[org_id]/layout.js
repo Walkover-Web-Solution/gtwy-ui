@@ -368,7 +368,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         authToken: PROXY_AUTH_TOKEN,
         pass: true,
         type: "user-management",
-        exclude_role_ids: process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID,
+        exclude_role_ids: [process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID],
         success: (data) => {
           // get verified token in response
           console.log("MSG91 Auth success response", data);
