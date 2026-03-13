@@ -51,6 +51,7 @@ export const ITEM_ICONS = {
   addModel: <AddIcon size={15} />,
   prebuiltPrompts: <Bot size={15} />,
   widgets: <LayoutTemplate size={15} />,
+  templates: <LayoutTemplate size={15} />,
 };
 
 export const DISPLAY_NAMES = (key) => {

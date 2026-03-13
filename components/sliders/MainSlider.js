@@ -869,6 +869,24 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     <span className="text-xs truncate">{isAdminMode ? "Back to Main" : "Admin Settings"}</span>
                   )}
                 </button>
+
+                {/* Templates Button */}
+                <button
+                  id="main-slider-templates-button"
+                  onClick={() => {
+                    router.push(`/org/${orgId}/templates`);
+                    if (isMobile) setIsMobileVisible(false);
+                  }}
+                  onMouseEnter={(e) => onItemEnter("templates", e)}
+                  onMouseLeave={onItemLeave}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-base-200 transition-colors ${
+                    !showSidebarContent ? "justify-center" : ""
+                  }`}
+                >
+                  {ITEM_ICONS.templates}
+                  {showSidebarContent && <span className="text-xs truncate">Template</span>}
+                </button>
+
                 <button
                   id="main-slider-tutorial-button"
                   onClick={() => {
