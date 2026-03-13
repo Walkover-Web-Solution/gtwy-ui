@@ -4,7 +4,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { GetPreBuiltToolTypeIcon, getStatusClass } from "@/utils/utility";
 import { AddIcon } from "@/components/Icons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
 
 function EmbedListSuggestionDropdownMenu({
@@ -40,6 +40,17 @@ function EmbedListSuggestionDropdownMenu({
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef(null);
+
+  // When the dropdown opens, move focus to the search field by default.
+  // This keeps keyboard navigation predictable and improves accessibility.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      searchInputRef.current?.focus?.();
+    }, 0);
+
+    return () => clearTimeout(t);
+  }, []);
 
   const handleInputChange = (e) => {
     setSearchQuery(e.target?.value || ""); // Update search query when the input changes
@@ -164,6 +175,7 @@ function EmbedListSuggestionDropdownMenu({
             <input
               data-testid="embed-suggestion-search-input"
               id="embed-suggestion-search-input"
+              ref={searchInputRef}
               type="text"
               placeholder={`Search ${name == "preFunction" ? "Pre Function" : "Tool"}`}
               value={searchQuery}

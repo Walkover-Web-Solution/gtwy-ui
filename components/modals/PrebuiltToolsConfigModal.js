@@ -14,6 +14,9 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
   // Use ref instead of state for editing value to avoid unnecessary re-renders
   const editingValueRef = useRef("");
 
+  // Autofocus the primary input when the modal opens.
+  const domainInputRef = useRef(null);
+
   // Derived state
   const isEditing = editingIndex !== -1;
 
@@ -21,6 +24,30 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
   useEffect(() => {
     setDomains(initialDomains.length > 0 ? [...initialDomains] : []);
   }, [initialDomains]);
+
+  // Focus the main input when the <dialog> is opened via showModal().
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const modalEl = document.getElementById(MODAL_TYPE.PREBUILT_TOOLS_CONFIG_MODAL);
+    if (!modalEl) return;
+
+    const focusInput = () => {
+      // Defer to ensure the dialog is open and content is rendered.
+      setTimeout(() => domainInputRef.current?.focus?.(), 0);
+    };
+
+    const onToggle = () => {
+      if (modalEl.open) focusInput();
+    };
+
+    modalEl.addEventListener("toggle", onToggle);
+
+    // If already open, focus immediately.
+    if (modalEl.open) focusInput();
+
+    return () => modalEl.removeEventListener("toggle", onToggle);
+  }, []);
 
   // Validate Domain only (no HTTP/HTTPS URLs allowed)
   const isValidDomain = (input) => {
@@ -256,6 +283,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                   <input
                     id="prebuilt-tools-config-domain-input"
                     data-testid="prebuilt-tools-config-domain-input"
+                    ref={domainInputRef}
                     type="text"
                     name="domain"
                     value={newDomain}
