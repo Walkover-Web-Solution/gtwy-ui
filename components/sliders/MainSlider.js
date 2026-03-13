@@ -404,6 +404,10 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
   // Reusable function for rendering organization dropdown content
   const renderOrganizationDropdown = useCallback(() => {
+    const totalOrgCount = Object.keys(organizations || {}).length;
+    const otherOrgCount = Object.keys(organizations || {}).filter((id) => id !== orgId).length;
+    const showMoreButton = totalOrgCount > 3; // show "More" only when there are more than 3 orgs total
+
     return (
       <>
         {/* User info */}
@@ -468,19 +472,19 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   </button>
                 ))}
 
-              <button
-                id="main-slider-view-more-orgs-button"
-                onClick={() => handleSwitchOrg()}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-400 text-sm truncate">
-                    more{" "}
-                    {Object.keys(organizations || {}).filter((id) => id !== orgId).length > 2 &&
-                      `(+${Object.keys(organizations || {}).filter((id) => id !== orgId).length - 2})`}
+              {showMoreButton && (
+                <button
+                  id="main-slider-view-more-orgs-button"
+                  onClick={() => handleSwitchOrg()}
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-blue-400 text-sm truncate">
+                      more {otherOrgCount > 2 && `(+${otherOrgCount - 2})`}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              )}
               <hr className="border-base-300 my-2" />
             </>
           )}
