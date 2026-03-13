@@ -89,9 +89,7 @@ export default function TemplatesPage() {
         ) : null}
 
         <div className="flex flex-row gap-4 mt-4">
-          {showSearch && (
-            <SearchItems data={templates || []} setFilterItems={setFilteredTemplates} item="Template" />
-          )}
+          {showSearch && <SearchItems data={templates || []} setFilterItems={setFilteredTemplates} item="Template" />}
         </div>
 
         {filteredTemplates?.length > 0 ? (
