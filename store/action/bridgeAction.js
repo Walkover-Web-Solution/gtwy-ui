@@ -1,6 +1,7 @@
 import {
   addorRemoveResponseIdInBridge,
   archiveBridgeApi,
+  createAgentFromTemplateApi,
   createBridge,
   createBridgeVersionApi,
   createDuplicateBridge,
@@ -92,6 +93,35 @@ export const getBridgeVersionAction =
       console.error(error);
     }
   };
+
+export const createAgentFromTemplateAction = (templateId, onSuccess) => async (dispatch) => {
+  try {
+    dispatch(clearPreviousBridgeDataReducer());
+    const response = await createAgentFromTemplateApi(templateId);
+    const serializableData = {
+      data: response.data,
+      status: response.status,
+      statusText: response.statusText,
+    };
+    onSuccess(serializableData);
+    dispatch(createBridgeReducer({ data: serializableData, orgId: response.data.orgid }));
+    if (response?.data?._id) {
+      trackAgentEvent("created", {
+        agent_id: response.data._id,
+        name: response.data.name,
+        org_id: response.data.orgid,
+      });
+    }
+  } catch (error) {
+    if (error?.response?.data?.message?.includes("duplicate key")) {
+      toast.error("Agent Name can't be duplicate");
+    } else {
+      toast.error(error?.response?.data?.message || "Something went wrong");
+    }
+    console.error(error);
+    throw error;
+  }
+};
 
 export const createBridgeAction = (dataToSend, onSuccess) => async (dispatch, getState) => {
   try {

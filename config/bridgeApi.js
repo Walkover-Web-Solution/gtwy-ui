@@ -221,3 +221,26 @@ export const fetchBridgeUsageMetricsApi = async ({ start_date, end_date }) => {
     throw error?.response || error;
   }
 };
+
+// Template Management APIs
+export const createAgentFromTemplateApi = async (templateId) => {
+  try {
+    const response = await axios.post(`${URL}/api/template/create/agent/${templateId}`);
+    return response;
+  } catch (error) {
+    toast.error(error?.response?.data?.message || "Failed to create agent from template");
+    throw error;
+  }
+};
+
+export const convertAgentToTemplate = async (agentId, templateName) => {
+  try {
+    const response = await axios.post(`${URL}/api/template/${agentId}`, { templateName });
+    toast.success("Agent converted to template successfully");
+    return response?.data;
+  } catch (error) {
+    toast.error(error?.response?.data?.message || "Failed to convert agent to template");
+    console.error("Error converting agent to template:", error);
+    throw error;
+  }
+};
