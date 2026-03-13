@@ -9,15 +9,19 @@ import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 const TOOL_CONFIG_SCHEMA = {
   query_refiner: {
     configFields: [
-      { key: "prompt", label: "Refinement Prompt", type: "textarea", placeholder: "e.g. Rewrite the user's query to be more specific and search-engine friendly. Focus on intent and remove ambiguity." },
+      {
+        key: "prompt",
+        label: "Refinement Prompt",
+        type: "textarea",
+        placeholder:
+          "e.g. Rewrite the user's query to be more specific and search-engine friendly. Focus on intent and remove ambiguity.",
+      },
     ],
     argsFields: [],
   },
   rag_knowledgebase: {
-    configFields: [
-      { key: "knowledgebase", label: "Knowledge Base", type: "knowledgebase_select" },
-    ],
-   argsFields: [],
+    configFields: [{ key: "knowledgebase", label: "Knowledge Base", type: "knowledgebase_select" }],
+    argsFields: [],
   },
   gtwy_web_search: {
     configFields: [
@@ -32,12 +36,9 @@ const TOOL_CONFIG_SCHEMA = {
         ],
       },
     ],
-    argsFields: [
-      { key: "url", label: "URL  to Scrape", placeholder: "example.com" },
-    ],
+    argsFields: [{ key: "url", label: "URL  to Scrape", placeholder: "example.com" }],
   },
 };
-
 
 export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublished, orgId }) {
   const [config, setConfig] = useState({});
@@ -93,9 +94,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
                 disabled={isPublished}
                 onChange={(e) => {
                   const current = config[field.key] || [];
-                  const updated = e.target.checked
-                    ? [...current, opt.value]
-                    : current.filter((v) => v !== opt.value);
+                  const updated = e.target.checked ? [...current, opt.value] : current.filter((v) => v !== opt.value);
                   setConfig((prev) => ({ ...prev, [field.key]: updated }));
                 }}
               />
@@ -108,15 +107,10 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
 
     if (field.type === "knowledgebase_select") {
       const selected = knowledgeBaseData.find((kb) => kb._id === config.resource_id);
-      const filtered = knowledgeBaseData.filter((kb) =>
-        kb.title?.toLowerCase().includes(kbSearch.toLowerCase())
-      );
+      const filtered = knowledgeBaseData.filter((kb) => kb.title?.toLowerCase().includes(kbSearch.toLowerCase()));
       return (
         <div className="dropdown w-full">
-          <div
-            tabIndex={0}
-            className="input input-bordered input-sm text-xs w-full flex items-center cursor-pointer"
-          >
+          <div tabIndex={0} className="input input-bordered input-sm text-xs w-full flex items-center cursor-pointer">
             {selected ? selected.title : <span className="text-base-content/40">Select a knowledge base...</span>}
           </div>
           <ul
@@ -133,25 +127,21 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
                 onClick={(e) => e.stopPropagation()}
               />
             </li>
-            {filtered.length === 0 && (
-              <li className="text-xs text-base-content/40 px-2">No knowledge bases found</li>
-            )}
+            {filtered.length === 0 && <li className="text-xs text-base-content/40 px-2">No knowledge bases found</li>}
             {filtered.map((kb) => (
               <li
                 key={kb._id}
                 onClick={() => {
                   setConfig((prev) => ({
                     ...prev,
-                     resource_id: kb._id,
-  collection_id: kb.collectionId,
+                    resource_id: kb._id,
+                    collection_id: kb.collectionId,
                   }));
                   setKbSearch("");
                   document.activeElement?.blur?.();
                 }}
               >
-                <a className={`text-xs ${config.resource_id === kb._id ? "active" : ""}`}>
-                  {kb.title}
-                </a>
+                <a className={`text-xs ${config.resource_id === kb._id ? "active" : ""}`}>{kb.title}</a>
               </li>
             ))}
           </ul>
@@ -175,13 +165,10 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
     <Modal MODAL_ID={MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL}>
       {toolEntry && schema ? (
         <div className="modal-box flex flex-col gap-4">
-          <h3 className="font-semibold text-base">
-            {PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings
-          </h3>
+          <h3 className="font-semibold text-base">{PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings</h3>
 
           {schema.argsFields.length > 0 && (
             <div className="flex flex-col gap-3">
-         
               {schema.argsFields.map((field) => (
                 <div key={field.key} className="flex flex-col gap-1">
                   <label className="text-xs font-medium">{field.label}</label>
@@ -198,7 +185,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
             </div>
           )}
 
-              {schema.configFields.length > 0 && (
+          {schema.configFields.length > 0 && (
             <div className="flex flex-col gap-3">
               <p className="text-xs font-semibold text-base-content/60 uppercase tracking-wide">Configuration</p>
               {schema.configFields.map((field) => (
@@ -212,7 +199,9 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
 
           {!isPublished && (
             <div className="modal-action">
-              <button className="btn btn-primary btn-sm" onClick={handleSave}>Save</button>
+              <button className="btn btn-primary btn-sm" onClick={handleSave}>
+                Save
+              </button>
               <form method="dialog">
                 <button className="btn btn-sm">Cancel</button>
               </form>

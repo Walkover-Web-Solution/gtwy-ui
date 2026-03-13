@@ -31,10 +31,14 @@ const InputConfigComponent = memo(
   }) => {
     // Optimized Redux selector with memoization and shallow comparison
     const { prompt: reduxPrompt, oldContent } = usePromptSelector(params, searchParams);
-    const { showVariables, embedPromptConfig,bridge_pre_tools } = useCustomSelector((state) => {
+    const { showVariables, embedPromptConfig, bridge_pre_tools } = useCustomSelector((state) => {
       const eu = state.appInfoReducer.embedUserDetails;
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-      return { showVariables: eu?.showVariables, embedPromptConfig: eu?.prompt, bridge_pre_tools: versionData?.pre_tools || [], };
+      return {
+        showVariables: eu?.showVariables,
+        embedPromptConfig: eu?.prompt,
+        bridge_pre_tools: versionData?.pre_tools || [],
+      };
     });
     // Refs for zero-render typing experience
     const debounceTimerRef = useRef(null);

@@ -5,7 +5,7 @@ import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
-import { MODAL_TYPE,PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
+import { MODAL_TYPE, PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
 import RenderEmbed from "./RenderEmbed";
 import InfoTooltip from "@/components/InfoTooltip";
 import { isEqual } from "lodash";
@@ -13,7 +13,6 @@ import { AddIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import PrebuiltPreToolConfigModal from "@/components/modals/PrebuiltPreToolConfigModal";
-
 
 const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEmbedUser = false }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -78,7 +77,6 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     });
   }, [bridge_pre_tools, function_data]);
 
-
   const handleOpenModal = (itemId) => {
     // Find the full tool item from bridgePreFunctions by _id
     const toolItem = bridgePreFunctions.find((t) => t._id === itemId);
@@ -140,12 +138,12 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
       if (typeof document !== "undefined") document.activeElement?.blur?.();
     }, 0);
   };
-  
-    const disableAllPreTools = async () => {
+
+  const disableAllPreTools = async () => {
     for (const toolItem of bridgePreFunctions) {
       await dispatch(
         updateApiAction(params.id, {
-          pre_tools: toolItem._toolEntry ,
+          pre_tools: toolItem._toolEntry,
           version_id: searchParams?.version,
           status: "0",
         })
@@ -215,9 +213,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     }
     // Save args inline in the pre_tools array entry
     const updatedPreTools = bridge_pre_tools.map((t) => {
-      if (t.type === PRE_TOOL_TYPES.custom_function &&
-        t.config?.function_id === preFunctionId
-      ) {
+      if (t.type === PRE_TOOL_TYPES.custom_function && t.config?.function_id === preFunctionId) {
         return { ...t, args: variablesPath };
       }
       return t;
