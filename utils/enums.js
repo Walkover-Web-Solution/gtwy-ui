@@ -33,6 +33,7 @@ export const MODAL_TYPE = {
   CHAT_DETAILS_VIEW_MODAL: "chat_details_view",
   JSON_SCHEMA: "JSON_SCHEMA",
   JSON_SCHEMA_BUILDER: "JSON_SCHEMA_BUILDER",
+  BUTTON_SCHEMA_BUILDER: "BUTTON_SCHEMA_BUILDER",
   KNOWLEDGE_BASE_MODAL: "KNOWLEDGE_BASE_MODAL",
   PROMPT_SUMMARY: "PROMPT_SUMMARY",
   TESTCASE_MODAL: "TESTCASE_MODAL",
@@ -86,6 +87,8 @@ export const MODAL_TYPE = {
 export const API_KEY_MODAL_INPUT = ["name", "apikey", "comment", "apikey_limit"];
 
 export const USER_FEEDBACK_FILTER_OPTIONS = ["all", "1", "2"];
+
+export const BATCH_PROCESSING_STATUSES = ["in_progress", "processing", "queued", "pending", "validating", "finalizing"];
 
 export const TIME_RANGE_OPTIONS = [
   "1 hour",
@@ -246,3 +249,19 @@ export const EMBED_SKIP_KEYS = new Set([
   "configureGtwyRedirection",
   "variables_path",
 ]);
+
+export const PRE_TOOL_TYPES = {
+  custom_function: "custom_function",
+  query_refiner: "query_refiner",
+  rag_knowledgebase: "rag_knowledgebase",
+  gtwy_web_search: "gtwy_web_search",
+};
+
+export const PRE_TOOL_LABELS = {
+  custom_function: "Custom Function",
+  query_refiner: "Query Refiner",
+  rag_knowledgebase: "RAG Knowledgebase",
+  gtwy_web_search: "Gtwy Web Search",
+};
+
+export const ON_CLICK_ACTION_TYPES = ["reply", "sendDataToFrontend"];

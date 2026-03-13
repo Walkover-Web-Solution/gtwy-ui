@@ -5,7 +5,7 @@ import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE,PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
 import RenderEmbed from "./RenderEmbed";
 import InfoTooltip from "@/components/InfoTooltip";
 import { isEqual } from "lodash";
@@ -14,19 +14,6 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import PrebuiltPreToolConfigModal from "@/components/modals/PrebuiltPreToolConfigModal";
 
-const PRE_TOOL_TYPES = {
-  custom_function: "custom_function",
-  query_refiner: "query_refiner",
-  rag_knowledgebase: "rag_knowledgebase",
-  gtwy_web_search: "gtwy_web_search",
-};
-
-const PRE_TOOL_LABELS = {
-  custom_function: "Custom Function",
-  query_refiner: "Query Refiner",
-  rag_knowledgebase: "RAG Knowledgebase",
-  gtwy_web_search: "Gtwy Web Search",
-};
 
 const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEmbedUser = false }) => {
   // Determine if content is read-only (either published or user is not an editor)

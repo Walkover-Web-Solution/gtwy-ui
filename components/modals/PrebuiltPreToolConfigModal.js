@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Modal from "@/components/UI/Modal";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, PRE_TOOL_LABELS } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
@@ -38,11 +38,6 @@ const TOOL_CONFIG_SCHEMA = {
   },
 };
 
-const PRE_TOOL_LABELS = {
-  query_refiner: "Query Refiner",
-  rag_knowledgebase: "RAG Knowledgebase",
-  gtwy_web_search: "Gtwy Web Search",
-};
 
 export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublished, orgId }) {
   const [config, setConfig] = useState({});

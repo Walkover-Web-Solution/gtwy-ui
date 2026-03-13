@@ -6,6 +6,7 @@ import { GetPreBuiltToolTypeIcon, getStatusClass } from "@/utils/utility";
 import { AddIcon } from "@/components/Icons";
 import React, { useMemo, useState } from "react";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
+import { PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
 
 function EmbedListSuggestionDropdownMenu({
   params,
@@ -181,11 +182,9 @@ connectedPreToolTypes = [],
             {name === "preFunction" && (
   <>
     <li className="text-sm font-semibold disabled mt-2">Built-in Pre Tools</li>
-    {[
-      { type: "query_refiner", label: "Query Refiner" },
-      { type: "rag_knowledgebase", label: "RAG Knowledgebase" },
-      { type: "gtwy_web_search", label: "Gtwy Web Search" },
-    ]
+      {Object.keys(PRE_TOOL_TYPES)
+      .filter((k) => k !== "custom_function")
+      .map((k) => ({ type: k, label: PRE_TOOL_LABELS[k] }))
       .filter((t) => !connectedPreToolTypes.includes(t.type))
       .map((t) => (
         <li key={t.type} onClick={() => onSelectBuiltInPreTool(t.type)}>
