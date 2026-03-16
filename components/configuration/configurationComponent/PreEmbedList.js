@@ -234,6 +234,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
       }
       return t;
     });
+    setSelectedPreTool(updatedToolEntry);
     dispatch(
       updateBridgeVersionAction({
         bridgeId: params.id,
