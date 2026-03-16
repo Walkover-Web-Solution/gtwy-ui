@@ -326,8 +326,12 @@ const Navbar = ({ isEmbedUser, params }) => {
   const toggleConfigHistorySidebar = useCallback(() => toggleSidebar("default-config-history-slider", "right"), []);
   const handleHomeClick = useCallback(() => router.push(`/org/${orgId}/agents`), [router, orgId]);
 
-  // Keyboard shortcuts for navigation
+  // Keyboard shortcuts for navigation - only enabled on testcases, configuration, or history pages
   useEffect(() => {
+    // Only enable shortcuts on allowed pages
+    const isAllowedPage = ["configure", "history", "testcase"].some((seg) => pathname.includes(seg));
+    if (!isAllowedPage) return;
+
     let gPressed = false;
     let timeoutId = null;
 
@@ -370,7 +374,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       window.removeEventListener("keydown", handleKeyDown);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [handleTabChange, isEmbedUser]);
+  }, [handleTabChange, isEmbedUser, pathname]);
 
   const StatusIndicator = ({ status }) =>
     status === BRIDGE_STATUS.ACTIVE ? null : (
