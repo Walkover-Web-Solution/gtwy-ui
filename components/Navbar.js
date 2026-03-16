@@ -317,8 +317,9 @@ const Navbar = ({ isEmbedUser, params }) => {
     const handleKeyDown = (e) => {
       const target = e.target;
       const isInputField = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      const isOnAgentPage = /\/agents\/(configure|testcase|history)\//.test(window.location.pathname);
 
-      if (isInputField) return;
+      if (isInputField || !isOnAgentPage) return;
 
       if (e.key === "g" || e.key === "G") {
         gPressed = true;
