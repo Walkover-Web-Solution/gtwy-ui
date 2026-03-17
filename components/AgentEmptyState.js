@@ -5,13 +5,17 @@ import PageHeader from "./Pageheader";
 import CreateNewBridge from "./CreateNewBridge";
 import Protected from "./Protected";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title, description, docLink }) => {
   const { getApiAgentCreationVideo, getChatbotAgentCreationVideo } = useTutorialVideos();
-
+  const { tutorialData } = useCustomSelector((state) => ({
+    tutorialData: state.flowDataReducer?.flowData?.tutorialData || [],
+  }));
   const agentCreationvideoUrl =
     defaultBridgeType === "chatbot" ? getChatbotAgentCreationVideo() : getApiAgentCreationVideo();
-  const embedAgentCreationvideoUrl = getChatbotAgentCreationVideo();
+  const embedAgentCreationTutorial = tutorialData?.find((item) => item.title === "Agent Creation Video: Embed");
+  const embedAgentCreationvideoUrl = embedAgentCreationTutorial?.videoUrl || "";
   return (
     <div data-testid="agent-empty-state-container" id="agent-empty-state-container" className=" mt-8 px-4">
       <div className=" mx-2 ">

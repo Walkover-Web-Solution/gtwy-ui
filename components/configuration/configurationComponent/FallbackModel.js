@@ -7,7 +7,15 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { getIconOfService } from "@/utils/utility";
 import { CircleQuestionMark } from "lucide-react";
 
-const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor = true, isEmbedUser }) => {
+const FallbackModel = ({
+  params,
+  searchParams,
+  bridgeType,
+  isPublished,
+  shouldRenderApiKey,
+  isEditor = true,
+  isEmbedUser,
+}) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const [showApiKeysToggle, setShowApiKeysToggle] = useState(false);
@@ -441,7 +449,7 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
         </div>
       )}
 
-      {((!showDefaultApikeys && isEmbedUser) || !isEmbedUser) && (
+      {shouldRenderApiKey && (
         <div className="mt-4">
           <div className="flex flex-col gap-3 w-full">
             {/* Multiple API Keys Label */}

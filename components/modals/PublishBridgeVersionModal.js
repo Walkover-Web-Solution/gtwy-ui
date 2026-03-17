@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo, useEffect } from "react";
+import React, { useCallback, useState, useMemo, useEffect, useRef } from "react";
 import { X, AlertTriangle, Settings, CircleX, ArrowRightLeft, Check, Bot } from "lucide-react";
 import {
   getAllBridgesAction,
@@ -31,6 +31,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [showSummaryValidation, setShowSummaryValidation] = useState(false);
   const [summaryAccordionOpen, setSummaryAccordionOpen] = useState(false);
   const [convertToTemplate, setConvertToTemplate] = useState(false);
+  const publishDropdownRef = useRef(null);
 
   const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } =
     useCustomSelector((state) => {

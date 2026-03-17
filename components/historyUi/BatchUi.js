@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { BotIcon, WrenchIcon, FileClockIcon } from "@/components/Icons";
 import { Zap } from "lucide-react";
 
-export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = false }) {
+export function BatchUI({ agents, onToolClick, onToolSliderClick, onAgentSliderClick, isLoading = false }) {
   const [openAgentKey, setOpenAgentKey] = useState(null);
   const [popupPos, setPopupPos] = useState({ top: 0, left: 0 });
   const [selectedFunctionData, setSelectedFunctionData] = useState(null);
@@ -55,16 +55,26 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
             <div key={`${toolName}-${index}`} className={isLastOdd ? "col-span-2" : ""}>
               <div
                 data-testid={`batch-ui-tool-${depth}-${index}`}
-                onClick={() =>
-                  isAgentNode
-                    ? handleAgentClick(
+                onClick={() => {
+                  if (isAgentNode) {
+                    if (onAgentSliderClick) {
+                      onAgentSliderClick({
+                        functionData: tool?.functionData ?? tool,
+                        name: toolName,
+                        tools: tool?.children || [],
+                      });
+                    } else {
+                      handleAgentClick(
                         `child-${depth}-${index}`,
                         tool?.functionData ?? tool,
                         toolName,
                         tool?.children || []
-                      )
-                    : handleToolClick(tool)
-                }
+                      );
+                    }
+                  } else {
+                    handleToolClick(tool);
+                  }
+                }}
                 className={`cursor-pointer flex items-center justify-between border px-3 py-2 text-xs text-base-content gap-2
                               ${isAgentNode ? "hover:border-blue-400 hover:bg-blue-400/10" : "hover:border-orange-400 hover:bg-orange-400/10"}`}
                 title={toolName}
@@ -198,7 +208,17 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
                 <div className="relative">
                   <div
                     data-testid={`batch-ui-agent-${agentKey}`}
-                    onClick={() => handleAgentClick(agentKey, functionData, agent.name, agent.parallelTools)}
+                    onClick={() => {
+                      if (onAgentSliderClick) {
+                        onAgentSliderClick({
+                          functionData,
+                          name: agent.name,
+                          tools: agent.parallelTools || [],
+                        });
+                      } else {
+                        handleAgentClick(agentKey, functionData, agent.name, agent.parallelTools);
+                      }
+                    }}
                     ref={(node) => {
                       if (node) rowRefs.current[agentKey] = node;
                     }}
@@ -270,7 +290,8 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
         })}
       </div>
 
-      {openAgentKey &&
+      {!onAgentSliderClick &&
+        openAgentKey &&
         selectedFunctionData &&
         createPortal(
           <div

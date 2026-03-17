@@ -28,8 +28,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" data-theme="light">
       <GoogleTagManager gtmId="GTM-PXRN8T45" />
-      {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-      <script src={`https://apireftest.hostnsoft.com/tracker.js`} async />
+      <script src={`https://main.d2f49esifpcbwh.amplifyapp.com/tracker.js`} async />
       <body suppressHydrationWarning className={dmSans.className}>
         <Wrapper>{children}</Wrapper>
         <NetworkStatus />

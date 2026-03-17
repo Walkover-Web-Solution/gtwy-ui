@@ -47,7 +47,6 @@ const OrgPageGuard = ({ children }) => {
     } else {
       const onboardingDismissed = getFromCookies("onboarding_dismissed");
       if (!onboardingDismissed && !currentUser?.meta?.onBordingFormSubmitted && !isExactOrgPage) {
-        setInCookies("onboarding_dismissed", "true");
         return;
       }
     }

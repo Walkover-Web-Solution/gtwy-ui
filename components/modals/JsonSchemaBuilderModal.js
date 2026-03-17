@@ -269,6 +269,8 @@ const SchemaPropertyCard = ({
   );
 };
 
+const EMPTY_WIDGET_BUTTONS = [];
+
 function JsonSchemaBuilderModal({
   params,
   searchParams,
@@ -278,7 +280,7 @@ function JsonSchemaBuilderModal({
   title = "Build JSON Schema",
   hideName = false,
   // When provided, shows a button dropdown and filters schema to only the selected button's vars
-  widgetButtons = [],
+  widgetButtons = EMPTY_WIDGET_BUTTONS,
 }) {
   const dispatch = useDispatch();
 

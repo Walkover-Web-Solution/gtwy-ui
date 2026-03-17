@@ -1102,7 +1102,12 @@ function FunctionParameterModal({
           example_json: reqJson,
         },
       });
-      setObjectFieldValue(JSON.stringify(result?.result, undefined, 4));
+
+      // API may return string or object
+      const parsed = typeof result?.result === "string" ? JSON.parse(result.result) : result?.result || {};
+
+      // Convert object → formatted JSON string for textarea
+      setObjectFieldValue(JSON.stringify(parsed, null, 4));
     } catch (error) {
       console.error("Optimization Error:", error);
     } finally {

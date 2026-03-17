@@ -127,6 +127,7 @@ const ModelTab = () => {
               params={params}
               searchParams={searchParams}
               bridgeType={bridgeType}
+              shouldRenderApiKey={shouldRenderApiKey}
               isPublished={isPublished}
               isEditor={isEditor}
             />

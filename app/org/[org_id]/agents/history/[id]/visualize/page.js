@@ -16,6 +16,7 @@ import { BatchUI } from "@/components/historyUi/BatchUi.js";
 import GenericNode from "@/components/historyUi/GenericNode.js";
 import { ToolFullSlider } from "@/components/historyUi/ToolFullSlider.js";
 import { ResponseFullSlider } from "@/components/historyUi/ResponseFullSlider.js";
+import { AgentFullSlider } from "@/components/historyUi/AgentFullSlider.js";
 
 const nodeTypes = {
   generic: GenericNode,
@@ -28,6 +29,7 @@ export default function Page({ params, searchParams }) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedResponse, setSelectedResponse] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const orgId = resolvedParams?.org_id;
   const bridgeId = resolvedParams?.id;
   const { recursiveHistory, recursiveHistoryLoading, embedToken, mainAgentName } = useCustomSelector((state) => {
@@ -352,6 +354,10 @@ export default function Page({ params, searchParams }) {
                   toggleSidebar("tool-full-slider", "right");
                 }}
                 onToolSliderClick={(tool) => handleToolPrimaryClick(tool)}
+                onAgentSliderClick={(agent) => {
+                  setSelectedAgent(agent);
+                  toggleSidebar("agent-full-slider", "right");
+                }}
               />
             ),
           },
@@ -526,6 +532,14 @@ export default function Page({ params, searchParams }) {
           setSelectedTool(null);
         }}
         onBack={handleGoBack}
+      />
+
+      <AgentFullSlider
+        agent={selectedAgent}
+        onClose={() => {
+          toggleSidebar("agent-full-slider", "right");
+          setSelectedAgent(null);
+        }}
       />
 
       <ResponseFullSlider
