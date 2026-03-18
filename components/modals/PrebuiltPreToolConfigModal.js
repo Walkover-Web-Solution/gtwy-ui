@@ -1,51 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown, CircleQuestionMark } from "lucide-react";
+import { ChevronDown, CircleHelp } from "lucide-react";
 import Modal from "@/components/UI/Modal";
-import { MODAL_TYPE, PRE_TOOL_LABELS } from "@/utils/enums";
-import { closeModal } from "@/utils/utility";
+import { MODAL_TYPE, PRE_TOOL_LABELS, PRE_TOOL_TOOLTIPS, PRE_TOOL_CONFIG_SCHEMA } from "@/utils/enums";
+import { closeModal, isValidDomain } from "@/utils/utility";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import InfoTooltip from "@/components/InfoTooltip";
 
-const TOOL_CONFIG_SCHEMA = {
-  query_refiner: {
-    tooltip: "Rewrites the user's query before it reaches the model, making it more specific and search-friendly.",
-    configFields: [
-      {
-        key: "prompt",
-        label: "Refinement Prompt",
-        type: "textarea",
-        placeholder:
-          "e.g. Rewrite the user's query to be more specific and search-engine friendly. Focus on intent and remove ambiguity.",
-      },
-    ],
-    argsFields: [],
-  },
-  rag_knowledgebase: {
-    tooltip: "Searches a knowledge base and injects relevant context into the prompt before the AI call.",
-    configFields: [{ key: "knowledgebase", label: "Knowledge Base", type: "knowledgebase_select" }],
-    argsFields: [],
-  },
-  gtwy_web_search: {
-    tooltip: "Scrapes a specified domain and passes the content as context to the AI.",
-    configFields: [
-      {
-        key: "formats",
-        label: "Output Formats",
-        type: "multiselect",
-        options: [
-          { value: "markdown", label: "Markdown" },
-          { value: "html", label: "HTML" },
-          { value: "links", label: "Links" },
-        ],
-      },
-    ],
-    argsFields: [{ key: "url", label: "URL  to Scrape", placeholder: "example.com" }],
-  },
-};
-
-export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublished, orgId }) {
+export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId }) {
   const [config, setConfig] = useState({});
   const [args, setArgs] = useState({});
   const [kbSearch, setKbSearch] = useState("");
@@ -70,16 +33,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
     }
   }, [toolEntry]);
 
-  const schema = toolEntry ? TOOL_CONFIG_SCHEMA[toolEntry.type] : null;
-
-  const isValidDomain = (input) => {
-    const trimmed = input?.trim() || "";
-    if (trimmed.length < 3 || trimmed.includes(" ")) return false;
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return false;
-    const domainPattern =
-      /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-    return domainPattern.test(trimmed);
-  };
+  const schema = toolEntry ? PRE_TOOL_CONFIG_SCHEMA[toolEntry.type] : null;
 
   const isUnchanged =
     JSON.stringify(config) === JSON.stringify(initialConfig) && JSON.stringify(args) === JSON.stringify(initialArgs);
@@ -111,7 +65,6 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
           className="textarea textarea-bordered text-xs w-full"
           placeholder={field.placeholder}
           value={config[field.key] || ""}
-          disabled={isPublished}
           onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
           rows={3}
         />
@@ -127,7 +80,6 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
                 type="checkbox"
                 className="checkbox checkbox-sm"
                 checked={(config[field.key] || []).includes(opt.value)}
-                disabled={isPublished}
                 onChange={(e) => {
                   const current = config[field.key] || [];
                   const updated = e.target.checked ? [...current, opt.value] : current.filter((v) => v !== opt.value);
@@ -152,7 +104,6 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
               className="input input-bordered input-sm text-xs w-full pr-6"
               placeholder="Search knowledge bases..."
               value={kbSearch}
-              disabled={isPublished}
               onChange={(e) => setKbSearch(e.target.value)}
             />
             <ChevronDown className="h-3 w-3 opacity-50 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -194,7 +145,6 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
         className="input input-bordered input-sm text-xs w-full"
         placeholder={field.placeholder}
         value={config[field.key] || ""}
-        disabled={isPublished}
         onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
       />
     );
@@ -208,9 +158,9 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
         >
           <div className="flex items-center gap-1">
             <h3 className="font-semibold text-base">{PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings</h3>
-            {schema.tooltip && (
-              <InfoTooltip tooltipContent={schema.tooltip}>
-                <CircleQuestionMark size={14} className="text-base-content/40 cursor-help" />
+            {PRE_TOOL_TOOLTIPS[toolEntry.type] && (
+              <InfoTooltip tooltipContent={PRE_TOOL_TOOLTIPS[toolEntry.type]}>
+                <CircleHelp size={14} className="text-base-content/40 cursor-help" />
               </InfoTooltip>
             )}
           </div>
@@ -224,7 +174,6 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
                     className="input input-bordered input-sm text-xs w-full"
                     placeholder={field.placeholder}
                     value={args[field.key] || ""}
-                    disabled={isPublished}
                     onChange={(e) => setArgs((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   />
                 </div>
@@ -243,23 +192,21 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
             </div>
           )}
           <div className={` ${toolEntry.type === "rag_knowledgebase" ? "mt-auto" : "mt-4"}`}>
-            {!isPublished && (
-              <div className="modal-action mt-0 items-center">
-                <form method="dialog">
-                  <button className="btn btn-sm">Close</button>
-                </form>
-                <div className="relative group">
-                  {isSaveDisabled && disabledHint && (
-                    <span className="absolute bottom-full right-0 mb-1 text-xs text-base-content/50 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      {disabledHint}
-                    </span>
-                  )}
-                  <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={isSaveDisabled}>
-                    Save
-                  </button>
-                </div>
+            <div className="modal-action mt-0 items-center">
+              <form method="dialog">
+                <button className="btn btn-sm">Close</button>
+              </form>
+              <div className="relative group">
+                {isSaveDisabled && disabledHint && (
+                  <span className="absolute bottom-full right-0 mb-1 text-xs text-base-content/50 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    {disabledHint}
+                  </span>
+                )}
+                <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={isSaveDisabled}>
+                  Save
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       ) : null}

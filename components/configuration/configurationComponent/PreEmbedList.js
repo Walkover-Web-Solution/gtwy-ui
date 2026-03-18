@@ -281,7 +281,6 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         <PrebuiltPreToolConfigModal
           toolEntry={selectedPreTool}
           onSave={handleSaveBuiltInPreTool}
-          isPublished={isReadOnly}
           orgId={params?.org_id}
         />
 

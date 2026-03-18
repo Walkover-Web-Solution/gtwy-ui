@@ -1075,3 +1075,12 @@ export const getApiKeyStatusClass = (status, type) => {
   };
   return config[status]?.[type] ?? "";
 };
+
+export const isValidDomain = (input) => {
+  const trimmedInput = (input || "").trim();
+  if (trimmedInput.length < 3 || trimmedInput.includes(" ")) return false;
+  if (trimmedInput.startsWith("http://") || trimmedInput.startsWith("https://")) return false;
+  const domainPattern =
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  return domainPattern.test(trimmedInput);
+};
