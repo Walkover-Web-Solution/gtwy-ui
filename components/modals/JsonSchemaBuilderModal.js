@@ -320,6 +320,10 @@ function JsonSchemaBuilderModal({
       if (next == null) return null;
       curr = next;
     }
+    // Inline action type pattern: the node itself has a type.enum (e.g. applyActionType)
+    if (buttonConfig.isInlineActionType) {
+      return curr?.properties?.type ?? null;
+    }
     return curr?.properties?.onClickType ?? null;
   }, []);
 
@@ -332,6 +336,10 @@ function JsonSchemaBuilderModal({
       const next = Array.isArray(curr) ? curr[Number(seg)] : curr[seg];
       if (next == null) return null;
       curr = next;
+    }
+    // Inline action type pattern: the node itself contains the data property
+    if (buttonConfig.isInlineActionType) {
+      return curr?.properties?.data ?? null;
     }
     const actionKey = buttonConfig.actionDataKey || "actionData";
     if (curr?.properties?.[actionKey]?.properties?.data) {
@@ -902,10 +910,13 @@ function JsonSchemaBuilderModal({
                       (onClickNode?.enum?.length === 1 ? onClickNode.enum[0] : ""))
                     : "";
 
+                  const actionOptions = ON_CLICK_ACTION_TYPES;
+                  const isMulti = widgetButtons.length > 1;
+
                   return (
                     <div className="flex items-end gap-2">
                       {/* Button dropdown — only shown when multiple buttons */}
-                      {widgetButtons.length > 1 && (
+                      {isMulti && (
                         <div className="flex-1">
                           <label className="block text-xs font-semibold mb-1">Button</label>
                           <select
@@ -916,54 +927,44 @@ function JsonSchemaBuilderModal({
                               setSelectedButtonKey(e.target.value);
                             }}
                           >
-                            {widgetButtons.map((btn) => {
-                              const dataNode = getActionDataNode(json_schema?.schema || json_schema, btn);
-                              const cachedProps = schemaCacheRef.current[btn.key]?.properties;
-                              const currentProps = cachedProps || dataNode?.properties;
-                              const _count = currentProps ? Object.keys(currentProps).length : 0;
-                              return (
-                                <option key={btn.key} value={btn.key}>
-                                  {btn.label}
-                                </option>
-                              );
-                            })}
+                            {widgetButtons.map((btn) => (
+                              <option key={btn.key} value={btn.key}>
+                                {btn.label}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       )}
 
-                      {/* onClickType dropdown */}
-                      {onClickNode && (
-                        <div className={widgetButtons.length > 1 ? "flex-1" : "w-full"}>
-                          <label className="block text-xs font-semibold mb-1">
-                            {widgetButtons.length === 1 ? `${activeBtn.label} — ` : ""}Action Type
-                          </label>
-                          <select
-                            className="select select-sm select-bordered w-full"
-                            value={currentType}
-                            disabled={isReadOnly}
-                            onChange={(e) =>
-                              setButtonOnClickTypes((prev) => ({ ...prev, [activeBtn.key]: e.target.value }))
-                            }
-                          >
-                            {onClickNode?.enum?.length > 1 && (
-                              <option value="" disabled>
-                                Select action type
-                              </option>
-                            )}
-                            {(onClickNode?.enum?.length > 0 ? onClickNode.enum : ON_CLICK_ACTION_TYPES).map(
-                              (actionType) => (
-                                <option key={actionType} value={actionType}>
-                                  {actionType === "reply"
-                                    ? "Reply"
-                                    : actionType === "sendDataToFrontend"
-                                      ? "Send to Frontend"
-                                      : actionType}
-                                </option>
-                              )
-                            )}
-                          </select>
-                        </div>
-                      )}
+                      {/* Action Type dropdown — always shown for widget buttons */}
+                      <div className={isMulti ? "flex-1" : "w-full"}>
+                        <label className="block text-xs font-semibold mb-1">
+                          {!isMulti ? `${activeBtn?.label} — ` : ""}Action Type
+                        </label>
+                        <select
+                          className="select select-sm select-bordered w-full"
+                          value={currentType}
+                          disabled={isReadOnly}
+                          onChange={(e) =>
+                            setButtonOnClickTypes((prev) => ({ ...prev, [activeBtn.key]: e.target.value }))
+                          }
+                        >
+                          {!currentType && (
+                            <option value="" disabled>
+                              Select action type
+                            </option>
+                          )}
+                          {actionOptions.map((actionType) => (
+                            <option key={actionType} value={actionType}>
+                              {actionType === "reply"
+                                ? "Reply"
+                                : actionType === "sendDataToFrontend"
+                                  ? "Send to Frontend"
+                                  : actionType}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   );
                 })()}
