@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CircleQuestionMark } from "lucide-react";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE, PRE_TOOL_LABELS } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
+import InfoTooltip from "@/components/InfoTooltip";
 
 const TOOL_CONFIG_SCHEMA = {
   query_refiner: {
+    tooltip: "Rewrites the user's query before it reaches the model, making it more specific and search-friendly.",
     configFields: [
       {
         key: "prompt",
@@ -21,10 +23,12 @@ const TOOL_CONFIG_SCHEMA = {
     argsFields: [],
   },
   rag_knowledgebase: {
+    tooltip: "Searches a knowledge base and injects relevant context into the prompt before the AI call.",
     configFields: [{ key: "knowledgebase", label: "Knowledge Base", type: "knowledgebase_select" }],
     argsFields: [],
   },
   gtwy_web_search: {
+    tooltip: "Scrapes a specified domain and passes the content as context to the AI.",
     configFields: [
       {
         key: "formats",
@@ -45,7 +49,6 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
   const [config, setConfig] = useState({});
   const [args, setArgs] = useState({});
   const [kbSearch, setKbSearch] = useState("");
-  const [kbOpen, setKbOpen] = useState(false);
   const dispatch = useDispatch();
   const [initialConfig, setInitialConfig] = useState({});
   const [initialArgs, setInitialArgs] = useState({});
@@ -203,8 +206,14 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
         <div
           className={`modal-box flex flex-col gap-4 overflow-hidden ${toolEntry.type === "rag_knowledgebase" ? "min-h-[400px]" : ""}`}
         >
-          <h3 className="font-semibold text-base">{PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings</h3>
-
+          <div className="flex items-center gap-1">
+            <h3 className="font-semibold text-base">{PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings</h3>
+            {schema.tooltip && (
+              <InfoTooltip tooltipContent={schema.tooltip}>
+                <CircleQuestionMark size={14} className="text-base-content/40 cursor-help" />
+              </InfoTooltip>
+            )}
+          </div>
           {schema.argsFields.length > 0 && (
             <div className="flex flex-col gap-3">
               {schema.argsFields.map((field) => (
