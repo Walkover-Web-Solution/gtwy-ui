@@ -1,6 +1,16 @@
 const FULL_RE = /^\{\{([\w.[\]]+)\}\}$/;
 const INLINE_RE = /\{\{([\w.[\]]+)\}\}/g;
 
+function resolvePath(path, scope) {
+  const parts = path.replace(/\[(\w+)\]/g, ".$1").split(".");
+  let current = scope;
+  for (const part of parts) {
+    if (current == null || typeof current !== "object") return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
 export function interpolate(template, scope) {
   if (typeof template !== "string") return template;
   const full = template.match(FULL_RE);

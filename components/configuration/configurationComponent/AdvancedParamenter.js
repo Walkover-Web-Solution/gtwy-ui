@@ -403,6 +403,25 @@ const AdvancedParameters = ({
           nodes.push({ key: path.join("."), label, actionDataKey: actionKey, path });
         }
 
+        // Also detect inline action-type pattern: a property that is an object with
+        // { type (string enum of action types), value, data } — e.g. applyActionType, cancelActionType
+        Object.entries(node.properties).forEach(([k, v]) => {
+          if (
+            v?.type === "object" &&
+            v?.properties?.type?.enum?.length > 0 &&
+            v?.properties?.data &&
+            v?.properties?.value !== undefined
+          ) {
+            nodes.push({
+              key: [...path, "properties", k].join("."),
+              label: k,
+              actionDataKey: k,
+              path: [...path, "properties", k],
+              isInlineActionType: true,
+            });
+          }
+        });
+
         Object.entries(node.properties).forEach(([k, v]) => {
           search(v, [...path, "properties", k]);
         });
