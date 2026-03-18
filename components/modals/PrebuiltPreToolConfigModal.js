@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ChevronDown } from "lucide-react";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE, PRE_TOOL_LABELS } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
@@ -151,15 +152,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, isPublis
               disabled={isPublished}
               onChange={(e) => setKbSearch(e.target.value)}
             />
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-3 w-3 opacity-50 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown className="h-3 w-3 opacity-50 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
           <ul className="border border-base-300 rounded-box w-full max-h-48 overflow-y-auto flex flex-col bg-base-100">
             {filtered.length === 0 && (
