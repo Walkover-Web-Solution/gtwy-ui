@@ -324,7 +324,8 @@ function JsonSchemaBuilderModal({
     if (buttonConfig.isInlineActionType) {
       return curr?.properties?.type ?? null;
     }
-    return curr?.properties?.onClickType ?? null;
+    // Check common action type field names: onClickType, actionType
+    return curr?.properties?.onClickType ?? curr?.properties?.actionType ?? null;
   }, []);
 
   const getActionDataNode = useCallback((schema, buttonConfig) => {
