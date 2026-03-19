@@ -27,8 +27,9 @@ const TemplatesPage = ({ params }) => {
   const searchParams = useSearchParams();
   const createParam = searchParams.get("create");
 
-  const { widgetsData } = useCustomSelector((state) => ({
+  const { widgetsData, linksData } = useCustomSelector((state) => ({
     widgetsData: state?.richUiTemplateReducer?.templates || [],
+    linksData: state.flowDataReducer.flowData.linksData || [],
   }));
 
   // State for Navigation/View Mode
@@ -436,7 +437,11 @@ const TemplatesPage = ({ params }) => {
           <div className="px-2 pt-4">
             <MainLayout>
               <div className="flex flex-col sm:flex-row sm:items-start justify-between w-full gap-2">
-                <PageHeader title="Widgets" description="Create and manage reusable UI widgets for your agents." />
+                <PageHeader
+                  title="Widgets"
+                  description="Create and manage reusable UI widgets for your agents."
+                  docLink={linksData?.find((link) => link.title === "Widgets")?.blog_link}
+                />
               </div>
             </MainLayout>
 

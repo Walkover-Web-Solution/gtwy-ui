@@ -244,11 +244,13 @@ const AdvancedParameters = ({
       toast.error("Invalid JSON provided");
       return;
     }
+    const existingValue =
+      typeof configuration?.[key] === "object" && configuration?.[key] !== null ? configuration?.[key] : {};
     let updatedDataToSend = isDeafaultObject
       ? {
           configuration: {
             [key]: {
-              ...configuration?.[key],
+              ...existingValue,
               [defaultValue?.key]: e.target.value,
             },
           },
@@ -262,7 +264,7 @@ const AdvancedParameters = ({
       updatedDataToSend = {
         configuration: {
           [key]: {
-            ...configuration?.[key],
+            ...existingValue,
             [defaultValue?.key]: e.target.value,
             [e.target.value]: typeof newValue === "string" ? JSON.parse(newValue) : newValue,
           },
@@ -402,25 +404,6 @@ const AdvancedParameters = ({
           }
           nodes.push({ key: path.join("."), label, actionDataKey: actionKey, path });
         }
-
-        // Also detect inline action-type pattern: a property that is an object with
-        // { type (string enum of action types), value, data } — e.g. applyActionType, cancelActionType
-        Object.entries(node.properties).forEach(([k, v]) => {
-          if (
-            v?.type === "object" &&
-            v?.properties?.type?.enum?.length > 0 &&
-            v?.properties?.data &&
-            v?.properties?.value !== undefined
-          ) {
-            nodes.push({
-              key: [...path, "properties", k].join("."),
-              label: k,
-              actionDataKey: k,
-              path: [...path, "properties", k],
-              isInlineActionType: true,
-            });
-          }
-        });
 
         Object.entries(node.properties).forEach(([k, v]) => {
           search(v, [...path, "properties", k]);
@@ -641,7 +624,7 @@ const AdvancedParameters = ({
                             [key]: {
                               type: "json_schema",
                               is_template: false,
-                              json_schema: configuration?.[key]?.json_schema || {},
+                              json_schema: {},
                             },
                           },
                         };
@@ -656,6 +639,20 @@ const AdvancedParameters = ({
                       } else if (selectedValue === "default") {
                         // Handle default case
                         setSliderValue("default", key, isDeafaultObject);
+                        return;
+                      } else {
+                        // Plain type (e.g. "text") — save as plain string, clear is_template
+                        dispatch(
+                          updateBridgeVersionAction({
+                            bridgeId: params?.id,
+                            versionId: searchParams?.version,
+                            dataToSend: {
+                              configuration: {
+                                [key]: selectedValue,
+                              },
+                            },
+                          })
+                        );
                         return;
                       }
                     }
