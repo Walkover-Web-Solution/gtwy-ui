@@ -693,6 +693,7 @@ function FunctionParameterModal({
         let current = newFields;
         for (let i = 0; i < keyParts.length - 1; i++) {
           const key = keyParts[i];
+          if (!current[key]) break;
           if (current[key].type === "array") {
             current = current[key].items;
           } else {
@@ -1197,12 +1198,17 @@ function FunctionParameterModal({
               <div className="flex flex-row gap-1">
                 <InfoIcon id="function-param-info-icon" size={14} />
                 <div id="function-param-info-text" className="label-text-alt">
-                  Function used in {(function_details?.bridge_ids || [])?.length} bridges, changes may affect all
-                  bridges.
+                  Function used in {(function_details?.bridge_ids || [])?.length} versions, changes may affect all
+                  versions.
                 </div>
               </div>
             )}
           </div>
+          <p className="text-xs text-base-content/50 mt-1">
+            Parameters define the inputs passed to this tool. Toggle <strong>Fill with AI</strong> to let AI generate
+            the value, or turn it off and set a <strong>Value Path</strong> using a variable name — the parameter will
+            be replaced with that variable&apos;s value at runtime.
+          </p>
         </div>
         <div className="flex flex-row mb-1">
           <div id="function-param-options-wrapper" className="flex gap-2">
