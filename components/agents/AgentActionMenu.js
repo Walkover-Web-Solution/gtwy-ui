@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { ArchiveRestore, MoreVertical, Pause, Play, Settings2, Trash2, Users } from "lucide-react";
 import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
@@ -199,6 +199,17 @@ export const AgentMenuItems = ({
 const AgentActionMenu = (props) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = props.menuRef;
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClickOutside = (e) => {
+      if (menuRef?.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMenu, menuRef]);
 
   return (
     <div className="relative" ref={menuRef}>

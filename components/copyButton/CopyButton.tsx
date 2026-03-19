@@ -1,20 +1,21 @@
 import { CheckCircleIcon, CopyIcon } from "@/components/Icons";
 import React, { useState } from "react";
 
-const CopyButton = ({ data, btnStyle = "text-base-100" }) => {
+const CopyButton = ({ data, btnStyle = "text-base-100", onCopy = null }) => {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboardSendData = () => {
-    // Your clipboard copy logic here
     navigator.clipboard.writeText(data || "");
 
-    // Show the copied message
     setCopied(true);
 
-    // Hide the copied message after 2 seconds
     setTimeout(() => {
       setCopied(false);
     }, 2000);
+
+    if (onCopy) {
+      onCopy();
+    }
   };
 
   return (

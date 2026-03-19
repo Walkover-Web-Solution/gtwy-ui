@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Trash2, Edit, Check, X } from "lucide-react";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal } from "@/utils/utility";
+import { closeModal, isValidDomain } from "@/utils/utility";
 
 const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
   const [domains, setDomains] = useState([]);
@@ -21,28 +21,6 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
   useEffect(() => {
     setDomains(initialDomains.length > 0 ? [...initialDomains] : []);
   }, [initialDomains]);
-
-  // Validate Domain only (no HTTP/HTTPS URLs allowed)
-  const isValidDomain = (input) => {
-    const trimmedInput = input.trim();
-
-    // Reject if input is too short or contains spaces
-    if (trimmedInput.length < 3 || trimmedInput.includes(" ")) {
-      return false;
-    }
-
-    // Reject if input starts with http:// or https://
-    if (trimmedInput.startsWith("http://") || trimmedInput.startsWith("https://")) {
-      return false;
-    }
-
-    // Domain regex pattern (without protocol) - must have at least one dot and valid TLD
-    // Allows domains like: example.com, www.example.com, subdomain.example.com
-    const domainPattern =
-      /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-
-    return domainPattern.test(trimmedInput);
-  };
 
   // Add new domain
   const handleAddDomain = async () => {

@@ -27,7 +27,7 @@ const richUiTemplateSlice = createSlice({
     },
     createRichUiTemplateApiSuccess: (state, action) => {
       state.isLoading = false;
-      state.templates = [...state.templates, action.payload];
+      state.templates = [action.payload, ...state.templates];
       state.isError = false;
     },
   },

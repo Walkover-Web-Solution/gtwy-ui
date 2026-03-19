@@ -10,6 +10,7 @@ import { getAllApikeyAction } from "@/store/action/apiKeyAction";
 import { toast } from "react-toastify";
 import {
   createApiAction,
+  createBridgeAction,
   deleteFunctionAction,
   getAllBridgesAction,
   getAllFunctions,
@@ -263,6 +264,22 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(
         getAllBridgesAction((data) => {
           setLoading(false);
+          const hasChatbotPreview = data?.some((bridge) => bridge?.slugName === "chatbot preview");
+          if (!hasChatbotPreview) {
+            dispatch(
+              createBridgeAction(
+                {
+                  dataToSend: {
+                    name: "chatbot preview",
+                    slugName: "chatbot preview",
+                    bridgeType: "chatbot",
+                  },
+                  orgid: resolvedParams?.org_id,
+                },
+                () => {}
+              )
+            );
+          }
         })
       );
       dispatch(getAllFunctions());

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { RotateCcw } from "lucide-react";
 
 const EmbedPreview = ({
   embedToken,
@@ -11,6 +12,14 @@ const EmbedPreview = ({
   embedType = "gtwy", // "gtwy" or "rag"
   theme = "light", // Theme for RAG embed: "light" or "dark"
 }) => {
+  const [internalReload, setInternalReload] = useState(0);
+  const [isReloading, setIsReloading] = useState(false);
+
+  const handleReload = () => {
+    setIsReloading(true);
+    setInternalReload((prev) => prev + 1);
+    setTimeout(() => setIsReloading(false), 800);
+  };
   useEffect(() => {
     if (!embedToken) return;
 
@@ -95,7 +104,7 @@ const EmbedPreview = ({
         console.warn("Error removing embed scripts:", error);
       }
     };
-  }, [embedToken, parentId, reloadTrigger, embedType, theme]);
+  }, [embedToken, parentId, reloadTrigger, internalReload, embedType, theme]);
 
   if (isLoading) {
     return (
@@ -111,8 +120,16 @@ const EmbedPreview = ({
   return (
     <div className="h-full flex flex-col">
       {showHeader && (
-        <div className="p-4 border-b border-base-300">
+        <div className="p-4 border-b border-base-300 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-base-content">Live Preview</h3>
+          <button
+            onClick={handleReload}
+            className="btn btn-ghost btn-xs gap-1"
+            disabled={isReloading}
+            title="Reload preview"
+          >
+            <RotateCcw className={`h-3 w-3 ${isReloading ? "animate-spin" : ""}`} />
+          </button>
         </div>
       )}
 

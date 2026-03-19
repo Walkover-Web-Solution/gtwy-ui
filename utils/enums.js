@@ -265,4 +265,44 @@ export const PRE_TOOL_LABELS = {
   gtwy_web_search: "Gtwy Web Search",
 };
 
+export const PRE_TOOL_TOOLTIPS = {
+  query_refiner: "Rewrites the user's query before it reaches the model, making it more specific and search-friendly.",
+  rag_knowledgebase: "Searches a knowledge base and injects relevant context into the prompt before the AI call.",
+  gtwy_web_search: "Scrapes a specified domain and passes the content as context to the AI.",
+};
+
+export const PRE_TOOL_CONFIG_SCHEMA = {
+  query_refiner: {
+    configFields: [
+      {
+        key: "prompt",
+        label: "Refinement Prompt",
+        type: "textarea",
+        placeholder:
+          "e.g. Rewrite the user's query to be more specific and search-engine friendly. Focus on intent and remove ambiguity.",
+      },
+    ],
+    argsFields: [],
+  },
+  rag_knowledgebase: {
+    configFields: [{ key: "knowledgebase", label: "Knowledge Base", type: "knowledgebase_select" }],
+    argsFields: [],
+  },
+  gtwy_web_search: {
+    configFields: [
+      {
+        key: "formats",
+        label: "Output Formats",
+        type: "multiselect",
+        options: [
+          { value: "markdown", label: "Markdown" },
+          { value: "html", label: "HTML" },
+          { value: "links", label: "Links" },
+        ],
+      },
+    ],
+    argsFields: [{ key: "url", label: "URL to Scrape", placeholder: "example.com" }],
+  },
+};
+
 export const ON_CLICK_ACTION_TYPES = ["reply", "sendDataToFrontend"];

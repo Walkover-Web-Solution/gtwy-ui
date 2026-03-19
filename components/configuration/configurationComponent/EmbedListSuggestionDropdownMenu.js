@@ -189,9 +189,6 @@ function EmbedListSuggestionDropdownMenu({
                     <li key={t.type} onClick={() => onSelectBuiltInPreTool(t.type)}>
                       <div className="flex justify-between items-center w-full">
                         <span className="text-sm">{t.label}</span>
-                        <span className="ml-auto text-xs text-base-content/40 bg-base-200 px-2 py-0.5 rounded">
-                          built-in
-                        </span>
                       </div>
                     </li>
                   ))}

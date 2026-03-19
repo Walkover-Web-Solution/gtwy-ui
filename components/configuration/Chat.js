@@ -494,7 +494,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       >
         {/* Overlay Test Cases Sidebar */}
         {showTestCases && (
-          <div id="chat-testcase-sidebar-overlay" className="absolute inset-0 z-low flex">
+          <div id="chat-testcase-sidebar-overlay" className="absolute inset-0 z-very-high flex">
             {/* Optional backdrop */}
             <div className="absolute inset-0 bg-black/30" onClick={() => setShowTestCases(false)}></div>
 
@@ -502,7 +502,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
             <div
               data-testid="chat-testcase-sidebar"
               id="chat-testcase-sidebar"
-              className="relative w-[70%] h-full border border-base-content/30 rounded-md bg-base-100 shadow-lg z-30 animate-slideIn"
+              className="relative w-[70%] h-full border border-base-content/30 rounded-md bg-base-100 shadow-lg z-very-high animate-slideIn"
             >
               <TestCaseSidebar
                 params={params}
@@ -741,11 +741,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   : message.sender === "error"
                                     ? "bg-error/10 border border-error/30 text-error"
                                     : ""
-                              } ${message?.type === "template" ? "!bg-transparent" : ""}`}
+                              } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0" : ""}`}
                             >
                               {/* Show loader overlay if this is the message being tested */}
                               {isRunningTestCase && currentRunIndex !== null && index === currentRunIndex + 1 && (
-                                <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
+                                <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10 pointer-events-none">
                                   <div className="flex items-center gap-2">
                                     <span className="loading loading-spinner loading-sm"></span>
                                     <span className="text-sm font-medium">Running Test Case...</span>
@@ -789,17 +789,19 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                 /* Display Mode */
                                 <div className="relative group">
                                   {/* Edit Button for Assistant Messages */}
-                                  {message.sender === "assistant" && !message.isLoading && (
-                                    <button
-                                      data-testid={`chat-edit-message-button-${message.id}`}
-                                      id={`chat-edit-message-button-${message.id}`}
-                                      onClick={() => handleEditMessage(message.id, message.content)}
-                                      className="absolute -top-2 -right-5 opacity-0 group-hover:opacity-100 transition-opacity btn btn-sm btn-circle btn-ghost"
-                                      title="Edit message"
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                    </button>
-                                  )}
+                                  {message.sender === "assistant" &&
+                                    !message.isLoading &&
+                                    message?.type !== "richui_json" && (
+                                      <button
+                                        data-testid={`chat-edit-message-button-${message.id}`}
+                                        id={`chat-edit-message-button-${message.id}`}
+                                        onClick={() => handleEditMessage(message.id, message.content)}
+                                        className="absolute -top-2 -right-5 opacity-0 group-hover:opacity-100 transition-opacity btn btn-sm btn-circle btn-ghost"
+                                        title="Edit message"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </button>
+                                    )}
 
                                   {/* Loading state for assistant message */}
                                   {message.isLoading ? (

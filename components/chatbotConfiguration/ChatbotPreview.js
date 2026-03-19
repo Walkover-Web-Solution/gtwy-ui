@@ -29,7 +29,6 @@ const ChatbotPreview = ({ showHeader = true, embedToken }) => {
     if (existingScript) {
       document.head.removeChild(existingScript);
     }
-
     const script = document.createElement("script");
     script.id = scriptId;
     script.setAttribute("embedToken", embedToken);
@@ -57,6 +56,7 @@ const ChatbotPreview = ({ showHeader = true, embedToken }) => {
         window.SendDataToChatbot({
           bridgeName: "chatbot preview",
           parentId: "chatbot-preview-container",
+          threadId: "chatbot_preview",
         });
       }
     }, 100);

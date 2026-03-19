@@ -105,7 +105,7 @@ const ChatbotConfigDetailView = ({ params, embedToken }) => {
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                           ${
                             isActive
-                              ? "bg-base-200 text-base-content"
+                              ? "bg-primary text-primary-content"
                               : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
                           }`}
                       >

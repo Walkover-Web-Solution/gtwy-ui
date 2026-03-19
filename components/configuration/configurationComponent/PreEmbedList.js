@@ -134,6 +134,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         status: "1",
       })
     );
+    setSelectedPreTool({ type, config: {}, args: {} });
+    openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
     setTimeout(() => {
       if (typeof document !== "undefined") document.activeElement?.blur?.();
     }, 0);
@@ -180,6 +182,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
       })
     );
     setShowChangePicker(false);
+    setSelectedPreTool({ type, config: {}, args: {} });
+    openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
   };
 
   const removePreFunction = async () => {
@@ -234,6 +238,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
       }
       return t;
     });
+    setSelectedPreTool(updatedToolEntry);
     dispatch(
       updateBridgeVersionAction({
         bridgeId: params.id,
@@ -276,7 +281,6 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         <PrebuiltPreToolConfigModal
           toolEntry={selectedPreTool}
           onSave={handleSaveBuiltInPreTool}
-          isPublished={isReadOnly}
           orgId={params?.org_id}
         />
 

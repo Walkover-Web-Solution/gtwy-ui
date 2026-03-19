@@ -58,6 +58,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     allBridges: state.bridgeReducer?.org?.[orgId]?.orgs || [],
   }));
   const orgName = useMemo(() => organizations?.[orgId]?.name || "Organization", [organizations, orgId]);
+  // When on org list page, orgId can be undefined; use first org for menu links
+  const targetOrgId = orgId || (organizations && Object.keys(organizations)[0]);
   const getInitials = (name = "") => {
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase();
@@ -494,7 +496,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           <button
             id="main-slider-user-details-button"
             onClick={() => {
-              router.push(`/org/${orgId}/userDetails`);
+              if (targetOrgId) router.push(`/org/${targetOrgId}/userDetails`);
               setIsOrgDropdownOpen(false);
               setIsOrgDropdownExpanded(false);
             }}
@@ -508,7 +510,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           <button
             id="main-slider-org-details-button"
             onClick={() => {
-              router.push(`/org/${orgId}/orgDetails`);
+              if (targetOrgId) router.push(`/org/${targetOrgId}/orgDetails`);
               setIsOrgDropdownOpen(false);
               setIsOrgDropdownExpanded(false);
             }}
@@ -522,7 +524,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           <button
             id="main-slider-refer-earn-button"
             onClick={() => {
-              router.push(`/org/${orgId}/referAndEarn`);
+              if (targetOrgId) router.push(`/org/${targetOrgId}/referAndEarn`);
               setIsOrgDropdownOpen(false);
               setIsOrgDropdownExpanded(false);
             }}
@@ -590,7 +592,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   );
 
   // Determine positioning based on mode
-  const sidebarPositioning = isSideBySideMode ? "relative" : "fixed";
+  const sidebarPositioning = isSideBySideMode && !shouldCollapse ? "relative" : "fixed";
   const sidebarZIndex = isMobile || isMobileVisible ? "z-50" : "z-30";
 
   // Determine if sidebar should show content (expanded view) with delayed hiding

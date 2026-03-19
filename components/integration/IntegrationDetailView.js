@@ -97,7 +97,7 @@ const IntegrationDetailView = ({ data, onClose }) => {
     },
     {
       id: "testing",
-      label: "Testing Environment",
+      label: "Testing",
       icon: <Monitor className="h-5 w-5" />,
     },
   ];

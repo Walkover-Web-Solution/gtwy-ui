@@ -9,23 +9,13 @@ import CopyButton from "../copyButton/CopyButton";
 const IntegrationTab = ({ data }) => {
   const dispatch = useDispatch();
   const [embedToken, setEmbedToken] = useState("");
-  const [copied, setCopied] = useState({});
-
   const gtwyAccessToken = useCustomSelector(
     (state) => state?.userDetailsReducer?.organizations?.[data?.org_id]?.meta?.gtwyAccessToken || ""
   );
 
-  const handleCopy = (text, key) => {
-    navigator.clipboard.writeText(text);
-    setCopied((prev) => ({ ...prev, [key]: true }));
-    setTimeout(() => {
-      setCopied((prev) => ({ ...prev, [key]: false }));
-    }, 2000);
-  };
-
   useEffect(() => {
     const generateEmbedToken = async () => {
-      if (!data?.org_id || !data?.embed_id || !gtwyAccessToken) {
+      if (!data?.org_id || !data?.folder_id || !gtwyAccessToken) {
         setEmbedToken("");
         return;
       }
@@ -34,7 +24,7 @@ const IntegrationTab = ({ data }) => {
         const response = await dispatch(
           generateEmbedTokenAction({
             access_token: gtwyAccessToken,
-            folder_id: data.embed_id,
+            folder_id: data.folder_id,
             org_id: data.org_id,
             user_id: "user_id",
           })
@@ -52,17 +42,17 @@ const IntegrationTab = ({ data }) => {
     };
 
     generateEmbedToken();
-  }, [data?.org_id, data?.embed_id, gtwyAccessToken, dispatch]);
+  }, [data?.org_id, data?.folder_id, gtwyAccessToken, dispatch]);
 
   const jwtPayload = `{
   "org_id": "${data?.org_id}",
-  "folder_id": "${data?.embed_id}",
+  "folder_id": "${data?.folder_id}",
   "user_id": "Your_user_id"
 }`;
 
   const integrationScript = `<script
   id="gtwy-main-script"
-  embedToken="${embedToken}"
+  embedToken="${embedToken || "Add your embed token here"}"
   src="${
     process.env.NEXT_PUBLIC_ENV !== "PROD"
       ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_dev.js`
@@ -135,11 +125,7 @@ window.addEventListener('message', (event) => {
                     <code className="text-warning">"Your_user_id"</code>
                   </pre>
                 </div>
-                <CopyButton
-                  data={jwtPayload}
-                  onCopy={() => handleCopy(jwtPayload, "jwtToken")}
-                  copied={copied.jwtToken}
-                />
+                <CopyButton data={jwtPayload} />
               </div>
             </div>
 
@@ -167,11 +153,7 @@ window.addEventListener('message', (event) => {
                       <code className="text-warning">{gtwyAccessToken}</code>
                     </pre>
                   </div>
-                  <CopyButton
-                    data={gtwyAccessToken}
-                    onCopy={() => handleCopy(gtwyAccessToken, "accessKey")}
-                    copied={copied.accessKey}
-                  />
+                  <CopyButton data={gtwyAccessToken} />
                 </div>
               ) : (
                 <div className="text-sm text-warning mt-3">Access token not available</div>
@@ -200,7 +182,7 @@ window.addEventListener('message', (event) => {
                 </pre>
                 <pre data-prefix=">">
                   <code className="text-error"> embedToken=</code>
-                  <code className="text-warning pr-4">{embedToken || "Your embed token"}</code>
+                  <code className="text-warning pr-4">{embedToken || "Add your embed token here"}</code>
                 </pre>
                 <pre data-prefix=">">
                   <code className="text-error"> src=</code>
@@ -226,11 +208,7 @@ window.addEventListener('message', (event) => {
                   <code className="text-error">&gt;&lt;/script&gt;</code>
                 </pre>
               </div>
-              <CopyButton
-                data={integrationScript}
-                onCopy={() => handleCopy(integrationScript, "script")}
-                copied={copied.script}
-              />
+              <CopyButton data={integrationScript} />
             </div>
           </div>
           <div className="overflow-x-auto mt-4">
@@ -281,11 +259,7 @@ window.addEventListener('message', (event) => {
                   <code className="text-error"> {`});`}</code>
                 </pre>
               </div>
-              <CopyButton
-                data={interfaceData}
-                onCopy={() => handleCopy(interfaceData, "interfaceData")}
-                copied={copied.interfaceData}
-              />
+              <CopyButton data={interfaceData} />
             </div>
           </div>
         </div>
@@ -318,11 +292,7 @@ window.addEventListener('message', (event) => {
                   <code>{" // Create agent with specific name"}</code>
                 </pre>
               </div>
-              <CopyButton
-                data={helperFunctions}
-                onCopy={() => handleCopy(helperFunctions, "functions")}
-                copied={copied.functions}
-              />
+              <CopyButton data={helperFunctions} />
             </div>
           </div>
         </div>
@@ -346,11 +316,7 @@ window.addEventListener('message', (event) => {
                   </code>
                 </pre>
               </div>
-              <CopyButton
-                data={metaUpdateScript}
-                onCopy={() => handleCopy(metaUpdateScript, "metaUpdate")}
-                copied={copied.metaUpdate}
-              />
+              <CopyButton data={metaUpdateScript} />
             </div>
           </div>
         </div>
@@ -374,11 +340,7 @@ window.addEventListener('message', (event) => {
                 Note: Pass <code className="bg-base-300 px-1 rounded">agent_id="your_agent_id"</code> in the params if
                 you want to get the data of specific agent.
               </p>
-              <CopyButton
-                data={getDataUsingUserId}
-                onCopy={() => handleCopy(getDataUsingUserId, "getDataUsingUserId")}
-                copied={copied.getDataUsingUserId}
-              />
+              <CopyButton data={getDataUsingUserId} />
             </div>
           </div>
         </div>
@@ -416,11 +378,7 @@ window.addEventListener('message', (event) => {
                   <code className="text-error">&lt;/script&gt;</code>
                 </pre>
               </div>
-              <CopyButton
-                data={eventListenerScript}
-                onCopy={() => handleCopy(eventListenerScript, "eventListener")}
-                copied={copied.eventListener}
-              />
+              <CopyButton data={eventListenerScript} />
             </div>
           </div>
         </div>

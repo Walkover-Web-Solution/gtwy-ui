@@ -18,8 +18,9 @@ const Page = ({ params }) => {
   const [url, setUrl] = useState("");
   const [urlError, setUrlError] = useState("");
   const dispatch = useDispatch();
-  const { authData } = useCustomSelector((state) => ({
+  const { authData, linksData } = useCustomSelector((state) => ({
     authData: state?.authReducer?.authenticationData?.[resolvedParams?.org_id] || [],
+    linksData: state.flowDataReducer.flowData.linksData || [],
   }));
 
   const validateUrl = (value) => {
@@ -70,7 +71,7 @@ const Page = ({ params }) => {
           <PageHeader
             title="Authentication"
             description="Add authentication routes to enable OAuth 2.0 flows for your application."
-            docLink="https://gtwy.ai/blogs/features/-oauth2.o-1"
+            docLink={linksData?.find((link) => link.title === "OAuth 2.0")?.blog_link}
           />
         </div>
       </MainLayout>

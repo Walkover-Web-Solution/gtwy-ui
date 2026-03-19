@@ -25,8 +25,7 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
   const renderStepOne = ({ orgId, access_key, folderId }) => {
     const apiConfig = `{
     "org_id": ${orgId},
-    "user_id": "unique_user_id",
-    ${folderId ? `"folder_id": "${folderId}"` : ""}
+    "user_id": "unique_user_id",${folderId ? `\n    "folder_id": "${folderId}",` : ""}
 }`;
 
     return (
@@ -81,7 +80,7 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
 
   const renderStepTwo = () => {
     const DataObject = {
-      script: `<script\n      id="rag-main-script"\n      embedToken="Add your embed token here"\n      src=${process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}\n     ></script>`,
+      script: `<script\n      id="rag-main-script"\n      embedToken="Add your embed token here"\n      src="${process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}"\n      parentId="Id of parent Container"\n      theme="dark/light"\n      defaultOpen="true/false"\n></script>`,
     };
 
     return (
@@ -127,19 +126,26 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
   };
 
   const renderStepThree = () => {
+    const ragFunctions = `window.openRag() /* to open add document modal */
+window.closeRag() /* to close add document modal */
+window.showDocuments() /* to show document list */`;
+
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 3" caption="Use this function to show list or add Document modal" />
-        <div className="mockup-code">
-          <pre data-prefix=">" className="text-error">
-            <code className="text-warning">window.openRag() /* to open add document modal */</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code className="text-warning">window.closeRag() /* to close add document modal */</code>
-          </pre>
-          <pre data-prefix=">" className="text-error">
-            <code className="text-warning">window.showDocuments() /* to show document list */</code>
-          </pre>
+        <div className="relative">
+          <div className="mockup-code">
+            <pre data-prefix=">" className="text-error">
+              <code className="text-warning">window.openRag() /* to open add document modal */</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code className="text-warning">window.closeRag() /* to close add document modal */</code>
+            </pre>
+            <pre data-prefix=">" className="text-error">
+              <code className="text-warning">window.showDocuments() /* to show document list */</code>
+            </pre>
+          </div>
+          <CopyButton data={ragFunctions} />
         </div>
       </div>
     );

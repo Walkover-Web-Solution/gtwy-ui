@@ -22,6 +22,7 @@ function getCurrentCategoryGroup(currentCategory) {
     docs: "Knowledge Base",
     integrations: "Integrations",
     rag_embed: "RAG Embeds",
+    widgets: "Widgets",
   };
   return categoryGroupMap[currentCategory] || null;
 }
@@ -50,18 +51,22 @@ const CommandPalette = ({ isEmbedUser }) => {
     if (parts.includes("knowledge_base")) return "docs";
     if (parts.includes("integration")) return "integrations";
     if (parts.includes("RAG_embed")) return "rag_embed";
+    if (parts.includes("widgets")) return "widgets";
     if (parts.includes("orchestratal_model")) return "flows";
     return null;
   }, [pathname]);
 
-  const { agentList, apikeys, knowledgeBase, functionData, integrationData, authData } = useCustomSelector((state) => ({
-    agentList: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
-    apikeys: state?.apiKeysReducer?.apikeys?.[orgId] || [],
-    knowledgeBase: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
-    functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
-    integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
-    authData: state?.authDataReducer?.authData || [],
-  }));
+  const { agentList, apikeys, knowledgeBase, functionData, integrationData, authData, widgetsData } = useCustomSelector(
+    (state) => ({
+      agentList: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
+      apikeys: state?.apiKeysReducer?.apikeys?.[orgId] || [],
+      knowledgeBase: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
+      functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
+      integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
+      authData: state?.authDataReducer?.authData || [],
+      widgetsData: state?.richUiTemplateReducer?.templates || [],
+    })
+  );
   const apiAgents = agentList.filter(
     (agent) =>
       (!agent.deletedAt && agent.bridgeType === "api") || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
@@ -153,11 +158,19 @@ const CommandPalette = ({ isEmbedUser }) => {
             type: "Auths",
           }));
 
+        case "widgets":
+          return (widgetsData || []).map((d) => ({
+            id: d._id,
+            title: d.name || d._id,
+            subtitle: "Widget",
+            type: "widgets",
+          }));
+
         default:
           return [];
       }
     },
-    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData]
+    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData, widgetsData]
   );
 
   const createAgentItem = (a, type) => ({
@@ -287,6 +300,13 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "rag_embed",
   }));
 
+  const widgetsGroup = filterBy(widgetsData || [], ["name", "_id"]).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "Widget",
+    type: "widgets",
+  }));
+
   const items = useMemo(
     () => ({
       agents: [...apiAgentsGroup, ...chatbotAgentsGroup, ...agentsVersionMatches],
@@ -296,8 +316,9 @@ const CommandPalette = ({ isEmbedUser }) => {
       integrations: integrationGroup,
       auths: authGroup,
       rag_embed: ragEmbedGroup,
+      widgets: widgetsGroup,
     }),
-    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData]
+    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData, widgetsData]
   );
 
   const allResults = useMemo(
@@ -311,6 +332,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       ...items.integrations.map((it) => ({ group: "Integrations", ...it })),
       ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
       ...items.rag_embed.map((it) => ({ group: "RAG Embeds", ...it })),
+      ...items.widgets.map((it) => ({ group: "Widgets", ...it })),
     ],
     [items]
   );
@@ -372,6 +394,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       { key: "docs", label: "Knowledge Base", desc: "Documents and sources" },
       { key: "integrations", label: "Gtwy as Embed", desc: "Configure integrations" },
       { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
+      { key: "widgets", label: "Widgets", desc: "Create and manage UI widgets" },
     ];
 
     // When on agents page, order based on type query parameter
@@ -516,6 +539,9 @@ const CommandPalette = ({ isEmbedUser }) => {
           // Always navigate to auth keys page with filter parameter
           router.push(`/org/${orgId}/pauthkey?filter=${item.id}`);
           break;
+        case "widgets":
+          router.push(`/org/${orgId}/widgets${item.id ? `?filter=${item.id}` : ""}`);
+          break;
         default:
           router.push("/");
       }
@@ -538,6 +564,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         integrations: `/org/${orgId}/integration`,
         rag_embed: `/org/${orgId}/RAG_embed`,
         Auths: `/org/${orgId}/pauthkey`,
+        widgets: `/org/${orgId}/widgets`,
         flows: `/org/${orgId}/orchestratal_model`,
       };
       router.push(routes[key] || "/");
