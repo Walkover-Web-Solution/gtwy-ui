@@ -23,6 +23,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [preToolData, setPreToolData] = useState(null);
   const [variablesPath, setVariablesPath] = useState({});
   const [showChangePicker, setShowChangePicker] = useState(false);
+  const [showAddPicker, setShowAddPicker] = useState(false);
   const [selectedPreTool, setSelectedPreTool] = useState(null); // for built-in modal
   const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path } = useCustomSelector(
     (state) => {
@@ -121,6 +122,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         status: "1",
       })
     );
+    setShowAddPicker(false);
     setTimeout(() => {
       if (typeof document !== "undefined") document.activeElement?.blur?.();
     }, 0);
@@ -134,6 +136,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         status: "1",
       })
     );
+    setShowAddPicker(false);
     setSelectedPreTool({ type, config: {}, args: {} });
     openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
     setTimeout(() => {
@@ -301,40 +304,44 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
             </div>
           )}
           {bridgePreFunctions.length === 0 && (
-            <div
-              data-testid="pre-embed-empty-dropdown"
-              id="pre-embed-empty-dropdown"
-              className="dropdown dropdown-end w-full max-w-md"
-            >
-              <div className="border-2 border-base-200 border-dashed text-center">
-                <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
-                  <button
-                    data-testid="pre-embed-add-button"
-                    id="pre-embed-add-button"
-                    tabIndex={0}
-                    className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                    disabled={isReadOnly}
-                  >
-                    <AddIcon className="w-3 h-3" />
-                    Add Pre Functions
-                  </button>
-                </InfoTooltip>
+            <>
+              {showAddPicker && <div className="fixed inset-0 z-10" onClick={() => setShowAddPicker(false)} />}
+              <div
+                data-testid="pre-embed-empty-dropdown"
+                id="pre-embed-empty-dropdown"
+                className={`dropdown dropdown-end w-full max-w-md ${showAddPicker ? "dropdown-open" : ""}`}
+              >
+                <div className="border-2 border-base-200 border-dashed text-center">
+                  <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
+                    <button
+                      data-testid="pre-embed-add-button"
+                      id="pre-embed-add-button"
+                      tabIndex={0}
+                      className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                      disabled={isReadOnly}
+                      onClick={() => !isReadOnly && setShowAddPicker((v) => !v)}
+                    >
+                      <AddIcon className="w-3 h-3" />
+                      Add Pre Functions
+                    </button>
+                  </InfoTooltip>
+                </div>
+                <EmbedListSuggestionDropdownMenu
+                  params={params}
+                  searchParams={searchParams}
+                  name={"preFunction"}
+                  hideCreateFunction={false}
+                  onSelect={onFunctionSelect}
+                  connectedFunctions={bridge_pre_tools}
+                  shouldToolsShow={true}
+                  modelName={model}
+                  onSelectBuiltInPreTool={onBuiltInPreToolSelect}
+                  connectedPreToolTypes={bridge_pre_tools
+                    .filter((t) => typeof t === "object" && t.type !== PRE_TOOL_TYPES.custom_function)
+                    .map((t) => t.type)}
+                />
               </div>
-              <EmbedListSuggestionDropdownMenu
-                params={params}
-                searchParams={searchParams}
-                name={"preFunction"}
-                hideCreateFunction={false}
-                onSelect={onFunctionSelect}
-                connectedFunctions={bridge_pre_tools}
-                shouldToolsShow={true}
-                modelName={model}
-                onSelectBuiltInPreTool={onBuiltInPreToolSelect}
-                connectedPreToolTypes={bridge_pre_tools
-                  .filter((t) => typeof t === "object" && t.type !== PRE_TOOL_TYPES.custom_function)
-                  .map((t) => t.type)}
-              />
-            </div>
+            </>
           )}
           <div className="flex flex-col gap-2 w-full">
             {/* Render pre-tool cards */}
@@ -360,27 +367,31 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                   halfLength={1}
                 />
                 {bridgePreFunctions.length > 0 && (
-                  <div
-                    data-testid="pre-embed-add-more-dropdown"
-                    id="pre-embed-add-more-dropdown"
-                    className={`dropdown dropdown-right ${showChangePicker ? "dropdown-open" : ""}`}
-                    onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget)) setShowChangePicker(false);
-                    }}
-                  >
-                    <EmbedListSuggestionDropdownMenu
-                      params={params}
-                      searchParams={searchParams}
-                      name={"preFunction"}
-                      hideCreateFunction={false}
-                      onSelect={onChangeFunctionSelect}
-                      connectedFunctions={bridge_pre_tools}
-                      shouldToolsShow={true}
-                      modelName={model}
-                      onSelectBuiltInPreTool={onChangeBuiltInPreToolSelect}
-                      connectedPreToolTypes={[]}
-                    />
-                  </div>
+                  <>
+                    {showChangePicker && (
+                      <div className="fixed inset-0 z-10" onClick={() => setShowChangePicker(false)} />
+                    )}
+                    <div
+                      data-testid="pre-embed-add-more-dropdown"
+                      id="pre-embed-add-more-dropdown"
+                      className={`dropdown dropdown-right ${showChangePicker ? "dropdown-open" : ""}`}
+                    >
+                      <EmbedListSuggestionDropdownMenu
+                        params={params}
+                        searchParams={searchParams}
+                        name={"preFunction"}
+                        hideCreateFunction={false}
+                        onSelect={onChangeFunctionSelect}
+                        connectedFunctions={bridge_pre_tools}
+                        shouldToolsShow={true}
+                        modelName={model}
+                        onSelectBuiltInPreTool={onChangeBuiltInPreToolSelect}
+                        connectedPreToolTypes={bridge_pre_tools
+                          .filter((t) => typeof t === "object" && t.type !== PRE_TOOL_TYPES.custom_function)
+                          .map((t) => t.type)}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             )}
