@@ -406,7 +406,9 @@ const TestCaseSidebar = ({ params, resolvedParams, onTestCaseClick }) => {
                       >
                         Expected:
                       </span>{" "}
-                      {testCase.expected?.response || "No input"}
+                      {typeof testCase.expected?.response === "object"
+                        ? JSON.stringify(testCase.expected.response)
+                        : testCase.expected?.response || "No input"}
                     </p>
                     <p className="mt-1">
                       <span
@@ -449,7 +451,9 @@ const TestCaseSidebar = ({ params, resolvedParams, onTestCaseClick }) => {
                                 wordBreak: "break-all",
                               }}
                             >
-                              {testCase.expected?.response}
+                              {typeof testCase.expected?.response === "object"
+                                ? JSON.stringify(testCase.expected.response)
+                                : testCase.expected?.response}
                             </p>
                           </div>
                         </div>
