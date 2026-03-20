@@ -260,12 +260,12 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   }, [SERVICES]);
 
   useEffect(() => {
-    if (isValidOrg && !isEmbedUser) {
+    if (isValidOrg) {
       dispatch(
         getAllBridgesAction((data) => {
           setLoading(false);
           const hasChatbotPreview = data?.some((bridge) => bridge?.slugName === "chatbot preview");
-          if (!hasChatbotPreview) {
+          if (!hasChatbotPreview && !isEmbedUser) {
             dispatch(
               createBridgeAction(
                 {
