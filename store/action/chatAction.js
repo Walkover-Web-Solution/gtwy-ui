@@ -164,7 +164,7 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
         hour: "2-digit",
         minute: "2-digit",
       }),
-      content: expected.response,
+      content: typeof expected.response === "object" ? JSON.stringify(expected.response) : expected.response,
       isExpected: true,
     };
     convertedMessages.push(expectedMessage);
