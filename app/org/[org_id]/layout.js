@@ -260,7 +260,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   }, [SERVICES]);
 
   useEffect(() => {
-    if (isValidOrg) {
+    if (isValidOrg && !isEmbedUser) {
       dispatch(
         getAllBridgesAction((data) => {
           setLoading(false);
@@ -284,7 +284,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       );
       dispatch(getAllFunctions());
     }
-  }, [isValidOrg, !isEmbedUser ? currentUser?.meta?.onboarding?.bridgeCreation : true]);
+  }, [isValidOrg, isEmbedUser]);
 
   useEffect(() => {
     if (isValidOrg && resolvedParams?.org_id) {

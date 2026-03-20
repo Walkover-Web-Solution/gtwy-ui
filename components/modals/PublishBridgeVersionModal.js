@@ -1065,16 +1065,18 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-4 border-t border-base-300">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="checkbox checkbox-xs checkbox-primary"
-                checked={convertToTemplate}
-                onChange={(e) => setConvertToTemplate(e.target.checked)}
-                disabled={isLoading || isReadOnly}
-              />
-              <span className="text-sm">Save as Template</span>
-            </label>
+            {!isEmbedUser && (
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-xs checkbox-primary"
+                  checked={convertToTemplate}
+                  onChange={(e) => setConvertToTemplate(e.target.checked)}
+                  disabled={isLoading || isReadOnly}
+                />
+                <span className="text-sm">Save as Template</span>
+              </label>
+            )}
 
             <div className="flex gap-3">
               <button id="publish-cancel-button" className="btn btn-sm" onClick={handleCloseModal} disabled={isLoading}>
