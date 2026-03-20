@@ -64,7 +64,7 @@ function EmbedListSuggestionDropdownMenu({
           return (
             title !== undefined &&
             title?.toLowerCase()?.includes(searchQuery.toLowerCase()) &&
-            !(connectedFunctions || [])?.includes(value?._id)
+            !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id)
           );
         })
         .slice() // Create a copy of the array to avoid mutating the original
