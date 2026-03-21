@@ -660,14 +660,13 @@ const AdvancedParameters = ({
                         setSliderValue("default", key, isDeafaultObject);
                         return;
                       } else {
-                        // Plain type (e.g. "text") — save as plain string, clear is_template
                         dispatch(
                           updateBridgeVersionAction({
                             bridgeId: params?.id,
                             versionId: searchParams?.version,
                             dataToSend: {
                               configuration: {
-                                [key]: selectedValue,
+                                [key]: { type: selectedValue },
                               },
                             },
                           })
