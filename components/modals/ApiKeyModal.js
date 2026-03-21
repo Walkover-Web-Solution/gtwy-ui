@@ -33,7 +33,6 @@ const ApiKeyModal = ({
     isAdd: false,
     isUpdate: false,
   });
-  const [enableApiLimit, setEnableApiLimit] = useState(false);
   const path = pathName?.split("?")[0].split("/");
   const orgId = path[2] || "";
   const dispatch = useDispatch();
@@ -45,12 +44,6 @@ const ApiKeyModal = ({
       isAdd: false,
       isUpdate: false,
     });
-    // Set enableApiLimit based on selectedApiKey
-    if (isEditing && selectedApiKey) {
-      setEnableApiLimit(!!selectedApiKey.apikey_limit);
-    } else {
-      setEnableApiLimit(false);
-    }
   }, [selectedApiKey, isEditing]);
 
   // Handle form input changes
@@ -64,8 +57,8 @@ const ApiKeyModal = ({
         apikey: formData.get("apikey") || "",
         comment: formData.get("comment") || "",
         service: service || formData.get("service") || "",
-        apikey_limit: enableApiLimit ? formData.get("apikey_limit") || "" : "",
-        apikey_limit_reset_period: enableApiLimit ? formData.get("apikey_limit_reset_period") || "" : "",
+        apikey_limit: formData.get("apikey_limit") || "",
+        apikey_limit_reset_period: formData.get("apikey_limit_reset_period") || "",
       };
       // Check if all required fields are filled for Add mode
       const requiredFields = ["name", "apikey", "service"];
@@ -80,11 +73,9 @@ const ApiKeyModal = ({
           currentData.apikey !== (selectedApiKey.apikey || "") ||
           currentData.comment !== (selectedApiKey.comment || "") ||
           currentData.service !== (selectedApiKey.service || service || "") ||
-          // Only check limit fields if API limit is enabled
-          (enableApiLimit &&
-            ((currentData.apikey_limit !== "" &&
-              Number(currentData.apikey_limit) !== Number(selectedApiKey.apikey_limit || 0)) ||
-              currentData.apikey_limit_reset_period !== (selectedApiKey.apikey_limit_reset_period || "")));
+          (currentData.apikey_limit !== "" &&
+            Number(currentData.apikey_limit) !== Number(selectedApiKey.apikey_limit || 0)) ||
+          currentData.apikey_limit_reset_period !== (selectedApiKey.apikey_limit_reset_period || "");
 
         setischanged((prev) => ({
           ...prev,
@@ -117,8 +108,8 @@ const ApiKeyModal = ({
         service: service || formData.get("service"),
         apikey: formData.get("apikey"),
         comment: formData.get("comment"),
-        apikey_limit: enableApiLimit ? Number(formData.get("apikey_limit")) : 0,
-        apikey_limit_reset_period: enableApiLimit ? formData.get("apikey_limit_reset_period") || "" : "",
+        apikey_limit: Number(formData.get("apikey_limit")) || 0,
+        apikey_limit_reset_period: formData.get("apikey_limit_reset_period") || "",
         apikey_usage: selectedApiKey ? selectedApiKey.apikey_usage : 0,
         _id: selectedApiKey ? selectedApiKey._id : null,
       };
@@ -144,10 +135,8 @@ const ApiKeyModal = ({
               apikey: data.apikey,
               comment: data.comment,
               service: selectedService,
-              ...(enableApiLimit && {
-                apikey_limit: data.apikey_limit,
-                apikey_limit_reset_period: data.apikey_limit_reset_period,
-              }),
+              apikey_limit: data.apikey_limit,
+              apikey_limit_reset_period: data.apikey_limit_reset_period,
               apikey_usage: data.apikey_usage,
             };
             await dispatch(updateApikeyAction(dataToSend));
@@ -159,10 +148,8 @@ const ApiKeyModal = ({
               name: data.name,
               comment: data.comment,
               service: selectedService,
-              ...(enableApiLimit && {
-                apikey_limit: data.apikey_limit,
-                apikey_limit_reset_period: data.apikey_limit_reset_period,
-              }),
+              apikey_limit: data.apikey_limit,
+              apikey_limit_reset_period: data.apikey_limit_reset_period,
               apikey_usage: data.apikey_usage,
             };
             await dispatch(updateApikeyAction(dataToSend));
@@ -173,10 +160,9 @@ const ApiKeyModal = ({
             service: data.service,
             apikey: data.apikey,
             comment: data.comment,
-            ...(enableApiLimit && {
-              apikey_limit: data.apikey_limit,
-              apikey_limit_reset_period: data.apikey_limit_reset_period,
-            }),
+
+            apikey_limit: data.apikey_limit,
+            apikey_limit_reset_period: data.apikey_limit_reset_period,
           };
           const response = await dispatch(saveApiKeysAction(dataToSend, orgId));
           if (service && response?._id) {
@@ -260,69 +246,51 @@ const ApiKeyModal = ({
           );
         })}
 
-        {/* API Key Limit Toggle */}
-        <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <span className="label-text">API Key Limit</span>
-            <input
-              type="checkbox"
-              data-testid="apikey-modal-limit-toggle"
-              className="toggle toggle-sm"
-              checked={enableApiLimit}
-              onChange={(e) => setEnableApiLimit(e.target.checked)}
-            />
+        {API_KEY_MODAL_INPUT.filter((field) => field === "apikey_limit").map((field) => {
+          const displayLabel = field.includes("_")
+            ? field
+                .replace(/_/g, " ")
+                .replace(/^\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
+            : field.charAt(0).toUpperCase() + field.slice(1);
+          return (
+            <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
+              <label className="label-text">
+                {displayLabel} <span className="opacity-55">in $</span>
+              </label>
+              <input
+                data-testid={`apikey-modal-field-${field}-input`}
+                id={field}
+                type="number"
+                className="input input-bordered input-sm"
+                name={field}
+                placeholder={`Enter ${displayLabel}`}
+                defaultValue={selectedApiKey ? selectedApiKey.apikey_limit : ""}
+                onChange={handleFormChange}
+                step="0.00001"
+                inputMode="decimal"
+                min="0"
+              />
+            </div>
+          );
+        })}
+        <div id="apikey-modal-reset-period-field" className="flex flex-col gap-2">
+          <label htmlFor="apikey_limit_reset_period" className="label-text">
+            Limit Reset Period
           </label>
+          <select
+            data-testid="apikey-modal-reset-period-select"
+            id="apikey_limit_reset_period"
+            name="apikey_limit_reset_period"
+            className="select select-sm select-bordered"
+            defaultValue={selectedApiKey?.apikey_limit_reset_period || "monthly"}
+            onChange={handleFormChange}
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
         </div>
 
-        {/* API Limit Fields - Only show when toggle is enabled */}
-        {enableApiLimit && (
-          <>
-            {API_KEY_MODAL_INPUT.filter((field) => field === "apikey_limit").map((field) => {
-              const displayLabel = field.includes("_")
-                ? field
-                    .replace(/_/g, " ")
-                    .replace(/^\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
-                : field.charAt(0).toUpperCase() + field.slice(1);
-              return (
-                <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
-                  <label className="label-text">
-                    {displayLabel} <span className="opacity-55">in $</span>
-                  </label>
-                  <input
-                    data-testid={`apikey-modal-field-${field}-input`}
-                    id={field}
-                    type="number"
-                    className="input input-bordered input-sm"
-                    name={field}
-                    placeholder={`Enter ${displayLabel}`}
-                    defaultValue={selectedApiKey ? selectedApiKey.apikey_limit : ""}
-                    onChange={handleFormChange}
-                    step="0.00001"
-                    inputMode="decimal"
-                    min="0"
-                  />
-                </div>
-              );
-            })}
-            <div id="apikey-modal-reset-period-field" className="flex flex-col gap-2">
-              <label htmlFor="apikey_limit_reset_period" className="label-text">
-                Limit Reset Period
-              </label>
-              <select
-                data-testid="apikey-modal-reset-period-select"
-                id="apikey_limit_reset_period"
-                name="apikey_limit_reset_period"
-                className="select select-sm select-bordered"
-                defaultValue={selectedApiKey?.apikey_limit_reset_period || "monthly"}
-                onChange={handleFormChange}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-          </>
-        )}
         <div id="apikey-modal-service-field" className="flex flex-col gap-2">
           <label htmlFor="service" className="label-text">
             Service{RequiredItem()}
