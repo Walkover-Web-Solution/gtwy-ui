@@ -484,11 +484,11 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       ) {
         const dataFromEmbed = {
           url: e?.data?.webhookurl,
-          payload: e?.data?.payload,
           desc: e?.data?.description || e?.data?.title,
           id: e?.data?.id,
           status: e?.data?.action,
           title: e?.data?.title,
+          openaiToolJson: e?.data?.openaiToolJson,
         };
         dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
           if (
