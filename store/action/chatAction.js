@@ -13,6 +13,7 @@ import {
   setUploadedImages,
   addRtLayerMessage,
   addErrorMessage,
+  appendRtLayerMessageChunk,
   updateRtLayerMessage,
   setChatTestCaseId,
   clearChatTestCaseId,
@@ -270,9 +271,16 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
     })
   );
 
-  // Clear loading state when RT layer message is received
-  dispatch(setChatLoading(channelId, false));
+  // Clear loading state when RT layer message is received, unless it's a streaming start message
+  if (!socketMessage.isStreaming) {
+    dispatch(setChatLoading(channelId, false));
+  }
   return uiMessage;
+};
+
+// Handle RT layer streaming update for chunks
+export const handleRtLayerStreamChunk = (channelId, messageId, chunk) => (dispatch) => {
+  dispatch(appendRtLayerMessageChunk({ channelId, messageId, chunk }));
 };
 
 // Handle RT layer streaming update

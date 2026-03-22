@@ -327,6 +327,33 @@ export const chatReducer = createSlice({
       state.errorsByChannel[channelId] = error;
     },
 
+    // RT Layer: Append chunk to streaming message
+    appendRtLayerMessageChunk: (state, action) => {
+      const { channelId, messageId, chunk } = action.payload;
+      if (state.messagesByChannel[channelId]) {
+        let messageIndex = -1;
+        if (messageId) {
+          messageIndex = state.messagesByChannel[channelId].findIndex((msg) => msg.id === messageId);
+        }
+
+        // If no messageId or not found, fallback to the last loading assistant message
+        if (messageIndex === -1) {
+          const messages = state.messagesByChannel[channelId];
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].isLoading && messages[i].sender === "assistant") {
+              messageIndex = i;
+              break;
+            }
+          }
+        }
+
+        if (messageIndex !== -1) {
+          // Append chunk to the content
+          state.messagesByChannel[channelId][messageIndex].content += chunk;
+        }
+      }
+    },
+
     // RT Layer: Update streaming message
     updateRtLayerMessage: (state, action) => {
       const { channelId, messageId, content, isComplete } = action.payload;
@@ -410,6 +437,7 @@ export const {
   setUploadedImages,
   addRtLayerMessage,
   addErrorMessage,
+  appendRtLayerMessageChunk,
   updateRtLayerMessage,
   setChatTestCaseId,
   clearChatTestCaseId,

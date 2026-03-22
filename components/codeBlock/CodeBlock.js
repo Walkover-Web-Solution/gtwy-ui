@@ -24,7 +24,7 @@ SyntaxHighlighter.registerLanguage("csharp", csharp);
 SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("go", go);
 
-function CodeBlock({ inline, className, children, ...props }) {
+function CodeBlock({ inline, className, children, isDark, ...props }) {
   const match = /language-(\w+)/.exec(className || "");
   const [copyStatus, setCopyStatus] = useState("Copy");
   const resetTimerRef = useRef(null);

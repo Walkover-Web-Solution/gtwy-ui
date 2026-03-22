@@ -113,7 +113,8 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (el) {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      const isStreaming = messages.length > 0 && messages[messages.length - 1]?.isStreaming;
+      el.scrollTo({ top: el.scrollHeight, behavior: isStreaming ? "auto" : "smooth" });
     }
   }, [messages]);
 
@@ -804,7 +805,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     )}
 
                                   {/* Loading state for assistant message */}
-                                  {message.isLoading ? (
+                                  {message.isLoading && !message.content ? (
                                     <div className="py-1">
                                       <span className="loading loading-dots loading-sm"></span>
                                     </div>
