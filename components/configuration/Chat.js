@@ -19,6 +19,9 @@ import {
   Save,
   X,
   AlertTriangle,
+  Wrench,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
@@ -40,8 +43,50 @@ import {
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
 
+function ToolCallItem({ toolCall, isMessageComplete }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (toolCall.status === "done") setOpen(true);
+  }, [toolCall.status]);
+  useEffect(() => {
+    if (isMessageComplete) setOpen(false);
+  }, [isMessageComplete]);
+  let parsedResult = null;
+  if (toolCall.result) {
+    try { parsedResult = JSON.parse(toolCall.result); } catch { parsedResult = toolCall.result; }
+  }
+  return (
+    <div className="rounded-lg border border-base-300 bg-base-200 text-xs overflow-hidden">
+      <div
+        className={`flex items-center gap-2 px-3 py-1.5 select-none ${toolCall.status === "done" ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => toolCall.status === "done" && setOpen((v) => !v)}
+      >
+        {toolCall.status === "calling" ? (
+          <span className="loading loading-spinner loading-xs text-primary" />
+        ) : (
+          <Wrench className="h-3.5 w-3.5 text-success shrink-0" />
+        )}
+        <span className="font-mono font-medium truncate flex-1">{toolCall.name}</span>
+        {toolCall.status === "calling" ? (
+          <span className="text-base-content/50 italic">calling…</span>
+        ) : (
+          open ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        )}
+      </div>
+      {toolCall.status === "done" && open && (
+        <div className="border-t border-base-300 px-3 py-2 bg-base-100 font-mono whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+          {typeof parsedResult === "object"
+            ? JSON.stringify(parsedResult, null, 2)
+            : String(parsedResult)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Chat({ params, userMessage, isOrchestralModel = false, searchParams, isEmbedUser }) {
   const messagesContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
   const dispatch = useDispatch();
   const inputRef = useRef(null);
   const [showTestCases, setShowTestCases] = useState(false);
@@ -112,7 +157,17 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   );
   useEffect(() => {
     const el = messagesContainerRef.current;
-    if (el) {
+    if (!el) return;
+    const onScroll = () => {
+      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    };
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (el && isAtBottomRef.current) {
       const isStreaming = messages.length > 0 && messages[messages.length - 1]?.isStreaming;
       el.scrollTo({ top: el.scrollHeight, behavior: isStreaming ? "auto" : "smooth" });
     }
@@ -804,10 +859,33 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       </button>
                                     )}
 
+                                  {/* Tool calls (tool_call / tool_result events) */}
+                                  {message.toolCalls?.length > 0 && (
+                                    <div className="flex flex-col gap-1 mb-2">
+                                      {message.toolCalls.map((tc) => (
+                                        <ToolCallItem key={tc.call_id} toolCall={tc} isMessageComplete={!message.isStreaming && !message.isLoading} />
+                                      ))}
+                                    </div>
+                                  )}
+
                                   {/* Loading state for assistant message */}
-                                  {message.isLoading && !message.content ? (
+                                  {message.isLoading && !message.content && !message.toolCalls?.length ? (
                                     <div className="py-1">
                                       <span className="loading loading-dots loading-sm"></span>
+                                    </div>
+                                  ) : message.isStreaming && message.content ? (
+                                    <div className="relative">
+                                      <ReactMarkdown
+                                        components={{
+                                          code: ({ node, inline, className, children, ...props }) => (
+                                            <CodeBlock inline={inline} className={className} isDark={true} {...props}>
+                                              {children}
+                                            </CodeBlock>
+                                          ),
+                                        }}
+                                      >
+                                        {message.content}
+                                      </ReactMarkdown>
                                     </div>
                                   ) : message.sender === "expected" ? (
                                     /* Expected Response - Plain text display with label */

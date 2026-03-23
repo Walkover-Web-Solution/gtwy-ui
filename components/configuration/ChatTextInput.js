@@ -7,6 +7,7 @@ import {
   setChatUploadedFiles,
   setChatUploadedImages,
   sendMessageWithRtLayer,
+  sendMessageWithApiStreaming,
   setChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import Image from "next/image";
@@ -299,7 +300,7 @@ function ChatTextInput({
           youtube_url: mediaUrls, // Include media URLs in the data
         };
 
-        // Use RT layer action for non-orchestral models
+        // Use dryRun as apiCall — it returns { stream: true, response } for streaming
         const apiCall = async () => {
           return await dryRun({
             localDataToSend: {
@@ -312,15 +313,17 @@ function ChatTextInput({
               user: data.content,
               user_urls: userUrls,
               variables,
+              stream: true,
               orchestrator_flag: isOrchestralModel,
+              flag: true,
             },
             bridge_id: params?.id,
           });
         };
 
-        // Send message with RT layer handling (loading will persist until RT response)
+        // Send message — streams SSE response from dryRun directly
         const result = await dispatch(
-          sendMessageWithRtLayer(channelIdentifier, newMessage, apiCall, isOrchestralModel, {
+          sendMessageWithApiStreaming(channelIdentifier, newMessage, apiCall, isOrchestralModel, {
             user_urls: userUrls,
             youtube_url: mediaUrls,
           })
@@ -355,6 +358,8 @@ function ChatTextInput({
                 type: modelType,
               },
               text: newMessage,
+              stream: true,
+              flag:true,
               orchestrator_flag: isOrchestralModel,
             },
             bridge_id: params?.id,
@@ -389,6 +394,8 @@ function ChatTextInput({
                 ...localDataToSend.configuration,
               },
               input: bridge?.inputConfig?.input?.input,
+              stream: true,
+              flag: true,
               orchestrator_flag: isOrchestralModel,
             },
             bridge_id: params?.id,

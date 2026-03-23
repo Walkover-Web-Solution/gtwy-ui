@@ -391,6 +391,37 @@ export const chatReducer = createSlice({
       }
     },
 
+    // Add a tool_call entry to a streaming message
+    addToolCallToMessage: (state, action) => {
+      const { channelId, messageId, toolCall } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      if (!messages[idx].toolCalls) messages[idx].toolCalls = [];
+      messages[idx].toolCalls.push(toolCall);
+    },
+
+    // Update a tool_call entry with its result
+    updateToolCallResult: (state, action) => {
+      const { channelId, messageId, callId, name, result } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const msgIdx = messages.findIndex((m) => m.id === messageId);
+      if (msgIdx === -1) return;
+      const toolCalls = messages[msgIdx].toolCalls;
+      if (!toolCalls) return;
+      // Try matching by call_id first; fall back to matching by name with status "calling"
+      let tcIdx = toolCalls.findIndex((tc) => tc.call_id === callId);
+      if (tcIdx === -1 && name) {
+        tcIdx = toolCalls.findIndex((tc) => tc.name === name && tc.status === "calling");
+      }
+      if (tcIdx !== -1) {
+        toolCalls[tcIdx].status = "done";
+        toolCalls[tcIdx].result = result;
+      }
+    },
+
     // Set testcase_id for channel (persisted until manual clear)
     setChatTestCaseId: (state, action) => {
       const { channelId, testCaseId } = action.payload;
@@ -442,6 +473,8 @@ export const {
   setChatTestCaseId,
   clearChatTestCaseId,
   clearChannelData,
+  addToolCallToMessage,
+  updateToolCallResult,
 } = chatReducer.actions;
 
 export default chatReducer.reducer;
