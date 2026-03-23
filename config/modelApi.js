@@ -101,17 +101,14 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
     // Streaming path — use native fetch so the ReadableStream body is accessible
     if (isChat && isStream) {
       const localToken = getFromCookies("local_token");
-      const response = await fetch(
-        `${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: localToken || "",
-          },
-          body: JSON.stringify(localDataToSend),
-        }
-      );
+      const response = await fetch(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: localToken || "",
+        },
+        body: JSON.stringify(localDataToSend),
+      });
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       return { success: true, stream: true, response };
     }

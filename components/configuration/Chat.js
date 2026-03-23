@@ -53,7 +53,11 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
   }, [isMessageComplete]);
   let parsedResult = null;
   if (toolCall.result) {
-    try { parsedResult = JSON.parse(toolCall.result); } catch { parsedResult = toolCall.result; }
+    try {
+      parsedResult = JSON.parse(toolCall.result);
+    } catch {
+      parsedResult = toolCall.result;
+    }
   }
   return (
     <div className="rounded-lg border border-base-300 bg-base-200 text-xs overflow-hidden">
@@ -69,15 +73,15 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
         <span className="font-mono font-medium truncate flex-1">{toolCall.name}</span>
         {toolCall.status === "calling" ? (
           <span className="text-base-content/50 italic">calling…</span>
+        ) : open ? (
+          <ChevronUp className="h-3.5 w-3.5 shrink-0" />
         ) : (
-          open ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
         )}
       </div>
       {toolCall.status === "done" && open && (
         <div className="border-t border-base-300 px-3 py-2 bg-base-100 font-mono whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
-          {typeof parsedResult === "object"
-            ? JSON.stringify(parsedResult, null, 2)
-            : String(parsedResult)}
+          {typeof parsedResult === "object" ? JSON.stringify(parsedResult, null, 2) : String(parsedResult)}
         </div>
       )}
     </div>
@@ -863,7 +867,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   {message.toolCalls?.length > 0 && (
                                     <div className="flex flex-col gap-1 mb-2">
                                       {message.toolCalls.map((tc) => (
-                                        <ToolCallItem key={tc.call_id} toolCall={tc} isMessageComplete={!message.isStreaming && !message.isLoading} />
+                                        <ToolCallItem
+                                          key={tc.call_id}
+                                          toolCall={tc}
+                                          isMessageComplete={!message.isStreaming && !message.isLoading}
+                                        />
                                       ))}
                                     </div>
                                   )}

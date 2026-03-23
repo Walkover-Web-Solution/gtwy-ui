@@ -300,7 +300,6 @@ function ChatTextInput({
           youtube_url: mediaUrls, // Include media URLs in the data
         };
 
-        // Use dryRun as apiCall — it returns { stream: true, response } for streaming
         const apiCall = async () => {
           return await dryRun({
             localDataToSend: {
@@ -359,7 +358,7 @@ function ChatTextInput({
               },
               text: newMessage,
               stream: true,
-              flag:true,
+              flag: true,
               orchestrator_flag: isOrchestralModel,
             },
             bridge_id: params?.id,

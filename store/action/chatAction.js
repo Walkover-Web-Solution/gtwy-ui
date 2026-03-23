@@ -381,9 +381,7 @@ export const sendMessageWithApiStreaming =
         rafId = requestAnimationFrame(() => {
           rafId = null;
           if (streamingState.messageId) {
-            dispatch(
-              handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, false)
-            );
+            dispatch(handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, false));
           }
         });
       };
@@ -459,9 +457,7 @@ export const sendMessageWithApiStreaming =
                 cancelAnimationFrame(rafId);
                 rafId = null;
               }
-              dispatch(
-                handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, true)
-              );
+              dispatch(handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, true));
             }
           } catch {
             // Not valid JSON, skip
@@ -474,7 +470,10 @@ export const sendMessageWithApiStreaming =
         try {
           const parsed = JSON.parse(buffer.trim().slice(5).trim());
           if (parsed.event === "done" && streamingState.messageId) {
-            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            if (rafId) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
             dispatch(handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, true));
           }
         } catch {
