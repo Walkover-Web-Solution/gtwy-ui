@@ -51,6 +51,7 @@ const WithAuth = (Children) => {
     useLayoutEffect(() => {
       const runEffect = async (isEmbedUser) => {
         const proxyAuthToken = proxy_auth_token;
+        const proxyToken = getFromCookies("proxy_token");
         let redirectionUrl = getFromCookies("previous_url") || "/org";
         if (isEmbedUser) {
           const proxy_auth_token = sessionStorage.getItem("proxy_token");
