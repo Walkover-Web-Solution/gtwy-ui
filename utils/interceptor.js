@@ -1,5 +1,6 @@
 import axios from "axios";
 import { clearCookie, getFromCookies, setInCookies } from "./utility";
+export const rawAxios = axios.create();
 
 axios.interceptors.request.use(
   async (config) => {
