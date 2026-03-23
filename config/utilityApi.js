@@ -1,4 +1,4 @@
-import axios from "@/utils/interceptor";
+import axios, { rawAxios } from "@/utils/interceptor";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -125,7 +125,7 @@ export const getAllFunctionsApi = async () => {
 
 export const callViasocketCreateFullFlow = async (embedToken, description) => {
   try {
-    const response = await axios.post(
+    const response = await rawAxios.post(
       "https://flow-api.viasocket.com/embed/create-full-flow",
       { description },
       {
