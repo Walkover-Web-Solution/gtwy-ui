@@ -133,7 +133,7 @@ const ConfigurationPage = ({
                   onClick={() => {
                     handleNavigation("integration");
                   }}
-                  className="flex items-center gap-1 text-sm text-base-content-50 hover:text-base-content font-bold transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content font-bold transition-colors cursor-pointer"
                 >
                   <span>Integration Guide</span>
                   <span>→</span>
