@@ -25,7 +25,7 @@ function ConnectedAgentListSuggestion({
     () =>
       Object.values(bridges)
         .filter((bridge) => {
-          const isActive = bridge?.status === 1 && (bridge?.bridge_status === 1 || bridge?.bridge_status === undefined);
+          const isActive = bridge?.bridge_status === 1 || bridge?.bridge_status === undefined;
           const matchesSearch = bridge?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase());
           const isNotConnected =
             connect_agents && Object.values(connect_agents).some((agent) => agent?.bridge_id === bridge?._id);
@@ -42,6 +42,7 @@ function ConnectedAgentListSuggestion({
         .map((bridge) => {
           return (
             <li
+              data-testid={`connect-agent-suggestion-item-${bridge?._id}`}
               key={bridge?._id}
               id={`connect-agent-suggestion-item-${bridge?._id}`}
               onClick={() => (bridge?.published_version_id ? handleItemClick(bridge, bridgeData) : null)}
@@ -64,8 +65,7 @@ function ConnectedAgentListSuggestion({
                     </span>
                   ) : (
                     (() => {
-                      const statusLabel =
-                        bridge?.bridge_status === 0 ? "paused" : bridge?.status === 0 ? "archived" : "active";
+                      const statusLabel = bridge?.bridge_status === 0 ? "paused" : "active";
                       return (
                         <span
                           className={`rounded-full capitalize bg-base-200 px-3 py-1 text-[10px] sm:text-xs font-semibold text-black ${getStatusClass(statusLabel)}`}
@@ -85,6 +85,7 @@ function ConnectedAgentListSuggestion({
 
   return (
     <ul
+      data-testid="connect-agent-suggestion-dropdown"
       id="connect-agent-suggestion-dropdown"
       tabIndex={0}
       className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-1"
@@ -92,6 +93,7 @@ function ConnectedAgentListSuggestion({
       <div className="flex flex-col gap-2 w-full">
         <li className="text-sm font-semibold disabled">Available Agents</li>
         <input
+          data-testid="connect-agent-suggestion-search-input"
           id="connect-agent-suggestion-search-input"
           type="text"
           placeholder="Search Agent"

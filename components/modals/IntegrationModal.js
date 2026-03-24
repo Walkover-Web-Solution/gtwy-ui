@@ -38,6 +38,15 @@ const IntegrationModal = ({ params, type = "embed" }) => {
         hideAdvancedConfigurations: false,
         hidePreTool: false,
         hideCreateManuallyButton: false,
+        prompt: {
+          useDefaultPrompt: true,
+          customPrompt: "",
+          embedFields: [
+            { name: "role", value: "", type: "input", hidden: true },
+            { name: "goal", value: "", type: "input", hidden: true },
+            { name: "instruction", value: "", type: "textarea", hidden: true },
+          ],
+        },
       };
     }
 
@@ -50,6 +59,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
       <div id="integration-modal-container" className="modal-box">
         <h3 className="font-bold text-lg mb-4">Enter Embed Name{RequiredItem()}</h3>
         <input
+          data-testid="integration-name-input"
           id="integration-name-input"
           type="text"
           placeholder="Enter embed name"
@@ -66,6 +76,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
         <div className="modal-action">
           <form method="dialog">
             <button
+              data-testid="integration-close-button"
               id="integration-close-button"
               className="btn btn-sm"
               onClick={() => {
@@ -76,6 +87,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
               Close
             </button>
             <button
+              data-testid="integration-create-button"
               id="integration-create-button"
               className="btn btn-sm btn-primary ml-2"
               onClick={handleCreateNewIntegration}

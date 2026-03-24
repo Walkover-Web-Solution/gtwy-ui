@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import React, { useCallback, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import Modal from "../UI/Modal";
+import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 const ApiKeyModal = ({
   params,
@@ -21,6 +22,13 @@ const ApiKeyModal = ({
   selectedService,
 }) => {
   const pathName = usePathname();
+  const { isDeleting: isLoading, executeDelete: executeOperation } = useDeleteOperation(MODAL_TYPE.API_KEY_MODAL, {
+    closeOnSuccess: false, // We'll handle modal closing manually
+    onSuccess: () => {
+      setSelectedApiKey(null);
+      setIsEditing(false);
+    },
+  });
   const [ischanged, setischanged] = useState({
     isAdd: false,
     isUpdate: false,
@@ -50,8 +58,8 @@ const ApiKeyModal = ({
         comment: formData.get("comment") || "",
         service: service || formData.get("service") || "",
         apikey_limit: formData.get("apikey_limit") || "",
+        apikey_limit_reset_period: formData.get("apikey_limit_reset_period") || "",
       };
-
       // Check if all required fields are filled for Add mode
       const requiredFields = ["name", "apikey", "service"];
       const allRequiredFilled = requiredFields.every(
@@ -65,9 +73,9 @@ const ApiKeyModal = ({
           currentData.apikey !== (selectedApiKey.apikey || "") ||
           currentData.comment !== (selectedApiKey.comment || "") ||
           currentData.service !== (selectedApiKey.service || service || "") ||
-          // Compare numeric values for limit so decimal edits are detected
           (currentData.apikey_limit !== "" &&
-            Number(currentData.apikey_limit) !== Number(selectedApiKey.apikey_limit || 0));
+            Number(currentData.apikey_limit) !== Number(selectedApiKey.apikey_limit || 0)) ||
+          currentData.apikey_limit_reset_period !== (selectedApiKey.apikey_limit_reset_period || "");
 
         setischanged((prev) => ({
           ...prev,
@@ -93,75 +101,106 @@ const ApiKeyModal = ({
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
+
       const formData = new FormData(event.target);
       const data = {
         name: formData.get("name"),
         service: service || formData.get("service"),
         apikey: formData.get("apikey"),
         comment: formData.get("comment"),
-        apikey_limit: Number(formData.get("apikey_limit")),
+        apikey_limit: Number(formData.get("apikey_limit")) || 0,
+        apikey_limit_reset_period: formData.get("apikey_limit_reset_period") || "",
         apikey_usage: selectedApiKey ? selectedApiKey.apikey_usage : 0,
         _id: selectedApiKey ? selectedApiKey._id : null,
       };
-      if (isEditing) {
-        const isIdChange = apikeyData.some((item) => item.apikey === data.apikey && item._id === data._id);
-        const isNameChange = apikeyData.some((item) => item.name === data.name && item._id === data._id);
-        const isCommentChange = apikeyData.some((item) => item.comment === data.comment && item._id === data._id);
-        const apikeyLimitChange = apikeyData.some(
-          (item) => item.apikey_limit === data.apikey_limit && item._id === data._id
-        );
-        if (!isIdChange) {
+
+      await executeOperation(async () => {
+        if (isEditing) {
+          const isIdChange = apikeyData.some((item) => item.apikey === data.apikey && item._id === data._id);
+          const isNameChange = apikeyData.some((item) => item.name === data.name && item._id === data._id);
+          const isCommentChange = apikeyData.some((item) => item.comment === data.comment && item._id === data._id);
+          const apikeyLimitChange = apikeyData.some(
+            (item) => item.apikey_limit === data.apikey_limit && item._id === data._id
+          );
+          const apikeyResetPeriodChange = apikeyData.some(
+            (item) =>
+              (item.apikey_limit_reset_period || "") === (data.apikey_limit_reset_period || "") && item._id === data._id
+          );
+
+          if (!isIdChange) {
+            const dataToSend = {
+              org_id: orgId,
+              apikey_object_id: data._id,
+              name: data.name,
+              apikey: data.apikey,
+              comment: data.comment,
+              service: selectedService,
+              apikey_limit: data.apikey_limit,
+              apikey_limit_reset_period: data.apikey_limit_reset_period,
+              apikey_usage: data.apikey_usage,
+            };
+            await dispatch(updateApikeyAction(dataToSend));
+          }
+          if (!isNameChange || !isCommentChange || !apikeyLimitChange || !apikeyResetPeriodChange) {
+            const dataToSend = {
+              org_id: orgId,
+              apikey_object_id: data._id,
+              name: data.name,
+              comment: data.comment,
+              service: selectedService,
+              apikey_limit: data.apikey_limit,
+              apikey_limit_reset_period: data.apikey_limit_reset_period,
+              apikey_usage: data.apikey_usage,
+            };
+            await dispatch(updateApikeyAction(dataToSend));
+          }
+        } else {
           const dataToSend = {
-            org_id: orgId,
-            apikey_object_id: data._id,
             name: data.name,
+            service: data.service,
             apikey: data.apikey,
             comment: data.comment,
-            service: selectedService,
-            apikey_limit: data.apikey_limit,
-            apikey_usage: data.apikey_usage,
-          };
-          dispatch(updateApikeyAction(dataToSend));
-        }
-        if (!isNameChange || !isCommentChange || !apikeyLimitChange) {
-          const dataToSend = {
-            org_id: orgId,
-            apikey_object_id: data._id,
-            name: data.name,
-            comment: data.comment,
-            service: selectedService,
-            apikey_limit: data.apikey_limit,
-            apikey_usage: data.apikey_usage,
-          };
-          dispatch(updateApikeyAction(dataToSend));
-        }
-      } else {
-        const response = await dispatch(saveApiKeysAction(data, orgId));
-        if (service && response?._id) {
-          const updated = { ...bridgeApikey_object_id, [service]: response._id };
-          dispatch(
-            updateBridgeVersionAction({
-              bridgeId: params?.id,
-              versionId: searchParams?.version,
-              dataToSend: { apikey_object_id: updated },
-            })
-          );
-        }
-      }
 
-      event.target.reset();
-      setSelectedApiKey(null);
-      setIsEditing(false);
-      closeModal(MODAL_TYPE.API_KEY_MODAL);
+            apikey_limit: data.apikey_limit,
+            apikey_limit_reset_period: data.apikey_limit_reset_period,
+          };
+          const response = await dispatch(saveApiKeysAction(dataToSend, orgId));
+          if (service && response?._id) {
+            const updated = { ...bridgeApikey_object_id, [service]: response._id };
+            await dispatch(
+              updateBridgeVersionAction({
+                bridgeId: params?.id,
+                versionId: searchParams?.version,
+                dataToSend: { apikey_object_id: updated },
+              })
+            );
+          }
+        }
+
+        event.target.reset();
+        closeModal(MODAL_TYPE.API_KEY_MODAL);
+      });
     },
-    [isEditing, selectedApiKey, service, apikeyData]
+    [
+      isEditing,
+      selectedApiKey,
+      service,
+      apikeyData,
+      orgId,
+      dispatch,
+      params,
+      searchParams,
+      bridgeApikey_object_id,
+      selectedService,
+      executeOperation,
+    ]
   );
 
   return (
     <Modal MODAL_ID={MODAL_TYPE?.API_KEY_MODAL} onClose={handleClose}>
       <form id="apikey-modal-form" onSubmit={handleSubmit} className="modal-box flex flex-col gap-4">
         <h3 className="font-bold text-lg">{isEditing ? "Update API Key" : "Add New API Key"}</h3>
-        {API_KEY_MODAL_INPUT.map((field) => {
+        {API_KEY_MODAL_INPUT.filter((field) => field !== "apikey_limit").map((field) => {
           const displayLabel = field.includes("_")
             ? field
                 .replace(/_/g, " ")
@@ -175,6 +214,7 @@ const ApiKeyModal = ({
                 {isRequired && RequiredItem()} <span className="opacity-55">{field === "apikey_limit" && "in $"}</span>
               </label>
               <input
+                data-testid={`apikey-modal-field-${field}-input`}
                 id={field}
                 required={isRequired}
                 onFocus={(e) => {
@@ -205,11 +245,58 @@ const ApiKeyModal = ({
             </div>
           );
         })}
+
+        {API_KEY_MODAL_INPUT.filter((field) => field === "apikey_limit").map((field) => {
+          const displayLabel = field.includes("_")
+            ? field
+                .replace(/_/g, " ")
+                .replace(/^\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
+            : field.charAt(0).toUpperCase() + field.slice(1);
+          return (
+            <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
+              <label className="label-text">
+                {displayLabel} <span className="opacity-55">in $</span>
+              </label>
+              <input
+                data-testid={`apikey-modal-field-${field}-input`}
+                id={field}
+                type="number"
+                className="input input-bordered input-sm"
+                name={field}
+                placeholder={`Enter ${displayLabel}`}
+                defaultValue={selectedApiKey ? selectedApiKey.apikey_limit : ""}
+                onChange={handleFormChange}
+                step="0.00001"
+                inputMode="decimal"
+                min="0"
+              />
+            </div>
+          );
+        })}
+        <div id="apikey-modal-reset-period-field" className="flex flex-col gap-2">
+          <label htmlFor="apikey_limit_reset_period" className="label-text">
+            Limit Reset Period
+          </label>
+          <select
+            data-testid="apikey-modal-reset-period-select"
+            id="apikey_limit_reset_period"
+            name="apikey_limit_reset_period"
+            className="select select-sm select-bordered"
+            defaultValue={selectedApiKey?.apikey_limit_reset_period || "monthly"}
+            onChange={handleFormChange}
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
         <div id="apikey-modal-service-field" className="flex flex-col gap-2">
           <label htmlFor="service" className="label-text">
             Service{RequiredItem()}
           </label>
           <select
+            data-testid="apikey-modal-service-select"
             id="service"
             name="service"
             className="select select-sm select-bordered"
@@ -229,18 +316,25 @@ const ApiKeyModal = ({
           </select>
         </div>
         <div id="apikey-modal-actions" className="modal-action">
-          <button id="apikey-modal-cancel-button" type="reset" className="btn btn-sm" onClick={handleClose}>
+          <button
+            data-testid="apikey-modal-cancel-button"
+            id="apikey-modal-cancel-button"
+            type="reset"
+            className="btn btn-sm"
+            onClick={handleClose}
+          >
             Cancel
           </button>
           <button
+            data-testid="apikey-modal-submit-button"
             id="apikey-modal-submit-button"
             type="submit"
             className={`btn btn-sm btn-primary ${
-              (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd) ? "btn-disabled" : ""
+              isLoading || (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd) ? "btn-disabled" : ""
             }`}
-            disabled={(isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd)}
+            disabled={isLoading || (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd)}
           >
-            {isEditing ? "Update" : "Add"}
+            {isLoading ? "Saving..." : isEditing ? "Update" : "Add"}
           </button>
         </div>
       </form>

@@ -3,6 +3,7 @@ import CustomTable from "@/components/customTable/CustomTable";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import KnowledgeBaseModal from "@/components/modals/KnowledgeBaseModal";
 import ResourceChunksModal from "@/components/modals/ResourceChunksModal";
+import QueryKnowledgeBaseModal from "@/components/modals/QueryKnowledgeBaseModal";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { deleteResourceAction, getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
@@ -14,6 +15,7 @@ import { useDispatch } from "react-redux";
 import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { FileSearch } from "lucide-react";
 
 export const runtime = "edge";
 
@@ -29,6 +31,7 @@ const Page = ({ params }) => {
   const [filterKnowledgeBase, setFilterKnowledgeBase] = useState(knowledgeBaseData);
   const [selectedDataToDelete, setselectedDataToDelete] = useState(null);
   const [selectedResourceForChunks, setSelectedResourceForChunks] = useState({ id: null, name: null });
+  const [selectedResourceForQuery, setSelectedResourceForQuery] = useState(null);
   const { isDeleting, executeDelete } = useDeleteOperation();
   useEffect(() => {
     setFilterKnowledgeBase(knowledgeBaseData);
@@ -96,6 +99,16 @@ const Page = ({ params }) => {
   const EndComponent = ({ row }) => {
     return (
       <div className="flex gap-3 justify-center items-center">
+        <div
+          className="tooltip tooltip-primary"
+          data-tip="Test Knowledgebase"
+          onClick={() => {
+            setSelectedResourceForQuery(row);
+            openModal(MODAL_TYPE.QUERY_KNOWLEDGE_BASE_MODAL);
+          }}
+        >
+          <FileSearch strokeWidth={2} size={20} className="cursor-pointer hover:text-primary transition-colors" />
+        </div>
         <div
           className="tooltip tooltip-primary"
           data-tip="delete"
@@ -184,6 +197,7 @@ const Page = ({ params }) => {
         setSelectedResource={setSelectedKnowledgeBase}
       />
       <ResourceChunksModal resourceId={selectedResourceForChunks.id} resourceName={selectedResourceForChunks.name} />
+      <QueryKnowledgeBaseModal resource={selectedResourceForQuery} orgId={resolvedParams.org_id} />
       <DeleteModal
         onConfirm={handleDeleteKnowledgebase}
         item={selectedDataToDelete}

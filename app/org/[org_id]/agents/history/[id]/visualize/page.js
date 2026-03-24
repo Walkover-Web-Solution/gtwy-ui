@@ -16,6 +16,7 @@ import { BatchUI } from "@/components/historyUi/BatchUi.js";
 import GenericNode from "@/components/historyUi/GenericNode.js";
 import { ToolFullSlider } from "@/components/historyUi/ToolFullSlider.js";
 import { ResponseFullSlider } from "@/components/historyUi/ResponseFullSlider.js";
+import { AgentFullSlider } from "@/components/historyUi/AgentFullSlider.js";
 
 const nodeTypes = {
   generic: GenericNode,
@@ -28,6 +29,7 @@ export default function Page({ params, searchParams }) {
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedResponse, setSelectedResponse] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState(null);
   const orgId = resolvedParams?.org_id;
   const bridgeId = resolvedParams?.id;
   const { recursiveHistory, recursiveHistoryLoading, embedToken, mainAgentName } = useCustomSelector((state) => {
@@ -94,12 +96,16 @@ export default function Page({ params, searchParams }) {
 
   const recursiveMessage = recursiveHistory?.data || null;
 
-  const responsePreview = useMemo(() => {
-    const content =
-      recursiveMessage?.updated_llm_message || recursiveMessage?.llm_message || recursiveMessage?.chatbot_message || "";
-    if (!content) return "";
-    return content.length > 120 ? `${content.slice(0, 120)}...` : content;
+  const finalResponseText = useMemo(() => {
+    return (
+      recursiveMessage?.updated_llm_message || recursiveMessage?.llm_message || recursiveMessage?.chatbot_message || ""
+    );
   }, [recursiveMessage]);
+
+  const responsePreview = useMemo(() => {
+    if (!finalResponseText) return "";
+    return finalResponseText.length > 120 ? `${finalResponseText.slice(0, 120)}...` : finalResponseText;
+  }, [finalResponseText]);
 
   // Fetch recursive history using data from URL
   useEffect(() => {
@@ -348,6 +354,10 @@ export default function Page({ params, searchParams }) {
                   toggleSidebar("tool-full-slider", "right");
                 }}
                 onToolSliderClick={(tool) => handleToolPrimaryClick(tool)}
+                onAgentSliderClick={(agent) => {
+                  setSelectedAgent(agent);
+                  toggleSidebar("agent-full-slider", "right");
+                }}
               />
             ),
           },
@@ -404,7 +414,15 @@ export default function Page({ params, searchParams }) {
           ui: {
             width: 260,
             containerClass: "p-4 border border-base-300 ",
-            render: () => <UserPromptUI text={recursiveMessage?.user || ""} />,
+            render: () => (
+              <UserPromptUI
+                text={recursiveMessage?.user || ""}
+                onClick={() => {
+                  setSelectedResponse({ user: recursiveMessage?.user || "" });
+                  toggleSidebar("response-full-slider", "right");
+                }}
+              />
+            ),
           },
         },
       },
@@ -475,23 +493,33 @@ export default function Page({ params, searchParams }) {
   };
 
   return (
-    <div className="h-screen w-full relative bg-base-200 flex flex-col">
+    <div data-testid="visualize-page" className="h-screen w-full relative bg-base-200 flex flex-col">
       {/* Navbar */}
-      <div className="bg-base-100 border-b border-base-300 px-6 py-4 flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold text-base-content">Agent Execution Flow</h1>
+      <div
+        data-testid="visualize-navbar"
+        className="bg-base-100 border-b border-base-300 px-6 py-4 flex items-center justify-between z-10"
+      >
+        <div data-testid="visualize-navbar-title-group" className="flex items-center gap-3">
+          <h1 data-testid="visualize-title" className="text-lg font-semibold text-base-content">
+            Agent Execution Flow
+          </h1>
           <span className="text-base-content/40">•</span>
-          <p className="text-sm text-base-content/60">
+          <p data-testid="visualize-executed-time" className="text-sm text-base-content/60">
             Executed {recursiveMessage?.created_at ? formatRelativeTime(recursiveMessage.created_at) : "recently"}
           </p>
         </div>
-        <button onClick={handleGoBack} className="text-base-content hover:text-primary transition-colors" title="Close">
+        <button
+          data-testid="visualize-navbar-close"
+          onClick={handleGoBack}
+          className="text-base-content hover:text-primary transition-colors"
+          title="Close"
+        >
           <X size={24} />
         </button>
       </div>
 
       {/* ReactFlow Container */}
-      <div className="flex-1 relative">
+      <div data-testid="visualize-flow-container" className="flex-1 relative">
         <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView>
           <Background />
         </ReactFlow>
@@ -506,6 +534,14 @@ export default function Page({ params, searchParams }) {
         onBack={handleGoBack}
       />
 
+      <AgentFullSlider
+        agent={selectedAgent}
+        onClose={() => {
+          toggleSidebar("agent-full-slider", "right");
+          setSelectedAgent(null);
+        }}
+      />
+
       <ResponseFullSlider
         response={selectedResponse}
         onClose={() => {
@@ -517,6 +553,7 @@ export default function Page({ params, searchParams }) {
 
       {/* Close Button - Bottom Right */}
       <button
+        data-testid="visualize-go-back"
         onClick={handleGoBack}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2 bg-primary text-primary-content rounded-md hover:bg-primary/80 shadow-lg transition-all"
       >

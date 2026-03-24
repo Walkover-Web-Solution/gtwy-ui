@@ -166,6 +166,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
         </div>
         <label className="swap">
           <input
+            data-testid="guardrails-toggle"
             id="guardrails-toggle"
             disabled={isReadOnly}
             type="checkbox"
@@ -186,7 +187,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
                 <div className="flex flex-wrap gap-1">
                   <span className="font-medium">Selected: </span>
                   {selectedGuardrails.map((key) => (
-                    <span key={key} className="badge badge-sm badge-outline">
+                    <span data-testid={`guardrail-badge-${key}`} key={key} className="badge badge-sm badge-outline">
                       {key === "custom" ? "Custom" : GUARDRAILS_TEMPLATES[key]?.name}
                     </span>
                   ))}
@@ -201,6 +202,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
           <div className="m-2 mb-4">
             {!showOptions ? (
               <button
+                data-testid="guardrails-add-button"
                 id="guardrails-add-button"
                 disabled={isReadOnly}
                 onClick={handleToggleOptions}
@@ -215,6 +217,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium">Available Guards</span>
                     <button
+                      data-testid="guardrails-close-button"
                       id="guardrails-close-button"
                       disabled={isReadOnly}
                       onClick={handleToggleOptions}
@@ -230,6 +233,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
                       <div key={key} className="form-control">
                         <div className="label cursor-pointer justify-start gap-2">
                           <input
+                            data-testid={`guardrail-checkbox-${key}`}
                             id={`guardrail-checkbox-${key}`}
                             disabled={isReadOnly}
                             type="checkbox"
@@ -248,6 +252,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
                     <div className="form-control col-span-full">
                       <div className="label cursor-pointer justify-start gap-2">
                         <input
+                          data-testid="guardrail-checkbox-custom"
                           id="guardrail-checkbox-custom"
                           disabled={isReadOnly}
                           type="checkbox"
@@ -263,6 +268,7 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
                       {showCustomInput && (
                         <div className="mt-2">
                           <textarea
+                            data-testid="guardrail-custom-prompt-textarea"
                             id="guardrail-custom-prompt-textarea"
                             disabled={isReadOnly}
                             placeholder="Write your custom guardrail prompt here..."

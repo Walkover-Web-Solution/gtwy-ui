@@ -261,6 +261,7 @@ const KnowledgeBaseModal = ({
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-base-300">
           <h3 className="font-bold text-lg">{selectedResource ? "Edit" : "Create"} Knowledge Base</h3>
           <button
+            data-testid="knowledgebase-modal-close-button"
             id="knowledgebase-modal-close-button"
             onClick={handleClose}
             className="btn btn-circle btn-ghost btn-sm"
@@ -279,6 +280,7 @@ const KnowledgeBaseModal = ({
               </span>
             </label>
             <input
+              data-testid="knowledgebase-name-input"
               id="knowledgebase-name-input"
               type="text"
               name="title"
@@ -299,6 +301,7 @@ const KnowledgeBaseModal = ({
               </span>
             </label>
             <textarea
+              data-testid="knowledgebase-description-textarea"
               id="knowledgebase-description-textarea"
               name="description"
               className="textarea textarea-bordered textarea-sm"
@@ -386,6 +389,7 @@ const KnowledgeBaseModal = ({
                       <span className="text-xs text-gray-500">({formatFileSize(uploadedFile.size)})</span>
                     </div>
                     <button
+                      data-testid="knowledgebase-remove-file-button"
                       id="knowledgebase-remove-file-button"
                       type="button"
                       onClick={removeUploadedFile}
@@ -407,6 +411,7 @@ const KnowledgeBaseModal = ({
                 </span>
               </label>
               <textarea
+                data-testid="knowledgebase-content-textarea-create"
                 id="knowledgebase-content-textarea-create"
                 name="content"
                 className="textarea textarea-bordered textarea-sm w-full h-32"
@@ -426,6 +431,7 @@ const KnowledgeBaseModal = ({
                   </span>
                 </label>
                 <textarea
+                  data-testid="knowledgebase-content-textarea-edit"
                   id="knowledgebase-content-textarea-edit"
                   name="content"
                   className="textarea textarea-bordered textarea-sm w-full h-32"
@@ -464,6 +470,7 @@ const KnowledgeBaseModal = ({
                 </span>
               </label>
               <input
+                data-testid="knowledgebase-url-input-create"
                 id="knowledgebase-url-input-create"
                 type="url"
                 name="url"
@@ -483,6 +490,7 @@ const KnowledgeBaseModal = ({
                   <span className="label-text text-sm font-medium">Chunking Type</span>
                 </label>
                 <select
+                  data-testid="knowledgebase-chunking-type-select"
                   id="knowledgebase-chunking-type-select"
                   name="chunkingType"
                   className="select select-bordered select-sm"
@@ -623,6 +631,7 @@ const KnowledgeBaseModal = ({
           )}
           <div className="flex justify-end gap-2">
             <button
+              data-testid="knowledgebase-cancel-button"
               id="knowledgebase-cancel-button"
               type="button"
               className="btn btn-ghost btn-sm"
@@ -632,6 +641,7 @@ const KnowledgeBaseModal = ({
               Cancel
             </button>
             <button
+              data-testid="knowledgebase-submit-button"
               id="knowledgebase-submit-button"
               type="submit"
               className="btn btn-primary btn-sm"

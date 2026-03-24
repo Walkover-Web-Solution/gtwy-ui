@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { BotIcon, WrenchIcon, FileClockIcon } from "@/components/Icons";
 import { Zap } from "lucide-react";
 
-export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = false }) {
+export function BatchUI({ agents, onToolClick, onToolSliderClick, onAgentSliderClick, isLoading = false }) {
   const [openAgentKey, setOpenAgentKey] = useState(null);
   const [popupPos, setPopupPos] = useState({ top: 0, left: 0 });
   const [selectedFunctionData, setSelectedFunctionData] = useState(null);
@@ -40,7 +40,11 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
   const renderToolGrid = (tools, depth = 0) => {
     if (!Array.isArray(tools) || tools.length === 0) return null;
     return (
-      <div className="grid grid-cols-2 gap-2" style={{ marginLeft: depth * 12 }}>
+      <div
+        data-testid={`batch-ui-tool-grid-${depth}`}
+        className="grid grid-cols-2 gap-2"
+        style={{ marginLeft: depth * 12 }}
+      >
         {tools.map((tool, index) => {
           const isLastOdd = tools.length % 2 !== 0 && index === tools.length - 1;
           const toolName = typeof tool === "string" ? tool : tool?.name || tool?.id || `tool_${index + 1}`;
@@ -50,16 +54,27 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
           return (
             <div key={`${toolName}-${index}`} className={isLastOdd ? "col-span-2" : ""}>
               <div
-                onClick={() =>
-                  isAgentNode
-                    ? handleAgentClick(
+                data-testid={`batch-ui-tool-${depth}-${index}`}
+                onClick={() => {
+                  if (isAgentNode) {
+                    if (onAgentSliderClick) {
+                      onAgentSliderClick({
+                        functionData: tool?.functionData ?? tool,
+                        name: toolName,
+                        tools: tool?.children || [],
+                      });
+                    } else {
+                      handleAgentClick(
                         `child-${depth}-${index}`,
                         tool?.functionData ?? tool,
                         toolName,
                         tool?.children || []
-                      )
-                    : handleToolClick(tool)
-                }
+                      );
+                    }
+                  } else {
+                    handleToolClick(tool);
+                  }
+                }}
                 className={`cursor-pointer flex items-center justify-between border px-3 py-2 text-xs text-base-content gap-2
                               ${isAgentNode ? "hover:border-blue-400 hover:bg-blue-400/10" : "hover:border-orange-400 hover:bg-orange-400/10"}`}
                 title={toolName}
@@ -76,6 +91,7 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
                   {isAgentNode ? "AGENT" : "TOOL"}
                   {!isAgentNode && (
                     <button
+                      data-testid={`batch-ui-tool-log-${depth}-${index}`}
                       type="button"
                       onClick={(event) => handleToolSliderClick(event, tool)}
                       className="p-1 border border-base-300 rounded hover:border-primary hover:text-primary"
@@ -165,19 +181,20 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
 
   if (isLoading || isBatchEmpty) {
     return (
-      <div className="flex items-center gap-2 text-xs text-base-content/60">
+      <div data-testid="batch-ui-loading" className="flex items-center gap-2 text-xs text-base-content/60">
         <span
+          data-testid="batch-ui-loading-spinner"
           className="h-4 w-4 border-2 hover:border-primary border-t-transparent rounded-full animate-spin"
           aria-label="Loading"
         />
-        <span>Loading batch data...</span>
+        <span data-testid="batch-ui-loading-text">Loading batch data...</span>
       </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-4 bg-base-100">
+      <div data-testid="batch-ui" className="space-y-4 bg-base-100">
         {agents?.map((agent, agentIndex) => {
           const agentKey = `${agentIndex}`;
 
@@ -190,7 +207,18 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
               {isActualAgent && (
                 <div className="relative">
                   <div
-                    onClick={() => handleAgentClick(agentKey, functionData, agent.name, agent.parallelTools)}
+                    data-testid={`batch-ui-agent-${agentKey}`}
+                    onClick={() => {
+                      if (onAgentSliderClick) {
+                        onAgentSliderClick({
+                          functionData,
+                          name: agent.name,
+                          tools: agent.parallelTools || [],
+                        });
+                      } else {
+                        handleAgentClick(agentKey, functionData, agent.name, agent.parallelTools);
+                      }
+                    }}
                     ref={(node) => {
                       if (node) rowRefs.current[agentKey] = node;
                     }}
@@ -211,11 +239,17 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
 
               {/* Show FUNCTIONS label for non-agent groups */}
               {!isActualAgent && agent.name === "FUNCTIONS" && (
-                <div className="text-xs font-semibold text-base-content/60 mb-1">MAIN AGENT TOOLS</div>
+                <div
+                  data-testid="batch-ui-main-agent-tools-label"
+                  className="text-xs font-semibold text-base-content/60 mb-1"
+                >
+                  MAIN AGENT TOOLS
+                </div>
               )}
 
               {isActualAgent && agent.isLoading && (
                 <div
+                  data-testid={`batch-ui-agent-loading-${agentKey}`}
                   className={`flex items-center gap-2 text-[10px] text-base-content/60 ${isActualAgent ? "ml-4" : ""}`}
                 >
                   <span className="h-3 w-3 border-2 hover:border-primary border-t-transparent rounded-full animate-spin" />
@@ -225,7 +259,10 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
 
               {/* PARALLEL TOOLS */}
               {Array.isArray(agent.parallelTools) && agent.parallelTools.length > 0 && (
-                <div className={`space-y-1 ${isActualAgent ? "ml-4" : ""}`}>
+                <div
+                  data-testid={`batch-ui-parallel-tools-${agentKey}`}
+                  className={`space-y-1 ${isActualAgent ? "ml-4" : ""}`}
+                >
                   {isActualAgent &&
                     (() => {
                       const toolCount = agent.parallelTools.filter((t) => t?.nodeType !== "agent").length;
@@ -253,10 +290,12 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
         })}
       </div>
 
-      {openAgentKey &&
+      {!onAgentSliderClick &&
+        openAgentKey &&
         selectedFunctionData &&
         createPortal(
           <div
+            data-testid="batch-ui-function-data-popup"
             ref={popupRef}
             className="fixed z-[9999] w-[420px] overflow-y-auto bg-base-100 border hover:border-primary shadow-xl p-4 text-xs text-base-content"
             style={{
@@ -266,7 +305,12 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, isLoading = fa
               overscrollBehavior: "contain",
             }}
           >
-            <div className="text-[11px] font-semibold text-base-content tracking-wide mb-3">FUNCTION DATA:</div>
+            <div
+              data-testid="batch-ui-function-data-title"
+              className="text-[11px] font-semibold text-base-content tracking-wide mb-3"
+            >
+              FUNCTION DATA:
+            </div>
 
             <div className="space-y-3">
               <div>

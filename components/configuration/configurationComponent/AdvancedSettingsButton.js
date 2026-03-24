@@ -36,8 +36,14 @@ const AdvancedSettingsButton = ({
   }
 
   return (
-    <div id="advanced-settings-container" className="relative" ref={advancedSettingsRef}>
+    <div
+      data-testid="advanced-settings-container"
+      id="advanced-settings-container"
+      className="relative"
+      ref={advancedSettingsRef}
+    >
       <button
+        data-testid="advanced-settings-toggle-button"
         id="advanced-settings-toggle-button"
         type="button"
         className={`btn btn-sm border-base-content/20 ${showAdvancedSettings ? "btn-active text-primary border-primary/60" : "btn-ghost"}`}
@@ -49,6 +55,7 @@ const AdvancedSettingsButton = ({
 
       {showAdvancedSettings && (
         <div
+          data-testid="advanced-settings-dropdown"
           id="advanced-settings-dropdown"
           className="absolute right-0 top-full z-high mt-2 w-[320px] max-h-[60vh] overflow-y-auto rounded-lg border border-base-content/30 bg-base-100 p-3 shadow-lg"
         >

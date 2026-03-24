@@ -24,6 +24,7 @@ const InputSection = memo(() => {
     <>
       {((!hidePreTool && isEmbedUser) || !isEmbedUser) && (
         <div
+          data-testid="input-section-pre-embed-wrapper"
           id="input-section-pre-embed-wrapper"
           className="w-full cursor-default flex flex-wrap justify-between items-start gap-2"
         >

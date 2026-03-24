@@ -55,10 +55,15 @@ function VersionDescriptionInput({ params, searchParams, isEmbedUser }) {
   );
 
   return (
-    <div id="version-description-input-container" className="w-full ml-1">
+    <div
+      data-testid="version-description-input-container"
+      id="version-description-input-container"
+      className="w-full ml-1"
+    >
       <div className="flex flex-row items-center">
         <div className="relative w-full">
           <input
+            data-testid="version-description-input"
             id="version-description-input"
             type="text"
             className="text-md outline-none w-full"

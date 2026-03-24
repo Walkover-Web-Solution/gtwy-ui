@@ -34,6 +34,7 @@ const EditMessageModal = ({
             <span className="label-text">Describe your ideal response:</span>
           </label>
           <textarea
+            data-testid="edit-message-textarea"
             id="edit-message-textarea"
             className="input input-bordered textarea min-h-[200px]"
             defaultValue={modalInput?.content}
@@ -48,7 +49,12 @@ const EditMessageModal = ({
         </div>
 
         <div className="flex text-base-content justify-end gap-2">
-          <button id="edit-message-cancel-button" className="btn btn-sm" onClick={handleClose}>
+          <button
+            data-testid="edit-message-cancel-button"
+            id="edit-message-cancel-button"
+            className="btn btn-sm"
+            onClick={handleClose}
+          >
             Cancel
           </button>
 
@@ -57,6 +63,7 @@ const EditMessageModal = ({
             <>
               {/* Show generated prompt button */}
               <button
+                data-testid="edit-message-show-generated-button"
                 id="edit-message-show-generated-button"
                 className="btn btn-secondary btn-sm gap-2"
                 onClick={handleShowGeneratedPrompt}
@@ -70,6 +77,7 @@ const EditMessageModal = ({
           ) : (
             /* First time - show Better Prompt button */
             <button
+              data-testid="edit-message-improve-button"
               id="edit-message-improve-button"
               className="btn btn-primary btn-sm gap-2"
               onClick={handleImprovePrompt}

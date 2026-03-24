@@ -28,6 +28,7 @@ const AuthDataModal = ({ data }) => {
             </div>
           </div>
           <button
+            data-testid="auth-data-close-x-button"
             id="auth-data-close-x-button"
             className="btn btn-sm btn-circle btn-ghost"
             onClick={() => {
@@ -50,6 +51,7 @@ const AuthDataModal = ({ data }) => {
             </label>
             <div className="join w-full">
               <input
+                data-testid="auth-data-route-name-input"
                 id="auth-data-route-name-input"
                 type="text"
                 value={data?.name || ""}
@@ -57,6 +59,7 @@ const AuthDataModal = ({ data }) => {
                 className="input input-bordered join-item flex-1 bg-base-200"
               />
               <button
+                data-testid="auth-data-copy-route-name-button"
                 id="auth-data-copy-route-name-button"
                 onClick={() => copyToClipboard(data?.name || "", "name")}
                 className="btn btn-primary text-white hover:bg-primary-focus join-item"
@@ -80,6 +83,7 @@ const AuthDataModal = ({ data }) => {
             </label>
             <div className="join w-full">
               <input
+                data-testid="auth-data-client-id-input"
                 id="auth-data-client-id-input"
                 type="text"
                 value={data?.client_id || ""}
@@ -87,6 +91,7 @@ const AuthDataModal = ({ data }) => {
                 className="input input-bordered join-item flex-1 bg-base-200 font-mono text-sm"
               />
               <button
+                data-testid="auth-data-copy-client-id-button"
                 id="auth-data-copy-client-id-button"
                 onClick={() => copyToClipboard(data?.client_id || "", "client_id")}
                 className="btn btn-primary text-white hover:bg-primary-focus join-item"
@@ -110,6 +115,7 @@ const AuthDataModal = ({ data }) => {
             </label>
             <div className="join w-full">
               <input
+                data-testid="auth-data-redirection-url-input"
                 id="auth-data-redirection-url-input"
                 type="text"
                 value={data?.redirection_url || ""}
@@ -117,6 +123,7 @@ const AuthDataModal = ({ data }) => {
                 className="input input-bordered join-item flex-1 bg-base-200"
               />
               <button
+                data-testid="auth-data-copy-redirection-url-button"
                 id="auth-data-copy-redirection-url-button"
                 onClick={() => copyToClipboard(data?.redirection_url || "", "redirection_url")}
                 className="btn btn-primary text-white hover:bg-primary-focus join-item"
@@ -129,6 +136,7 @@ const AuthDataModal = ({ data }) => {
               </button>
               {data?.redirection_url && (
                 <a
+                  data-testid="auth-data-open-redirection-url-link"
                   id="auth-data-open-redirection-url-link"
                   href={data.redirection_url}
                   target="_blank"
@@ -145,6 +153,7 @@ const AuthDataModal = ({ data }) => {
         {/* Footer */}
         <div className="modal-action">
           <button
+            data-testid="auth-data-close-button"
             id="auth-data-close-button"
             onClick={() => {
               closeModal(MODAL_TYPE?.AUTH_DATA_MODAL);

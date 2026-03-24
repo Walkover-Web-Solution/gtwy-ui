@@ -6,6 +6,7 @@ import { GetPreBuiltToolTypeIcon, getStatusClass } from "@/utils/utility";
 import { AddIcon } from "@/components/Icons";
 import React, { useMemo, useState } from "react";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
+import { PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
 
 function EmbedListSuggestionDropdownMenu({
   params,
@@ -24,6 +25,8 @@ function EmbedListSuggestionDropdownMenu({
   setTutorialState,
   isPublished = false,
   isEditor = true,
+  onSelectBuiltInPreTool = () => {}, // new
+  connectedPreToolTypes = [],
 }) {
   // Determine if content is read-only (either published or user is not an editor)
   // Use the tutorial videos hook
@@ -61,7 +64,7 @@ function EmbedListSuggestionDropdownMenu({
           return (
             title !== undefined &&
             title?.toLowerCase()?.includes(searchQuery.toLowerCase()) &&
-            !(connectedFunctions || [])?.includes(value?._id)
+            !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id)
           );
         })
         .slice() // Create a copy of the array to avoid mutating the original
@@ -150,6 +153,7 @@ function EmbedListSuggestionDropdownMenu({
       )}
       {!tutorialState?.showTutorial && (
         <ul
+          data-testid="embed-suggestion-dropdown-menu"
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
           className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0"
@@ -161,6 +165,7 @@ function EmbedListSuggestionDropdownMenu({
               <li className="text-sm font-semibold disabled">Available Tools</li>
             )}
             <input
+              data-testid="embed-suggestion-search-input"
               id="embed-suggestion-search-input"
               type="text"
               placeholder={`Search ${name == "preFunction" ? "Pre Function" : "Tool"}`}
@@ -172,6 +177,22 @@ function EmbedListSuggestionDropdownMenu({
               renderEmbedSuggestions
             ) : (
               <li className="text-center mt-2">No tools found</li>
+            )}
+            {name === "preFunction" && (
+              <>
+                <li className="text-sm font-semibold disabled mt-2">Built-in Pre Tools</li>
+                {Object.keys(PRE_TOOL_TYPES)
+                  .filter((k) => k !== "custom_function")
+                  .map((k) => ({ type: k, label: PRE_TOOL_LABELS[k] }))
+                  .filter((t) => !connectedPreToolTypes.includes(t.type))
+                  .map((t) => (
+                    <li key={t.type} onClick={() => onSelectBuiltInPreTool(t.type)}>
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-sm">{t.label}</span>
+                      </div>
+                    </li>
+                  ))}
+              </>
             )}
             {name != "preFunction" && (
               <>
@@ -205,6 +226,7 @@ function EmbedListSuggestionDropdownMenu({
 
             {!hideCreateFunction && (
               <li
+                data-testid="embed-suggestion-add-new-button"
                 id="embed-suggestion-add-new-button"
                 className="border-t border-base-300 w-full sticky bottom-0 bg-base-100 py-2"
                 onClick={() =>

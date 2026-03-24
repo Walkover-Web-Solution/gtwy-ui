@@ -84,6 +84,7 @@ const KeyboardShortcutsModal = () => {
                 </div>
               </div>
               <button
+                data-testid="keyboard-shortcuts-close-button"
                 id="keyboard-shortcuts-close-button"
                 onClick={handleClose}
                 className="p-1 hover:bg-base-200 rounded-lg transition-colors duration-200"

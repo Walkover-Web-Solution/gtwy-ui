@@ -23,6 +23,8 @@ const ConfigurationPage = ({
   closeHelperButtonLocation,
   onViewChange,
   viewOverride,
+  apiKeyError,
+  setApiKeyError,
 }) => {
   const router = useRouter();
   const view = searchParams?.view || "config";
@@ -98,8 +100,9 @@ const ConfigurationPage = ({
             {!isEmbedUser && (
               <>
                 <button
+                  data-testid="speak-to-us-button"
                   data-cal-namespace="30min"
-                  data-cal-link="team/gtwy.ai/ai-consultation"
+                  data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
                   data-cal-origin="https://cal.id"
                   data-cal-config='{"layout":"month_view"}'
                   className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content font-bold transition-colors cursor-pointer"
@@ -111,6 +114,7 @@ const ConfigurationPage = ({
                 {/* Help Docs */}
 
                 <a
+                  data-testid="help-docs-link"
                   id="help-docs-link"
                   href="https://gtwy.ai/resources"
                   className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content font-bold transition-colors"
@@ -124,6 +128,7 @@ const ConfigurationPage = ({
                 {/* Integration Guide */}
 
                 <button
+                  data-testid="integration-guide-button"
                   id="integration-guide-button"
                   onClick={() => {
                     handleNavigation("integration");
@@ -171,6 +176,8 @@ const ConfigurationPage = ({
       switchView: handleNavigation,
       isPublished,
       isEditor,
+      apiKeyError,
+      setApiKeyError,
     }),
     [
       configState,
@@ -191,6 +198,7 @@ const ConfigurationPage = ({
       isEditor,
       currentView,
       handleNavigation,
+      apiKeyError,
     ]
   );
 
@@ -246,15 +254,16 @@ const ConfigurationPage = ({
         {/* Published Data Banner - Sticky and close to navbar */}
         {bannerState.showPublished && (
           <div
+            data-testid="published-data-banner"
             id="published-banner"
-            className={`sticky top-0 z-40 bg-blue-50 dark:bg-slate-800 border-b border-blue-200 dark:border-slate-700 py-2 ${
+            className={`sticky top-0 z-40 bg-primary/20 backdrop-blur-lg border-b border-primary/20 py-2 ${
               bannerState.animatingPublished ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
             }`}
           >
             <div className="flex items-center justify-center gap-2 text-sm">
-              <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-blue-700 dark:text-slate-300">
-                This is a <span className="text-blue-800 dark:text-white font-medium">read-only</span> published data.
+              <Lock className="h-4 w-4 text-info" />
+              <span className="text-base-content/80">
+                This is a <span className="text-base-content font-medium">read-only</span> published data.
               </span>
             </div>
           </div>
@@ -263,16 +272,16 @@ const ConfigurationPage = ({
         {/* Non-Editor Banner - Sticky and close to navbar */}
         {bannerState.showNonEditor && (
           <div
+            data-testid="non-editor-banner"
             id="non-editor-banner"
-            className={`sticky top-0 z-40 bg-amber-50 dark:bg-slate-800 border-b border-amber-200 dark:border-slate-700 py-2 ${
+            className={`sticky top-0 z-40 bg-primary/20 backdrop-blur-sm border-b border-primary/20 py-2 ${
               bannerState.animatingNonEditor ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
             }`}
           >
             <div className="flex items-center justify-center gap-2 text-sm">
-              <Lock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-blue-700 dark:text-slate-300">
-                You don't have <span className="text-blue-800 dark:text-white font-medium">edit access</span> to update
-                this agent.
+              <Lock className="h-4 w-4 text-primary" />
+              <span className="text-base-content/80">
+                You don't have <span className="text-base-content font-medium">edit access</span> to update this agent.
               </span>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { closeModal } from "@/utils/utility";
 import React, { useCallback, useEffect, useRef, useState, useMemo, memo } from "react";
 import { useDispatch } from "react-redux";
 import Modal from "../UI/Modal";
+import { promptObjectToString } from "@/utils/promptUtils";
 
 // Optimized Textarea Component
 const OptimizedTextarea = memo(({ value, onChange, className, disabled, placeholder }) => {
@@ -33,6 +34,7 @@ const OptimizedTextarea = memo(({ value, onChange, className, disabled, placehol
   return (
     <div ref={divRef}>
       <textarea
+        data-testid="prompt-summary-textarea"
         id="prompt-summary-textarea"
         ref={contentRef}
         disabled={disabled}
@@ -115,7 +117,9 @@ export const AgentSummaryContent = memo(
       }
     }, [autoGenerateSummary, setAutoGenerateSummary]);
     const handleGenerateSummary = useCallback(async () => {
-      if (prompt.trim() === "") {
+      // Convert prompt to string safely (handles both string and object formats)
+      const promptText = typeof prompt === "string" ? prompt : promptObjectToString(prompt);
+      if (!promptText || promptText.trim() === "") {
         setErrorMessage("Prompt is required");
         return;
       }
@@ -147,14 +151,14 @@ export const AgentSummaryContent = memo(
       return {
         hasValidationError: showValidationError && isEmpty,
         isDisabled: isGeneratingSummary || bridge_summary === displayValue,
-        textareaClassName: `textarea bg-white dark:bg-black/15 textarea-bordered w-full min-h-32 resize-y focus:border-primary caret-base-content p-2 ${
+        textareaClassName: `textarea bg-base-100 textarea-bordered w-full min-h-32 resize-y focus:border-primary caret-base-content p-2 ${
           showValidationError && isEmpty ? "border-red-500 focus:border-red-500" : ""
         }`,
       };
     }, [showValidationError, displayValue, isGeneratingSummary, bridge_summary]);
 
     return (
-      <div id="agent-summary-content" className="space-y-4">
+      <div id="agent-summary-content" data-testid="agent-summary-content" className="space-y-4">
         {(showTitle || showButtons) && (
           <div id="agent-summary-header" className="flex justify-between items-center">
             {showTitle && (
@@ -166,6 +170,7 @@ export const AgentSummaryContent = memo(
             {showButtons && (
               <div className="flex gap-2">
                 <button
+                  data-testid="agent-summary-generate-button"
                   id="agent-summary-generate-button"
                   className={`btn btn-ghost btn-sm ${isGeneratingSummary ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={handleGenerateSummary}
@@ -195,6 +200,7 @@ export const AgentSummaryContent = memo(
           />
           <div className="flex gap-2">
             <button
+              data-testid="agent-summary-save-button"
               id="agent-summary-save-button"
               className="btn btn-primary btn-sm"
               onClick={handleSaveSummary}
@@ -220,7 +226,7 @@ const PromptSummaryModal = ({ modalType, params, autoGenerateSummary = false, se
 
   return (
     <Modal MODAL_ID={modalType} onClose={handleClose}>
-      <div id="prompt-summary-modal-box" className="modal-box w-11/12 max-w-5xl">
+      <div id="prompt-summary-modal-box" data-testid="prompt-summary-modal-box" className="modal-box w-11/12 max-w-5xl">
         <AgentSummaryContent
           params={params}
           autoGenerateSummary={autoGenerateSummary}
@@ -229,7 +235,12 @@ const PromptSummaryModal = ({ modalType, params, autoGenerateSummary = false, se
           onSave={() => closeModal(modalType)}
         />
         <div className="modal-action">
-          <button id="prompt-summary-close-button" className="btn btn-sm" onClick={handleClose}>
+          <button
+            id="prompt-summary-close-button"
+            data-testid="prompt-summary-close-button"
+            className="btn btn-sm"
+            onClick={handleClose}
+          >
             Close
           </button>
         </div>

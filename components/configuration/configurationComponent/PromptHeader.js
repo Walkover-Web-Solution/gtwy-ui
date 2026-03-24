@@ -1,54 +1,64 @@
 import React, { memo, useCallback } from "react";
+import { PROMPT_VIEW_MODE } from "@/utils/enums";
+import Protected from "@/components/Protected";
+import { FileDiff, X, Upload, Sparkles } from "lucide-react";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 // Optimized header component with memoization
 const PromptHeader = memo(
   ({
-    hasUnsavedChanges,
-    onSave,
     isPromptHelperOpen,
     isMobileView,
     onOpenDiff,
     onOpenPromptHelper,
-    onClosePromptHelper,
     handleCloseTextAreaFocus,
-    showCloseHelperButton = false,
-    disabled = false,
     isPublished = false,
     isEditor = true,
     prompt = "",
     isFocused = false,
     setIsTextareaFocused = () => {},
     showDiffButton = true,
+    viewMode = PROMPT_VIEW_MODE.SIMPLE,
+    onViewModeChange = () => {},
+    onMigratePrompt = () => {},
+    isEmbedCustomPrompt = false,
+    isEmbedUser = false,
   }) => {
     const handleOpenDiff = useCallback(() => {
       onOpenDiff?.();
     }, [onOpenDiff]);
 
-    // Conditional styling based on isPromptHelperOpen
+    const hidePromptHelper = useCustomSelector(
+      (state) => state.appInfoReducer?.embedUserDetails?.hidePromptHelper || false
+    );
+
+    const isStructuredPrompt = typeof prompt === "object" && prompt !== null;
+    const canEdit = !isPublished && isEditor;
+
     if (isPromptHelperOpen && !isMobileView) {
       return (
         <div
+          data-testid="prompt-header-helper-open"
           id="prompt-header-helper-open"
-          className={`flex z-very-high items-center justify-between p-3 border-b border-base-300 bg-base-50 ${!isEditor ? "mt-8" : ""}`}
+          className={`flex items-center justify-end px-4 py-2.5 border-b border-base-300  ${!isEditor ? "mt-8" : ""}`}
         >
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-semibold text-base-content">System Prompt</h3>
-          </div>
-
-          <div className="flex items-center gap-4">
+          <div className="flex justify-end gap-2">
             {prompt && showDiffButton && (
-              <span
-                id="prompt-header-diff-button-open"
-                className="text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 cursor-pointer px-2 py-1 rounded transition-colors"
+              <button
+                type="button"
+                data-testid="prompt-header-diff-button-open"
+                className="btn btn-xs btn-ghost gap-1 text-base-content/70 hover:text-base-content"
                 onClick={handleOpenDiff}
-                title="View Diff"
+                title="View changes since last save"
               >
+                <FileDiff size={12} />
                 Diff
-              </span>
+              </button>
             )}
-            <span
-              id="prompt-header-close-helper-button"
-              className="text-sm text-error hover:text-error/80 hover:bg-error/10 cursor-pointer px-2 py-1 rounded transition-colors"
+            <button
+              type="button"
+              data-testid="prompt-header-close-helper-button"
+              className="btn btn-xs btn-ghost text-error hover:bg-error/10 hover:text-error gap-1"
               onClick={(e) => {
                 e.preventDefault();
                 handleCloseTextAreaFocus();
@@ -56,50 +66,115 @@ const PromptHeader = memo(
               }}
               title="Close Prompt Helper"
             >
+              <X size={12} />
               Close Helper
-            </span>
+            </button>
           </div>
         </div>
       );
     }
 
-    // Default styling when isPromptHelperOpen is false
+    // Default header
     return (
-      <div id="prompt-header-default" className="flex justify-between items-center">
-        <div className="label flex items-center gap-2">
-          <span className="label-text capitalize font-medium">System Prompt</span>
+      <div
+        data-testid="prompt-header-default"
+        id="prompt-header-default"
+        className="flex items-center justify-between px-0 pb-1"
+      >
+        {/* Left: Title — shown when textarea is active (advanced view or plain prompt) */}
+        <div className="flex items-center gap-2">
+          {viewMode === PROMPT_VIEW_MODE.ADVANCED && !isEmbedCustomPrompt && (
+            <>
+              <span className="text-sm font-semibold text-base-content">System Prompt</span>
+              {isPublished && (
+                <span className="badge badge-xs badge-ghost text-base-content/50 border-base-content/20">
+                  Published
+                </span>
+              )}
+            </>
+          )}
         </div>
 
-        <div className="label gap-6 sm:gap-4">
-          {prompt && !isPromptHelperOpen && showDiffButton && (
-            <span
-              id="prompt-header-diff-button"
-              className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${
-                isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
+        {/* Right: Controls */}
+        <div className="flex items-center gap-1.5">
+          {prompt && showDiffButton && (
+            <button
+              type="button"
+              data-testid="prompt-header-diff-button"
+              className={`btn btn-xs btn-ghost gap-1 text-base-content/60 hover:text-base-content transition-all duration-200 ${
+                isFocused ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleOpenDiff();
               }}
-              title="View Diff"
+              title="View changes since last save"
             >
+              <FileDiff size={12} />
               Diff
-            </span>
+            </button>
           )}
-          {!isPromptHelperOpen && (
-            <span
-              id="prompt-header-open-helper-button"
-              className={`text-sm text-base-content hover:text-base-content/80 hover:bg-base-200 px-2 py-1 rounded transition-opacity duration-500 ease-in-out ${
-                isFocused ? "opacity-100 cursor-pointer" : "opacity-0 pointer-events-none cursor-default"
+
+          {!isPromptHelperOpen && ((isEmbedUser && !hidePromptHelper) || !isEmbedUser) && (
+            <button
+              type="button"
+              data-testid="prompt-header-open-helper-button"
+              className={`btn btn-xs btn-ghost gap-1 text-base-content/60 hover:text-base-content transition-all duration-200 ${
+                isFocused ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 onOpenPromptHelper();
               }}
-              title={isPublished ? "Prompt Helper: Cannot edit in published mode" : "Open Prompt Helper"}
+              title={isPublished ? "Cannot use Prompt Helper in published mode" : "Open AI Prompt Helper"}
             >
+              <Sparkles size={12} />
               Prompt Helper
-            </span>
+            </button>
+          )}
+
+          {/* Always-visible: Simple / Advanced segmented toggle — hidden for embed users with custom fields */}
+          {isStructuredPrompt && !isEmbedCustomPrompt && (
+            <div
+              className="flex items-center bg-base-200 rounded-lg p-0.5 gap-0.5"
+              data-testid="prompt-view-mode-toggle"
+            >
+              {[PROMPT_VIEW_MODE.SIMPLE, PROMPT_VIEW_MODE.ADVANCED].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 capitalize ${
+                    viewMode === mode
+                      ? "bg-base-100 text-base-content shadow-sm"
+                      : "text-base-content/50 hover:text-base-content/80"
+                  } ${!canEdit ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  onMouseDown={(e) => {
+                    if (!canEdit) return;
+                    e.preventDefault();
+                    onViewModeChange(mode);
+                  }}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Always-visible: Migrate — only for plain string prompts */}
+          {!isStructuredPrompt && canEdit && (
+            <button
+              type="button"
+              data-testid="prompt-header-migrate-button"
+              className="btn btn-xs btn-outline"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onMigratePrompt();
+              }}
+              title="Convert to structured Role / Goal / Instruction format"
+            >
+              <Upload size={11} />
+              Migrate Prompt
+            </button>
           )}
         </div>
       </div>
@@ -109,4 +184,4 @@ const PromptHeader = memo(
 
 PromptHeader.displayName = "PromptHeader";
 
-export default PromptHeader;
+export default Protected(PromptHeader);

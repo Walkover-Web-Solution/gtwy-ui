@@ -6,7 +6,14 @@ import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { deleteApikeyAction, updateApikeyAction } from "@/store/action/apiKeyAction";
 import { API_KEY_COLUMNS, MODAL_TYPE } from "@/utils/enums";
-import { formatDate, formatRelativeTime, getIconOfService, openModal, toggleSidebar } from "@/utils/utility";
+import {
+  formatDate,
+  formatRelativeTime,
+  getIconOfService,
+  openModal,
+  toggleSidebar,
+  getApiKeyStatusClass,
+} from "@/utils/utility";
 import { BookIcon, RefreshIcon, SquarePenIcon, TrashIcon } from "@/components/Icons";
 import { usePathname } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
@@ -97,6 +104,31 @@ const Page = () => {
       "No records found"
     ),
     last_used_original: item.last_used,
+    last_used_status: item.status
+      ? (() => {
+          const Icon = getApiKeyStatusClass(item.status, "icon");
+          const iconClass = getApiKeyStatusClass(item.status, "iconClass");
+          return Icon ? (
+            <div className="relative flex items-center group/status">
+              <Icon size={16} className={iconClass} />
+              <span
+                className={`
+        absolute left-5 z-10
+        px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap
+        opacity-0 -translate-x-2 pointer-events-none
+        group-hover/status:opacity-100 group-hover/status:translate-x-0
+        transition-all duration-200 ease-out
+        ${getApiKeyStatusClass(item.status, "badge")}
+      `}
+              >
+                {item.status}
+              </span>
+            </div>
+          ) : (
+            "-"
+          );
+        })()
+      : "-",
   }));
 
   const resetUsage = useCallback(

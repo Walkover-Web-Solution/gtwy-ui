@@ -2,7 +2,17 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
-import { ChevronDown, LogOut, ChevronRight, ChevronLeft, User, AlignJustify, ArrowLeft } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  ChevronRight,
+  ChevronLeft,
+  User,
+  AlignJustify,
+  ArrowLeft,
+  Keyboard,
+  Building2,
+} from "lucide-react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { logoutUserFromMsg91, switchOrg, switchUser } from "@/config/index";
@@ -25,6 +35,7 @@ import {
   NAV_SECTIONS,
 } from "@/utils/mainSliderHelper";
 import InviteUserModal from "../modals/InviteuserModal";
+import { logoutUser } from "../../config/authApi";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Component                                 */
@@ -47,6 +58,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     allBridges: state.bridgeReducer?.org?.[orgId]?.orgs || [],
   }));
   const orgName = useMemo(() => organizations?.[orgId]?.name || "Organization", [organizations, orgId]);
+  // When on org list page, orgId can be undefined; use first org for menu links
+  const targetOrgId = orgId || (organizations && Object.keys(organizations)[0]);
   const getInitials = (name = "") => {
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase();
@@ -93,12 +106,16 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     }
   }, [isMobile]);
 
+  // Pages at depth 4 that should collapse the sidebar (detail/full-screen pages)
+  const COLLAPSE_AT_DEPTH_4 = ["chatbotConfig"];
+  const shouldCollapse = pathParts.length > 4 || (pathParts.length === 4 && COLLAPSE_AT_DEPTH_4.includes(pathParts[3]));
+
   // Effect to handle sidebar state when path changes
   useEffect(() => {
-    if (isSideBySideMode) {
+    if (shouldCollapse) {
+      setIsOpen(false); // Automatically close for detail pages
+    } else if (isSideBySideMode) {
       setIsOpen(true); // Always open in side-by-side mode
-    } else if (pathParts.length > 4) {
-      setIsOpen(false); // Automatically close when pathParts length > 4
     }
 
     // Hide on mobile by default when path changes
@@ -106,7 +123,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
       setIsOpen(false);
       setIsMobileVisible(false);
     }
-  }, [isSideBySideMode, pathParts.length, isMobile]);
+  }, [shouldCollapse, isSideBySideMode, isMobile]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -120,10 +137,15 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   /** Logout handler */
   const handleLogout = useCallback(async () => {
     try {
+      if (getFromCookies("local_token")) {
+        await logoutUser(getFromCookies("local_token")); // Blacklist token
+      }
       await logoutUserFromMsg91({
         headers: { proxy_auth_token: getFromCookies("proxy_token") ?? "" },
       });
+
       clearCookie();
+      localStorage.clear();
       sessionStorage.clear();
       if (process.env.NEXT_PUBLIC_ENV === "PROD") {
         router.replace("https://gtwy.ai/");
@@ -384,6 +406,10 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
   // Reusable function for rendering organization dropdown content
   const renderOrganizationDropdown = useCallback(() => {
+    const totalOrgCount = Object.keys(organizations || {}).length;
+    const otherOrgCount = Object.keys(organizations || {}).filter((id) => id !== orgId).length;
+    const showMoreButton = totalOrgCount > 3; // show "More" only when there are more than 3 orgs total
+
     return (
       <>
         {/* User info */}
@@ -414,7 +440,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   onClick={() => {
                     setIsOrgDropdownExpanded(false);
                     setIsOrgDropdownOpen(false);
-                    openModal(MODAL_TYPE.INVITE_USER);
+                    window.dispatchEvent(new Event("openAddUserDialog"));
                   }}
                   className="text-xs text-blue-400 hover:text-blue-600 transition-colors font-medium"
                 >
@@ -448,19 +474,19 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   </button>
                 ))}
 
-              <button
-                id="main-slider-view-more-orgs-button"
-                onClick={() => handleSwitchOrg()}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-400 text-sm truncate">
-                    more{" "}
-                    {Object.keys(organizations || {}).filter((id) => id !== orgId).length > 2 &&
-                      `(+${Object.keys(organizations || {}).filter((id) => id !== orgId).length - 2})`}
+              {showMoreButton && (
+                <button
+                  id="main-slider-view-more-orgs-button"
+                  onClick={() => handleSwitchOrg()}
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-blue-400 text-sm truncate">
+                      more {otherOrgCount > 2 && `(+${otherOrgCount - 2})`}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              )}
               <hr className="border-base-300 my-2" />
             </>
           )}
@@ -469,7 +495,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           <button
             id="main-slider-user-details-button"
             onClick={() => {
-              router.push(`/org/${orgId}/userDetails`);
+              if (targetOrgId) router.push(`/org/${targetOrgId}/userDetails`);
               setIsOrgDropdownOpen(false);
               setIsOrgDropdownExpanded(false);
             }}
@@ -477,6 +503,34 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           >
             <User size={14} className="flex-shrink-0" />
             <div className="font-medium text-sm">User Details</div>
+          </button>
+
+          {/* Update Org Details button */}
+          <button
+            id="main-slider-org-details-button"
+            onClick={() => {
+              if (targetOrgId) router.push(`/org/${targetOrgId}/orgDetails`);
+              setIsOrgDropdownOpen(false);
+              setIsOrgDropdownExpanded(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
+          >
+            <Building2 size={14} className="flex-shrink-0" />
+            <div className="text-sm">update organization</div>
+          </button>
+
+          {/* Refer & Earn button */}
+          <button
+            id="main-slider-refer-earn-button"
+            onClick={() => {
+              if (targetOrgId) router.push(`/org/${targetOrgId}/referAndEarn`);
+              setIsOrgDropdownOpen(false);
+              setIsOrgDropdownExpanded(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
+          >
+            <span className="text-sm flex-shrink-0">🎁</span>
+            <div className="font-medium text-sm">Refer &amp; Earn</div>
           </button>
 
           {/* Logout button */}
@@ -537,7 +591,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   );
 
   // Determine positioning based on mode
-  const sidebarPositioning = isSideBySideMode ? "relative" : "fixed";
+  const sidebarPositioning = isSideBySideMode && !shouldCollapse ? "relative" : "fixed";
   const sidebarZIndex = isMobile || isMobileVisible ? "z-50" : "z-30";
 
   // Determine if sidebar should show content (expanded view) with delayed hiding
@@ -753,7 +807,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                               {showSidebarContent && (
                                 <div className="flex items-center gap-2 justify-center">
                                   <span className="text-sm capitalize truncate">{DISPLAY_NAMES(key)}</span>
-                                  <span>{key === "orchestratal_model" && <BetaBadge />}</span>
+                                  <span>{(key === "orchestratal_model" || key === "widgets") && <BetaBadge />}</span>
                                 </div>
                               )}
                             </button>
@@ -868,7 +922,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                 <button
                   id="main-slider-speak-to-us-button"
                   data-cal-namespace="30min"
-                  data-cal-link="team/gtwy.ai/ai-consultation"
+                  data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
                   data-cal-origin="https://cal.id"
                   data-cal-config='{"layout":"month_view"}'
                   onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
@@ -879,20 +933,46 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   {showSidebarContent && <span className="text-xs truncate">Speak To Us</span>}
                 </button>
 
-                <a
-                  id="main-slider-feedback-link"
-                  href="https://gtwy.featurebase.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  id="main-slider-feedback-button"
+                  type="button"
+                  onClick={() => {
+                    // Navigate to feedback page
+                    router.push(`/org/${orgId}/feedback`);
+                    if (isMobile) setIsMobileVisible(false);
+                  }}
                   onMouseEnter={(e) => onItemEnter("feedback", e)}
                   onMouseLeave={onItemLeave}
                   className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                  onClick={() => isMobile && setIsMobileVisible(false)}
                 >
                   {ITEM_ICONS.feedbackAdmin}
                   {showSidebarContent && <span className="text-xs truncate">Feedback</span>}
-                </a>
+                </button>
               </div>
+            </div>
+
+            {/* Keyboard Shortcuts Section */}
+            <div className="border-t border-base-content/20 p-2">
+              <button
+                id="main-slider-keyboard-shortcuts-button"
+                onClick={() => {
+                  openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+                  if (isMobile) setIsMobileVisible(false);
+                }}
+                onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
+                onMouseLeave={onItemLeave}
+                className={`w-full flex items-center gap-3 p-2.5 hover:bg-base-200 transition-colors rounded-lg ${!showSidebarContent ? "justify-center" : ""}`}
+              >
+                <Keyboard size={18} className="text-base-content/70" />
+                {showSidebarContent && (
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="text-xs truncate">Keyboard Shortcuts</span>
+                    <span className="text-[10px] text-base-content/50 truncate">
+                      {typeof navigator !== "undefined" && navigator.platform.includes("Mac") ? "⌘" : "Ctrl"} + /
+                    </span>
+                  </div>
+                )}
+              </button>
             </div>
 
             {/* GTWY Label Section */}

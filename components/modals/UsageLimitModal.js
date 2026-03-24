@@ -6,6 +6,7 @@ import { closeModal } from "@/utils/utility";
 
 const UsageLimitModal = ({ data, onConfirm, item }) => {
   const [limit, setLimit] = useState(data?.item_limit);
+  const [resetPeriod, setResetPeriod] = useState(data?.item_limit_reset_period || "daily");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,6 +16,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
     } else {
       setLimit("");
     }
+    setResetPeriod(data?.item_limit_reset_period || "daily");
   }, [data]);
 
   const handleClose = () => {
@@ -33,7 +35,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
     setError("");
 
     try {
-      await onConfirm(data, parseFloat(limit));
+      await onConfirm(data, parseFloat(limit), resetPeriod);
       handleClose();
     } catch (err) {
       setError(err.message || "Failed to set API key limit");
@@ -46,6 +48,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
     <Modal MODAL_ID={MODAL_TYPE.API_KEY_LIMIT_MODAL} onClose={handleClose}>
       <div className="flex items-center justify-center">
         <div
+          data-testid="usage-limit-modal-container"
           id="usage-limit-modal-container"
           className="min-w-[25rem] max-w-[50rem] bg-base-100 border border-base-300 rounded-lg p-6 mx-4"
           onClick={(e) => e.stopPropagation()}
@@ -60,6 +63,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
           <form id="usage-limit-form" onSubmit={handleSubmit} className="mt-4">
             <div className="form-control w-full">
               <input
+                data-testid="usage-limit-input"
                 id="usage-limit-input"
                 type="number"
                 placeholder="Enter limit in $"
@@ -72,8 +76,22 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
               {error && <p className="text-error text-sm mt-1">{error}</p>}
             </div>
 
+            <div className="form-control w-full mt-4">
+              <label className="label-text mb-1">Reset Period</label>
+              <select
+                className="select select-bordered w-full select-sm"
+                value={resetPeriod}
+                onChange={(e) => setResetPeriod(e.target.value)}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">
               <button
+                data-testid="usage-limit-cancel-button"
                 id="usage-limit-cancel-button"
                 type="button"
                 onClick={handleClose}
@@ -83,6 +101,7 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
                 Cancel
               </button>
               <button
+                data-testid="usage-limit-save-button"
                 id="usage-limit-save-button"
                 type="submit"
                 className="btn btn-primary btn-sm"

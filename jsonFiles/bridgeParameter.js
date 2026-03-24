@@ -81,6 +81,7 @@ export const KEYS_NOT_TO_DISPLAY = [
   "vision",
 ];
 
+// eslint-disable-next-line import/no-unused-modules
 export function getDefaultValues(additionalParams, bridgeParams) {
   const defaults = {};
   for (const key in bridgeParams) {
@@ -91,6 +92,7 @@ export function getDefaultValues(additionalParams, bridgeParams) {
   return defaults;
 }
 
+// eslint-disable-next-line import/no-unused-modules
 export const parameterTypes = ["string", "number", "boolean", "object", "array"];
 
 export const KEYS_TO_COMPARE = [

@@ -1,4 +1,4 @@
-import axios from "@/utils/interceptor";
+import axios, { rawAxios } from "@/utils/interceptor";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -120,6 +120,25 @@ export const getAllFunctionsApi = async () => {
   } catch (error) {
     console.error(error);
     throw new Error(error);
+  }
+};
+
+export const callViasocketCreateFullFlow = async (embedToken, description) => {
+  try {
+    const response = await rawAxios.post(
+      "https://flow-api.viasocket.com/embed/create-full-flow",
+      { description },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: embedToken,
+        },
+      }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Error calling ViaSocket create-full-flow:", error);
+    return { success: false, error: error.response?.data || error.message };
   }
 };
 
@@ -340,6 +359,29 @@ export const getLinks = async () => {
   try {
     const response = await axios.get("https://flow.sokt.io/func/scriiS7RkdxI");
     return response;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};
+
+export const generateRichUITemplate = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/utils/call-gtwy`, {
+      type: "rich_ui_template",
+      ...data,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};
+
+export const createRichUiTemplateApi = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/rich_ui_templates`, data);
+    return response.data;
   } catch (error) {
     console.error(error);
     throw new Error(error);

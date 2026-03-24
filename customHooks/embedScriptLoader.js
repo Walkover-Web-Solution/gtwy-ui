@@ -7,7 +7,6 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
       !isEmbedUser && !isViewer
         ? await getOrCreateNotificationAuthKey("gtwy_bridge_trigger").then((res) => res?.authkey)
         : null;
-    const activeElement = document.activeElement;
     const script = document.createElement("script");
     script.setAttribute("embedToken", embedToken);
     script.id = process.env.NEXT_PUBLIC_EMBED_SCRIPT_ID;

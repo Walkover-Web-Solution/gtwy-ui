@@ -9,12 +9,11 @@ import Protected from "@/components/Protected";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import OpenAiIcon from "@/icons/OpenAiIcon";
+import { AgentMenuItems } from "@/components/agents/AgentActionMenu";
 import {
-  archiveBridgeAction,
   clearBridgeUsageMetricsAction,
   deleteBridgeAction,
   fetchBridgeUsageMetricsAction,
-  updateBridgeAction,
 } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
@@ -29,26 +28,25 @@ import { toast } from "react-toastify";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
 import AgentEmptyState from "@/components/AgentEmptyState";
-import { ArchiveRestore, Funnel, Pause, Play, Settings2, Trash2, Undo2, Users, Infinity } from "lucide-react";
+import { Funnel, Undo2, Infinity } from "lucide-react";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 export const runtime = "edge";
-const BRIDGE_STATUS = {
-  ACTIVE: 1,
-  PAUSED: 0,
-};
-
-const ModelBadge = ({ model }) => {
+const ModelBadge = ({ model, service, modelsConfig }) => {
   if (!model) return null;
+
+  // Get custom model name from modelsConfig if available
+  const modelConfig = modelsConfig?.[service]?.[model];
+  const displayName = modelConfig?.value !== undefined ? modelConfig.value : model;
 
   return (
     <span
       className="mt-1 inline-flex w-fit max-w-xs items-center gap-1 rounded-full border border-base-300/70 bg-base-200/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-base-content/60"
-      title={model}
+      title={displayName || model}
     >
-      <span className="truncate text-base-content/70 normal-case max-w-[140px]">{model}</span>
+      <span className="truncate text-base-content/70 normal-case max-w-[140px]">{displayName || model}</span>
     </span>
   );
 };
@@ -57,16 +55,6 @@ const formatUsageNumber = (value, maximumFractionDigits = 2) => {
   const numericValue = Number(value ?? 0);
   if (!Number.isFinite(numericValue)) return "0";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(numericValue);
-};
-
-const getUsageStatsForRow = (row) => {
-  const limitValue = Number(row?.agent_limit_original ?? 0);
-  const usageValue = Number(row?.agent_usage ?? 0);
-  const totalTokens = Number(row?.totalTokens ?? 0);
-  const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
-  const usagePercent = hasLimit ? Math.min(100, Math.max(0, (usageValue / limitValue) * 100)) : 0;
-  const remaining = hasLimit ? Math.max(limitValue - usageValue, 0) : null;
-  return { limitValue, usageValue, totalTokens, hasLimit, usagePercent, remaining };
 };
 
 const UsageProgressDonut = ({ percent, label }) => (
@@ -83,16 +71,23 @@ const UsageProgressDonut = ({ percent, label }) => (
   </div>
 );
 
-const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsage }) => {
+export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsage }) => {
   const { hasLimit, usagePercent, usageValue, limitValue, remaining } = stats;
   const [limit, setLimit] = useState(limitValue ?? "");
+  const [resetPeriod, setResetPeriod] = useState(item?.bridge_limit_reset_period ?? "");
   const [isLimitDirty, setIsLimitDirty] = useState(false);
 
   const handleLimitChange = (e) => {
     const value = e.target.value;
     setLimit(value);
     const original = limitValue ?? "";
-    setIsLimitDirty(String(value) !== String(original));
+    setIsLimitDirty(String(value) !== String(original) || resetPeriod !== (item?.bridge_limit_reset_period ?? ""));
+  };
+
+  const handleResetPeriodChange = (e) => {
+    const value = e.target.value;
+    setResetPeriod(value);
+    setIsLimitDirty(String(limit) !== String(limitValue ?? "") || value !== (item?.bridge_limit_reset_period ?? ""));
   };
 
   return (
@@ -134,10 +129,22 @@ const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsag
 
       {!isEmbedUser && (
         <div className="flex flex-col gap-2">
+          <div className="flex gap-1 items-center justify-between text-sm">
+            <span className="text-base-content/60">Reset Period</span>
+            <select
+              className="select select-bordered select-sm w-36"
+              value={resetPeriod}
+              onChange={handleResetPeriodChange}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
           <button
             className="btn btn-primary btn-sm"
             onClick={() => {
-              onSetLimit(item, limit);
+              onSetLimit(item, limit, resetPeriod);
             }}
             disabled={!isLimitDirty}
           >
@@ -293,8 +300,7 @@ const PoweredByFooter = () => {
 
 function Home({ params, searchParams, isEmbedUser }) {
   // Use the tutorial videos hook
-  const { getBridgeCreationVideo } = useTutorialVideos();
-
+  const { getApiAgentCreationVideo, getChatbotAgentCreationVideo } = useTutorialVideos();
   const resolvedParams = use(params);
   const resolvedSearchParams = use(searchParams);
   const dispatch = useDispatch();
@@ -314,6 +320,7 @@ function Home({ params, searchParams, isEmbedUser }) {
     currentUser,
     linksData,
     users,
+    modelsConfig,
   } = useCustomSelector((state) => {
     const orgData = state.bridgeReducer.org[resolvedParams.org_id] || {};
     const user = state.userDetailsReducer.userDetails;
@@ -336,6 +343,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       linksData: state.flowDataReducer.flowData.linksData || [],
       currentUser: state.userDetailsReducer.userDetails,
       currentOrgRole: orgRole || "Viewer",
+      modelsConfig: state.appInfoReducer.embedUserDetails?.models || {},
     };
   });
   const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === "chatbot" ? "chatbot" : "api";
@@ -353,7 +361,6 @@ function Home({ params, searchParams, isEmbedUser }) {
         descriptions?.Agents || "Build and manage API-powered AI agents for workflows, automations, and integrations.",
     };
   }, [bridgeTypeFilter, descriptions]);
-  const archivedSectionTitle = bridgeTypeFilter === "chatbot" ? "Archived Chatbots" : "Archived Agents";
   const deletedSectionTitle = bridgeTypeFilter === "chatbot" ? "Deleted Chatbots" : "Deleted Agents";
   // Initialize with empty array instead of typeFilteredBridges to avoid reference error
   const [filterBridges, setFilterBridges] = useState([]);
@@ -575,12 +582,10 @@ function Home({ params, searchParams, isEmbedUser }) {
     (item) => (item.status === 1 || item.status === undefined) && !item.deletedAt
   );
   const filteredDeletedBridges = filterBridges?.filter((item) => item.deletedAt);
-  const filteredArchivedBridges = filterBridges?.filter((item) => item.status === 0 && !item.deletedAt);
 
   // Apply usage filter to prioritize metrics API agents
   const usageFilteredUnArchived = applyUsageFilter(filteredUnArchivedBridges);
   const usageFilteredDeleted = applyUsageFilter(filteredDeletedBridges);
-  const usageFilteredArchived = applyUsageFilter(filteredArchivedBridges);
 
   useEffect(() => {
     if (usageMetrics?.filters) {
@@ -602,76 +607,6 @@ function Home({ params, searchParams, isEmbedUser }) {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   };
-
-  const ArchivedBridges = usageFilteredArchived
-    .filter((item) => item.status === 0)
-    .map((item) => ({
-      _id: item._id,
-      model: item.configuration?.model || "",
-      name: (
-        <div className="flex gap-3">
-          <div className="flex gap-2 items-center">
-            {loadingAgentId === item._id ? (
-              <div className="loading loading-spinner loading-sm"></div>
-            ) : (
-              getIconOfService(item.service, 20, 20)
-            )}
-          </div>
-          <div className="flex-col">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span
-                  className={loadingAgentId === item._id ? "opacity-50 truncate block flex-1" : "truncate block flex-1"}
-                >
-                  {item.name}
-                </span>
-                {loadingAgentId === item._id && <span className="text-xs text-primary opacity-70">Loading...</span>}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                {item.bridge_status === 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
-                    <ClockIcon size={12} />
-                    <span className="hidden sm:inline">Paused</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ),
-      actualName: item?.name || "",
-      slugName: item?.slugName || "",
-      service: item.service === "openai" ? <OpenAiIcon /> : item.service,
-      bridgeType: item.bridgeType,
-      status: item.status,
-      bridge_status: item.bridge_status,
-      versionId: item?.published_version_id || item?.versions?.[0],
-      totalTokens: item.metrics ? (
-        formatUsageNumber(item.metrics.total_tokens)
-      ) : usageMetrics?.loading ? (
-        <LoadingSkeleton />
-      ) : (
-        <EmptyCell />
-      ),
-      totalTokens_original: item.metrics?.total_tokens || 0,
-      cost: item.metrics ? (
-        `${Number(item.metrics.total_cost).toFixed(4)}`
-      ) : usageMetrics?.loading ? (
-        <LoadingSkeleton />
-      ) : (
-        <EmptyCell />
-      ),
-      averageResponseTime:
-        averageResponseTime[item?._id] === 0 ? (
-          <div className="text-xs">Not used in 24h</div>
-        ) : (
-          <div className="text-xs">{averageResponseTime[item?._id]} sec</div>
-        ),
-      isLoading: loadingAgentId === item._id,
-      last_used: renderMetricsTimestamp(item, item.last_used),
-      last_used_orignal: usageMetricsMap[item._id]?.last_used_time || item.last_used,
-      agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
-    }));
 
   const UnArchivedBridges = usageFilteredUnArchived
     ?.filter((item) => item.status === 1 || item.status === undefined)
@@ -705,7 +640,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                   )}
                 </div>
               </div>
-              <ModelBadge model={item.configuration?.model} />
+              <ModelBadge model={item.configuration?.model} service={item.service} modelsConfig={modelsConfig} />
             </div>
           </div>
         ),
@@ -773,6 +708,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <EmptyCell />
         ),
         updated_at_original: updatedAt,
+        bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
       };
     });
 
@@ -809,7 +745,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                 {loadingAgentId === item._id && <span className="text-xs text-primary opacity-70">Loading...</span>}
               </div>
             </div>
-            <ModelBadge model={item.configuration?.model} />
+            <ModelBadge model={item.configuration?.model} service={item.service} modelsConfig={modelsConfig} />
           </div>
         </div>
       ),
@@ -886,51 +822,6 @@ function Home({ params, searchParams, isEmbedUser }) {
     setLoadingAgentId(id);
     // Include the type parameter to maintain sidebar selection
     router.push(`/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}`);
-  };
-  const handlePauseBridge = async (bridgeId) => {
-    const newStatus =
-      bridgeStatus[bridgeId]?.bridge_status === BRIDGE_STATUS.PAUSED ? BRIDGE_STATUS.ACTIVE : BRIDGE_STATUS.PAUSED;
-
-    try {
-      await dispatch(
-        updateBridgeAction({
-          bridgeId,
-          dataToSend: { bridge_status: newStatus },
-        })
-      );
-      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update agent status");
-    }
-  };
-  const archiveBridge = (bridgeId, newStatus = 0) => {
-    try {
-      dispatch(archiveBridgeAction(bridgeId, newStatus)).then((bridgeStatus) => {
-        if (bridgeStatus === 1) {
-          toast.success("Agent Unarchived Successfully");
-        } else {
-          toast.success("Agent Archived Successfully");
-        }
-        router.push(`/org/${resolvedParams.org_id}/agents`);
-      });
-    } catch (error) {
-      console.error("Failed to archive/unarchive agents", error);
-    }
-  };
-
-  const handleUpdateBridgeLimit = async (bridge, limit) => {
-    const dataToSend = {
-      bridge_limit: limit,
-    };
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridge._id, dataToSend }));
-    if (res?.success) toast.success("Agent Usage Limit Updated Successfully");
-  };
-
-  const resetUsage = async (bridge) => {
-    const dataToSend = { bridge_usage: 0 };
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridge._id, dataToSend }));
-    if (res?.success) toast.success("Agent Usage Reset Successfully");
   };
 
   const closeUsageFilterPopover = () => {
@@ -1071,127 +962,35 @@ function Home({ params, searchParams, isEmbedUser }) {
       (currentOrgRole === "Viewer" && row.users?.some((user) => user.id === currentUser.id)) ||
       currentOrgRole === "Creator" ||
       isAdminOrOwner;
-    const usageStats = getUsageStatsForRow(row);
-    const handleUsageSummaryClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const usageContent = (
-        <UsageSummaryPopover
-          stats={usageStats}
-          item={row}
-          isEmbedUser={isEmbedUser}
-          onSetLimit={(bridge, limit) => {
-            handlePortalCloseImmediate();
-            handleUpdateBridgeLimit(bridge, limit);
-          }}
-          onResetUsage={() => {
-            handlePortalCloseImmediate();
-            resetUsage(row);
-          }}
-        />
-      );
-
-      handlePortalOpen(e.currentTarget, usageContent);
-    };
 
     const handleDropdownClick = (e) => {
       e.preventDefault();
       e.stopPropagation();
 
       const dropdownContent = (
-        <ul className="menu bg-base-100 rounded-box w-52 p-2 shadow">
-          <li className={`${row.status === 1 ? `hidden` : ""}`}>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handlePortalCloseImmediate();
-                archiveBridge(row._id, row.status != undefined ? Number(!row?.status) : undefined);
-              }}
-            >
-              {row?.status === 0 ? (
-                <>
-                  <ArchiveRestore size={14} className=" text-green-600" />
-                  Un-archive Agent
-                </>
-              ) : null}
-            </button>
-          </li>
-          {/* Only show Manage Access button for Admin or Owner roles */}
-          {!isEmbedUser && isAdminOrOwner && (
-            <li>
-              <a
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePortalCloseImmediate();
-                  setSelectedAgentForAccess(row);
-                  setTimeout(() => {
-                    openModal(MODAL_TYPE.ACCESS_MANAGEMENT_MODAL);
-                  }, 10);
-                }}
-              >
-                <Users size={16} />
-                Manage Access
-              </a>
-            </li>
-          )}
-          <li>
-            <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2"
-              onClick={handleUsageSummaryClick}
-            >
-              <Settings2 size={14} />
-              Usage &amp; Limits
-            </button>
-          </li>
-
-          <li>
-            {" "}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handlePortalCloseImmediate();
-                handlePauseBridge(row._id);
-              }}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2`}
-            >
-              {bridgeStatus[row._id]?.bridge_status === BRIDGE_STATUS.PAUSED ? (
-                <>
-                  <Play size={14} className="text-green-600" />
-                  Resume Agent
-                </>
-              ) : (
-                <>
-                  <Pause size={14} className="text-red-600" />
-                  Pause Agent
-                </>
-              )}
-            </button>
-          </li>
-          {/* Only show Delete button for Admin or Owner roles */}
-          {isAdminOrOwner && (
-            <li>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handlePortalCloseImmediate();
-                  setItemToDelete(row);
-                  // Small delay to ensure state is set before opening modal
-                  setTimeout(() => {
-                    openModal(MODAL_TYPE.DELETE_MODAL);
-                  }, 10);
-                }}
-              >
-                <Trash2 size={14} className="text-red-600" />
-                Delete Agent
-              </button>
-            </li>
-          )}
-        </ul>
+        <div className="bg-base-100 rounded-box w-52 shadow p-1">
+          <AgentMenuItems
+            bridge={row}
+            bridgeData={row}
+            bridgeStatus={bridgeStatus[row._id]?.bridge_status}
+            isArchived={row?.status === 0}
+            isUpdatingBridge={false}
+            isEmbedUser={isEmbedUser}
+            isAdminOrOwner={isAdminOrOwner}
+            orgId={resolvedParams.org_id}
+            onClose={handlePortalCloseImmediate}
+            onSetSelectedAgent={(agent) => {
+              setSelectedAgentForAccess(agent);
+            }}
+            handlePortalOpen={handlePortalOpen}
+            handlePortalCloseImmediate={handlePortalCloseImmediate}
+            onDelete={() => {
+              handlePortalCloseImmediate();
+              setItemToDelete(row);
+              setTimeout(() => openModal(MODAL_TYPE.DELETE_MODAL), 10);
+            }}
+          />
+        </div>
       );
 
       handlePortalOpen(e.currentTarget, dropdownContent);
@@ -1291,7 +1090,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         {tutorialState?.showTutorial && (
           <OnBoarding
             setShowTutorial={() => setTutorialState((prev) => ({ ...prev, showTutorial: false }))}
-            video={getBridgeCreationVideo()}
+            video={bridgeTypeFilter === "chatbot" ? getChatbotAgentCreationVideo() : getApiAgentCreationVideo()}
             flagKey={"bridgeCreation"}
           />
         )}
@@ -1342,6 +1141,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                         </button>
 
                         <button
+                          data-testid="create-new-agent-button"
                           className="btn btn-primary btn-sm"
                           onClick={() => openModal(MODAL_TYPE?.CREATE_BRIDGE_MODAL)}
                         >
@@ -1386,32 +1186,6 @@ function Home({ params, searchParams, isEmbedUser }) {
                       customCellRenderers={customCellRenderers}
                     />
                   </div>
-
-                  {filteredArchivedBridges?.length > 0 && (
-                    <div className="">
-                      <div className="flex justify-center items-center my-4">
-                        <p className="border-t border-base-300 w-full"></p>
-                        <p className="bg-base-300 text-base-content py-1 px-2 rounded-full mx-4 whitespace-nowrap text-sm">
-                          {archivedSectionTitle}
-                        </p>
-                        <p className="border-t border-base-300 w-full"></p>
-                      </div>
-                      <div className="opacity-60 overflow-visible">
-                        <CustomTable
-                          data={ArchivedBridges}
-                          columnsToShow={["name", "model", "cost", "totalTokens", "agent_usage", "last_used"]}
-                          sorting
-                          sortingColumns={["name", "model", "cost", "totalTokens", "agent_usage", "last_used"]}
-                          handleRowClick={(props) => onClickConfigure(props?._id, props?.versionId)}
-                          keysToExtractOnRowClick={["_id", "versionId"]}
-                          keysToWrap={["name", "prompt", "model"]}
-                          endComponent={EndComponent}
-                          customGetColumnLabel={getColumnLabel}
-                          customCellRenderers={customCellRenderers}
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {filteredDeletedBridges?.length > 0 && (
                     <div className="">

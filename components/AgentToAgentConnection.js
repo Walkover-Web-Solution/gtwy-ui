@@ -110,7 +110,7 @@ function BridgeNode({ data }) {
   const Icon = bridgeConfig?.icon || Plus;
 
   return (
-    <div className="flex flex-col items-center">
+    <div data-testid={`bridge-node-${data?.id || "root"}`} className="flex flex-col items-center">
       <Handle
         type="target"
         position={Position.Left}
@@ -119,6 +119,7 @@ function BridgeNode({ data }) {
       />
 
       <button
+        data-testid="bridge-node-button"
         id="bridge-node-button"
         onClick={handleBridgeClick}
         className={`text-white rounded-full w-20 h-20 flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform nodrag relative overflow-hidden ${
@@ -200,12 +201,13 @@ function AgentNode({ id, data }) {
   const isMasterAgent = data.isFirstAgent;
 
   return (
-    <div className="w-full h-full flex flex-col items-center">
+    <div data-testid={`agent-node-${id}`} className="w-full h-full flex flex-col items-center">
       <div className="relative flex flex-col items-center group">
         <div className="relative flex items-center justify-center">
           {/* Enhanced Delete Button - Only show for non-master agents */}
           {!isMasterAgent && (
             <button
+              data-testid={`agent-delete-button-${id}`}
               id={`agent-delete-button-${id}`}
               onClick={handleDeleteData}
               className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-gradient-to-br from-red-500 via-red-600 to-red-700 text-white shadow-xl hover:shadow-2xl hover:shadow-red-500/50 opacity-0 group-hover:opacity-100 transition-all duration-300 z-40 flex items-center justify-center border-2 border-white/20 hover:border-white/40 backdrop-blur-sm overflow-hidden"
@@ -256,6 +258,7 @@ function AgentNode({ id, data }) {
 
             {/* Add Next Step Button */}
             <button
+              data-testid={`agent-add-next-button-${id}`}
               id={`agent-add-next-button-${id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1429,7 +1432,11 @@ function Flow({
   );
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 relative overflow-hidden">
+    <div
+      data-testid="flow-container"
+      id="flow-container"
+      className="w-full h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 relative overflow-hidden"
+    >
       <FlowControlPanel
         bridgeType={selectedBridgeType}
         mode={mode}
@@ -1446,7 +1453,11 @@ function Flow({
 
       <div className="w-full h-full">
         {!isFlowReady && nodes.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
+          <div
+            data-testid="flow-loading-state"
+            id="flow-loading-state"
+            className="flex items-center justify-center h-full"
+          >
             <div className="text-center">
               <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
               <p className="text-base-content/60">Loading orchestral flow...</p>

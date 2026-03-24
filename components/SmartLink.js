@@ -21,6 +21,7 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
     return (
       <>
         <button
+          data-testid="smart-link-embed-button"
           id="smart-link-embed-button"
           onClick={handleClick}
           className="text-primary hover:text-primary-focus underline cursor-pointer bg-transparent border-none p-0 font-inherit"
@@ -31,10 +32,16 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
         {/* Portal for Custom Drawer */}
         {isSliderOpen &&
           typeof window !== "undefined" &&
+          typeof window !== "undefined" &&
           createPortal(
-            <div id="smart-link-drawer-overlay" className="fixed inset-0 z-[9999] flex">
+            <div
+              data-testid="smart-link-drawer-overlay"
+              id="smart-link-drawer-overlay"
+              className="fixed inset-0 z-[9999] flex"
+            >
               {/* Backdrop */}
               <div
+                data-testid="smart-link-drawer-backdrop"
                 id="smart-link-drawer-backdrop"
                 className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
                 onClick={closeSlider}
@@ -42,6 +49,7 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
 
               {/* Drawer Panel */}
               <div
+                data-testid="smart-link-drawer-panel"
                 id="smart-link-drawer-panel"
                 className="relative ml-auto w-full max-w-4xl bg-base-100 shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col"
               >
@@ -49,6 +57,7 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
                 <div className="flex items-center justify-between p-4 border-b border-base-300 bg-base-200 flex-shrink-0">
                   <h3 className="text-lg font-semibold text-base-content truncate flex-1 mr-4">{"Gtwy Blog Page"}</h3>
                   <button
+                    data-testid="smart-link-drawer-close-button"
                     id="smart-link-drawer-close-button"
                     onClick={closeSlider}
                     className="btn btn-sm btn-ghost btn-circle"
@@ -61,6 +70,7 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
                 {/* Content */}
                 <div className="flex-1 w-full overflow-hidden">
                   <iframe
+                    data-testid="smart-link-drawer-iframe"
                     id="smart-link-drawer-iframe"
                     src={href + "?source=single"}
                     className="w-full h-full border-0"
@@ -78,7 +88,13 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
 
   // Normal behavior for non-embed users
   return (
-    <a id="smart-link-external-link" href={href} target="_blank" rel="noopener noreferrer">
+    <a
+      data-testid="smart-link-external-link"
+      id="smart-link-external-link"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       {children}
     </a>
   );

@@ -4,15 +4,11 @@ import dynamic from "next/dynamic";
 import {
   TestTube,
   MessageCircleMore,
-  Pause,
-  Play,
   ClipboardX,
   BookCheck,
-  MoreVertical,
   Clock,
   Home,
   HistoryIcon,
-  ArchiveRestore,
   Edit2,
   BotIcon,
   ChevronDown,
@@ -21,7 +17,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { updateBridgeAction, dicardBridgeVersionAction, archiveBridgeAction } from "@/store/action/bridgeAction";
+import { updateBridgeAction, dicardBridgeVersionAction, deleteBridgeAction } from "@/store/action/bridgeAction";
 import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
@@ -33,6 +29,9 @@ const DeleteModal = dynamic(() => import("./UI/DeleteModal"), { ssr: false });
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import BridgeVersionDropdown from "./configuration/configurationComponent/BridgeVersionDropdown";
 const VariableCollectionSlider = dynamic(() => import("./sliders/VariableCollectionSlider"), { ssr: false });
+import AccessManagementModal from "./modals/AccessManagementModal";
+import AgentActionMenu from "@/components/agents/AgentActionMenu";
+import usePortalDropdown from "@/customHooks/usePortalDropdown";
 
 const BRIDGE_STATUS = {
   ACTIVE: 1,
@@ -42,11 +41,11 @@ const BRIDGE_STATUS = {
 const Navbar = ({ isEmbedUser, params }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [showEllipsisMenu, setShowEllipsisMenu] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const { isDeleting: isDiscardingWithHook, executeDelete } = useDeleteOperation();
   const ellipsisMenuRef = useRef(null);
+  const [selectedAgentForAccess, setSelectedAgentForAccess] = useState(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -57,6 +56,11 @@ const Navbar = ({ isEmbedUser, params }) => {
   const searchParams = useSearchParams();
   const versionId = useMemo(() => searchParams?.get("version"), [searchParams]);
   const isPublished = useMemo(() => searchParams?.get("isPublished") === "true", [searchParams]);
+  // Use portal dropdown hook (same as agents page)
+  const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown({
+    offsetX: -100,
+    offsetY: 5,
+  });
   const {
     bridgeData,
     bridge,
@@ -74,9 +78,15 @@ const Navbar = ({ isEmbedUser, params }) => {
     savingStatus,
     publishedVersionId,
     showAgentName,
+    isAdminOrOwner,
   } = useCustomSelector((state) => {
+    const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
+    const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
     return {
-      bridgeData: state?.bridgeReducer?.org?.[orgId]?.orgs?.find((bridge) => bridge._id === bridgeId) || {},
+      bridgeData:
+        state?.bridgeReducer?.org?.[orgId]?.orgs?.find((bridge) => bridge._id === bridgeId) ||
+        state.bridgeReducer.allBridgesMap[bridgeId] ||
+        {},
       bridge: state.bridgeReducer.allBridgesMap[bridgeId] || {},
       publishedVersion: state.bridgeReducer.allBridgesMap?.[bridgeId]?.published_version_id ?? null,
       isDrafted: state.bridgeReducer.bridgeVersionMapping?.[bridgeId]?.[versionId]?.is_drafted ?? false,
@@ -98,6 +108,9 @@ const Navbar = ({ isEmbedUser, params }) => {
       publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.published_version_id || null,
       savingStatus: state?.bridgeReducer?.savingStatus || { status: null, timestamp: null },
       showAgentName: state?.appInfoReducer?.embedUserDetails?.showAgentName,
+      isAdminOrOwner,
+      currentOrgRole: orgRole || "",
+      currentUser: state?.userDetailsReducer?.userDetails || {},
     };
   });
   // Define tabs based on user type
@@ -133,18 +146,6 @@ const Navbar = ({ isEmbedUser, params }) => {
     if (depth === 3) return false;
     return ["configure", "history", "testcase"].some((seg) => pathname.includes(seg));
   }, [pathParts.length, pathname]);
-
-  // Close ellipsis menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (ellipsisMenuRef?.current && !ellipsisMenuRef?.current.contains(event.target)) {
-        setShowEllipsisMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Scroll detection
   useEffect(() => {
@@ -230,24 +231,6 @@ const Navbar = ({ isEmbedUser, params }) => {
     [handleNameSave, handleNameCancel]
   );
 
-  const handlePauseBridge = useCallback(async () => {
-    const newStatus = bridgeStatus === BRIDGE_STATUS.PAUSED ? BRIDGE_STATUS.ACTIVE : BRIDGE_STATUS.PAUSED;
-
-    try {
-      await dispatch(
-        updateBridgeAction({
-          bridgeId,
-          dataToSend: { bridge_status: newStatus },
-        })
-      );
-      toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
-      setShowEllipsisMenu(false); // Close menu after action
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update agent status");
-    }
-  }, [dispatch, bridgeId, bridgeStatus]);
-
   const handleDiscardChanges = useCallback(async () => {
     await executeDelete(async () => {
       dispatch(
@@ -326,8 +309,12 @@ const Navbar = ({ isEmbedUser, params }) => {
   const toggleConfigHistorySidebar = useCallback(() => toggleSidebar("default-config-history-slider", "right"), []);
   const handleHomeClick = useCallback(() => router.push(`/org/${orgId}/agents`), [router, orgId]);
 
-  // Keyboard shortcuts for navigation
+  // Keyboard shortcuts for navigation - only enabled on testcases, configuration, or history pages
   useEffect(() => {
+    // Only enable shortcuts on allowed pages (testcases, configuration, or history)
+    const isAllowedPage = ["configure", "history", "testcase"].some((seg) => pathname.includes(seg));
+    if (!isAllowedPage) return;
+
     let gPressed = false;
     let timeoutId = null;
 
@@ -370,7 +357,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       window.removeEventListener("keydown", handleKeyDown);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [handleTabChange, isEmbedUser]);
+  }, [handleTabChange, isEmbedUser, pathname]);
 
   const StatusIndicator = ({ status }) =>
     status === BRIDGE_STATUS.ACTIVE ? null : (
@@ -380,90 +367,34 @@ const Navbar = ({ isEmbedUser, params }) => {
       </div>
     );
 
-  const handleArchiveBridge = async (bridgeId, newStatus = 0) => {
-    try {
-      const bridgeStatus = await dispatch(archiveBridgeAction(bridgeId, newStatus));
-      if (bridgeStatus === 1) {
-        toast.success("Agent Unarchived Successfully");
-      } else {
-        toast.success("Agent Archived Successfully");
-      }
-    } catch (error) {
-      console.error("Failed to archive/unarchive agents", error);
-    }
-  };
+  const handleDeleteAgentConfirm = useCallback(async () => {
+    await executeDelete(async () => {
+      const response = await dispatch(deleteBridgeAction({ bridgeId, org_id: orgId }));
+      toast.success(response?.data?.message || "Agent deleted successfully");
+      router.push(`/org/${orgId}/agents`);
+    });
+  }, [executeDelete, dispatch, bridgeId, orgId, router]);
 
-  // Ellipsis Menu Component
   const EllipsisMenu = () => (
-    <div className="relative" ref={ellipsisMenuRef}>
-      <button
-        id="navbar-ellipsis-menu-toggle"
-        onClick={() => setShowEllipsisMenu(!showEllipsisMenu)}
-        className="p-2 hover:bg-base-200 rounded-md transition-colors"
-        title="More options"
-      >
-        <MoreVertical size={16} />
-      </button>
-
-      {showEllipsisMenu && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 border border-base-300 rounded-lg shadow-xl z-very-high">
-          <div className="">
-            <button
-              id="navbar-pause-resume-button"
-              onMouseDown={async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                await handlePauseBridge();
-                setShowEllipsisMenu(false);
-              }}
-              disabled={isUpdatingBridge}
-              className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer ${
-                isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {bridgeStatus === BRIDGE_STATUS.PAUSED ? (
-                <>
-                  <Play size={14} className="text-green-600" />
-                  Resume Agent
-                </>
-              ) : (
-                <>
-                  <Pause size={14} className="text-red-600" />
-                  Pause Agent
-                </>
-              )}
-            </button>
-          </div>
-          <div className="">
-            <button
-              id="navbar-pause-resume-button"
-              onMouseDown={async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                await handleArchiveBridge(bridgeId, isArchived ? 0 : 1);
-                setShowEllipsisMenu(false);
-              }}
-              disabled={isUpdatingBridge}
-              className={`w-full px-4 text-left text-sm hover:bg-base-200 flex items-center gap-1 cursor-pointer ${
-                isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""
-              } ${isArchived ? "hidden" : ""}`}
-            >
-              {!isArchived ? (
-                <>
-                  <ArchiveRestore size={14} className="text-red-600" />
-                  Unarchive Agent
-                </>
-              ) : null}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <AgentActionMenu
+      menuRef={ellipsisMenuRef}
+      bridge={bridge}
+      bridgeData={bridgeData}
+      bridgeStatus={bridgeStatus}
+      isArchived={isArchived === 0}
+      isUpdatingBridge={isUpdatingBridge}
+      isEmbedUser={isEmbedUser}
+      isAdminOrOwner={isAdminOrOwner}
+      orgId={orgId}
+      onSetSelectedAgent={setSelectedAgentForAccess}
+      handlePortalOpen={handlePortalOpen}
+      handlePortalCloseImmediate={handlePortalCloseImmediate}
+    />
   );
   if (!shouldShowNavbar()) return null;
 
   return (
-    <div className="bg-base-100 z-medium">
+    <div className={`bg-base-100 z-medium`}>
       {/* Main navigation header */}
       <div
         className={`sticky top-0 z-high transition-all duration-300 ${
@@ -482,7 +413,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 className="btn btn-xs sm:btn-sm gap-1 sm:gap-2 hover:bg-base-200 px-2 sm:px-3"
                 title="Go to Home"
               >
-                <Home id="navbar-home-button" size={14} className="sm:w-4 sm:h-4" />
+                <Home data-testid="navbar-home-button" id="navbar-home-button" size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline text-sm sm:text-sm">Home</span>
               </button>
             )}
@@ -494,6 +425,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                   {!isEditingName ? (
                     <div className="flex items-center gap-1.5" onClick={handleNameEdit}>
                       <span
+                        data-testid="navbar-agent-name-display"
                         id="navbar-agent-name-display"
                         className="font-semibold text-sm text-base-content truncate flex-shrink"
                         title={`${agentName} - Click to edit`}
@@ -507,6 +439,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                     </div>
                   ) : (
                     <input
+                      data-testid="navbar-agent-name-input"
                       id="navbar-agent-name-input"
                       type="text"
                       value={editedName}
@@ -529,6 +462,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                   {/* Published Button */}
                   {publishedVersion && (
                     <button
+                      data-testid="navbar-published-button"
                       id="navbar-published-button"
                       onClick={handlePublishedClick}
                       className={`btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap min-w-fit ${
@@ -565,7 +499,7 @@ const Navbar = ({ isEmbedUser, params }) => {
               )}
 
               {/* Saving Status Indicator */}
-              {savingStatus?.status && (
+              {activeTab === "configure" && (
                 <div className="flex-shrink-0 ml-2 mr-2">
                   <div className="px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1 text-base-content">
                     {savingStatus.status === "saving" && (
@@ -623,6 +557,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                     const isActive = activeTab === tab.id;
                     return (
                       <button
+                        data-testid={`navbar-tab-${tab.id}`}
                         id={`navbar-tab-${tab.id}`}
                         key={tab.id}
                         onClick={() => handleTabChange(tab.id)}
@@ -655,6 +590,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 {!isEmbedUser && (
                   <div className="tooltip tooltip-bottom" data-tip="Updates History">
                     <button
+                      data-testid="navbar-history-button"
                       id="navbar-history-button"
                       className="p-1 bg-base-300 rounded-md hover:bg-base-200 transition-colors"
                       onClick={toggleConfigHistorySidebar}
@@ -670,6 +606,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 <div className="flex items-center">
                   <div className="dropdown dropdown-end">
                     <button
+                      data-testid="navbar-publish-dropdown-toggle"
                       id="navbar-publish-dropdown-toggle"
                       tabIndex={0}
                       role="button"
@@ -685,6 +622,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                     >
                       <li>
                         <button
+                          data-testid="navbar-publish-button"
                           id="navbar-publish-button"
                           onClick={handlePublish}
                           disabled={!isDrafted || isPublishing || isPublished}
@@ -697,6 +635,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                       {isDrafted && publishedVersionId != null && (
                         <li>
                           <button
+                            data-testid="navbar-revert-button"
                             id="navbar-revert-button"
                             onClick={() => openModal(MODAL_TYPE.DELETE_MODAL)}
                             disabled={isUpdatingBridge || isPublishing || isPublished}
@@ -731,6 +670,7 @@ const Navbar = ({ isEmbedUser, params }) => {
             <div className="flex items-center px-1 py-1 rounded-lg min-w-0 max-w-[120px] cursor-pointer group hover:bg-base-200/50 transition-colors">
               {!isEditingName ? (
                 <div
+                  data-testid="navbar-mobile-agent-name-display-inner"
                   id="navbar-mobile-agent-name-display-inner"
                   className="flex items-center gap-1.5"
                   onClick={handleNameEdit}
@@ -748,6 +688,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                 </div>
               ) : (
                 <input
+                  data-testid="navbar-mobile-agent-name-input"
                   id="navbar-mobile-agent-name-input"
                   type="text"
                   value={editedName}
@@ -768,6 +709,7 @@ const Navbar = ({ isEmbedUser, params }) => {
               {/* Published Button */}
               {publishedVersion && (
                 <button
+                  data-testid="navbar-mobile-published-button"
                   id="navbar-mobile-published-button"
                   onClick={handlePublishedClick}
                   className={`btn btn-xs flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-all duration-200 whitespace-nowrap ${
@@ -893,6 +835,21 @@ const Navbar = ({ isEmbedUser, params }) => {
         loading={isDiscardingWithHook}
         isAsync={true}
       />
+      <DeleteModal
+        modalType={MODAL_TYPE.DELETE_AGENT_MODAL}
+        onConfirm={handleDeleteAgentConfirm}
+        title="Delete Agent"
+        description="Are you sure you want to delete this agent? It will be moved to deleted items and permanently removed after 30 days."
+        buttonTitle="Delete"
+        loading={isDiscardingWithHook}
+        isAsync={true}
+      />
+
+      <AccessManagementModal agent={selectedAgentForAccess} />
+
+      {/* Portal components from hook */}
+      <PortalStyles />
+      <PortalDropdown />
     </div>
   );
 };

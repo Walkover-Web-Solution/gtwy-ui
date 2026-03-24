@@ -53,7 +53,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
   }, [searchParams?.version, service, bridgeType]);
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div data-testid="bridge-type-toggle-container" className="flex flex-col gap-4 w-full">
       {/* Agent Type Label */}
       <div className="flex items-center gap-1">
         <span className="label-text font-medium">Agent Type</span>
@@ -69,6 +69,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
             <InfoTooltip tooltipContent="The API allows users to connect with AI models to perform tasks like generating responses or processing information.">
               <label className="flex items-center cursor-pointer min-w-0">
                 <input
+                  data-testid="bridge-type-api-radio"
                   id="bridge-type-api-radio"
                   disabled={isReadOnly}
                   type="radio"
@@ -89,6 +90,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
               <InfoTooltip tooltipContent="Triggers allows you to create automated workflows that respond to specific events or conditions. Ideal for creating event-driven applications.">
                 <label className="flex items-center cursor-pointer min-w-0">
                   <input
+                    data-testid="bridge-type-trigger-radio"
                     id="bridge-type-trigger-radio"
                     type="radio"
                     name="bridgeType"

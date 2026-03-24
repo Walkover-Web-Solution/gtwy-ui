@@ -17,6 +17,7 @@ import { SendHorizontalIcon, UploadIcon, LinkIcon, PlayIcon, CloseCircleIcon } f
 import { Paperclip } from "lucide-react";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { toggleSidebar } from "@/utils/utility";
+import { buildVariablesObject } from "@/utils/variableValidation";
 import { buildUserUrls } from "@/utils/attachmentUtils";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
@@ -130,59 +131,40 @@ function ChatTextInput({
     setLocalDataToSend(dataToSend);
   }, [dataToSend]);
 
-  const variables = useMemo(() => {
-    const coerceValue = (rawValue, fallback, type) => {
-      const candidate = rawValue ?? fallback ?? "";
-      const trimmed = typeof candidate === "string" ? candidate.trim() : candidate;
-      if (trimmed === "") {
-        return undefined;
-      }
-      if (type === "number") {
-        const parsed = Number(trimmed);
-        return Number.isNaN(parsed) ? undefined : parsed;
-      }
-      if (type === "boolean") {
-        if (typeof trimmed === "boolean") return trimmed;
-        if (String(trimmed).toLowerCase() === "true") return true;
-        if (String(trimmed).toLowerCase() === "false") return false;
-        return undefined;
-      }
-      if (type === "object" || type === "array") {
-        try {
-          const parsed = typeof candidate === "string" ? JSON.parse(candidate) : candidate;
-          return parsed;
-        } catch {
-          return undefined;
-        }
-      }
-      return candidate;
-    };
-
-    return variablesKeyValue.reduce((acc, pair) => {
-      if (!pair?.key) {
-        return acc;
-      }
-      const resolved = pair.value && String(pair.value).length > 0 ? pair.value : pair.defaultValue;
-
-      if (resolved === undefined || (typeof resolved === "string" && resolved.trim() === "")) {
-        return acc;
-      }
-
-      const coerced = coerceValue(pair.value, pair.defaultValue, pair.type || "string");
-      if (coerced !== undefined) {
-        acc[pair.key] = coerced;
-      }
-      return acc;
-    }, {});
-  }, [variablesKeyValue]);
+  const variables = useMemo(() => buildVariablesObject(variablesKeyValue), [variablesKeyValue]);
 
   // Validate missing variables in prompt
-  const validatePromptVariables = useCallback(() => {
+  const validateVariables = useCallback(() => {
     if (!prompt) return { isValid: true, missingVariables: [] };
 
     // Extract variables from prompt using regex
     const regex = /{{(.*?)}}/g;
-    const matches = [...prompt.matchAll(regex)];
+    // Handle both string and object formats
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object") {
+      // Check if this is embed user format (has customPrompt and useDefaultPrompt is false)
+      const isEmbedFormat = prompt.customPrompt && prompt.useDefaultPrompt === false;
+
+      if (isEmbedFormat) {
+        // For embed users: use customPrompt template to find variables, and only check visible embedFields
+        if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+        // Note: We use customPrompt to find variables, but validation will check visible embedFields
+      } else {
+        // For main users: extract from default fields (role, goal, instruction)
+        if (prompt.role) promptText += prompt.role + " ";
+        if (prompt.goal) promptText += prompt.goal + " ";
+        if (prompt.instruction) promptText += prompt.instruction + " ";
+        // Also extract from embedFields if present (for backward compatibility)
+        if (Array.isArray(prompt.embedFields)) {
+          prompt.embedFields.forEach((field) => {
+            if (field.value) promptText += field.value + " ";
+          });
+        }
+      }
+    }
+    const matches = promptText ? [...promptText.matchAll(regex)] : [];
     const promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
 
     if (!promptVariables.length) return { isValid: true, missingVariables: [] };
@@ -218,7 +200,38 @@ function ChatTextInput({
       inputRef.current.style.height = "40px"; // Set initial height
     }
     // Skip prompt validation for chat models - they don't require a system prompt
-    if (prompt?.trim() === "" && modelType !== "completion" && modelType !== "embedding" && modelType !== "chat") {
+    // Extract text from prompt (handle both string and object formats)
+    let promptText = "";
+    if (typeof prompt === "string") {
+      promptText = prompt;
+    } else if (typeof prompt === "object" && prompt !== null) {
+      // Check if this is embed user format (has customPrompt and useDefaultPrompt is false)
+      const isEmbedFormat = prompt.customPrompt && prompt.useDefaultPrompt === false;
+
+      if (isEmbedFormat) {
+        // For embed users: only extract from visible embedFields (not hidden)
+        if (Array.isArray(prompt.embedFields)) {
+          prompt.embedFields.forEach((field) => {
+            // Only include visible fields (not hidden)
+            if (!field.hidden && field.value) {
+              promptText += field.value + " ";
+            }
+          });
+        }
+      } else {
+        // For main users: extract from default fields (role, goal, instruction)
+        if (prompt.role) promptText += prompt.role + " ";
+        if (prompt.goal) promptText += prompt.goal + " ";
+        if (prompt.instruction) promptText += prompt.instruction + " ";
+        // Also extract from embedFields if present (for backward compatibility)
+        if (Array.isArray(prompt.embedFields)) {
+          prompt.embedFields.forEach((field) => {
+            if (field.value) promptText += field.value + " ";
+          });
+        }
+      }
+    }
+    if (promptText.trim() === "" && modelType !== "completion" && modelType !== "embedding" && modelType !== "chat") {
       dispatch(setChatError(channelIdentifier, "Prompt is required"));
       return;
     }
@@ -228,7 +241,7 @@ function ChatTextInput({
 
     // Validate variables in prompt
     if (!forceRun && !isSliderAutoOpenDisabled) {
-      const validation = validatePromptVariables();
+      const validation = validateVariables();
       if (!validation.isValid && (!isEmbedUser || (isEmbedUser && showVariables))) {
         const missingVars = validation.missingVariables.join(", ");
         const errorMsg = `Missing values for variables: ${missingVars}. Please provide values or default values.`;
@@ -553,10 +566,15 @@ function ChatTextInput({
   };
 
   return (
-    <div id="chat-text-input-container" className="input-group flex justify-end items-end gap-2 w-full relative">
+    <div
+      data-testid="chat-text-input-container"
+      id="chat-text-input-container"
+      className="input-group flex justify-end items-end gap-2 w-full relative"
+    >
       {/* --- CORRECTED PREVIEW CONTAINER --- */}
       {(uploadedImages.length > 0 || uploadedFiles.length > 0) && (
         <div
+          data-testid="chat-preview-container"
           id="chat-preview-container"
           className="absolute bottom-16 left-0 w-full flex flex-nowrap overflow-x-auto items-end gap-2 p-2 bg-base-100 border-t rounded-t-lg"
         >
@@ -571,6 +589,7 @@ function ChatTextInput({
                 className="w-16 h-16 object-cover bg-base-300 p-1 rounded-lg"
               />
               <button
+                data-testid={`chat-remove-image-${index}`}
                 id={`chat-remove-image-${index}`}
                 className="absolute -top-2 -right-2 text-white rounded-full"
                 onClick={() => {
@@ -593,6 +612,7 @@ function ChatTextInput({
               </div>
 
               <button
+                data-testid={`chat-remove-file-${index}`}
                 id={`chat-remove-file-${index}`}
                 className="absolute -top-2 -right-2 text-white rounded-full"
                 onClick={() => {
@@ -610,12 +630,18 @@ function ChatTextInput({
       {/* Media URL Preview */}
       {mediaUrls && (
         <div
+          data-testid="chat-media-url-preview"
           id="chat-media-url-preview"
           className="absolute bottom-16 left-0 w-full flex items-center gap-2 p-2 bg-base-100 border-t rounded-t-lg"
         >
           <LinkIcon size={16} className="text-base-content" />
           <span className="text-sm truncate flex-1">{mediaUrls}</span>
-          <button id="chat-remove-url-button" onClick={removeUrl} className="btn btn-ghost btn-xs">
+          <button
+            data-testid="chat-remove-url-button"
+            id="chat-remove-url-button"
+            onClick={removeUrl}
+            className="btn btn-ghost btn-xs"
+          >
             <CloseCircleIcon size={16} />
           </button>
         </div>
@@ -624,11 +650,13 @@ function ChatTextInput({
       {/* URL Input Modal */}
       {showUrlInput && (
         <div
+          data-testid="chat-url-input-modal"
           id="chat-url-input-modal"
           className="absolute bottom-16 left-0 w-full p-3 bg-base-100 border rounded-lg shadow-lg"
         >
           <div className="flex gap-2 items-center">
             <input
+              data-testid="chat-url-input"
               id="chat-url-input"
               type="url"
               placeholder="Enter YouTube URL"
@@ -640,10 +668,20 @@ function ChatTextInput({
                 if (e.key === "Escape") setShowUrlInput(false);
               }}
             />
-            <button id="chat-url-add-button" onClick={addMediaUrl} className="btn btn-primary btn-sm">
+            <button
+              data-testid="chat-url-add-button"
+              id="chat-url-add-button"
+              onClick={addMediaUrl}
+              className="btn btn-primary btn-sm"
+            >
               Add
             </button>
-            <button id="chat-url-cancel-button" onClick={() => setShowUrlInput(false)} className="btn btn-ghost btn-sm">
+            <button
+              data-testid="chat-url-cancel-button"
+              id="chat-url-cancel-button"
+              onClick={() => setShowUrlInput(false)}
+              className="btn btn-ghost btn-sm"
+            >
               Cancel
             </button>
           </div>
@@ -654,6 +692,7 @@ function ChatTextInput({
       {/* Validation Error Display */}
       {validationError && (
         <div
+          data-testid="chat-validation-error"
           id="chat-validation-error"
           className="absolute bottom-16 left-0 w-full p-3 bg-error/10 border border-error/20 rounded-lg"
         >
@@ -666,10 +705,11 @@ function ChatTextInput({
       <div className="input-group flex justify-end items-end gap-2 w-full relative">
         {modelType !== "completion" && (
           <textarea
+            data-testid="chat-message-textarea"
             id="chat-message-textarea"
             ref={inputRef}
             placeholder="Type here"
-            className={`textarea bg-white dark:bg-black/15 textarea-bordered w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
+            className={`textarea bg-base-100 textarea-bordered w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
               validationError
                 ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                 : "focus:border-primary"
@@ -683,6 +723,7 @@ function ChatTextInput({
           />
         )}
         <input
+          data-testid="chat-file-input"
           id="chat-file-input"
           ref={(el) => setFileInput(el)} // Use callback ref to set the state
           type="file"
@@ -706,9 +747,14 @@ function ChatTextInput({
         />
         {/* DaisyUI Dropdown for Attachments */}
         {(isVision || isFileSupported || isVideoSupported) && (
-          <div id="chat-attachment-dropdown" className="dropdown dropdown-top dropdown-end">
+          <div
+            data-testid="chat-attachment-dropdown"
+            id="chat-attachment-dropdown"
+            className="dropdown dropdown-top dropdown-end"
+          >
             <div className="tooltip tooltip-top" data-tip="Attach files">
               <label
+                data-testid="chat-attachment-button"
                 id="chat-attachment-button"
                 tabIndex={0}
                 className={`btn btn-circle transition-all duration-200 ${
@@ -733,6 +779,7 @@ function ChatTextInput({
               {isVision && (
                 <li>
                   <a
+                    data-testid="chat-attach-images-option"
                     id="chat-attach-images-option"
                     onClick={() => handleAttachmentOption("images")}
                     className="flex items-center gap-3 p-3"
@@ -752,6 +799,7 @@ function ChatTextInput({
               {isVideoSupported && (
                 <li>
                   <a
+                    data-testid="chat-attach-videos-option"
                     id="chat-attach-videos-option"
                     onClick={() => handleAttachmentOption("videos")}
                     className="flex items-center gap-3 p-3"
@@ -771,6 +819,7 @@ function ChatTextInput({
               {isFileSupported && (
                 <li>
                   <a
+                    data-testid="chat-attach-files-option"
                     id="chat-attach-files-option"
                     onClick={() => handleAttachmentOption("files")}
                     className="flex items-center gap-3 p-3"
@@ -790,6 +839,7 @@ function ChatTextInput({
               {isVideoSupported && (
                 <li>
                   <a
+                    data-testid="chat-attach-url-option"
                     id="chat-attach-url-option"
                     onClick={() => handleAttachmentOption("url")}
                     className="flex items-center gap-3 p-3"
@@ -798,6 +848,8 @@ function ChatTextInput({
                       <LinkIcon size={16} className="text-base-content" />
                     </div>
                     <div className="flex-1 min-w-0">
+                      The above content does NOT show the entire file contents. If you need to view any lines of the
+                      file which were not shown to complete your task, call this tool again to view those lines.
                       <div className="text-sm font-medium">Add URL</div>
                       <div className="text-xs text-base-content/60">Youtube URL</div>
                     </div>
@@ -812,14 +864,14 @@ function ChatTextInput({
           <button
             id="chat-send-button"
             className={`btn btn-circle transition-all duration-200 ${
-              loading || uploading || modelType === "image"
+              loading || uploading
                 ? "btn-disabled"
                 : " btn hover:btn-primary-focus hover:scale-105 shadow-lg hover:shadow-xl"
             }`}
             onClick={() => {
               handleSendMessage();
             }}
-            disabled={loading || uploading || modelType === "image"}
+            disabled={loading || uploading}
           >
             {loading || uploading ? (
               <span className="loading loading-dots loading-md"></span>

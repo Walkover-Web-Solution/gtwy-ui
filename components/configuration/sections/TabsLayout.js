@@ -29,9 +29,13 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
   };
 
   return (
-    <div id="tabs-layout-container" className="flex flex-col w-full">
+    <div data-testid="tabs-layout-container" id="tabs-layout-container" className="flex flex-col w-full">
       {!hideTabs && (
-        <div id="tabs-layout-nav" className="border-b border-base-200 bg-base-100 sticky top-0 z-10 -ml-8 -mx-4">
+        <div
+          data-testid="tabs-layout-nav"
+          id="tabs-layout-nav"
+          className="border-b border-base-200 bg-base-100 sticky top-0 z-10 -ml-8 -mx-4"
+        >
           <div
             className="w-full ml-3 items-center flex h-10 bg-transparent gap-1 border-0 px-4 overflow-x-auto scrollbar-hide"
             role="tablist"
@@ -42,6 +46,7 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
               const Icon = tab.icon;
               return (
                 <button
+                  data-testid={`tab-button-${tab.id}`}
                   id={`tab-button-${tab.id}`}
                   key={tab.id}
                   type="button"
@@ -61,7 +66,7 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
         </div>
       )}
 
-      <div id="tabs-layout-content" role="tabpanel" className="pb-6">
+      <div data-testid="tabs-layout-content" id="tabs-layout-content" role="tabpanel" className="pb-6">
         {activeContent}
       </div>
     </div>

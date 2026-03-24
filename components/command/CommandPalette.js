@@ -22,6 +22,7 @@ function getCurrentCategoryGroup(currentCategory) {
     docs: "Knowledge Base",
     integrations: "Integrations",
     rag_embed: "RAG Embeds",
+    widgets: "Widgets",
   };
   return categoryGroupMap[currentCategory] || null;
 }
@@ -50,18 +51,22 @@ const CommandPalette = ({ isEmbedUser }) => {
     if (parts.includes("knowledge_base")) return "docs";
     if (parts.includes("integration")) return "integrations";
     if (parts.includes("RAG_embed")) return "rag_embed";
+    if (parts.includes("widgets")) return "widgets";
     if (parts.includes("orchestratal_model")) return "flows";
     return null;
   }, [pathname]);
 
-  const { agentList, apikeys, knowledgeBase, functionData, integrationData, authData } = useCustomSelector((state) => ({
-    agentList: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
-    apikeys: state?.apiKeysReducer?.apikeys?.[orgId] || [],
-    knowledgeBase: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
-    functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
-    integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
-    authData: state?.authDataReducer?.authData || [],
-  }));
+  const { agentList, apikeys, knowledgeBase, functionData, integrationData, authData, widgetsData } = useCustomSelector(
+    (state) => ({
+      agentList: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
+      apikeys: state?.apiKeysReducer?.apikeys?.[orgId] || [],
+      knowledgeBase: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
+      functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
+      integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
+      authData: state?.authDataReducer?.authData || [],
+      widgetsData: state?.richUiTemplateReducer?.templates || [],
+    })
+  );
   const apiAgents = agentList.filter(
     (agent) =>
       (!agent.deletedAt && agent.bridgeType === "api") || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
@@ -153,11 +158,19 @@ const CommandPalette = ({ isEmbedUser }) => {
             type: "Auths",
           }));
 
+        case "widgets":
+          return (widgetsData || []).map((d) => ({
+            id: d._id,
+            title: d.name || d._id,
+            subtitle: "Widget",
+            type: "widgets",
+          }));
+
         default:
           return [];
       }
     },
-    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData]
+    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData, widgetsData]
   );
 
   const createAgentItem = (a, type) => ({
@@ -287,6 +300,13 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "rag_embed",
   }));
 
+  const widgetsGroup = filterBy(widgetsData || [], ["name", "_id"]).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "Widget",
+    type: "widgets",
+  }));
+
   const items = useMemo(
     () => ({
       agents: [...apiAgentsGroup, ...chatbotAgentsGroup, ...agentsVersionMatches],
@@ -296,8 +316,9 @@ const CommandPalette = ({ isEmbedUser }) => {
       integrations: integrationGroup,
       auths: authGroup,
       rag_embed: ragEmbedGroup,
+      widgets: widgetsGroup,
     }),
-    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData]
+    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData, widgetsData]
   );
 
   const allResults = useMemo(
@@ -311,6 +332,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       ...items.integrations.map((it) => ({ group: "Integrations", ...it })),
       ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
       ...items.rag_embed.map((it) => ({ group: "RAG Embeds", ...it })),
+      ...items.widgets.map((it) => ({ group: "Widgets", ...it })),
     ],
     [items]
   );
@@ -372,6 +394,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       { key: "docs", label: "Knowledge Base", desc: "Documents and sources" },
       { key: "integrations", label: "Gtwy as Embed", desc: "Configure integrations" },
       { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
+      { key: "widgets", label: "Widgets", desc: "Create and manage UI widgets" },
     ];
 
     // When on agents page, order based on type query parameter
@@ -516,6 +539,9 @@ const CommandPalette = ({ isEmbedUser }) => {
           // Always navigate to auth keys page with filter parameter
           router.push(`/org/${orgId}/pauthkey?filter=${item.id}`);
           break;
+        case "widgets":
+          router.push(`/org/${orgId}/widgets${item.id ? `?filter=${item.id}` : ""}`);
+          break;
         default:
           router.push("/");
       }
@@ -538,6 +564,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         integrations: `/org/${orgId}/integration`,
         rag_embed: `/org/${orgId}/RAG_embed`,
         Auths: `/org/${orgId}/pauthkey`,
+        widgets: `/org/${orgId}/widgets`,
         flows: `/org/${orgId}/orchestratal_model`,
       };
       router.push(routes[key] || "/");
@@ -748,12 +775,14 @@ const CommandPalette = ({ isEmbedUser }) => {
 
   return (
     <div
+      data-testid="command-palette-backdrop"
       id="command-palette-backdrop"
       className="fixed inset-0 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={closePalette}
       style={{ zIndex: 999999 }}
     >
       <div
+        data-testid="command-palette-modal"
         id="command-palette-modal"
         className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -766,6 +795,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                 <span>Filter active on current page</span>
               </div>
               <button
+                data-testid="command-palette-clear-filter"
                 id="command-palette-clear-filter"
                 onClick={clearCurrentFilter}
                 className="btn btn-xs btn-ghost hover:bg-error hover:text-error-content"
@@ -778,6 +808,7 @@ const CommandPalette = ({ isEmbedUser }) => {
           <div className="flex items-center gap-2 p-3">
             <Search className="w-4 h-4 opacity-70" />
             <input
+              data-testid="command-palette-search-input"
               id="command-palette-search-input"
               autoFocus
               value={query}
@@ -785,7 +816,12 @@ const CommandPalette = ({ isEmbedUser }) => {
               placeholder="Search agents, bridges, API keys, docs..."
               className="flex-1 bg-transparent outline-none"
             />
-            <button id="command-palette-close-button" className="btn btn-sm" onClick={closePalette}>
+            <button
+              data-testid="command-palette-close-button"
+              id="command-palette-close-button"
+              className="btn btn-sm"
+              onClick={closePalette}
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -809,6 +845,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                       }`}
                     >
                       <button
+                        data-testid={`command-palette-category-${cat.key}`}
                         id={`command-palette-category-${cat.key}`}
                         data-nav-index={categoryNavIndex}
                         onClick={() => navigateCategory(cat.key)}
@@ -820,6 +857,7 @@ const CommandPalette = ({ isEmbedUser }) => {
 
                       {categoryItems.length > 0 && (
                         <button
+                          data-testid={`command-palette-toggle-${cat.key}`}
                           id={`command-palette-toggle-${cat.key}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -848,6 +886,7 @@ const CommandPalette = ({ isEmbedUser }) => {
 
                             return (
                               <li
+                                data-testid={`command-palette-item-${item.type}-${item.id}`}
                                 id={`command-palette-item-${item.type}-${item.id}`}
                                 key={`${item.type}-${item.id}`}
                                 data-nav-index={itemNavIndex}
@@ -901,6 +940,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                                 const active = globalIdx === activeIndex;
                                 return (
                                   <li
+                                    data-testid={`command-palette-result-${row.type}-${row.id}`}
                                     id={`command-palette-result-${row.type}-${row.id}`}
                                     key={`${row.type}-${row.id}`}
                                     data-nav-index={globalIdx}

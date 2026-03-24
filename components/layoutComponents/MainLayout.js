@@ -8,7 +8,7 @@ import React from "react";
  */
 const MainLayout = ({ children, withPadding = true }) => {
   return (
-    <div className="h-full flex flex-col">
+    <div data-testid="main-layout-container" id="main-layout-container" className="h-full flex flex-col">
       {/* Main content area */}
       <div className={`flex-grow text-base-content ${withPadding ? "pl-4 pt-4" : ""}`}>{children}</div>
     </div>

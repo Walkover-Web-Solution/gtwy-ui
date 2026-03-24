@@ -2,6 +2,7 @@
 "use client";
 import { addThreadNMessageUsingRtLayer, addThreadUsingRtLayer } from "@/store/reducer/historyReducer";
 import { handleRtLayerMessage, setChatTestCaseIdAction, addChatErrorMessage } from "@/store/action/chatAction";
+import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
@@ -207,6 +208,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
               annotations: response.data.annotations,
               fromRTLayer: true,
               usage: parsedData.response?.usage, // Include usage data if available
+              type: response?.type,
+              ai_response: response?.ai_response || {},
             };
             if (channelId) {
               // Dispatch to chat reducer - this will clear loading
@@ -398,6 +401,33 @@ function useRtLayerEventHandler(channelIdentifier = "") {
       }
     };
   }, [client, dispatch]);
+
+  // Listen to org-level channel for API key status updates
+  useEffect(() => {
+    if (!client || !orgId) return;
+
+    const orgChannel = `org_${orgId}`;
+    const orgListener = client.on(orgChannel, (message) => {
+      try {
+        const parsedData = typeof message === "string" ? JSON.parse(message) : message;
+        if (parsedData?.type === "apikey_status_update") {
+          const { apikey_id, status } = parsedData;
+          if (apikey_id && status) {
+            dispatch(updateApiKeyStatusReducer({ org_id: orgId, apikey_id, status }));
+          }
+        }
+      } catch (error) {
+        console.error("Error processing apikey status update:", error);
+      }
+    });
+
+    return () => {
+      if (orgListener && typeof orgListener.remove === "function") {
+        orgListener.remove();
+      }
+    };
+  }, [client, orgId, dispatch]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {

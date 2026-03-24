@@ -3,7 +3,10 @@ import { createDiff } from "@/utils/utility";
 
 const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
   const diffData = createDiff(oldContent || "", newContent || "");
-  const isNewContentEmpty = !newContent || newContent.trim() === "";
+  const isNewContentEmpty =
+    !newContent ||
+    (typeof newContent === "string" && newContent.trim() === "") ||
+    (typeof newContent === "object" && Object.keys(newContent).length === 0);
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
   const syncingRef = useRef(false);
@@ -27,7 +30,7 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
         </div>
       ) : (
         <>
-          <div className="flex gap-2 h-[70vh] w-full mt-3">
+          <div className="flex gap-2 min-h-[200px] max-h-[500px] h-auto w-full mt-3">
             <div className="w-1/2 flex flex-col">
               <div className="label">
                 <span className="label-text font-medium text-red-600">Published Prompt</span>

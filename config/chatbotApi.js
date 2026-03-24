@@ -34,16 +34,6 @@ export const getChatBotDetails = async (botId) => {
   }
 };
 
-// export const getChatBotOfBridge = async (orgId, bridgeId) => {
-//   try {
-//     const response = await axios.get(`${URL}/chatbot/${orgId}/${bridgeId}`);
-//     return response;
-//   } catch (error) {
-//     console.error(error);
-//     return error;
-//   }
-// }
-
 export const updateChatBot = async (botId, dataToSend) => {
   try {
     const response = await axios.put(`${URL}/chatbot/${botId}`, dataToSend);

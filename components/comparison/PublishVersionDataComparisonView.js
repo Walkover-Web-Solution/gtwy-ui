@@ -4,6 +4,8 @@ import { isEqual } from "lodash";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { DIFFERNCE_DATA_DISPLAY_NAME, CONFIGURATION_KEYS_TO_EXCLUDE } from "@/jsonFiles/bridgeParameter";
 import ComparisonCheck from "@/utils/comparisonCheck";
+import { preprocessPrompt } from "@/utils/promptUtils";
+import { PROMPT_SECTION_CONFIG } from "@/utils/enums";
 
 const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
   const { apikeyData, functionData, knowledgeBaseData } = useCustomSelector((state) => ({
@@ -17,19 +19,19 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
     switch (status) {
       case "added":
         return (
-          <span className="badge badge-success flex items-center gap-1 text-white">
+          <span data-testid="status-badge-added" className="badge badge-success flex items-center gap-1 text-white">
             <Check size={12} /> Added
           </span>
         );
       case "removed":
         return (
-          <span className="badge badge-error flex items-center gap-1 text-white">
+          <span data-testid="status-badge-removed" className="badge badge-error flex items-center gap-1 text-white">
             <X size={12} /> Removed
           </span>
         );
       case "changed":
         return (
-          <span className="badge badge-warning flex items-center gap-1 text-white">
+          <span data-testid="status-badge-changed" className="badge badge-warning flex items-center gap-1 text-white">
             <AlertCircle size={12} /> Changed
           </span>
         );
@@ -94,8 +96,44 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
     return differences;
   };
 
-  // Calculate differences between oldData and newData
-  const differences = useMemo(() => findDifferences(oldData, newData), [oldData, newData]);
+  const preprocessData = (data) => {
+    if (!data) return data;
+    const cloned = JSON.parse(JSON.stringify(data));
+
+    const traverseAndTransform = (obj) => {
+      if (!obj || typeof obj !== "object") return;
+
+      if ("prompt" in obj) {
+        obj.prompt = preprocessPrompt(obj.prompt);
+      }
+
+      Object.keys(obj).forEach((key) => {
+        if (key !== "prompt" && typeof obj[key] === "object") {
+          traverseAndTransform(obj[key]);
+        }
+      });
+    };
+
+    traverseAndTransform(cloned);
+    return cloned;
+  };
+
+  const alignPromptShapes = (a, b) => {
+    if (!a || !b || typeof a.prompt !== "object" || typeof b.prompt !== "object") return;
+    const allKeys = new Set([...Object.keys(a.prompt), ...Object.keys(b.prompt)]);
+    allKeys.forEach((key) => {
+      if (!(key in a.prompt)) a.prompt[key] = "";
+      if (!(key in b.prompt)) b.prompt[key] = "";
+    });
+  };
+
+  // Calculate differences using preprocessed data
+  const differences = useMemo(() => {
+    const processedOld = preprocessData(oldData);
+    const processedNew = preprocessData(newData);
+    alignPromptShapes(processedOld, processedNew);
+    return findDifferences(processedOld, processedNew);
+  }, [oldData, newData]);
 
   // Flatten the differences structure for direct display
   const flattenedDifferences = useMemo(() => {
@@ -238,16 +276,23 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
               <h4 className="font-semibold text-lg mb-3">{DIFFERNCE_DATA_DISPLAY_NAME(category)}</h4>
               <div className="space-y-4">
                 {items.map(({ path, oldValue, newValue, status }) => {
-                  // Check if this is the prompt field
-                  const isPromptField = path === "prompt" || path.endsWith(".prompt");
+                  // Prompt sub-field: path is "prompt.role", "prompt.goal", "prompt.instruction",
+                  // "prompt.customPrompt", or any embed field under prompt
+                  const promptSubFieldKey = path.startsWith("prompt.") ? path.slice("prompt.".length) : null;
+                  const isPromptField = path === "prompt" || promptSubFieldKey !== null;
+
+                  // Label: use PROMPT_SECTION_CONFIG label for known prompt sub-fields, else DIFFERNCE_DATA_DISPLAY_NAME
+                  const leafKey = path.split(".").at(-1);
+                  const displayLabel =
+                    promptSubFieldKey && PROMPT_SECTION_CONFIG[promptSubFieldKey]?.label
+                      ? PROMPT_SECTION_CONFIG[promptSubFieldKey].label
+                      : DIFFERNCE_DATA_DISPLAY_NAME(leafKey);
 
                   return (
-                    <div key={path} className="card bg-base-200">
+                    <div key={path} data-testid={`comparison-card-${path}`} className="card bg-base-200">
                       <div className="card-body p-4">
                         <div className="flex justify-between items-start mb-3">
-                          <h5 className="card-title text-sm">
-                            {DIFFERNCE_DATA_DISPLAY_NAME(path.split(".")[path.split(".").length - 1 || 0])}
-                          </h5>
+                          <h5 className="card-title text-sm">{displayLabel}</h5>
                           {getStatusBadge(status)}
                         </div>
 

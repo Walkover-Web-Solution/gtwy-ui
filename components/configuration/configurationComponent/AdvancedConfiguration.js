@@ -23,29 +23,34 @@ const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, is
 
   const renderContent = () => (
     <div className="flex flex-col gap-6">
-      <div className="">
-        <GuardrailSelector params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
-      </div>
-
-      {bridgeType === "api" && modelType !== "image" && modelType !== "embedding" && (
+      {modelType !== "image" && (
         <div className="">
-          <ResponseFormatSelector
-            isPublished={isPublished}
-            isEditor={isEditor}
+          <GuardrailSelector
             params={params}
             searchParams={searchParams}
+            isPublished={isPublished}
+            isEditor={isEditor}
           />
         </div>
       )}
-
       <div className="">
-        <ToolCallCount params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+        <ResponseFormatSelector
+          isPublished={isPublished}
+          isEditor={isEditor}
+          params={params}
+          searchParams={searchParams}
+        />
       </div>
+      {modelType !== "image" && (
+        <div className="">
+          <ToolCallCount params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+        </div>
+      )}
     </div>
   );
 
   return (
-    <div className="z-very-low text-base-content w-full" tabIndex={0}>
+    <div data-testid="advanced-configuration-container" className="z-very-low text-base-content w-full" tabIndex={0}>
       {renderContent()}
     </div>
   );

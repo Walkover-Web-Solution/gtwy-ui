@@ -222,6 +222,7 @@ const CustomTable = ({
         <div className="font-medium text-base-content mr-2">Sort by:</div>
         {sortableColumns.map((column) => (
           <button
+            data-testid={`custom-table-sort-${column}`}
             id={`custom-table-sort-${column}`}
             key={column}
             onClick={() => sortByColumn(column)}
@@ -246,6 +247,7 @@ const CustomTable = ({
           {sortedData?.length > 0 ? (
             sortedData.map((row, index) => (
               <div
+                data-testid={`custom-table-card-${row.id || row?._id || index}`}
                 id={`custom-table-card-${row.id || row?._id || index}`}
                 key={row.id || row?._id || index}
                 className={`bg-base-100 border border-base-300 rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md transition-all group ${
@@ -264,6 +266,7 @@ const CustomTable = ({
                 {showRowSelection && (
                   <div className="flex items-center mb-3">
                     <input
+                      data-testid={`custom-table-card-checkbox-${row.id || row["_id"]}`}
                       id={`custom-table-card-checkbox-${row.id || row["_id"]}`}
                       type="checkbox"
                       className="h-4 w-4 cursor-pointer mr-3"
@@ -322,6 +325,7 @@ const CustomTable = ({
         style={{ display: "inline-block", minWidth: "50%", width: "auto" }}
       >
         <table
+          data-testid="custom-table-view"
           id="custom-table-view"
           className={`table ${tableClass} bg-base-100 shadow-md overflow-visible relative z-50 border-collapse`}
           style={{ tableLayout: "auto", width: "100%" }}
@@ -331,6 +335,7 @@ const CustomTable = ({
               {showRowSelection && (
                 <th className="px-4 py-2 text-left">
                   <input
+                    data-testid="custom-table-select-all"
                     id="custom-table-select-all"
                     type="checkbox"
                     className="h-4 w-4 cursor-pointer"
@@ -347,6 +352,7 @@ const CustomTable = ({
                     <div className="flex items-center justify-start gap-2">
                       {isSortable && (
                         <MoveDownIcon
+                          data-testid={`custom-table-sort-icon-${column}`}
                           id={`custom-table-sort-icon-${column}`}
                           className={`w-4 h-4 cursor-pointer ${
                             activeColumn === column ? "text-black" : "text-[#BCBDBE] group-hover:text-black"
@@ -355,6 +361,7 @@ const CustomTable = ({
                         />
                       )}
                       <span
+                        data-testid={`custom-table-header-${column}`}
                         id={`custom-table-header-${column}`}
                         className={`${isSortable ? "cursor-pointer" : "cursor-default"} capitalize`}
                         onClick={() => (isSortable ? sortByColumn(column) : undefined)}
@@ -376,6 +383,7 @@ const CustomTable = ({
             {sortedData?.length > 0 ? (
               sortedData?.map((row, index) => (
                 <tr
+                  data-testid={`custom-table-row-${row.id || row?._id || index}`}
                   id={`custom-table-row-${row.id || row?._id || index}`}
                   key={row.id || row?._id || index}
                   className={`border-b border-base-300 hover:bg-base-200 transition-colors z-40 cursor-pointer group ${
@@ -393,6 +401,7 @@ const CustomTable = ({
                   {showRowSelection && (
                     <td className="px-4 py-2 text-left">
                       <input
+                        data-testid={`custom-table-row-checkbox-${row.id || row["_id"]}`}
                         id={`custom-table-row-checkbox-${row.id || row["_id"]}`}
                         type="checkbox"
                         className="h-4 w-4 cursor-pointer"
@@ -442,7 +451,11 @@ const CustomTable = ({
   };
 
   return (
-    <div id="custom-table" className="bg-base-100 p-2 md:p-4 overflow-x-auto overflow-y-visible">
+    <div
+      data-testid="custom-table"
+      id="custom-table"
+      className="bg-base-100 p-2 md:p-4 overflow-x-auto overflow-y-visible"
+    >
       {/* Responsive view switching */}
       {isSmallScreen ? renderCardView() : renderTableView()}
     </div>

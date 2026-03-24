@@ -81,6 +81,7 @@ const TutorialModal = () => {
       {/* Main Modal */}
       <div
         id="tutorial-modal-container"
+        data-testid="tutorial-modal-container"
         className="relative z-low w-full max-w-5xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-300"
       >
         {/* Header */}
@@ -108,6 +109,7 @@ const TutorialModal = () => {
               return (
                 <div
                   id={`tutorial-item-${index}`}
+                  data-testid={`tutorial-item-${index}`}
                   key={index}
                   className={`border rounded-xl transition-all duration-200 transform hover:scale-[1.01] ${
                     isActive
@@ -140,6 +142,7 @@ const TutorialModal = () => {
                         {!isActive && (
                           <button
                             id={`tutorial-watch-button-${index}`}
+                            data-testid={`tutorial-watch-button-${index}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleTutorial(index);
@@ -153,6 +156,7 @@ const TutorialModal = () => {
 
                         <div
                           id={`tutorial-toggle-${index}`}
+                          data-testid={`tutorial-toggle-${index}`}
                           className={`text-slate-400 transition-transform duration-200 cursor-pointer ${
                             isActive ? "rotate-180" : "hover:translate-x-1"
                           }`}
@@ -179,6 +183,7 @@ const TutorialModal = () => {
                           </div>
                           <button
                             id={`tutorial-close-video-button-${index}`}
+                            data-testid={`tutorial-close-video-button-${index}`}
                             onClick={() => setActiveIndex(null)}
                             className="px-4 py-2 text-base-content hover:text-base-content hover:bg-base-200 rounded-lg transition-all duration-200 text-sm hover:scale-105"
                           >
@@ -199,6 +204,7 @@ const TutorialModal = () => {
           <div className="flex justify-between items-center">
             <button
               id="tutorial-close-button"
+              data-testid="tutorial-close-button"
               onClick={internalClose}
               className="px-6 py-2 bg-base-300 text-base-content rounded-lg hover:bg-base-200 transition-all duration-200 font-medium text-sm hover:scale-105 shadow-sm hover:shadow-md ml-auto"
             >

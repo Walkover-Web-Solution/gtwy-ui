@@ -3,12 +3,13 @@ import { toast } from "react-toastify";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL;
-const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
 // User Authentication APIs
-export const userdetails = async () => {
+export const userdetails = async ({ exclude_role_ids = process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID, role_ids } = {}) => {
   try {
-    const details = await axios.get(`${PROXY_URL}/api/c/getDetails`);
+    const details = await axios.get(`${PROXY_URL}/api/c/getDetails`, {
+      params: { exclude_role_ids, role_ids },
+    });
     return details;
   } catch (error) {
     console.error(error);
@@ -18,6 +19,21 @@ export const userdetails = async () => {
 export const logoutUserFromMsg91 = async (headers) => {
   const User = await axios.delete(`${PROXY_URL}/api/c/logout`, headers);
   return User;
+};
+
+export const logoutUser = async (token) => {
+  try {
+    const response = await axios.post(
+      `${URL}/api/user/logout`,
+      {},
+      {
+        headers: { Authorization: token },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const loginUser = async (dataToSend) => {

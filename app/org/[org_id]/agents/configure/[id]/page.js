@@ -109,6 +109,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const resolvedParams = use(params);
   const resolvedSearchParams = use(searchParams);
   const promptTextAreaRef = useRef(null);
+  const apiKeySectionRef = useRef(null);
   const router = useRouter();
   const mountRef = useRef(false);
   const dispatch = useDispatch();
@@ -135,6 +136,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }));
 
   const [isGuideVisible, setIsGuideVisible] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState(false);
 
   // Ref for the main container to calculate percentage-based width
   const containerRef = useRef(null);
@@ -153,7 +155,6 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     prompt: "",
     thread_id: bridge?.thread_id || generateRandomID(),
     messages: [],
-    hasUnsavedChanges: false,
     newContent: "",
   }));
 
@@ -321,6 +322,24 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [uiState.isConfigCollapsed, uiState.isPromptHelperCollapsed, uiState.isPromptHelperOpen]);
 
+  const handleSwitchToModelTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "model");
+    router.push(`${window.location.pathname}?${current.toString()}`);
+  }, [router]);
+
+  const handleSwitchToPromptTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "prompt");
+    router.push(`${window.location.pathname}?${current.toString()}`);
+  }, [router]);
+
+  const handleSwitchToConnectorsTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "connectors");
+    router.push(`${window.location.pathname}?${current.toString()}`);
+  }, [router]);
+
   const [isAgentFlowView, setIsAgentFlowView] = useState(() => resolvedSearchParams?.view === "agent-flow");
   useEffect(() => {
     setIsAgentFlowView(resolvedSearchParams?.view === "agent-flow");
@@ -331,8 +350,10 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }, []);
   const savePrompt = useCallback(
     (newPrompt) => {
-      const newValue = (newPrompt || "").trim();
-      const promptVariables = extractPromptVariables(newValue);
+      const isObject = newPrompt !== null && typeof newPrompt === "object";
+      const newValue = isObject ? newPrompt : (newPrompt || "").trim();
+      const promptForVars = isObject ? Object.values(newPrompt).join(" ") : newValue;
+      const promptVariables = extractPromptVariables(promptForVars);
       const variablesState = {};
 
       promptVariables.forEach((varName) => {
@@ -342,7 +363,13 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
         };
       });
 
-      if (newValue !== reduxPrompt.trim()) {
+      const reduxIsObject = reduxPrompt !== null && typeof reduxPrompt === "object";
+      const hasChanged =
+        isObject || reduxIsObject
+          ? JSON.stringify(newValue) !== JSON.stringify(reduxPrompt)
+          : newValue !== (reduxPrompt || "").trim();
+
+      if (hasChanged) {
         dispatch(
           updateBridgeVersionAction({
             versionId: resolvedSearchParams?.version,
@@ -592,6 +619,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="agent-flow-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -645,6 +673,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   <ConfigurationPage
                     id="configuration-page"
                     promptTextAreaRef={promptTextAreaRef}
+                    apiKeySectionRef={apiKeySectionRef}
                     params={resolvedParams}
                     searchParams={resolvedSearchParams}
                     isEmbedUser={isEmbedUser}
@@ -659,6 +688,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                     bridgeName={bridgeName}
                     onViewChange={handleViewChange}
                     viewOverride={isAgentFlowView ? "agent-flow" : undefined}
+                    apiKeyError={apiKeyError}
+                    setApiKeyError={setApiKeyError}
                   />
                 </div>
               </div>
@@ -705,12 +736,18 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                         <AgentSetupGuide
                           id="agent-setup-guide"
                           promptTextAreaRef={promptTextAreaRef}
+                          apiKeySectionRef={apiKeySectionRef}
                           params={resolvedParams}
                           searchParams={resolvedSearchParams}
+                          draftPrompt={promptState.newContent}
                           onVisibilityChange={setIsGuideVisible}
+                          onSwitchToModelTab={handleSwitchToModelTab}
+                          onSwitchToPromptTab={handleSwitchToPromptTab}
+                          onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
+                          setApiKeyError={setApiKeyError}
                         />
                         {/* Only show experimental Chat for non-chatbot types */}
-                        {bridgeType !== "chatbot" && (
+                        {bridgeType !== "chatbot" && !isGuideVisible && (
                           <>
                             {!sessionStorage.getItem("orchestralUser") ? (
                               <div id="chat-content-container" className="flex-1 min-h-0">
@@ -777,6 +814,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                       searchParams={resolvedSearchParams}
                       onClose={handleCloseTextAreaFocus}
                       savePrompt={savePrompt}
+                      isEmbedUser={isEmbedUser}
                       setPrompt={(value) => {
                         // Update prompt state for diff/summary
                         setPromptState((prev) => ({ ...prev, newContent: value }));
@@ -812,13 +850,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             })
                           );
                       }}
-                      prompt={promptState.prompt}
-                      hasUnsavedChanges={promptState.hasUnsavedChanges}
-                      setHasUnsavedChanges={(value) =>
-                        setPromptState((prev) => ({ ...prev, hasUnsavedChanges: value }))
-                      }
                       setNewContent={(value) => setPromptState((prev) => ({ ...prev, newContent: value }))}
-                      isEmbedUser={isEmbedUser}
                     />
                   )}
                 </Panel>
@@ -880,6 +912,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="mobile-agent-flow-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -907,6 +940,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="mobile-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -931,12 +965,18 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <AgentSetupGuide
                 id="mobile-agent-setup-guide"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
+                draftPrompt={promptState.newContent}
+                onSwitchToModelTab={handleSwitchToModelTab}
+                onSwitchToPromptTab={handleSwitchToPromptTab}
+                onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
+                setApiKeyError={setApiKeyError}
               />
 
               {/* Only show experimental Chat for non-chatbot types */}
-              {bridgeType !== "chatbot" && (
+              {bridgeType !== "chatbot" && !isGuideVisible && (
                 <>
                   {!sessionStorage.getItem("orchestralUser") ? (
                     <div id="mobile-chat-content-container" className="flex-1 min-h-0">

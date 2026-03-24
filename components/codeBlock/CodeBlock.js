@@ -7,6 +7,9 @@ import typescript from "react-syntax-highlighter/dist/esm/languages/prism/typesc
 import python from "react-syntax-highlighter/dist/esm/languages/prism/python";
 import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
 import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
+import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
+import java from "react-syntax-highlighter/dist/esm/languages/prism/java";
+import go from "react-syntax-highlighter/dist/esm/languages/prism/go";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
@@ -17,6 +20,9 @@ SyntaxHighlighter.registerLanguage("python", python);
 SyntaxHighlighter.registerLanguage("css", css);
 SyntaxHighlighter.registerLanguage("bash", bash);
 SyntaxHighlighter.registerLanguage("shell", bash);
+SyntaxHighlighter.registerLanguage("csharp", csharp);
+SyntaxHighlighter.registerLanguage("java", java);
+SyntaxHighlighter.registerLanguage("go", go);
 
 function CodeBlock({ inline, className, children, ...props }) {
   const match = /language-(\w+)/.exec(className || "");
@@ -40,6 +46,9 @@ function CodeBlock({ inline, className, children, ...props }) {
     css: "CSS",
     bash: "Bash",
     shell: "Shell",
+    csharp: "C#",
+    java: "Java",
+    go: "Go",
   };
 
   const languageLabel = match
@@ -87,12 +96,13 @@ function CodeBlock({ inline, className, children, ...props }) {
   }, []);
 
   return !inline && match ? (
-    <div id="code-block-container" className={blockClasses}>
+    <div data-testid="code-block-container" id="code-block-container" className={blockClasses}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-base-300 bg-base-100/70">
         <span className="text-xs font-semibold uppercase tracking-wider text-base-content/70">
           {languageLabel || "Code"}
         </span>
         <button
+          data-testid="code-block-copy-button"
           id="code-block-copy-button"
           type="button"
           onClick={handleCopy}

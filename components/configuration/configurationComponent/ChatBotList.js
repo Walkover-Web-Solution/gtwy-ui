@@ -23,11 +23,12 @@ const ChatBotList = ({ params }) => {
 
   return (
     bridgeType === "chatbot" && (
-      <div id="chatbot-list-container" className="form-control">
+      <div data-testid="chatbot-list-container" id="chatbot-list-container" className="form-control">
         <p className="text-xl font-medium text-base-content">ChatBot</p>
-        <div id="chatbot-cards-wrapper" className="flex flex-wrap gap-4">
+        <div data-testid="chatbot-cards-wrapper" id="chatbot-cards-wrapper" className="flex flex-wrap gap-4">
           {chatbotData?.map((chatBot, index) => (
             <div
+              data-testid={`chatbot-card-${chatBot._id}`}
               id={`chatbot-card-${chatBot._id}`}
               key={index}
               onClick={() => router.push(`/org/${params.org_id}/chatbot/configure/${chatBot._id}`)}
@@ -44,12 +45,18 @@ const ChatBotList = ({ params }) => {
             </div>
           ))}
         </div>
-        <button id="add-chatbot-button" className="btn btn-outline btn-sm mt-4 w-fit" onClick={handleAddChatbotClick}>
+        <button
+          data-testid="add-chatbot-button"
+          id="add-chatbot-button"
+          className="btn btn-outline btn-sm mt-4 w-fit"
+          onClick={handleAddChatbotClick}
+        >
           <AddIcon size={16} /> Add ChatBot
         </button>
 
         {isSliderOpen && (
           <aside
+            data-testid="chatbot-slider"
             id="chatbot-slider"
             className="absolute right-0 top-0 z-high flex h-full w-1/3 flex-col overflow-y-auto bg-base-100 px-5 py-8 shadow-lg "
           >
@@ -58,6 +65,7 @@ const ChatBotList = ({ params }) => {
                 <BotIcon /> Chat Bot list
               </h1>
               <button
+                data-testid="chatbot-slider-close-button"
                 id="chatbot-slider-close-button"
                 className="btn btn-outline btn-circle btn-sm"
                 onClick={handleAddChatbotClick}
@@ -68,9 +76,10 @@ const ChatBotList = ({ params }) => {
 
             <div className="mt-6 flex flex-1 flex-col justify-between">
               <nav className="-mx-3 space-y-6 ">
-                <div id="chatbot-list-items" className="space-y-3 ">
+                <div data-testid="chatbot-list-items" id="chatbot-list-items" className="space-y-3 ">
                   {chatBotList?.map((chatBot, index) => (
                     <a
+                      data-testid={`chatbot-list-item-${chatBot._id}`}
                       id={`chatbot-list-item-${chatBot._id}`}
                       onClick={(e) => {
                         e.preventDefault(); // Prevent the default anchor action
@@ -89,6 +98,7 @@ const ChatBotList = ({ params }) => {
                         <span className="mx-2 text-sm font-medium truncate">{chatBot?.title}</span>
                       </div>
                       <input
+                        data-testid={`chatbot-checkbox-${chatBot._id}`}
                         type="checkbox"
                         id={`chatbot-${chatBot._id}`} // Use a unique ID for each checkbox
                         defaultChecked={chatbotData?.some((e) => e._id === chatBot._id)}

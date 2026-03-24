@@ -47,21 +47,24 @@ const RenderEmbed = ({
 
       return (
         <div
+          data-testid={`render-embed-item-${value?._id}`}
           key={value?._id}
           id={value?._id}
           className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full ${value?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200`}
         >
           <div
             className="p-2 flex-1 flex items-center"
-            onClick={() =>
-              openViasocket(functionName, {
-                embedToken,
-                meta: {
-                  type: "tool",
-                  bridge_id: params?.id,
-                },
-              })
-            }
+            onClick={() => {
+              if (value?._type === "custom_function" || !value?._type) {
+                openViasocket(functionName, {
+                  embedToken,
+                  meta: {
+                    type: "tool",
+                    bridge_id: params?.id,
+                  },
+                });
+              }
+            }}
           >
             <div className="flex items-center gap-2 w-full">
               {integrationData?.[functionName]?.serviceIcons?.length > 0 ? (
@@ -83,15 +86,11 @@ const RenderEmbed = ({
                 <SquareFunctionIcon size={16} className="shrink-0" />
               )}
               {title?.length > 24 ? (
-                <div className="tooltip tooltip-top min-w-0" data-tip={title}>
-                  <span className="min-w-0 text-sm truncate text-left">
-                    <span className="truncate text-sm font-normal w-[300px]">{title}</span>
-                  </span>
+                <div className="tooltip tooltip-top min-w-0 flex-1 overflow-hidden" data-tip={title}>
+                  <span className="block text-sm font-normal truncate">{title}</span>
                 </div>
               ) : (
-                <span className="min-w-0 text-sm truncate text-left">
-                  <span className="truncate text-sm font-normal block w-[300px]">{title}</span>
-                </span>
+                <span className="block text-sm font-normal truncate flex-1 min-w-0">{title}</span>
               )}
             </div>
           </div>
@@ -99,6 +98,7 @@ const RenderEmbed = ({
           {/* Action buttons that appear on hover */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
             <button
+              data-testid={`render-embed-config-button-${value?._id}`}
               id={`render-embed-config-button-${value?._id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -111,6 +111,7 @@ const RenderEmbed = ({
             </button>
             {name === "preFunction" && handleChangePreTool && (
               <button
+                data-testid={`render-embed-refresh-button-${value?._id}`}
                 id={`render-embed-refresh-button-${value?._id}`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -124,6 +125,7 @@ const RenderEmbed = ({
               </button>
             )}
             <button
+              data-testid={`render-embed-delete-button-${value?._id}`}
               id={`render-embed-delete-button-${value?._id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -141,7 +143,7 @@ const RenderEmbed = ({
     });
 
     return (
-      <div id="render-embed-container" className="w-full">
+      <div data-testid="render-embed-container" id="render-embed-container" className="w-full">
         <div className={`grid gap-2 w-full`}>{embedItems}</div>
       </div>
     );

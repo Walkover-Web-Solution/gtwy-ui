@@ -130,6 +130,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
 
       {/* Tone Dropdown */}
       <select
+        data-testid="tone-select"
         id="tone-select"
         disabled={isReadOnly}
         value={selectedTone}

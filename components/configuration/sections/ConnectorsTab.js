@@ -2,10 +2,16 @@
 
 import React from "react";
 import ToolsSection from "../ToolsSection";
+import { useConfigurationContext } from "../ConfigurationContext";
+import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
 
 const ConnectorsTab = ({ isPublished }) => {
+  const { shouldToolsShow } = useConfigurationContext();
+
   return (
-    <div id="connectors-tab-container" className="w-full">
+    <div data-testid="connectors-tab-container" id="connectors-tab-container" className="w-full relative">
+      {!shouldToolsShow && <UnsupportedFeatureOverlay featureName="Connectors" />}
+
       <ToolsSection isPublished={isPublished} />
     </div>
   );

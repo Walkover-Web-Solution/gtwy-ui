@@ -8,8 +8,12 @@ import ResponseStyleDropdown from "../configurationComponent/ResponseStyleDropdo
 import AdvancedConfiguration from "../configurationComponent/AdvancedConfiguration";
 import BridgeTypeToggle from "../configurationComponent/BridgeTypeToggle";
 import ChatbotConfigSection from "../ChatbotConfigSection";
+import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
+import { useDispatch } from "react-redux";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 
 const SettingsTab = () => {
+  const dispatch = useDispatch();
   const {
     params,
     searchParams,
@@ -22,6 +26,7 @@ const SettingsTab = () => {
     showConfigType,
     isPublished,
     isEditor,
+    cacheOn,
   } = useConfigurationContext();
 
   const shouldShowTriggers = useMemo(() => bridgeType === "trigger" && !isEmbedUser, [bridgeType, isEmbedUser]);
@@ -33,8 +38,26 @@ const SettingsTab = () => {
 
   const isReadOnly = isPublished || !isEditor;
 
+  const handleCachedResponseToggle = () => {
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { cache_on: !cacheOn },
+      })
+    );
+  };
+
+  if (isEmbedUser && hideAdvancedConfigurations && modelType === "image") {
+    return (
+      <div className="relative min-h-[300px]">
+        <UnsupportedFeatureOverlay featureName="Settings" />
+      </div>
+    );
+  }
+
   return (
-    <div id="settings-tab-container" className="flex flex-col mt-4 gap-6 w-full">
+    <div data-testid="settings-tab-container" id="settings-tab-container" className="flex flex-col mt-4 gap-6 w-full">
       {shouldShowTriggers && (
         <div className="rounded-xl w-full">
           <TriggersList params={params} searchParams={searchParams} isEmbedUser={isEmbedUser} isReadOnly={isReadOnly} />
@@ -43,7 +66,7 @@ const SettingsTab = () => {
 
       {/* Settings Items - No Label, No Accordion */}
       <div className="flex flex-col gap-6 w-full">
-        {shouldShowAgentType && bridgeType?.toString()?.toLowerCase() !== "chatbot" && (
+        {shouldShowAgentType && bridgeType?.toString()?.toLowerCase() !== "chatbot" && modelType !== "image" && (
           <div className="">
             <BridgeTypeToggle
               params={params}
@@ -60,6 +83,7 @@ const SettingsTab = () => {
           <>
             {!isEmbedUser && (
               <div
+                data-testid="agent-flow-section"
                 id="agent-flow-section"
                 className="border border-base-200 p-3 flex items-center justify-between gap-4"
               >
@@ -70,6 +94,7 @@ const SettingsTab = () => {
                 <label className="label cursor-pointer gap-2">
                   <span className="text-xs font-semibold">{currentView === "agent-flow" ? "On" : "Off"}</span>
                   <input
+                    data-testid="connected-agent-flow-toggle"
                     id="connected-agent-flow-toggle"
                     type="checkbox"
                     disabled={isReadOnly}
@@ -79,6 +104,33 @@ const SettingsTab = () => {
                       const newView = currentView === "agent-flow" ? "config" : "agent-flow";
                       switchView?.(newView);
                     }}
+                  />
+                </label>
+              </div>
+            )}
+            {!isEmbedUser && (
+              <div
+                data-testid="cached-response-section"
+                id="cached-response-section"
+                className="border border-base-200 p-3 flex items-center justify-between gap-4"
+              >
+                <div>
+                  <p className="text-sm font-medium text-base-content">Allow Cached Response</p>
+                  <p className="text-xs text-base-content/60">
+                    Enabling this will allow GTWY to send cached responses without AI call reducing cost for frequently
+                    asked queries.
+                  </p>
+                </div>
+                <label className="label cursor-pointer gap-2">
+                  <span className="text-xs font-semibold">{cacheOn ? "On" : "Off"}</span>
+                  <input
+                    data-testid="cached-response-toggle"
+                    id="cached-response-toggle"
+                    type="checkbox"
+                    disabled={isReadOnly}
+                    className="toggle toggle-sm"
+                    checked={cacheOn}
+                    onChange={handleCachedResponseToggle}
                   />
                 </label>
               </div>
@@ -101,26 +153,25 @@ const SettingsTab = () => {
                 />
               </div>
             </div>
-
-            {((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && (
-              <div className="">
-                <AdvancedConfiguration
-                  params={params}
-                  searchParams={searchParams}
-                  bridgeType={bridgeType}
-                  modelType={modelType}
-                  isPublished={isPublished}
-                  isEditor={isEditor}
-                  isEmbedUser={isEmbedUser}
-                />
-              </div>
-            )}
           </>
+        )}
+        {((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && (
+          <div className="">
+            <AdvancedConfiguration
+              params={params}
+              searchParams={searchParams}
+              bridgeType={bridgeType}
+              modelType={modelType}
+              isPublished={isPublished}
+              isEditor={isEditor}
+              isEmbedUser={isEmbedUser}
+            />
+          </div>
         )}
       </div>
 
       {/* Chatbot Configuration - Keep Accordion */}
-      <div id="chatbot-config-section" className="w-full max-w-2xl">
+      <div data-testid="chatbot-config-section" id="chatbot-config-section" className="w-full max-w-2xl">
         <ChatbotConfigSection isPublished={isPublished} isEditor={isEditor} />
       </div>
     </div>

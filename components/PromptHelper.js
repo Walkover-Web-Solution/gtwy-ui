@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Canvas from "@/components/Canvas";
-import { useDispatch } from "react-redux";
-import { optimizePromptReducer } from "@/store/reducer/bridgeReducer";
+import { useCustomSelector } from "@/customHooks/customSelector";
 import { optimizePromptApi } from "@/config/index";
 import Protected from "./Protected";
 
@@ -17,12 +16,22 @@ const PromptHelper = ({
   onResetThreadId,
   showCloseButton = false,
   autoCloseOnBlur,
-  setHasUnsavedChanges,
   setNewContent,
-  isEmbedUser,
   savePrompt,
+  isEmbedUser,
 }) => {
-  const dispatch = useDispatch();
+  const { embedPromptConfig, reduxPrompt } = useCustomSelector((state) => {
+    const eu = state.appInfoReducer.embedUserDetails;
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const isPublished = searchParams?.isPublished === "true";
+    return {
+      embedPromptConfig: eu?.prompt,
+      reduxPrompt: isPublished
+        ? bridgeDataFromState?.configuration?.prompt || ""
+        : versionData?.configuration?.prompt || "",
+    };
+  });
   const [optimizedPrompt, setOptimizedPrompt] = useState("");
 
   const handleOptimizePrompt = useCallback(
@@ -38,7 +47,6 @@ const PromptHelper = ({
         const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
         if (result?.updated) {
           setOptimizedPrompt(result.updated);
-          dispatch(optimizePromptReducer({ bridgeId: params.id, prompt: result.updated }));
         }
 
         return result;
@@ -53,15 +61,78 @@ const PromptHelper = ({
   // Apply optimized prompt and save immediately
   const handleApplyOptimizedPrompt = (promptToApply) => {
     const promptContent = promptToApply || optimizedPrompt;
-    if (promptContent && setPrompt) {
-      setPrompt(promptContent);
-      setHasUnsavedChanges(true);
-      setNewContent(promptContent);
+    if (!promptContent) return;
 
-      // Save the prompt immediately after applying
-      if (savePrompt) {
-        savePrompt(promptContent);
+    // Try to parse the optimized content as JSON
+    let parsedOptimized = null;
+    try {
+      let toParse = promptContent;
+      if (typeof toParse === "string") {
+        // Normalize Python-style single-quoted dicts to valid JSON
+        // e.g. "{'key': 'value'}" → '{"key": "value"}'
+        const trimmed = toParse.trim();
+        if (trimmed.startsWith("{") && trimmed.includes("'")) {
+          toParse = trimmed
+            .replace(/'/g, '"')
+            .replace(/\bNone\b/g, "null")
+            .replace(/\bTrue\b/g, "true")
+            .replace(/\bFalse\b/g, "false");
+        }
       }
+      const parsed = typeof toParse === "string" ? JSON.parse(toParse) : toParse;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        parsedOptimized = parsed;
+      }
+    } catch (e) {
+      console.error("[PromptHelper] JSON parse failed:", e.message, "raw:", promptContent);
+    }
+
+    // Check if this is an embed user with custom embed fields configured
+    const isEmbedCustomPrompt =
+      isEmbedUser &&
+      typeof embedPromptConfig === "object" &&
+      embedPromptConfig !== null &&
+      embedPromptConfig.useDefaultPrompt === false &&
+      Array.isArray(embedPromptConfig.embedFields) &&
+      embedPromptConfig.embedFields.length > 0;
+
+    if (parsedOptimized && isEmbedCustomPrompt) {
+      // Embed user: merge optimized fields into existing embed prompt object
+      const currentEmbedValues =
+        typeof reduxPrompt === "object" && reduxPrompt !== null && !Array.isArray(reduxPrompt)
+          ? { ...reduxPrompt }
+          : {};
+      const embedFieldNames = new Set(embedPromptConfig.embedFields.filter((f) => !f.hidden).map((f) => f.name));
+      const merged = { ...currentEmbedValues };
+      Object.keys(parsedOptimized).forEach((key) => {
+        if (embedFieldNames.has(key)) {
+          merged[key] = parsedOptimized[key];
+        }
+      });
+      if (savePrompt) savePrompt(merged);
+      if (setNewContent) setNewContent(merged);
+    } else if (parsedOptimized) {
+      // Non-embed: merge into existing reduxPrompt if it's an object, else save parsedOptimized directly
+      let toSave;
+      if (reduxPrompt && typeof reduxPrompt === "object" && !Array.isArray(reduxPrompt)) {
+        // Merge only matching keys from optimized into existing object
+        toSave = { ...reduxPrompt };
+        Object.keys(parsedOptimized).forEach((key) => {
+          if (key in toSave) {
+            toSave[key] = parsedOptimized[key];
+          }
+        });
+      } else {
+        // reduxPrompt is a string — save the parsed object directly
+        toSave = parsedOptimized;
+      }
+      if (savePrompt) savePrompt(toSave);
+      if (setNewContent) setNewContent(toSave);
+      if (setPrompt) setPrompt(toSave);
+    } else if (setPrompt) {
+      setPrompt(promptContent);
+      if (setNewContent) setNewContent(promptContent);
+      if (savePrompt) savePrompt(promptContent);
     }
   };
 
@@ -112,6 +183,7 @@ const PromptHelper = ({
 
   return (
     <div
+      data-testid="prompt-helper-container"
       id="prompt-helper-container"
       ref={modalRef}
       className=" z-very-high w-full bottom-2 bg-base-100 h-full rounded-l-md shadow-lg transition-all duration-300 ease-in-out z-30"
@@ -126,6 +198,7 @@ const PromptHelper = ({
 
         {showCloseButton && (
           <button
+            data-testid="prompt-helper-close-button"
             id="prompt-helper-close-button"
             onClick={onClose}
             className="btn btn-xs btn-error"

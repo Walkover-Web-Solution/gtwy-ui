@@ -4,7 +4,7 @@ import { AlertTriangle } from "lucide-react";
 
 const SessionExpired = () => {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-base-100">
+    <div data-testid="session-expired-container" className="flex items-center justify-center min-h-screen bg-base-100">
       <div className="max-w-md w-full">
         <div className="card bg-base-100">
           <div className="card-body text-center">
