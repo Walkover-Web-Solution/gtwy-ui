@@ -451,6 +451,13 @@ export const sendMessageWithApiStreaming =
                   result: parsed.content,
                 })
               );
+            } else if (parsed.event === "error") {
+              if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+              dispatch(addChatErrorMessage(channelId, parsed.error || "Something went wrong. Please try again."));
+              return { userMessage, loadingMessage: null, response: { success: false } };
             } else if (parsed.event === "done") {
               // Cancel any pending RAF flush and do a final complete dispatch
               if (rafId) {
