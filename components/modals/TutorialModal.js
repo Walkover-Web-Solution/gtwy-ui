@@ -78,6 +78,16 @@ const TutorialModal = () => {
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.TUTORIAL_MODAL} onClose={internalClose}>
+      {/* Backdrop - click to dismiss */}
+      <form
+        method="dialog"
+        id="tutorial-modal-backdrop"
+        data-testid="tutorial-modal-backdrop"
+        className="modal-backdrop"
+        onClick={internalClose}
+      >
+        <button>close</button>
+      </form>
       {/* Main Modal */}
       <div
         id="tutorial-modal-container"
