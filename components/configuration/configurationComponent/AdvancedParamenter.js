@@ -65,6 +65,22 @@ const AdvancedParameters = ({
     };
   }, [showDropdown]);
 
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && fullScreenKey) {
+        setFullScreenKey(null);
+      }
+    };
+
+    if (fullScreenKey) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [fullScreenKey]);
+
   const {
     service,
     version_function_data,
