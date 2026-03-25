@@ -96,7 +96,7 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
   try {
     const modelType = localDataToSend.configuration.type;
     const isChat = modelType !== "completion" && modelType !== "embedding";
-    const isStream = !!localDataToSend.stream;
+    const isStream = !!localDataToSend.flag;
 
     // Streaming path — use native fetch so the ReadableStream body is accessible
     if (isChat && isStream) {

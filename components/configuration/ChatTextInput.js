@@ -40,11 +40,13 @@ function ChatTextInput({
     if (inputRef.current) {
       // Use requestAnimationFrame to ensure the DOM is ready
       requestAnimationFrame(() => {
-        inputRef.current.style.height = "auto";
-        inputRef.current.style.height = "40px"; // Reset to default height
-        // Clear any existing content
-        if (inputRef.current.value === "") {
-          inputRef.current.style.height = "40px";
+        if (inputRef.current) {
+          inputRef.current.style.height = "auto";
+          inputRef.current.style.height = "40px"; // Reset to default height
+          // Clear any existing content
+          if (inputRef.current.value === "") {
+            inputRef.current.style.height = "40px";
+          }
         }
       });
     }
