@@ -871,43 +871,74 @@ const AdvancedParameters = ({
                         </div>
                       </div>
 
-                      <div
-                        className={
-                          fullScreenKey === key
-                            ? "fixed top-0 right-0 bottom-0 left-0 md:left-12 lg:left-12 z-[100] bg-black/60 flex items-center justify-center p-6 md:p-12 m-0 backdrop-blur-sm"
-                            : "relative w-full"
-                        }
-                      >
-                        <div
-                          className={
-                            fullScreenKey === key
-                              ? "bg-base-100 w-full h-full rounded-2xl shadow-2xl flex flex-col p-6 border border-base-300"
-                              : "flex flex-col w-full relative"
-                          }
+                      {fullScreenKey === key ? (
+                        <dialog
+                          open
+                          className="fixed inset-0 md:left-12 lg:left-12 w-full h-full z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 md:p-12 m-0 max-w-none border-0"
+                          onClick={(e) => {
+                            if (e.target === e.currentTarget) setFullScreenKey(null);
+                          }}
                         >
-                          {fullScreenKey === key && (
+                          <div className="bg-base-100 w-full h-full rounded-2xl shadow-2xl flex flex-col p-6 border border-base-300">
                             <div className="flex justify-between items-center mb-4">
                               <h3 className="font-bold text-lg">Edit JSON Schema</h3>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-ghost btn-circle"
                                 onClick={() => setFullScreenKey(null)}
-                                title="Exit Full Screen"
+                                title="Exit Full Screen (Esc)"
                               >
                                 <Minimize size={18} />
                               </button>
                             </div>
-                          )}
-                          {!fullScreenKey && (
-                            <button
-                              type="button"
-                              className="btn btn-xs btn-ghost btn-circle absolute top-2 right-4 opacity-50 hover:opacity-100 z-10"
-                              onClick={() => setFullScreenKey(key)}
-                              title="Full Screen"
-                            >
-                              <Maximize size={14} />
-                            </button>
-                          )}
+                            <textarea
+                              id={`advanced-param-json-schema-textarea-${key}`}
+                              key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
+                              type="input"
+                              defaultValue={
+                                objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)
+                              }
+                              onBlur={(e) => {
+                                try {
+                                  const parsedValue = JSON.parse(e.target.value);
+                                  const trimmedValue = {
+                                    ...parsedValue,
+                                    name: parsedValue.name?.trim(),
+                                    schema: parsedValue.schema
+                                      ? {
+                                          ...parsedValue.schema,
+                                          properties: trimPropertyNames(parsedValue.schema.properties),
+                                        }
+                                      : parsedValue.schema,
+                                  };
+                                  handleSelectChange(
+                                    { target: { value: "json_schema" } },
+                                    key,
+                                    defaultValue,
+                                    trimmedValue,
+                                    true
+                                  );
+                                } catch (error) {
+                                  console.error(error);
+                                  toast.error("Invalid JSON schema");
+                                }
+                              }}
+                              className="textarea textarea-bordered w-full font-mono text-xs flex-1 resize-none"
+                              placeholder="Enter JSON schema..."
+                              disabled={isReadOnly}
+                            />
+                          </div>
+                        </dialog>
+                      ) : (
+                        <div className="flex flex-col w-full relative">
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-ghost btn-circle absolute top-2 right-4 opacity-50 hover:opacity-100 z-10"
+                            onClick={() => setFullScreenKey(key)}
+                            title="Full Screen"
+                          >
+                            <Maximize size={14} />
+                          </button>
                           <textarea
                             id={`advanced-param-json-schema-textarea-${key}`}
                             key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
@@ -918,8 +949,6 @@ const AdvancedParameters = ({
                             onBlur={(e) => {
                               try {
                                 const parsedValue = JSON.parse(e.target.value);
-
-                                // Trim schema name and all property names
                                 const trimmedValue = {
                                   ...parsedValue,
                                   name: parsedValue.name?.trim(),
@@ -930,7 +959,6 @@ const AdvancedParameters = ({
                                       }
                                     : parsedValue.schema,
                                 };
-
                                 handleSelectChange(
                                   { target: { value: "json_schema" } },
                                   key,
@@ -943,12 +971,12 @@ const AdvancedParameters = ({
                                 toast.error("Invalid JSON schema");
                               }
                             }}
-                            className={`textarea textarea-bordered w-full font-mono text-xs ${fullScreenKey === key ? "flex-1 resize-none" : "h-32"}`}
+                            className="textarea textarea-bordered w-full font-mono text-xs h-32"
                             placeholder="Enter JSON schema..."
                             disabled={isReadOnly}
                           />
                         </div>
-                      </div>
+                      )}
                       <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
                       <JsonSchemaModal
                         params={params}
