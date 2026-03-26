@@ -1,90 +1,24 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { getConnectedAgentFlowAction } from "@/store/action/orchestralFlowAction";
 
 // ============================================================================
-// MOCK DATA FOR DEVELOPMENT/DEMO
+// COLOR PALETTE FOR AGENTS
 // ============================================================================
-const MOCK_AGENTS = [
-  {
-    id: "si-001",
-    label: "Sales Intelligence",
-    abbr: "SI",
-    model: "GPT-4",
-    color: "#9333ea",
-    light: "#f3e8ff",
-    children: ["am-002", "dc-003", "cr-004", "gd-005"],
-    parents: [],
-    tokens: 15420,
-    status: "active",
-    desc: "Main sales intelligence agent that orchestrates customer analysis",
-  },
-  {
-    id: "am-002",
-    label: "Account Manager",
-    abbr: "AM",
-    model: "GPT-4",
-    color: "#3b82f6",
-    light: "#dbeafe",
-    children: [],
-    parents: ["si-001"],
-    tokens: 8230,
-    status: "active",
-    desc: "Manages account relationships and customer data",
-  },
-  {
-    id: "dc-003",
-    label: "Data Collector",
-    abbr: "DC",
-    model: "Claude-3",
-    color: "#f97316",
-    light: "#ffedd5",
-    children: [],
-    parents: ["si-001", "pa-006"],
-    tokens: 12150,
-    status: "active",
-    desc: "Collects and processes data from multiple sources",
-  },
-  {
-    id: "cr-004",
-    label: "CRM Reporter",
-    abbr: "CR",
-    model: "GPT-3.5",
-    color: "#eab308",
-    light: "#fef9c3",
-    children: [],
-    parents: ["si-001"],
-    tokens: 5670,
-    status: "active",
-    desc: "Generates CRM reports and analytics",
-  },
-  {
-    id: "gd-005",
-    label: "Growth Driver",
-    abbr: "GD",
-    model: "GPT-4",
-    color: "#ec4899",
-    light: "#fce7f3",
-    children: [],
-    parents: ["si-001"],
-    tokens: 9840,
-    status: "active",
-    desc: "Identifies growth opportunities and strategies",
-  },
-  {
-    id: "pa-006",
-    label: "Pipeline Analyst",
-    abbr: "PA",
-    model: "GPT-4",
-    color: "#64748b",
-    light: "#f1f5f9",
-    children: ["dc-003"],
-    parents: [],
-    tokens: 7320,
-    status: "inactive",
-    desc: "Analyzes sales pipeline and forecasts",
-  },
+const AGENT_COLORS = [
+  { color: "#9333ea", light: "#f3e8ff" }, // Purple
+  { color: "#3b82f6", light: "#dbeafe" }, // Blue
+  { color: "#f97316", light: "#ffedd5" }, // Orange
+  { color: "#eab308", light: "#fef9c3" }, // Yellow
+  { color: "#ec4899", light: "#fce7f3" }, // Pink
+  { color: "#64748b", light: "#f1f5f9" }, // Slate
+  { color: "#10b981", light: "#d1fae5" }, // Emerald
+  { color: "#ef4444", light: "#fee2e2" }, // Red
+  { color: "#06b6d4", light: "#cffafe" }, // Cyan
+  { color: "#8b5cf6", light: "#ede9fe" }, // Violet
 ];
 
 // ============================================================================
@@ -462,10 +396,91 @@ function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick }) 
 }
 
 // ============================================================================
+// HELPER: Transform API data to graph format
+// ============================================================================
+
+function transformApiDataToGraphFormat(apiData, allBridges, currentAgentId) {
+  if (!apiData || typeof apiData !== "object") {
+    return [];
+  }
+
+  var agents = [];
+  var colorIndex = 0;
+
+  Object.entries(apiData).forEach(function (entry) {
+    var id = entry[0];
+    var agentData = entry[1];
+
+    // Find corresponding bridge data
+    var bridgeInfo = allBridges.find(function (bridge) {
+      return bridge._id === id;
+    });
+
+    // If not found by _id, try versions array
+    if (!bridgeInfo) {
+      bridgeInfo = allBridges.find(function (bridge) {
+        return bridge.versions && bridge.versions.includes(id);
+      });
+    }
+
+    // Get color for this agent
+    var colorSet = AGENT_COLORS[colorIndex % AGENT_COLORS.length];
+    colorIndex++;
+
+    // Get name - try multiple sources
+    var name =
+      agentData.agent_name ||
+      (bridgeInfo && bridgeInfo.name) ||
+      (bridgeInfo && bridgeInfo.slugName) ||
+      "Agent " + id.slice(0, 6);
+
+    // Create abbreviation from name
+    var abbr = name
+      .split(" ")
+      .map(function (word) {
+        return word[0];
+      })
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+    // Get parent and child IDs
+    var parentAgents = agentData.parentAgents || [];
+    var childAgents = agentData.childAgents || [];
+
+    // Normalize to just IDs if they're objects
+    var parents = parentAgents.map(function (p) {
+      return typeof p === "string" ? p : p.id;
+    });
+    var children = childAgents.map(function (c) {
+      return typeof c === "string" ? c : c.id;
+    });
+
+    agents.push({
+      id: id,
+      label: name,
+      abbr: abbr,
+      model: (bridgeInfo && bridgeInfo.service) || "Unknown",
+      color: colorSet.color,
+      light: colorSet.light,
+      children: children,
+      parents: parents,
+      tokens: 0,
+      status: bridgeInfo && bridgeInfo.status !== 0 ? "active" : "inactive",
+      desc: agentData.description || (bridgeInfo && bridgeInfo.description) || "",
+    });
+  });
+
+  return agents;
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
-function AgentGraph({ agentId }) {
+function AgentGraph({ agentId, orgId, versionId }) {
+  var dispatch = useDispatch();
+
   // State
   var stateArray = useState([]);
   var agents = stateArray[0];
@@ -487,42 +502,115 @@ function AgentGraph({ agentId }) {
   var breadcrumbTrail = trailState[0];
   var setBreadcrumbTrail = trailState[1];
 
-  // Get bridges from Redux (will be used when real API is implemented)
-  var _allBridgesMap = useCustomSelector(function (state) {
-    return state.bridgeReducer.allBridgesMap || {};
+  // Get data from Redux
+  var reduxData = useCustomSelector(function (state) {
+    var connectedFlow =
+      state.orchestralFlowReducer &&
+      state.orchestralFlowReducer.connectedAgentFlowByBridge &&
+      state.orchestralFlowReducer.connectedAgentFlowByBridge[orgId] &&
+      state.orchestralFlowReducer.connectedAgentFlowByBridge[orgId][agentId] &&
+      state.orchestralFlowReducer.connectedAgentFlowByBridge[orgId][agentId][versionId];
+
+    var allBridges =
+      (state.bridgeReducer &&
+        state.bridgeReducer.org &&
+        state.bridgeReducer.org[orgId] &&
+        state.bridgeReducer.org[orgId].orgs) ||
+      [];
+
+    var isLoading = state.orchestralFlowReducer && state.orchestralFlowReducer.connectedAgentFlowLoading;
+
+    return {
+      connectedAgentFlow: connectedFlow || null,
+      allBridges: allBridges,
+      isLoading: isLoading,
+    };
   });
+
+  var connectedAgentFlow = reduxData.connectedAgentFlow;
+  var allBridges = reduxData.allBridges;
+  var isReduxLoading = reduxData.isLoading;
 
   // Fetch connected agents on mount
   useEffect(
     function () {
-      // For now, use mock data
-      // In production, replace with actual API call
-      var timer = setTimeout(function () {
-        setAgents(MOCK_AGENTS);
+      if (!versionId || !orgId || !agentId) {
         setLoading(false);
+        return;
+      }
 
-        // If agentId provided, pre-select it
-        if (agentId) {
-          // Try to find matching agent
-          var matchingAgent = MOCK_AGENTS.find(function (a) {
+      // Dispatch the action to fetch connected agent flow
+      dispatch(
+        getConnectedAgentFlowAction({
+          orgId: orgId,
+          bridgeId: agentId,
+          versionId: versionId,
+        })
+      );
+    },
+    [dispatch, agentId, orgId, versionId]
+  );
+
+  // Transform API data when it arrives
+  useEffect(
+    function () {
+      if (isReduxLoading) {
+        setLoading(true);
+        return;
+      }
+
+      if (connectedAgentFlow) {
+        var transformedAgents = transformApiDataToGraphFormat(connectedAgentFlow, allBridges, agentId);
+
+        if (transformedAgents.length > 0) {
+          setAgents(transformedAgents);
+          setLoading(false);
+
+          // Pre-select the current agent
+          var matchingAgent = transformedAgents.find(function (a) {
             return a.id === agentId;
           });
+
           if (matchingAgent) {
             setSelectedId(matchingAgent.id);
             setBreadcrumbTrail([matchingAgent.id]);
-          } else {
+          } else if (transformedAgents.length > 0) {
             // Default to first agent
-            setSelectedId(MOCK_AGENTS[0].id);
-            setBreadcrumbTrail([MOCK_AGENTS[0].id]);
+            setSelectedId(transformedAgents[0].id);
+            setBreadcrumbTrail([transformedAgents[0].id]);
           }
-        }
-      }, 500);
+        } else {
+          // No connected agents - show empty state with just current agent
+          var currentBridge = allBridges.find(function (b) {
+            return b._id === agentId;
+          });
 
-      return function () {
-        clearTimeout(timer);
-      };
+          if (currentBridge) {
+            var singleAgent = {
+              id: agentId,
+              label: currentBridge.name || currentBridge.slugName || "Current Agent",
+              abbr: (currentBridge.name || "CA").slice(0, 2).toUpperCase(),
+              model: currentBridge.service || "Unknown",
+              color: AGENT_COLORS[0].color,
+              light: AGENT_COLORS[0].light,
+              children: [],
+              parents: [],
+              tokens: 0,
+              status: "active",
+              desc: currentBridge.description || "",
+            };
+            setAgents([singleAgent]);
+            setSelectedId(agentId);
+            setBreadcrumbTrail([agentId]);
+          }
+          setLoading(false);
+        }
+      } else {
+        // No data yet - might be initial load or no connections
+        setLoading(false);
+      }
     },
-    [agentId]
+    [connectedAgentFlow, allBridges, agentId, isReduxLoading]
   );
 
   // Compute layout positions
@@ -559,15 +647,23 @@ function AgentGraph({ agentId }) {
   }, []);
 
   // Retry fetch
-  var handleRetry = useCallback(function () {
-    setLoading(true);
-    setError(null);
-    // Re-trigger fetch
-    setTimeout(function () {
-      setAgents(MOCK_AGENTS);
-      setLoading(false);
-    }, 500);
-  }, []);
+  var handleRetry = useCallback(
+    function () {
+      setLoading(true);
+      setError(null);
+      // Re-trigger fetch via Redux action
+      if (versionId && orgId && agentId) {
+        dispatch(
+          getConnectedAgentFlowAction({
+            orgId: orgId,
+            bridgeId: agentId,
+            versionId: versionId,
+          })
+        );
+      }
+    },
+    [dispatch, agentId, orgId, versionId]
+  );
 
   // Determine "YOU ARE HERE" agent (the agentId prop or first selected)
   var youAreHereId = agentId || (agents.length > 0 ? agents[0].id : null);
