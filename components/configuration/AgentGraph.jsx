@@ -6,13 +6,11 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { getConnectedAgentFlowAction } from "@/store/action/orchestralFlowAction";
 import {
   ReactFlow,
-  ReactFlowProvider,
   Controls,
   Background,
   MiniMap,
   useNodesState,
   useEdgesState,
-  useReactFlow,
   MarkerType,
   Handle,
   Position,
@@ -270,52 +268,34 @@ function computeFlowNodesAndEdges(agents, selectedId, youAreHereId) {
     }
   });
 
-  const totalAgents = agents.length;
-  const nodeSize = 48;
-
-  // Dynamic spacing based on node count - more nodes = more space needed
-  const baseHorizontalSpacing = 120;
-  const baseVerticalSpacing = 120;
-
-  // For larger flows, increase spacing to prevent overlap
-  const horizontalSpacing = totalAgents > 15 ? baseHorizontalSpacing + (totalAgents - 15) * 5 : baseHorizontalSpacing;
-  const verticalSpacing = totalAgents > 15 ? baseVerticalSpacing + (totalAgents - 15) * 3 : baseVerticalSpacing;
-
-  // Maximum nodes per row before wrapping (adjusts based on total count)
-  const maxNodesPerRow = totalAgents > 20 ? 8 : totalAgents > 10 ? 10 : 12;
+  const viewBoxWidth = 800;
+  const nodeRadius = 24;
+  const minGap = 100;
+  const rootY = 60;
+  const intermediateY = 160;
+  const leafY = 260;
 
   const positions = {};
 
-  function spreadNodesInRows(nodeList, startY) {
+  function spreadNodes(nodeList, yPos) {
     const count = nodeList.length;
-    if (count === 0) return startY;
+    if (count === 0) return;
 
-    const rowCount = Math.ceil(count / maxNodesPerRow);
-    let currentIndex = 0;
+    const totalWidth = viewBoxWidth - 2 * nodeRadius;
+    const spacing = Math.max(minGap, totalWidth / (count + 1));
+    const startX = (viewBoxWidth - (count - 1) * spacing) / 2;
 
-    for (let row = 0; row < rowCount; row++) {
-      const nodesInThisRow = Math.min(maxNodesPerRow, count - currentIndex);
-      const startX = horizontalSpacing; // Start with padding from left edge
-
-      for (let col = 0; col < nodesInThisRow; col++) {
-        const node = nodeList[currentIndex];
-        positions[node.id] = {
-          x: startX + col * horizontalSpacing,
-          y: startY + row * verticalSpacing,
-        };
-        currentIndex++;
-      }
-    }
-
-    // Return the Y position after all rows
-    return startY + rowCount * verticalSpacing;
+    nodeList.forEach((node, index) => {
+      positions[node.id] = {
+        x: startX + index * spacing,
+        y: yPos,
+      };
+    });
   }
 
-  // Layout each tier with proper spacing
-  const startY = 60;
-  let currentY = spreadNodesInRows(roots, startY);
-  currentY = spreadNodesInRows(intermediates, currentY);
-  spreadNodesInRows(leaves, currentY);
+  spreadNodes(roots, rootY);
+  spreadNodes(intermediates, intermediateY);
+  spreadNodes(leaves, leafY);
 
   // Get selected agent info
   const selectedAgent = selectedId ? agents.find((a) => a.id === selectedId) : null;
@@ -336,7 +316,7 @@ function computeFlowNodesAndEdges(agents, selectedId, youAreHereId) {
     return {
       id: agent.id,
       type: "agentNode",
-      position: { x: pos.x - nodeSize / 2, y: pos.y - nodeSize / 2 }, // Center the node
+      position: { x: pos.x - 24, y: pos.y - 24 }, // Center the node
       data: {
         abbr: agent.abbr,
         label: agent.label,
@@ -637,12 +617,11 @@ function Legend({ isFullscreen }) {
 }
 
 // ============================================================================
-// MAIN COMPONENT (Inner - with access to useReactFlow)
+// MAIN COMPONENT
 // ============================================================================
 
-function AgentGraphInner({ agentId, orgId, versionId }) {
+function AgentGraph({ agentId, orgId, versionId }) {
   const dispatch = useDispatch();
-  const { fitView } = useReactFlow();
 
   // State
   const [agents, setAgents] = useState([]);
@@ -651,7 +630,6 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
   const [selectedId, setSelectedId] = useState(agentId || null);
   const [breadcrumbTrail, setBreadcrumbTrail] = useState(agentId ? [agentId] : []);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [nodesReady, setNodesReady] = useState(false);
 
   // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -752,25 +730,8 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
       const { nodes: newNodes, edges: newEdges } = computeFlowNodesAndEdges(agents, selectedId, youAreHereId);
       setNodes(newNodes);
       setEdges(newEdges);
-      setNodesReady(true);
     }
   }, [agents, selectedId, youAreHereId, setNodes, setEdges]);
-
-  // Auto-fit view when nodes change (with a small delay for rendering)
-  useEffect(() => {
-    if (nodesReady && nodes.length > 0) {
-      // Small timeout to ensure nodes are rendered before fitting
-      const timeoutId = setTimeout(() => {
-        fitView({
-          padding: 0.15,
-          duration: 200,
-          maxZoom: 1.5,
-          minZoom: 0.3,
-        });
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [nodesReady, nodes.length, fitView, isFullscreen]);
 
   // Handle node click
   const handleNodeClick = useCallback((event, node) => {
@@ -821,8 +782,7 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: 350,
-          height: "100%",
+          height: 400,
           backgroundColor: "#f8fafc",
           borderRadius: 8,
         }}
@@ -854,8 +814,7 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: 350,
-          height: "100%",
+          height: 400,
           backgroundColor: "#fef2f2",
           borderRadius: 8,
           padding: 24,
@@ -948,8 +907,7 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
         style={{
           flex: 1,
           position: "relative",
-          minHeight: inFullscreen ? 0 : 350,
-          overflow: "hidden",
+          minHeight: inFullscreen ? 0 : 320,
         }}
       >
         <ReactFlow
@@ -960,13 +918,9 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{
-            padding: 0.15,
-            maxZoom: 1.5,
-            minZoom: 0.3,
-          }}
-          minZoom={0.2}
-          maxZoom={2.5}
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.5}
+          maxZoom={2}
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={true}
@@ -978,7 +932,6 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
           <Background color="#e5e7eb" gap={20} size={1} />
           <Controls
             showInteractive={false}
-            showFitView={true}
             style={{
               display: "flex",
               flexDirection: "row",
@@ -1034,9 +987,7 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
           borderRadius: 8,
           border: "1px solid #e2e8f0",
           overflow: "hidden",
-          minHeight: 400,
-          height: "100%",
-          maxHeight: "calc(100vh - 200px)",
+          height: 420,
         }}
       >
         {renderGraphContent(false)}
@@ -1045,18 +996,6 @@ function AgentGraphInner({ agentId, orgId, versionId }) {
       {/* Fullscreen overlay */}
       {isFullscreen && <FullscreenOverlay onClose={toggleFullscreen}>{renderGraphContent(true)}</FullscreenOverlay>}
     </>
-  );
-}
-
-// ============================================================================
-// WRAPPER COMPONENT (provides ReactFlowProvider)
-// ============================================================================
-
-function AgentGraph(props) {
-  return (
-    <ReactFlowProvider>
-      <AgentGraphInner {...props} />
-    </ReactFlowProvider>
   );
 }
 
