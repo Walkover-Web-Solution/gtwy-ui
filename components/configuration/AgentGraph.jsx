@@ -110,8 +110,152 @@ function getBezierPath(x1, y1, x2, y2) {
 // SUB-COMPONENTS
 // ============================================================================
 
+// ============================================================================
+// FULLSCREEN TOGGLE BUTTON
+// ============================================================================
+
+function FullscreenButton({ isFullscreen, onClick }) {
+  var expandIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+  );
+
+  var minimizeIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+    </svg>
+  );
+
+  return (
+    <button
+      onClick={onClick}
+      title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      style={{
+        position: "absolute",
+        top: "12px",
+        right: "12px",
+        width: "32px",
+        height: "32px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        border: "1px solid #e2e8f0",
+        borderRadius: "6px",
+        cursor: "pointer",
+        color: "#64748b",
+        transition: "all 0.15s ease",
+        zIndex: 10,
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+      }}
+      onMouseEnter={function (e) {
+        e.currentTarget.style.backgroundColor = "#f1f5f9";
+        e.currentTarget.style.color = "#475569";
+        e.currentTarget.style.borderColor = "#cbd5e1";
+      }}
+      onMouseLeave={function (e) {
+        e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+        e.currentTarget.style.color = "#64748b";
+        e.currentTarget.style.borderColor = "#e2e8f0";
+      }}
+    >
+      {isFullscreen ? minimizeIcon : expandIcon}
+    </button>
+  );
+}
+
+// ============================================================================
+// FULLSCREEN OVERLAY
+// ============================================================================
+
+function FullscreenOverlay({ children, onClose }) {
+  // Handle escape key to close
+  useEffect(
+    function () {
+      function handleKeyDown(e) {
+        if (e.key === "Escape") {
+          onClose();
+        }
+      }
+      document.addEventListener("keydown", handleKeyDown);
+      return function () {
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    },
+    [onClose]
+  );
+
+  // Prevent body scroll when fullscreen is open
+  useEffect(function () {
+    var originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return function () {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+      }}
+      onClick={function (e) {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          backgroundColor: "#ffffff",
+          borderRadius: "12px",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // GraphSVG - The main SVG visualization
-function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick }) {
+function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick, isFullscreen }) {
   // Build edges data
   var edges = [];
   agents.forEach(function (agent) {
@@ -383,7 +527,12 @@ function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick }) 
   return (
     <svg
       viewBox="0 0 800 300"
-      style={{ width: "100%", height: "auto", maxHeight: "300px" }}
+      style={{
+        width: "100%",
+        height: isFullscreen ? "100%" : "auto",
+        maxHeight: isFullscreen ? "none" : "300px",
+      }}
+      preserveAspectRatio={isFullscreen ? "xMidYMid meet" : "xMidYMid meet"}
       onClick={function (e) {
         var target = e.target;
         if (target.tagName === "circle" && target.getAttribute("data-agent-id")) {
@@ -501,6 +650,10 @@ function AgentGraph({ agentId, orgId, versionId }) {
   var trailState = useState(agentId ? [agentId] : []);
   var breadcrumbTrail = trailState[0];
   var setBreadcrumbTrail = trailState[1];
+
+  var fullscreenState = useState(false);
+  var isFullscreen = fullscreenState[0];
+  var setIsFullscreen = fullscreenState[1];
 
   // Get data from Redux
   var reduxData = useCustomSelector(function (state) {
@@ -668,6 +821,13 @@ function AgentGraph({ agentId, orgId, versionId }) {
   // Determine "YOU ARE HERE" agent (the agentId prop or first selected)
   var youAreHereId = agentId || (agents.length > 0 ? agents[0].id : null);
 
+  // Toggle fullscreen mode
+  var toggleFullscreen = useCallback(function () {
+    setIsFullscreen(function (prev) {
+      return !prev;
+    });
+  }, []);
+
   // Loading state
   if (loading) {
     return (
@@ -739,158 +899,191 @@ function AgentGraph({ agentId, orgId, versionId }) {
     );
   }
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#ffffff",
-        borderRadius: "8px",
-        border: "1px solid #e2e8f0",
-        overflow: "hidden",
-      }}
-    >
-      {/* Breadcrumb */}
-      {breadcrumbTrail.length > 0 && (
+  // Render graph content (shared between normal and fullscreen modes)
+  var renderGraphContent = function (inFullscreen) {
+    return (
+      <React.Fragment>
+        {/* Breadcrumb */}
+        {breadcrumbTrail.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: inFullscreen ? "12px 24px" : "8px 16px",
+              backgroundColor: "#f8fafc",
+              borderBottom: "1px solid #e2e8f0",
+              fontSize: inFullscreen ? "14px" : "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            {breadcrumbTrail.map(function (nodeId, index) {
+              var agent = agents.find(function (a) {
+                return a.id === nodeId;
+              });
+              var isLast = index === breadcrumbTrail.length - 1;
+
+              return (
+                <React.Fragment key={nodeId}>
+                  <span
+                    onClick={function () {
+                      handleBreadcrumbClick(nodeId, index);
+                    }}
+                    style={{
+                      cursor: "pointer",
+                      color: isLast ? "#1f2937" : "#6b7280",
+                      fontWeight: isLast ? "600" : "400",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      backgroundColor: isLast ? "#e5e7eb" : "transparent",
+                    }}
+                    onMouseEnter={function (e) {
+                      if (!isLast) e.currentTarget.style.backgroundColor = "#f3f4f6";
+                    }}
+                    onMouseLeave={function (e) {
+                      if (!isLast) e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    {agent ? agent.label : nodeId}
+                  </span>
+                  {!isLast && <span style={{ color: "#d1d5db" }}>›</span>}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Graph area */}
         <div
           style={{
+            position: "relative",
+            width: "100%",
+            padding: inFullscreen ? "24px" : "16px",
+            backgroundColor: "#ffffff",
+            minHeight: inFullscreen ? "0" : "320px",
+            flex: inFullscreen ? "1" : "none",
             display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            padding: "8px 16px",
-            backgroundColor: "#f8fafc",
-            borderBottom: "1px solid #e2e8f0",
-            fontSize: "12px",
-            flexWrap: "wrap",
+            flexDirection: "column",
           }}
         >
-          {breadcrumbTrail.map(function (nodeId, index) {
-            var agent = agents.find(function (a) {
-              return a.id === nodeId;
-            });
-            var isLast = index === breadcrumbTrail.length - 1;
+          {/* Fullscreen toggle button */}
+          <FullscreenButton isFullscreen={inFullscreen} onClick={toggleFullscreen} />
 
-            return (
-              <React.Fragment key={nodeId}>
-                <span
-                  onClick={function () {
-                    handleBreadcrumbClick(nodeId, index);
-                  }}
-                  style={{
-                    cursor: "pointer",
-                    color: isLast ? "#1f2937" : "#6b7280",
-                    fontWeight: isLast ? "600" : "400",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    backgroundColor: isLast ? "#e5e7eb" : "transparent",
-                  }}
-                  onMouseEnter={function (e) {
-                    if (!isLast) e.currentTarget.style.backgroundColor = "#f3f4f6";
-                  }}
-                  onMouseLeave={function (e) {
-                    if (!isLast) e.currentTarget.style.backgroundColor = "transparent";
-                  }}
-                >
-                  {agent ? agent.label : nodeId}
-                </span>
-                {!isLast && <span style={{ color: "#d1d5db" }}>›</span>}
-              </React.Fragment>
-            );
-          })}
+          <div
+            style={{
+              flex: inFullscreen ? "1" : "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <GraphSVG
+              agents={agents}
+              positions={positions}
+              selectedId={selectedId}
+              youAreHereId={youAreHereId}
+              onNodeClick={handleNodeClick}
+              isFullscreen={inFullscreen}
+            />
+          </div>
+
+          {/* Legend */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: inFullscreen ? "32px" : "24px",
+              marginTop: inFullscreen ? "24px" : "16px",
+              paddingTop: "12px",
+              borderTop: "1px solid #e2e8f0",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: inFullscreen ? "14px" : "12px",
+                  height: inFullscreen ? "14px" : "12px",
+                  borderRadius: "50%",
+                  backgroundColor: "#9333ea",
+                  border: "2px solid #9333ea",
+                }}
+              />
+              <span style={{ fontSize: inFullscreen ? "13px" : "11px", color: "#6b7280" }}>You Are Here</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: inFullscreen ? "14px" : "12px",
+                  height: inFullscreen ? "14px" : "12px",
+                  borderRadius: "50%",
+                  backgroundColor: "#fef9c3",
+                  border: "2px solid #f59e0b",
+                }}
+              />
+              <span style={{ fontSize: inFullscreen ? "13px" : "11px", color: "#6b7280" }}>Parent</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: inFullscreen ? "14px" : "12px",
+                  height: inFullscreen ? "14px" : "12px",
+                  borderRadius: "50%",
+                  backgroundColor: "#dbeafe",
+                  border: "2px solid #3b82f6",
+                }}
+              />
+              <span style={{ fontSize: inFullscreen ? "13px" : "11px", color: "#6b7280" }}>Child</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: inFullscreen ? "14px" : "12px",
+                  height: inFullscreen ? "14px" : "12px",
+                  borderRadius: "50%",
+                  backgroundColor: "#fffbeb",
+                  border: "2px dashed #f59e0b",
+                }}
+              />
+              <span style={{ fontSize: inFullscreen ? "13px" : "11px", color: "#6b7280" }}>Shared</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  width: inFullscreen ? "14px" : "12px",
+                  height: inFullscreen ? "14px" : "12px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f8fafc",
+                  border: "2px solid #e2e8f0",
+                }}
+              />
+              <span style={{ fontSize: inFullscreen ? "13px" : "11px", color: "#6b7280" }}>Unconnected</span>
+            </div>
+          </div>
         </div>
-      )}
+      </React.Fragment>
+    );
+  };
 
-      {/* Graph area - now full width */}
+  return (
+    <React.Fragment>
+      {/* Normal view */}
       <div
         style={{
-          width: "100%",
-          padding: "16px",
+          display: "flex",
+          flexDirection: "column",
           backgroundColor: "#ffffff",
-          minHeight: "320px",
+          borderRadius: "8px",
+          border: "1px solid #e2e8f0",
+          overflow: "hidden",
         }}
       >
-        <GraphSVG
-          agents={agents}
-          positions={positions}
-          selectedId={selectedId}
-          youAreHereId={youAreHereId}
-          onNodeClick={handleNodeClick}
-        />
-
-        {/* Legend */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "24px",
-            marginTop: "16px",
-            paddingTop: "12px",
-            borderTop: "1px solid #e2e8f0",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                backgroundColor: "#9333ea",
-                border: "2px solid #9333ea",
-              }}
-            />
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>You Are Here</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                backgroundColor: "#fef9c3",
-                border: "2px solid #f59e0b",
-              }}
-            />
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>Parent</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                backgroundColor: "#dbeafe",
-                border: "2px solid #3b82f6",
-              }}
-            />
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>Child</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                backgroundColor: "#fffbeb",
-                border: "2px dashed #f59e0b",
-              }}
-            />
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>Shared</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                backgroundColor: "#f8fafc",
-                border: "2px solid #e2e8f0",
-              }}
-            />
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>Unconnected</span>
-          </div>
-        </div>
+        {renderGraphContent(false)}
       </div>
-    </div>
+
+      {/* Fullscreen overlay */}
+      {isFullscreen && <FullscreenOverlay onClose={toggleFullscreen}>{renderGraphContent(true)}</FullscreenOverlay>}
+    </React.Fragment>
   );
 }
 
