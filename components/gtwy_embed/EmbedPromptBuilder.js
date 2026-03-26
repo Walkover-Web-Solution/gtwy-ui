@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { XCircle } from "lucide-react";
 import { extractVariablesFromPrompt } from "@/utils/promptUtils";
 
@@ -8,6 +8,15 @@ import { extractVariablesFromPrompt } from "@/utils/promptUtils";
  * Allows embed users to create custom prompts with dynamic field generation
  */
 const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate, onConfigChange }) => {
+  const lastInternalConfigRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const handleChange = useCallback((value) => {
+    lastInternalConfigRef.current = JSON.stringify(value);
+    onChangeRef.current(value);
+  }, []);
   // Initialize prompt structure
   const [promptConfig, setPromptConfig] = useState(() => {
     const configPrompt = configuration?.prompt;
@@ -77,6 +86,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
           value: existingField?.value || "",
           type: existingField?.type || "input",
           hidden: existingField?.hidden !== undefined ? existingField.hidden : false,
+          displayValue: existingField?.displayValue || "",
         });
       }
     });
@@ -93,7 +103,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
           embedFields: fieldsToKeep,
         };
 
-        onChange({
+        handleChange({
           useDefaultPrompt: false,
           customPrompt: updated.customPrompt || "",
           embedFields: fieldsToKeep,
@@ -102,14 +112,14 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
         return updated;
       });
     }
-  }, [detectedVariables, promptConfig.useDefaultPrompt, promptConfig.embedFields, onChange]);
+  }, [detectedVariables, promptConfig.useDefaultPrompt, promptConfig.embedFields, handleChange]);
 
   // Handle toggle for "Use default prompt"
   const handleUseDefaultToggle = useCallback(
     (checked) => {
       setPromptConfig((prev) => {
         const updated = { ...prev, useDefaultPrompt: checked };
-        onChange({
+        handleChange({
           useDefaultPrompt: checked,
           customPrompt: updated.customPrompt || "",
           embedFields: updated.embedFields || [],
@@ -117,7 +127,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
         return updated;
       });
     },
-    [onChange]
+    [handleChange]
   );
 
   // Validation function
@@ -160,65 +170,65 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
         customPrompt: value,
       };
       setPromptConfig(updated);
-      onChange({
+      handleChange({
         useDefaultPrompt: false,
         customPrompt: value,
         embedFields: updated.embedFields || [],
       });
     },
-    [promptConfig, onChange]
+    [promptConfig, handleChange]
   );
 
-  // Handle field visibility toggle
+  const configPromptKey = JSON.stringify(configuration?.prompt ?? null);
+  useEffect(() => {
+    if (lastInternalConfigRef.current === configPromptKey) return;
+
+    const configPrompt = configuration?.prompt;
+    setPromptConfig((prev) => {
+      let next;
+      if (typeof configPrompt === "string") {
+        next = { useDefaultPrompt: true, customPrompt: "", embedFields: [] };
+      } else if (typeof configPrompt === "object" && configPrompt !== null) {
+        const isDefault =
+          configPrompt.useDefaultPrompt === true ||
+          (configPrompt.useDefaultPrompt === undefined && !configPrompt.customPrompt);
+        next = {
+          useDefaultPrompt: isDefault,
+          customPrompt: configPrompt.customPrompt || "",
+          embedFields: configPrompt.embedFields || [],
+        };
+      } else {
+        next = { useDefaultPrompt: true, customPrompt: "", embedFields: [] };
+      }
+      return JSON.stringify(next) !== JSON.stringify(prev) ? next : prev;
+    });
+  }, [configPromptKey]);
+
+  // Consolidated field update handler
+  const updateField = useCallback(
+    (fieldName, updates) => {
+      const updatedFields = promptConfig.embedFields.map((field) =>
+        field.name === fieldName ? { ...field, ...updates } : field
+      );
+      const updated = { ...promptConfig, embedFields: updatedFields };
+      setPromptConfig(updated);
+      handleChange(updated);
+    },
+    [promptConfig, handleChange]
+  );
+
   const handleFieldVisibilityToggle = useCallback(
-    (fieldName, hidden) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, hidden } : field
-      );
-      const updated = { ...promptConfig, embedFields: updatedFields };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
+    (fieldName, hidden) => updateField(fieldName, { hidden }),
+    [updateField]
   );
-
-  // Handle field type change
-  const handleFieldTypeChange = useCallback(
-    (fieldName, type) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, type } : field
-      );
-      const updated = { ...promptConfig, embedFields: updatedFields };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
-  );
-
-  // Handle field description change
+  const handleFieldTypeChange = useCallback((fieldName, type) => updateField(fieldName, { type }), [updateField]);
   const handleFieldDescriptionChange = useCallback(
-    (fieldName, description) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, description } : field
-      );
-      const updated = { ...promptConfig, embedFields: updatedFields };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
+    (fieldName, description) => updateField(fieldName, { description }),
+    [updateField]
   );
-
-  // Handle field display value change
   const handleFieldDisplayValueChange = useCallback(
-    (fieldName, displayValue) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, displayValue } : field
-      );
-      const updated = { ...promptConfig, embedFields: updatedFields };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
+    (fieldName, displayValue) => updateField(fieldName, { displayValue }),
+    [updateField]
   );
 
   return (
