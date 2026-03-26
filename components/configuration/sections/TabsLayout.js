@@ -44,6 +44,7 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
             {tabs.map((tab) => {
               const isActive = tab.id === activeTab;
               const Icon = tab.icon;
+              const isGraphTab = tab.id === "graph";
               return (
                 <button
                   data-testid={`tab-button-${tab.id}`}
@@ -53,11 +54,23 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`inline-flex items-center justify-center border border-transparent whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1  text-xs transition-all duration-200 flex-shrink-0 min-w-fit ${
-                    isActive ? " text-blue-600 border-base-300/30" : "text-base-content/60 hover:text-base-content"
+                  className={`inline-flex items-center justify-center whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1 text-xs transition-all duration-200 flex-shrink-0 min-w-fit ${
+                    isGraphTab ? "italic" : ""
+                  } ${
+                    isActive
+                      ? isGraphTab
+                        ? "text-purple-600 border-b-2 border-purple-500 rounded-b-none"
+                        : "text-blue-600 border border-base-300/30"
+                      : "text-base-content/60 hover:text-base-content border border-transparent"
                   }`}
                 >
-                  {Icon && <Icon size={12} className="w-3 h-3 mr-2" aria-hidden="true" />}
+                  {Icon && (
+                    <Icon
+                      size={12}
+                      className={`w-3 h-3 mr-2 ${isGraphTab && isActive ? "text-purple-600" : ""}`}
+                      aria-hidden="true"
+                    />
+                  )}
                   <span>{tab.label}</span>
                 </button>
               );

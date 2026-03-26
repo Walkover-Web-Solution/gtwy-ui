@@ -9,8 +9,9 @@ import ConnectorsTab from "./sections/ConnectorsTab";
 import MemoryTab from "./sections/MemoryTab";
 import SettingsTab from "./sections/SettingsTab";
 import IntegrationGuideTab from "./sections/IntegrationGuideTab";
+import GraphTab from "./sections/GraphTab";
 import { SparklesIcon, BotIcon, LinkIcon, BrainIcon, SettingsIcon } from "@/components/Icons";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Workflow } from "lucide-react";
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const NonImageModelConfig = memo(() => {
@@ -54,6 +55,15 @@ const NonImageModelConfig = memo(() => {
         label: "Integration Guide",
         icon: BookOpen,
         content: <IntegrationGuideTab isPublished={isPublished} />,
+      });
+
+      // Add Graph tab at the end (italic style, purple underline)
+      baseTabs.push({
+        id: "graph",
+        label: "Graph ✦",
+        icon: Workflow,
+        content: <GraphTab isPublished={isPublished} />,
+        isSpecial: true, // Flag for special styling
       });
     }
 
