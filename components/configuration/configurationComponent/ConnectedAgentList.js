@@ -68,7 +68,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           dataToSend: {
             agents: {
               connected_agents: {
-                [sb?.name]: {
+                [sb?._id || sb?.bridge_id]: {
                   bridge_id: sb?._id || sb?.bridge_id,
                 },
               },
@@ -255,6 +255,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   const renderEmbed = useMemo(() => {
     const agentItems = displayItems.map(([name, item]) => {
       const bridge = bridgeData?.find((bd) => bd?._id === item?.bridge_id);
+      const displayName = bridge?.name || name;
       return (
         <div
           data-testid={`connected-agent-item-${item?.bridge_id}`}
@@ -265,15 +266,15 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           <div className="p-2 flex-1 flex items-center" onClick={() => handleAgentClicked(item)}>
             <div className="flex items-center gap-2 w-full">
               <BotIcon size={16} className="shrink-0" />
-              {name?.length > 24 ? (
-                <div className="tooltip tooltip-top min-w-0" data-tip={name}>
+              {displayName?.length > 24 ? (
+                <div className="tooltip tooltip-top min-w-0" data-tip={displayName}>
                   <span className="min-w-0 text-sm truncate text-left">
-                    <span className="truncate text-sm font-normal block w-[300px]">{name}</span>
+                    <span className="truncate text-sm font-normal block w-[300px]">{displayName}</span>
                   </span>
                 </div>
               ) : (
                 <span className="min-w-0 text-sm truncate text-left">
-                  <span className="truncate text-sm font-normal block w-[300px]">{name}</span>
+                  <span className="truncate text-sm font-normal block w-[300px]">{displayName}</span>
                 </span>
               )}
             </div>
