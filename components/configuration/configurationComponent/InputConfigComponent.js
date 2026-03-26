@@ -323,68 +323,78 @@ const InputConfigComponent = memo(
                   </button>
                 </div>
               )}
-              {visibleEmbedFields.map((field) => (
-                <div key={field.name} className="form-control">
-                  <label className="label py-0 flex items-center gap-2">
-                    <span className="label-text text-xs font-medium capitalize text-base-content/70 mb-2">
-                      {field.name}
-                    </span>
-                    {field.deprecated && <span className="badge badge-warning badge-xs text-xs">deprecated</span>}
-                  </label>
-                  <div className="relative">
-                    {field.type === "textarea" ? (
-                      <textarea
-                        className={`textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-32 ${
-                          field.deprecated ? "opacity-60 pr-8" : ""
-                        }`}
-                        value={activeEmbedFieldValues[field.name] || ""}
-                        onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
-                        readOnly={field.deprecated}
-                        onFocus={handleTextareaFocus}
-                        onBlur={(e) => {
-                          if (field.deprecated) return;
-                          handleTextareaBlur(e);
-                          if (!isPublished && isEditor) handleSaveEmbedFields();
-                        }}
-                        disabled={isPublished || !isEditor}
-                        placeholder={field.deprecated ? "(no longer used in prompt)" : `Enter ${field.name}...`}
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className={`input input-bordered w-full text-sm input-sm ${
-                          field.deprecated ? "opacity-60 pr-8" : ""
-                        }`}
-                        value={activeEmbedFieldValues[field.name] || ""}
-                        onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
-                        readOnly={field.deprecated}
-                        onFocus={handleTextareaFocus}
-                        onBlur={(e) => {
-                          if (field.deprecated) return;
-                          handleTextareaBlur(e);
-                          if (!isPublished && isEditor) handleSaveEmbedFields();
-                        }}
-                        disabled={isPublished || !isEditor}
-                        placeholder={field.deprecated ? "(no longer used in prompt)" : `Enter ${field.name}...`}
-                      />
-                    )}
-                    {field.deprecated && !isPublished && isEditor && (
-                      <button
-                        type="button"
-                        className="absolute right-2 top-2 text-base-content/40 hover:text-error"
-                        title="Clear deprecated field value"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          event.preventDefault();
-                          handleClearDeprecatedField(field.name);
-                        }}
-                      >
-                        ✕
-                      </button>
-                    )}
+              {visibleEmbedFields
+                .filter((field) => !(field.deprecated && !activeEmbedFieldValues[field.name]))
+                .map((field) => (
+                  <div key={field.name} className="form-control">
+                    <label className="label py-0 flex items-center gap-2">
+                      <span className="label-text text-xs font-medium capitalize text-base-content/70 mb-2">
+                        {field.displayValue || field.name}
+                      </span>
+                      {field.deprecated && <span className="badge badge-warning badge-xs text-xs">deprecated</span>}
+                    </label>
+                    <div className="relative">
+                      {field.type === "textarea" ? (
+                        <textarea
+                          className={`textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-32 ${
+                            field.deprecated ? "opacity-60 pr-8" : ""
+                          }`}
+                          value={activeEmbedFieldValues[field.name] || ""}
+                          onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
+                          readOnly={field.deprecated}
+                          onFocus={handleTextareaFocus}
+                          onBlur={(e) => {
+                            if (field.deprecated) return;
+                            handleTextareaBlur(e);
+                            if (!isPublished && isEditor) handleSaveEmbedFields();
+                          }}
+                          disabled={isPublished || !isEditor}
+                          placeholder={
+                            field.deprecated
+                              ? "(no longer used in prompt)"
+                              : `Enter ${field.displayValue || field.name}...`
+                          }
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          className={`input input-bordered w-full text-sm input-sm ${
+                            field.deprecated ? "opacity-60 pr-8" : ""
+                          }`}
+                          value={activeEmbedFieldValues[field.name] || ""}
+                          onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
+                          readOnly={field.deprecated}
+                          onFocus={handleTextareaFocus}
+                          onBlur={(e) => {
+                            if (field.deprecated) return;
+                            handleTextareaBlur(e);
+                            if (!isPublished && isEditor) handleSaveEmbedFields();
+                          }}
+                          disabled={isPublished || !isEditor}
+                          placeholder={
+                            field.deprecated
+                              ? "(no longer used in prompt)"
+                              : `Enter ${field.displayValue || field.name}...`
+                          }
+                        />
+                      )}
+                      {field.deprecated && !isPublished && isEditor && (
+                        <button
+                          type="button"
+                          className="absolute right-2 top-2 text-base-content/40 hover:text-error"
+                          title="Clear deprecated field value"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            event.preventDefault();
+                            handleClearDeprecatedField(field.name);
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           ) : viewMode === PROMPT_VIEW_MODE.SIMPLE ? (
             <div className="flex flex-col gap-3 pb-2">

@@ -294,6 +294,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     variables_path: config?.variables_path || {},
     models: config?.models || {},
     apikey_object_id: integrationData?.apikey_object_id || {},
+    prompt: config.prompt || {},
   }));
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 
