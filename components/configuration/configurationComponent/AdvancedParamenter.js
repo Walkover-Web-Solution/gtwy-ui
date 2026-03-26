@@ -495,23 +495,28 @@ const AdvancedParameters = ({
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             )}
-            {field === "boolean" && (
-              <input
-                data-testid={`advanced-param-checkbox-${key}`}
-                id={`advanced-param-checkbox-${key}`}
-                name={key}
-                type="checkbox"
-                className="checkbox checkbox-xs"
-                checked={isDefaultValue ? true : inputConfiguration?.[key] || false}
-                onChange={(e) => {
-                  if (isDefaultValue) {
-                    setSliderValue(e.target.checked, key, isDeafaultObject);
-                  }
-                  handleInputChange(e, key);
-                }}
-                disabled={isReadOnly}
-              />
-            )}
+            {field === "boolean" &&
+              (() => {
+                const modelDefault = modelInfoData?.[key]?.default;
+                const checkedValue = isDefaultValue ? !!modelDefault : inputConfiguration?.[key] || false;
+                return (
+                  <input
+                    data-testid={`advanced-param-checkbox-${key}`}
+                    id={`advanced-param-checkbox-${key}`}
+                    name={key}
+                    type="checkbox"
+                    className="checkbox checkbox-xs"
+                    checked={checkedValue}
+                    onChange={(e) => {
+                      if (isDefaultValue) {
+                        setSliderValue(e.target.checked, key, isDeafaultObject);
+                      }
+                      handleInputChange(e, key);
+                    }}
+                    disabled={isReadOnly}
+                  />
+                );
+              })()}
           </div>
           {/* Set Default button - shows when parameter has default value and is not currently default */}
           {hasDefaultValue && !isDefaultValue && !isReadOnly && (
