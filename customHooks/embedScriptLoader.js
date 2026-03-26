@@ -2,8 +2,10 @@ import { getOrCreateNotificationAuthKey } from "@/config/index";
 import { useEffect, useRef } from "react";
 
 export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isViewer = false) => {
-  const isLoadingRef = useRef(false);
-  const currentTokenRef = useRef(null);
+  // Use a generation counter to detect stale effects after cleanup
+  const generationRef = useRef(0);
+  // Track if we've successfully loaded a script for this token
+  const loadedTokenRef = useRef(null);
 
   useEffect(() => {
     // Ensure embedToken is a valid string before proceeding
@@ -13,12 +15,24 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
 
     const scriptId = process.env.NEXT_PUBLIC_EMBED_SCRIPT_ID;
 
-    // Skip if already loading or if script with same token already exists
+    // Skip if we've already loaded this exact token (prevents re-load after re-renders)
+    if (loadedTokenRef.current === embedToken) {
+      // Verify the script is still in DOM
+      const existingScript = document.getElementById(scriptId);
+      if (existingScript && existingScript.getAttribute("embedToken") === embedToken) {
+        return;
+      }
+      // Script was removed, allow reload
+      loadedTokenRef.current = null;
+    }
+
+    // Check if script with same token already exists in DOM
     const existingScript = document.getElementById(scriptId);
     if (existingScript) {
       const existingToken = existingScript.getAttribute("embedToken");
       if (existingToken === embedToken) {
-        // Same token script already exists, skip
+        // Same token script already exists, mark as loaded and skip
+        loadedTokenRef.current = embedToken;
         return;
       }
       // Different token - remove existing script first
@@ -31,14 +45,8 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
       }
     }
 
-    // Prevent concurrent loading
-    if (isLoadingRef.current && currentTokenRef.current === embedToken) {
-      return;
-    }
-
-    isLoadingRef.current = true;
-    currentTokenRef.current = embedToken;
-    let cancelled = false;
+    // Increment generation to invalidate any in-flight async operations from previous effects
+    const currentGeneration = ++generationRef.current;
 
     const embedMaker = async () => {
       try {
@@ -47,12 +55,15 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
             ? await getOrCreateNotificationAuthKey("gtwy_bridge_trigger").then((res) => res?.authkey)
             : null;
 
-        // Check if cancelled or if script was added while we were awaiting
-        if (cancelled) return;
+        // Check if this effect is stale (cleanup ran or new effect started)
+        if (generationRef.current !== currentGeneration) {
+          return;
+        }
 
+        // Double-check script hasn't been added while we were awaiting
         const existingScriptAfterAwait = document.getElementById(scriptId);
         if (existingScriptAfterAwait) {
-          isLoadingRef.current = false;
+          loadedTokenRef.current = existingScriptAfterAwait.getAttribute("embedToken");
           return;
         }
 
@@ -83,19 +94,21 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
         };
         script.setAttribute("configurationJson", JSON.stringify(configurationJson));
 
-        if (!cancelled) {
+        // Final check before appending
+        if (generationRef.current === currentGeneration) {
           document.body.appendChild(script);
+          loadedTokenRef.current = embedToken;
         }
-      } finally {
-        isLoadingRef.current = false;
+      } catch (error) {
+        console.warn("Error loading embed script:", error);
       }
     };
 
     embedMaker();
 
     return () => {
-      cancelled = true;
-      isLoadingRef.current = false;
+      // Incrementing generation invalidates any in-flight async operations
+      generationRef.current++;
       try {
         const script = document.getElementById(scriptId);
         if (script && script.parentNode === document.body) {
@@ -106,6 +119,8 @@ export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isV
         if (embedContainer && embedContainer.parentNode === document.body) {
           document.body.removeChild(embedContainer);
         }
+        // Reset loaded token since we removed the script
+        loadedTokenRef.current = null;
       } catch (error) {
         console.warn("Error removing embed scripts:", error);
       }
