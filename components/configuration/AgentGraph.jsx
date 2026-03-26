@@ -114,9 +114,9 @@ function computeLayout(agents) {
   });
 
   var positions = {};
-  var viewBoxWidth = 620;
+  var viewBoxWidth = 800;
   var nodeRadius = 24;
-  var minGap = 80;
+  var minGap = 100;
 
   // Y positions for each tier
   var rootY = 60;
@@ -176,382 +176,6 @@ function getBezierPath(x1, y1, x2, y2) {
 // SUB-COMPONENTS
 // ============================================================================
 
-// RelCard - Relationship card for parent/child agents
-function RelCard({ agent, type, isShared, onClick, selectedColor }) {
-  var bgColor = type === "parent" ? "#fef9c3" : agent ? agent.light : "#f8fafc";
-  var borderColor = type === "parent" ? "#f59e0b" : agent ? agent.color : "#e2e8f0";
-  var tagBg = type === "parent" ? "#f59e0b" : isShared ? "#f59e0b" : agent ? agent.color : "#64748b";
-  var tagText = type === "parent" ? "PARENT" : isShared ? "SHARED" : "CHILD";
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: "10px 12px",
-        borderRadius: "8px",
-        backgroundColor: bgColor,
-        border: "1px solid " + borderColor,
-        cursor: "pointer",
-        marginBottom: "8px",
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-      }}
-      onMouseEnter={function (e) {
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
-      }}
-      onMouseLeave={function (e) {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "50%",
-              backgroundColor: agent ? agent.color : "#64748b",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontSize: "10px",
-              fontWeight: "600",
-            }}
-          >
-            {agent ? agent.abbr : "??"}
-          </div>
-          <div>
-            <div style={{ fontSize: "12px", fontWeight: "600", color: "#1f2937" }}>
-              {agent ? agent.label : "Unknown"}
-            </div>
-            <div style={{ fontSize: "10px", color: "#6b7280" }}>{agent ? agent.model : ""}</div>
-          </div>
-        </div>
-        <span
-          style={{
-            padding: "2px 6px",
-            borderRadius: "4px",
-            backgroundColor: tagBg,
-            color: "white",
-            fontSize: "9px",
-            fontWeight: "600",
-            letterSpacing: "0.5px",
-          }}
-        >
-          {tagText}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// DetailPanel - Right column showing selected agent details
-function DetailPanel({ selectedAgent, agents, onAgentClick }) {
-  if (!selectedAgent) {
-    return (
-      <div
-        style={{
-          width: "216px",
-          flexShrink: 0,
-          padding: "16px",
-          backgroundColor: "#f8fafc",
-          borderLeft: "1px solid #e2e8f0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div style={{ textAlign: "center", color: "#94a3b8" }}>
-          <div style={{ fontSize: "14px", fontWeight: "500" }}>Select an agent</div>
-          <div style={{ fontSize: "12px", marginTop: "4px" }}>Click on any node to view details</div>
-        </div>
-      </div>
-    );
-  }
-
-  var parentAgents = (selectedAgent.parents || [])
-    .map(function (pid) {
-      return agents.find(function (a) {
-        return a.id === pid;
-      });
-    })
-    .filter(Boolean);
-
-  var childAgents = (selectedAgent.children || [])
-    .map(function (cid) {
-      return agents.find(function (a) {
-        return a.id === cid;
-      });
-    })
-    .filter(Boolean);
-
-  var isSharedAgent = selectedAgent.parents && selectedAgent.parents.length > 1;
-
-  // Build gradient background style
-  var gradientStyle = "linear-gradient(135deg, " + selectedAgent.light + " 0%, white 100%)";
-
-  return (
-    <div
-      style={{
-        width: "216px",
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#ffffff",
-        borderLeft: "1px solid #e2e8f0",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header with gradient background */}
-      <div
-        style={{
-          padding: "16px",
-          background: gradientStyle,
-          borderBottom: "1px solid #e2e8f0",
-        }}
-      >
-        {/* Avatar and name */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              borderRadius: "50%",
-              backgroundColor: selectedAgent.color,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontSize: "14px",
-              fontWeight: "700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            }}
-          >
-            {selectedAgent.abbr}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>{selectedAgent.label}</div>
-            <div style={{ display: "flex", gap: "6px", marginTop: "4px", flexWrap: "wrap" }}>
-              <span
-                style={{
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  backgroundColor: "#e5e7eb",
-                  color: "#374151",
-                  fontSize: "9px",
-                  fontWeight: "500",
-                }}
-              >
-                {selectedAgent.model}
-              </span>
-              <span
-                style={{
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  backgroundColor: selectedAgent.status === "active" ? "#dcfce7" : "#fef3c7",
-                  color: selectedAgent.status === "active" ? "#166534" : "#92400e",
-                  fontSize: "9px",
-                  fontWeight: "500",
-                }}
-              >
-                {selectedAgent.status === "active" ? "● Active" : "○ Inactive"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Shared badge if applicable */}
-        {isSharedAgent && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "4px 8px",
-              borderRadius: "6px",
-              backgroundColor: "#fffbeb",
-              border: "1px solid #f59e0b",
-              marginBottom: "8px",
-            }}
-          >
-            <span style={{ fontSize: "10px", fontWeight: "600", color: "#92400e" }}>
-              SHARED · {selectedAgent.parents.length} parents
-            </span>
-          </div>
-        )}
-
-        {/* Stats row */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            padding: "8px 0",
-            borderTop: "1px solid rgba(0,0,0,0.05)",
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: isSharedAgent ? "#f59e0b" : "#1f2937" }}>
-              {parentAgents.length}
-            </div>
-            <div style={{ fontSize: "10px", color: "#6b7280" }}>Parents</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>{childAgents.length}</div>
-            <div style={{ fontSize: "10px", color: "#6b7280" }}>Children</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>
-              {(selectedAgent.tokens / 1000).toFixed(1)}k
-            </div>
-            <div style={{ fontSize: "10px", color: "#6b7280" }}>Tokens</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Scrollable content area */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
-        {/* Used By (Parents) */}
-        {parentAgents.length > 0 && (
-          <div style={{ marginBottom: "16px" }}>
-            <div
-              style={{
-                fontSize: "11px",
-                fontWeight: "600",
-                color: "#6b7280",
-                marginBottom: "8px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <span style={{ fontSize: "12px" }}>↑</span> Used By
-            </div>
-            {parentAgents.map(function (parent) {
-              return (
-                <RelCard
-                  key={parent.id}
-                  agent={parent}
-                  type="parent"
-                  isShared={false}
-                  onClick={function () {
-                    onAgentClick(parent.id);
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {/* Calls (Children) */}
-        {childAgents.length > 0 && (
-          <div>
-            <div
-              style={{
-                fontSize: "11px",
-                fontWeight: "600",
-                color: "#6b7280",
-                marginBottom: "8px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <span style={{ fontSize: "12px" }}>↓</span> Calls
-            </div>
-            {childAgents.map(function (child) {
-              var childIsShared = child.parents && child.parents.length > 1;
-              return (
-                <RelCard
-                  key={child.id}
-                  agent={child}
-                  type="child"
-                  isShared={childIsShared}
-                  onClick={function () {
-                    onAgentClick(child.id);
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {/* Description */}
-        {selectedAgent.desc && (
-          <div style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #e2e8f0" }}>
-            <div
-              style={{
-                fontSize: "11px",
-                fontWeight: "600",
-                color: "#6b7280",
-                marginBottom: "4px",
-              }}
-            >
-              Description
-            </div>
-            <p style={{ fontSize: "12px", color: "#4b5563", lineHeight: "1.5", margin: 0 }}>{selectedAgent.desc}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer buttons */}
-      <div
-        style={{
-          padding: "12px",
-          borderTop: "1px solid #e2e8f0",
-          display: "flex",
-          gap: "8px",
-        }}
-      >
-        <button
-          style={{
-            flex: 1,
-            padding: "8px 12px",
-            borderRadius: "6px",
-            backgroundColor: selectedAgent.color,
-            color: "white",
-            fontSize: "12px",
-            fontWeight: "500",
-            border: "none",
-            cursor: "pointer",
-            transition: "opacity 0.15s ease",
-          }}
-          onMouseEnter={function (e) {
-            e.currentTarget.style.opacity = "0.9";
-          }}
-          onMouseLeave={function (e) {
-            e.currentTarget.style.opacity = "1";
-          }}
-        >
-          Open Agent
-        </button>
-        <button
-          style={{
-            padding: "8px 12px",
-            borderRadius: "6px",
-            backgroundColor: "#f3f4f6",
-            color: "#374151",
-            fontSize: "12px",
-            fontWeight: "500",
-            border: "1px solid #e5e7eb",
-            cursor: "pointer",
-            transition: "background-color 0.15s ease",
-          }}
-          onMouseEnter={function (e) {
-            e.currentTarget.style.backgroundColor = "#e5e7eb";
-          }}
-          onMouseLeave={function (e) {
-            e.currentTarget.style.backgroundColor = "#f3f4f6";
-          }}
-        >
-          + Connect
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // GraphSVG - The main SVG visualization
 function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick }) {
   // Build edges data
@@ -598,8 +222,8 @@ function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick }) 
   svgContent += "</defs>";
 
   // Background
-  svgContent += '<rect width="620" height="300" fill="white" />';
-  svgContent += '<rect width="620" height="300" fill="url(#dotGrid)" />';
+  svgContent += '<rect width="800" height="300" fill="white" />';
+  svgContent += '<rect width="800" height="300" fill="url(#dotGrid)" />';
 
   // Draw edges
   edges.forEach(function (edge, idx) {
@@ -824,7 +448,7 @@ function GraphSVG({ agents, positions, selectedId, youAreHereId, onNodeClick }) 
 
   return (
     <svg
-      viewBox="0 0 620 300"
+      viewBox="0 0 800 300"
       style={{ width: "100%", height: "auto", maxHeight: "300px" }}
       onClick={function (e) {
         var target = e.target;
@@ -945,13 +569,6 @@ function AgentGraph({ agentId }) {
     }, 500);
   }, []);
 
-  // Get selected agent
-  var selectedAgent = selectedId
-    ? agents.find(function (a) {
-        return a.id === selectedId;
-      })
-    : null;
-
   // Determine "YOU ARE HERE" agent (the agentId prop or first selected)
   var youAreHereId = agentId || (agents.length > 0 ? agents[0].id : null);
 
@@ -1037,110 +654,6 @@ function AgentGraph({ agentId }) {
         overflow: "hidden",
       }}
     >
-      {/* Agent Header Bar */}
-      {selectedAgent && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "12px 16px",
-            backgroundColor: "#fafafa",
-            borderBottom: "1px solid #e2e8f0",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                backgroundColor: selectedAgent.color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontSize: "12px",
-                fontWeight: "600",
-              }}
-            >
-              {selectedAgent.abbr}
-            </div>
-            <div>
-              <span style={{ fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>{selectedAgent.label}</span>
-            </div>
-            <span
-              style={{
-                padding: "2px 8px",
-                borderRadius: "4px",
-                backgroundColor: selectedAgent.status === "active" ? "#dcfce7" : "#fef3c7",
-                color: selectedAgent.status === "active" ? "#166534" : "#92400e",
-                fontSize: "10px",
-                fontWeight: "500",
-              }}
-            >
-              {selectedAgent.status === "active" ? "● Active" : "○ Inactive"}
-            </span>
-            <span
-              style={{
-                padding: "2px 8px",
-                borderRadius: "4px",
-                backgroundColor: "#f3f4f6",
-                color: "#6b7280",
-                fontSize: "10px",
-                fontWeight: "500",
-              }}
-            >
-              V1
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                fontSize: "12px",
-                fontWeight: "500",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-              }}
-            >
-              Test Cases
-            </button>
-            <button
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                fontSize: "12px",
-                fontWeight: "500",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-              }}
-            >
-              History
-            </button>
-            <button
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                backgroundColor: selectedAgent.color,
-                color: "white",
-                fontSize: "12px",
-                fontWeight: "500",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Publish
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Breadcrumb */}
       {breadcrumbTrail.length > 0 && (
         <div
@@ -1191,101 +704,95 @@ function AgentGraph({ agentId }) {
         </div>
       )}
 
-      {/* Main content area */}
-      <div style={{ display: "flex", flex: 1 }}>
-        {/* Graph area */}
+      {/* Graph area - now full width */}
+      <div
+        style={{
+          width: "100%",
+          padding: "16px",
+          backgroundColor: "#ffffff",
+          minHeight: "320px",
+        }}
+      >
+        <GraphSVG
+          agents={agents}
+          positions={positions}
+          selectedId={selectedId}
+          youAreHereId={youAreHereId}
+          onNodeClick={handleNodeClick}
+        />
+
+        {/* Legend */}
         <div
           style={{
-            flex: 1,
-            padding: "16px",
-            backgroundColor: "#ffffff",
-            minHeight: "320px",
+            display: "flex",
+            justifyContent: "center",
+            gap: "24px",
+            marginTop: "16px",
+            paddingTop: "12px",
+            borderTop: "1px solid #e2e8f0",
           }}
         >
-          <GraphSVG
-            agents={agents}
-            positions={positions}
-            selectedId={selectedId}
-            youAreHereId={youAreHereId}
-            onNodeClick={handleNodeClick}
-          />
-
-          {/* Legend */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "24px",
-              marginTop: "16px",
-              paddingTop: "12px",
-              borderTop: "1px solid #e2e8f0",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: "#9333ea",
-                  border: "2px solid #9333ea",
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#6b7280" }}>You Are Here</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: "#fef9c3",
-                  border: "2px solid #f59e0b",
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#6b7280" }}>Parent</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: "#dbeafe",
-                  border: "2px solid #3b82f6",
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#6b7280" }}>Child</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: "#fffbeb",
-                  border: "2px dashed #f59e0b",
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#6b7280" }}>Shared</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  backgroundColor: "#f8fafc",
-                  border: "2px solid #e2e8f0",
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#6b7280" }}>Unconnected</span>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
+                backgroundColor: "#9333ea",
+                border: "2px solid #9333ea",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>You Are Here</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
+                backgroundColor: "#fef9c3",
+                border: "2px solid #f59e0b",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>Parent</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
+                backgroundColor: "#dbeafe",
+                border: "2px solid #3b82f6",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>Child</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
+                backgroundColor: "#fffbeb",
+                border: "2px dashed #f59e0b",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>Shared</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "50%",
+                backgroundColor: "#f8fafc",
+                border: "2px solid #e2e8f0",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#6b7280" }}>Unconnected</span>
           </div>
         </div>
-
-        {/* Detail Panel */}
-        <DetailPanel selectedAgent={selectedAgent} agents={agents} onAgentClick={handleNodeClick} />
       </div>
     </div>
   );
