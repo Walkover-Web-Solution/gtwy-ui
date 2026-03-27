@@ -455,7 +455,7 @@ const FallbackModel = ({
             {/* Multiple API Keys Label */}
             <div className="flex items-center gap-1">
               <span className="label-text font-medium">Multiple API Keys</span>
-              <InfoTooltip tooltipContent="Add multiple API keys from different services to use with your agent for enhanced functionality and redundancy.">
+              <InfoTooltip tooltipContent="Add API keys for different models/services. This ensures your agent continues working when switching models in runtime or using fallback options.">
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             </div>

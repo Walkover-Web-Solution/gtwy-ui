@@ -22,9 +22,11 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  CircleQuestionMark,
 } from "lucide-react";
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
+import InfoTooltip from "../InfoTooltip";
 import { createConversationForTestCase, toggleSidebar } from "@/utils/utility";
 import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 import { runTestCaseAction } from "@/store/action/testCasesAction";
@@ -522,6 +524,18 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
         <div className="flex items-center gap-2">
           {messages?.length > 0 && (
             <div className="flex items-center gap-2 justify-center">
+              <InfoTooltip
+                tooltipContent={`Matching strategies:
+ - Cosine finds semantically similar responses.
+ - Exact matches strict text patterns.
+ - AI uses model judgment to pick the best match.`}
+              >
+                <CircleQuestionMark
+                  size={14}
+                  className="text-gray-500 hover:text-gray-700 cursor-help"
+                  aria-label="Matching strategy information"
+                />
+              </InfoTooltip>
               <select
                 data-testid="chat-strategy-select"
                 id="chat-strategy-select"
