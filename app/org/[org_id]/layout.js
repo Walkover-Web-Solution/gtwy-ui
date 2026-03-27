@@ -26,7 +26,7 @@ import { updateUserMetaOnboarding, updateOrgMetaAction, getUsersAction } from "@
 import { getServiceAction } from "@/store/action/serviceAction";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, use, useRef } from "react";
+import { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import {
