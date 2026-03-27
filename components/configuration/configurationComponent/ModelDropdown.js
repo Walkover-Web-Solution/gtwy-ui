@@ -4,7 +4,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
 import Dropdown from "@/components/UI/Dropdown";
-import { CircleQuestionMark, Sparkles, CircleAlert } from "lucide-react";
+import { CircleQuestionMark, Sparkles, CircleAlert, Plus } from "lucide-react";
 import InfoTooltip from "@/components/InfoTooltip";
 // Model Preview component to display model specifications
 const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
@@ -266,6 +266,12 @@ const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) =
     setModelSpecs(opt?.meta?.specs);
   }, []);
 
+  const handleAddModelClick = useCallback(() => {
+    const orgId = params?.org_id || params?.orgid;
+    if (!orgId || typeof window === "undefined") return;
+    window.open(`/org/${orgId}/addNewModel?openAddModel=true`, "_blank", "noopener,noreferrer");
+  }, [params?.org_id, params?.orgid]);
+
   return (
     <>
       <div className="flex items-center justify-between gap-2">
@@ -312,6 +318,12 @@ const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) =
               onChange={handleSelect}
               onOptionHover={handleOptionHover}
               showGroupHeaders
+              bottomOption={{
+                label: "Add Model",
+                icon: Plus,
+                onClick: handleAddModelClick,
+                testId: "model-dropdown-add-model",
+              }}
               placeholder="Select model"
               size="sm"
               className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"

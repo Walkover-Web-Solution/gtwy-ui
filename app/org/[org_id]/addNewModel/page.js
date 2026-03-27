@@ -1,5 +1,5 @@
 "use client";
-import React, { use, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import AddNewModelModal from "@/components/modals/AddNewModal";
@@ -13,11 +13,13 @@ import { useDispatch } from "react-redux";
 import ModelUsageDetailsModal from "@/components/modals/ModelUsageDetailsModal";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { useSearchParams } from "next/navigation";
 
 export const runtime = "edge";
 
 const Page = ({ params }) => {
   const resolvedParams = use(params);
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const [usageDetailsData, setUsageDetailsData] = useState();
   const [selectedDataToDelete, setselectedDataToDelete] = useState();
@@ -100,6 +102,12 @@ const Page = ({ params }) => {
       </div>
     );
   };
+
+  useEffect(() => {
+    if (searchParams?.get("openAddModel") === "true") {
+      openModal(MODAL_TYPE.ADD_NEW_MODEL_MODAL);
+    }
+  }, [searchParams]);
 
   return (
     <MainLayout>

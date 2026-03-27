@@ -26,6 +26,7 @@ const Dropdown = ({
   children,
   testId = "dropdown",
   hasError = false,
+  bottomOption = null,
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -86,6 +87,26 @@ const Dropdown = ({
       onMenuClose && onMenuClose();
     },
     [onChange, onMenuClose]
+  );
+
+  const handleBottomOptionClick = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (!bottomOption || bottomOption.disabled) return;
+
+      if (typeof bottomOption.onClick === "function") {
+        bottomOption.onClick();
+        setOpen(false);
+        setQuery("");
+        onMenuClose && onMenuClose();
+        return;
+      }
+
+      if (bottomOption.value !== undefined) {
+        handleSelect(bottomOption.value, bottomOption.option || bottomOption);
+      }
+    },
+    [bottomOption, handleSelect, onMenuClose]
   );
 
   // Keyboard support: close on escape
@@ -377,6 +398,26 @@ const Dropdown = ({
               })()}
             </ul>
           </div>
+
+          {bottomOption && (
+            <div className="border-t border-base-content/10 p-1">
+              <button
+                data-testid={bottomOption.testId || `${testId}-bottom-option`}
+                id={bottomOption.id || "dropdown-bottom-option"}
+                type="button"
+                disabled={bottomOption.disabled}
+                onClick={handleBottomOptionClick}
+                className={cx(
+                  "flex items-center gap-2 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-base-200",
+                  bottomOption.disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                  bottomOption.className || ""
+                )}
+              >
+                {bottomOption.icon && <bottomOption.icon className="h-4 w-4" />}
+                <span>{bottomOption.label}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

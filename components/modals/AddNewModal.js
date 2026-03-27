@@ -594,13 +594,13 @@ export default function AddNewModelModal() {
           <div className="w-full mx-auto">
             <div className="relative text-center">
               <button
-                data-testid="add-model-reset-button"
-                id="add-model-reset-button"
-                onClick={resetFormToDefault}
-                className="btn btn-ghost absolute right-0 top-1/3 tooltip tooltip-left"
-                data-tip="Reset form to default values"
+                data-testid="add-model-header-close-button"
+                id="add-model-header-close-button"
+                onClick={() => closeModal(MODAL_TYPE?.ADD_NEW_MODEL_MODAL)}
+                className="btn btn-ghost btn-circle btn-sm absolute right-0 top-0"
+                aria-label="Close add model modal"
               >
-                <RefreshCw size={20} />
+                <CloseIcon size={18} />
               </button>
               <div>
                 <h1 className="text-2xl font-bold">Add a New Model</h1>
@@ -931,7 +931,7 @@ export default function AddNewModelModal() {
                     <div className="space-y-2">{renderSelectableKeys()}</div>
                   </div>
                 </div>
-                <div className="card-actions justify-end border-t border-base-200 pt-6 mt-8">
+                <div className="border-t border-base-200 pt-6 mt-8">
                   {error?.message && (
                     <div className="w-full mb-4">
                       <div className="error-container p-4 bg-red-50 border-l-4 border-red-500 rounded-md shadow-sm">
@@ -939,23 +939,28 @@ export default function AddNewModelModal() {
                       </div>
                     </div>
                   )}
-                  <button
-                    id="add-model-close-button"
-                    type="button"
-                    onClick={() => closeModal(MODAL_TYPE?.ADD_NEW_MODEL_MODAL)}
-                    className="btn btn-sm"
-                  >
-                    Close
-                  </button>
-                  <button
-                    id="add-model-save-button"
-                    type="button"
-                    onClick={handleAddModel}
-                    className="btn btn-sm btn-primary"
-                    disabled={isFormInvalid}
-                  >
-                    Save Model
-                  </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      data-testid="add-model-reset-button"
+                      id="add-model-reset-button"
+                      type="button"
+                      onClick={resetFormToDefault}
+                      className="btn btn-sm btn-ghost"
+                      title="Reset form to default values"
+                    >
+                      <RefreshCw size={16} />
+                      Reset to defaults
+                    </button>
+                    <button
+                      id="add-model-save-button"
+                      type="button"
+                      onClick={handleAddModel}
+                      className="btn btn-sm btn-primary"
+                      disabled={isFormInvalid}
+                    >
+                      Save Model
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
