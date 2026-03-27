@@ -117,11 +117,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     }
   }, [pathName]);
 
-  const variablesPathRef = useRef(variablesPath);
-  useEffect(() => {
-    variablesPathRef.current = variablesPath;
-  }, [variablesPath]);
-
   const { changeTheme } = useThemeManager();
 
   useEffect(() => {
@@ -434,7 +429,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         window.removeEventListener("message", handleMessage);
       };
     }
-  }, [isValidOrg, resolvedParams.id, versionData, resolvedSearchParams.get("version"), path]);
+  }, [isValidOrg, resolvedParams.id, versionData, resolvedSearchParams.get("version"), path, variablesPath]);
   async function handleMessage(e) {
     if (e.data?.metadata?.type !== "tool") return;
     // todo: need to make api call to update the name & description
