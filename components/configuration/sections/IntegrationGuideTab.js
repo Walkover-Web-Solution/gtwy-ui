@@ -8,7 +8,7 @@ import BatchApiGuide from "../configurationComponent/BatchApiGuide";
 import SecondStep from "../../chatbotConfiguration/SecondStep";
 import PrivateFormSection from "../../chatbotConfiguration/FirstStep";
 import SlugNameInput from "../configurationComponent/SlugNameInput";
-import { Lock } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 const IntegrationGuideTab = ({ isPublished }) => {
   const { params } = useConfigurationContext();
@@ -75,43 +75,8 @@ const IntegrationGuideTab = ({ isPublished }) => {
     }
   };
 
-  // Check if agent has published version
-  const hasPublishedVersion = publishedVersionId && publishedVersionId !== null;
-
-  // Render locked state when no published version exists
-  if (!hasPublishedVersion) {
-    return (
-      <div
-        data-testid="integration-guide-locked-container"
-        id="integration-guide-locked-container"
-        className="p-6 space-y-6 relative"
-      >
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-base-content mb-2">Integration Guide</h2>
-          <p className="text-sm text-base-content/70">Choose your integration type and follow the guide</p>
-        </div>
-
-        {/* Locked State */}
-        <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
-          <div className="text-center space-y-4">
-            {/* Enhanced Lock Icon */}
-            <div className="mx-auto w-20 h-20 bg-base-300/20 rounded-full flex items-center justify-center backdrop-blur-lg">
-              <Lock size={48} />
-            </div>
-
-            {/* Title */}
-            <h3 className="text-xl font-semibold text-base-content">Publish Version Required</h3>
-
-            {/* Description */}
-            <p className="text-base-content/70 max-w-md text-sm">
-              You need to publish a version of this agent before you can access the integration guide. Please
-              publishyour agent first to unlock integration options.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Treat route state and persisted state as published signals.
+  const hasPublishedVersion = Boolean(publishedVersionId || isPublished);
 
   return (
     <div data-testid="integration-guide-container" id="integration-guide-container" className="p-6 space-y-6">
@@ -119,6 +84,23 @@ const IntegrationGuideTab = ({ isPublished }) => {
         <h2 className="text-xl font-semibold text-base-content mb-2">Integration Guide</h2>
         <p className="text-sm text-base-content/70">Choose your integration type and follow the guide</p>
       </div>
+
+      {!hasPublishedVersion && (
+        <div
+          data-testid="integration-guide-unpublished-warning"
+          id="integration-guide-unpublished-warning"
+          className="alert alert-warning border border-warning/30 bg-warning/10"
+        >
+          <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+          <div>
+            <p className="font-medium text-base-content">Publishing Required to Enable Integrations</p>
+            <p className="text-sm text-base-content/80">
+              Integrations will not work until this agent is published. You can configure them now, but requests and
+              scripts will only run after publishing.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         {/* Dynamic Tabs based on bridge type */}
