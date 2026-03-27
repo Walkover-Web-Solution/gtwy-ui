@@ -42,6 +42,45 @@ import {
   clearChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
+import ReasoningAccordion from "./ReasoningAccordion";
+
+function StreamingMessage({ content }) {
+  const [chunkId, setChunkId] = useState(0);
+  const [stableText, setStableText] = useState("");
+  const [latestChunk, setLatestChunk] = useState("");
+  const prevLenRef = useRef(0);
+
+  useEffect(() => {
+    if (!content || content.length <= prevLenRef.current) return;
+    const newText = content.slice(prevLenRef.current);
+    prevLenRef.current = content.length;
+    // Move previous latestChunk into stable
+    setStableText(content.slice(0, content.length - newText.length));
+    setLatestChunk(newText);
+    setChunkId((id) => id + 1);
+  }, [content]);
+
+  return (
+    <>
+      <ReactMarkdown
+        components={{
+          code: ({ node, inline, className, children, ...props }) => (
+            <CodeBlock inline={inline} className={className} isDark={true} {...props}>
+              {children}
+            </CodeBlock>
+          ),
+        }}
+      >
+        {stableText}
+      </ReactMarkdown>
+      {latestChunk && (
+        <span key={chunkId} className="sm-chunk" style={{ whiteSpace: "pre-wrap" }}>
+          {latestChunk}
+        </span>
+      )}
+    </>
+  );
+}
 
 function ToolCallItem({ toolCall, isMessageComplete }) {
   const [open, setOpen] = useState(false);
@@ -170,13 +209,32 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   );
   const SCROLL_NEAR_BOTTOM_THRESHOLD = 50;
 
+  const messagesCount = messages.length;
+
   useEffect(() => {
     const el = messagesContainerRef.current;
-    if (el && isAtBottomRef.current) {
-      const isStreaming = messages.length > 0 && messages[messages.length - 1]?.isStreaming;
-      el.scrollTo({ top: el.scrollHeight, behavior: isStreaming ? "auto" : "smooth" });
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      isAtBottomRef.current = true;
     }
-  }, [messages]);
+  }, [messagesCount]);
+
+  // MutationObserver: fires on every DOM change inside the container (text appended,
+  // nodes added). This catches Immer in-place mutations during streaming that
+  // never change React refs and would be missed by useEffect dependencies.
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+
+    const observer = new MutationObserver(() => {
+      if (isAtBottomRef.current) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+
+    observer.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -615,15 +673,19 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                   >
                     <div className="chat-image avatar"></div>
                     <div className="chat-header">
-                      {message.sender === "expected"
-                        ? "Expected Response"
-                        : message.sender === "error"
-                          ? "Error"
-                          : message.testCaseResult
-                            ? "Model Answer"
-                            : message.sender}
-                      {message.isEdited && <span className="text-xs text-warning ml-2 font-medium">(edited)</span>}
-                      <time className="text-xs opacity-50 pl-2">{message.time}</time>
+                      {!(message.sender === "assistant" && message.isLoading && !message.content) && (
+                        <>
+                          {message.sender === "expected"
+                            ? "Expected Response"
+                            : message.sender === "error"
+                              ? "Error"
+                              : message.testCaseResult
+                                ? "Model Answer"
+                                : message.sender}
+                          {message.isEdited && <span className="text-xs text-warning ml-2 font-medium">(edited)</span>}
+                          <time className="text-xs opacity-50 pl-2">{message.time}</time>
+                        </>
+                      )}
                       {message?.sender === "assistant" && message?.fallback && (
                         <div className="my-1">
                           <div className="max-w-[30rem] text-primary rounded-lg text-xs overflow-hidden transition-all duration-200 hover:bg-base-200/90">
@@ -796,12 +858,12 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                           ) : (
                             /* Regular Assistant/User/Expected/Error Message - Show model answer if testcase was run */
                             <div
-                              className={`chat-bubble break-all gap-0 justify-start relative w-full ${
+                              className={`break-words gap-0 justify-start relative w-full ${
                                 message.sender === "assistant"
-                                  ? "mr-8"
+                                  ? "mr-8 bg-transparent p-0"
                                   : message.sender === "error"
-                                    ? "bg-error/10 border border-error/30 text-error"
-                                    : ""
+                                    ? "chat-bubble bg-error/10 border border-error/30 text-error"
+                                    : "chat-bubble"
                               } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0" : ""}`}
                             >
                               {/* Show loader overlay if this is the message being tested */}
@@ -864,6 +926,15 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       </button>
                                     )}
 
+                                  {/* Reasoning accordion (shown when model emits reasoning events) */}
+                                  {message.reasoning && (
+                                    <ReasoningAccordion
+                                      reasoning={message.reasoning}
+                                      isStreaming={!!(message.isStreaming || message.isLoading)}
+                                      messageContent={message.content}
+                                    />
+                                  )}
+
                                   {/* Tool calls (tool_call / tool_result events) */}
                                   {message.toolCalls?.length > 0 && (
                                     <div className="flex flex-col gap-1 mb-2">
@@ -883,19 +954,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       <span className="loading loading-dots loading-sm"></span>
                                     </div>
                                   ) : message.isStreaming && message.content ? (
-                                    <div className="relative">
-                                      <ReactMarkdown
-                                        components={{
-                                          code: ({ node, inline, className, children, ...props }) => (
-                                            <CodeBlock inline={inline} className={className} isDark={true} {...props}>
-                                              {children}
-                                            </CodeBlock>
-                                          ),
-                                        }}
-                                      >
-                                        {message.content}
-                                      </ReactMarkdown>
-                                    </div>
+                                    <StreamingMessage content={message.content} />
                                   ) : message.sender === "expected" ? (
                                     /* Expected Response - Plain text display with label */
                                     <div className="whitespace-pre-wrap">{message.content}</div>

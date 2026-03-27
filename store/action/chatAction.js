@@ -20,6 +20,7 @@ import {
   clearChannelData,
   addToolCallToMessage,
   updateToolCallResult,
+  appendReasoningChunk,
 } from "../reducer/chatReducer";
 import { haveSameItems, buildUserUrls, buildLlmUrls } from "@/utils/attachmentUtils";
 
@@ -427,6 +428,12 @@ export const sendMessageWithApiStreaming =
               // Accumulate content; flush to Redux once per animation frame
               streamingState.content += parsed.content || "";
               scheduleFlush();
+            } else if (parsed.event === "reasoning") {
+              if (streamingState.messageId) {
+                dispatch(
+                  appendReasoningChunk({ channelId, messageId: streamingState.messageId, chunk: parsed.content || "" })
+                );
+              }
             } else if (parsed.event === "tool_call") {
               dispatch(
                 addToolCallToMessage({

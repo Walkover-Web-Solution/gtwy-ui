@@ -391,6 +391,17 @@ export const chatReducer = createSlice({
       }
     },
 
+    // Append a reasoning chunk to a streaming message
+    appendReasoningChunk: (state, action) => {
+      const { channelId, messageId, chunk } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      if (!messages[idx].reasoning) messages[idx].reasoning = "";
+      messages[idx].reasoning += chunk;
+    },
+
     // Add a tool_call entry to a streaming message
     addToolCallToMessage: (state, action) => {
       const { channelId, messageId, toolCall } = action.payload;
@@ -475,6 +486,7 @@ export const {
   clearChannelData,
   addToolCallToMessage,
   updateToolCallResult,
+  appendReasoningChunk,
 } = chatReducer.actions;
 
 export default chatReducer.reducer;
