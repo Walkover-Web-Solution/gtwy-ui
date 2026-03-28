@@ -503,11 +503,13 @@ function FunctionParameterModal({
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
     if (prevFunctionNameRef.current !== functionName) {
-      const newVariablesPath = variables_path[functionName] || {};
-      setVariablesPath(newVariablesPath);
+      if (name !== "Pre Tool") {
+        const newVariablesPath = variables_path[functionName] || {};
+        setVariablesPath(newVariablesPath);
+      }
       prevFunctionNameRef.current = functionName;
     }
-  }, [functionName, variables_path]);
+  }, [functionName, variables_path, name]);
 
   useEffect(() => {
     if (!toolData) {

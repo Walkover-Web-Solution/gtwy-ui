@@ -119,6 +119,23 @@ const normaliseDraftList = (list = []) =>
     required: item.required !== false,
   }));
 
+const collectPreToolVariableKeys = (preTools = []) => {
+  const keys = new Set();
+
+  (preTools || []).forEach((tool) => {
+    if (tool?.type === "custom_function" && tool?.args) {
+      Object.values(tool.args).forEach((argValue) => {
+        const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
+        if (trimmedKey) {
+          keys.add(trimmedKey);
+        }
+      });
+    }
+  });
+
+  return keys;
+};
+
 const validateVariables = (variables, options = {}) => {
   const { suppressErrors = false } = options;
   const errors = [];
@@ -170,22 +187,31 @@ const validateVariables = (variables, options = {}) => {
 const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const dispatch = useDispatch();
 
-  const { prompt, bridgeName, variableGroups, activeGroup, variablesKeyValue, variablesPath, variable_state } =
-    useCustomSelector((state) => {
-      const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
-      const groups = versionState?.groups || [];
-      const activeGroupId = versionState?.activeGroupId;
+  const {
+    prompt,
+    bridgeName,
+    variableGroups,
+    activeGroup,
+    variablesKeyValue,
+    variablesPath,
+    variable_state,
+    bridge_pre_tools,
+  } = useCustomSelector((state) => {
+    const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
+    const groups = versionState?.groups || [];
+    const activeGroupId = versionState?.activeGroupId;
 
-      return {
-        prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
-        bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
-        variableGroups: groups,
-        activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
-        variablesKeyValue: versionState?.variables || [],
-        variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-        variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
-      };
-    });
+    return {
+      prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
+      bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
+      variableGroups: groups,
+      activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
+      variablesKeyValue: versionState?.variables || [],
+      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
+      variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
+      bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
+    };
+  });
   const [draftVariables, setDraftVariables] = useState([]);
   const [error, setError] = useState("");
   const [bulkEditMode, setBulkEditMode] = useState(false);
@@ -198,6 +224,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
   const variablesPathKeySet = useMemo(() => {
     const keys = new Set();
+
     Object.values(variablesPath || {}).forEach((functionVars = {}) => {
       Object.values(functionVars || {}).forEach((key) => {
         const trimmedKey = typeof key === "string" ? key.trim() : "";
@@ -206,8 +233,13 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         }
       });
     });
+
+    collectPreToolVariableKeys(bridge_pre_tools).forEach((key) => {
+      keys.add(key);
+    });
+
     return keys;
-  }, [variablesPath]);
+  }, [variablesPath, bridge_pre_tools]);
 
   const visibleEmbedFieldNameSet = useMemo(() => {
     if (!isEmbedUser || typeof prompt !== "object" || !Array.isArray(prompt?.embedFields)) {
@@ -300,6 +332,23 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         });
       });
 
+      // Add variables from bridge_pre_tools
+      collectPreToolVariableKeys(bridge_pre_tools).forEach((trimmedKey) => {
+        const existsInSource = allVariables.find((v) => v.key === trimmedKey);
+
+        if (!existsInSource) {
+          const variableStateData = variable_state[trimmedKey];
+          allVariables.push({
+            id: createLocalId(),
+            key: trimmedKey,
+            value: variableStateData?.value || "",
+            defaultValue: variableStateData?.default_value || "",
+            type: inferType(variableStateData?.value || variableStateData?.default_value, "") || "string",
+            required: variableStateData?.status === "required" || false,
+          });
+        }
+      });
+
       // Also check for variables that exist in variable_state but not in Redux or variables_path
       Object.keys(variable_state || {}).forEach((stateKey) => {
         const trimmedKey = typeof stateKey === "string" ? stateKey.trim() : "";
@@ -336,7 +385,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const { normalised } = validateVariables(filteredVariables, { suppressErrors: true });
       setDraftVariables(normalised);
     },
-    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, visibleEmbedFieldNameSet]
+    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, bridge_pre_tools, visibleEmbedFieldNameSet]
   );
 
   useEffect(() => {
