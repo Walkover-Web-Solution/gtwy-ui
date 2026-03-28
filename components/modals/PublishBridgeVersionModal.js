@@ -376,7 +376,6 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     if (differences.service) {
       extracted.service = differences.service;
     }
-
     return extracted;
   }, [differences, filteredBridgeData, filteredVersionData]);
 
@@ -704,18 +703,22 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
             toast.warning("Main agent published, but some connected agents failed to publish");
           }
         }
-        if (shouldConvertToTemplate) {
-          try {
-            await convertAgentToTemplate(params?.id, agent_name?.trim());
-          } catch (err) {
-            console.error("Error converting to template:", err);
-            toast.warning("Published successfully but failed to convert to template");
-          }
-        }
-
         dispatch(getAllBridgesAction());
         setConvertToTemplate(false);
         closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
+
+        if (shouldConvertToTemplate) {
+          const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim());
+          toast.promise(templatePromise, {
+            pending: "Evaluating and publishing template...",
+            success: "Agent converted to template successfully!",
+            error: {
+              render({ data }) {
+                return data?.response?.data?.message || data?.message || "Failed to convert agent to template";
+              },
+            },
+          });
+        }
       } catch (error) {
         if (isPublicAgent) {
           toast.error("Failed to save configuration. The slug name may already be in use.");

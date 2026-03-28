@@ -30,16 +30,16 @@
             return attrs.reduce((props, attr) => {
                 if (script.hasAttribute(attr)) {
                     let value = script.getAttribute(attr);
-                    
+
                     if (['config', 'headerButtons', 'eventsToSubscribe'].includes(attr)) {
                         try { value = JSON.parse(value); } catch (e) { console.error(`Error parsing ${attr}:`, e); }
                     }
-                    
+
                     if (attr === 'defaultOpen') this.config.defaultOpen = value || false;
                     if (attr === 'slide' && ['full', 'left', 'right'].includes(value)) this.config.slide = value;
                     if (attr === 'skipLoadGtwy') this.config.skipLoadGtwy = value === 'true' || value === true;
                     if (['hideHeader', 'hideCloseButton', 'hideFullScreenButton'].includes(attr)) this.config[attr] = value;
-                    
+
                     props[attr] = value;
                     this.state.tempDataToSend = { ...this.state.tempDataToSend, [attr]: value };
                 }
@@ -145,7 +145,7 @@
 
         addStyles() {
             if (document.getElementById('gtwy-styles')) return;
-            
+
             const style = document.createElement('style');
             style.id = 'gtwy-styles';
             style.textContent = `
@@ -184,7 +184,7 @@
 
         applySlideStyles(slideType) {
             if (this.state.hasParentContainer) return;
-            
+
             const container = document.getElementById('gtwy-iframe-parent-container');
             if (!container) return;
 
@@ -192,19 +192,19 @@
             container.classList.add(`slide-${slideType}`);
             this.addStyles();
         }
-        openGtwy(agent_id = null, meta = {}, agent_name = null, agent_purpose = null,history=null) {
+        openGtwy(agent_id = null, meta = {}, agent_name = null, agent_purpose = null, history = null) {
             if (!this.state.isInitialized) {
                 this.initializeGtwyEmbed().then(() => this.openGtwy());
                 return;
             }
-            
+
             const dataToSend = {};
             if (agent_id) dataToSend.agent_id = agent_id;
             if (meta && Object.keys(meta).length > 0) dataToSend.meta = meta;
             if (agent_name) dataToSend.agent_name = agent_name;
             if (agent_purpose) dataToSend.agent_purpose = agent_purpose;
             if (history) dataToSend.history = history;
-            
+
             if (Object.keys(dataToSend).length > 0) {
                 SendDataToGtwyEmbed(dataToSend);
             }
@@ -223,9 +223,9 @@
                 }
                 window.parent?.postMessage?.({ type: 'openGtwy', data: {} }, '*');
             }
-            setTimeout(()=>{
+            setTimeout(() => {
                 sendMessageToGtwy({ type: 'openGtwy', data: {} })
-            },4000)
+            }, 4000)
         }
 
         closeGtwy() {
@@ -289,13 +289,13 @@
             if (this.state.bodyLoaded) return;
             this.extractScriptProps();
             this.createIframeContainer();
-            
+
             if (!this.config.skipLoadGtwy && !this.state.tempDataToSend?.gtwy_user) {
                 this.loadGtwyEmbed();
             } else {
                 this.createCustomIframe();
             }
-            
+
             this.updateProps(this.state.tempDataToSend || {});
             this.state.bodyLoaded = true;
         }
@@ -315,7 +315,7 @@
 
             const customId = this.scriptIds.customIframeId || this.props.customIframeId;
             iframe.src = customId || `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(this.state.tempDataToSend))}`;
-            
+
             this.applyConfig(this.config);
             if (this.state.isInitialized) {
                 window.postMessage({ type: 'configLoaded', data: this.props.config }, '*');
@@ -428,11 +428,11 @@
             const tempData = { ...data.data };
             if (this.state.tempDataToSend?.agent_id) tempData.agent_id = this.state.tempDataToSend.agent_id;
             if (this.state.tempDataToSend?.agent_name) tempData.agent_name = this.state.tempDataToSend.agent_name;
-            
+
             iframe.src = `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(tempData))}`;
             this.config = { ...this.config, ...(data?.data?.config || {}) };
             this.applyConfig(this.config);
-            
+
             if (this.state.isInitialized) {
                 window.postMessage({ type: 'configLoaded', data: this.props.config }, '*');
             }
@@ -451,12 +451,12 @@
                     }
                 });
 
-                if ('hideHeader' in config &&  !this.state.hasParentContainer) {
+                if ('hideHeader' in config && !this.state.hasParentContainer) {
                     this.config.hideHeader = config.hideHeader;
                     const header = document.getElementById('gtwy-embed-header');
                     const iframe = document.getElementById('iframe-component-gtwyInterfaceEmbed');
                     const hide = [true, 'true'].includes(config.hideHeader);
-                    
+
                     if (header) header.style.display = hide ? 'none' : 'flex';
                     if (iframe) {
                         Object.assign(iframe.style, {
@@ -511,10 +511,10 @@
 
     const SendDataToGtwyEmbed = function (dataToSend) {
         if (typeof dataToSend === 'string') {
-            try { 
+            try {
                 dataToSend = JSON.parse(dataToSend);
-            } 
-            catch (e) { 
+            }
+            catch (e) {
                 console.error('Failed to parse dataToSend:', e);
                 return;
             }

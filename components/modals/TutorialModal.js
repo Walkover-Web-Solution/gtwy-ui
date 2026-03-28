@@ -82,7 +82,7 @@ const TutorialModal = () => {
       <div
         id="tutorial-modal-container"
         data-testid="tutorial-modal-container"
-        className="relative z-low w-full max-w-5xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-300"
+        className="modal-box w-full max-w-5xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-300 p-0"
       >
         {/* Header */}
         <div className=" px-8 py-6 ">
@@ -213,6 +213,16 @@ const TutorialModal = () => {
           </div>
         </div>
       </div>
+      {/* Backdrop - click to dismiss */}
+      <form
+        method="dialog"
+        id="tutorial-modal-backdrop"
+        data-testid="tutorial-modal-backdrop"
+        className="modal-backdrop"
+        onClick={internalClose}
+      >
+        <button>close</button>
+      </form>
     </Modal>
   );
 };

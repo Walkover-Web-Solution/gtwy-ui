@@ -19,6 +19,9 @@ import {
   Save,
   X,
   AlertTriangle,
+  Wrench,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
@@ -39,9 +42,104 @@ import {
   clearChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
+import ReasoningAccordion from "./ReasoningAccordion";
+
+const mdComponents = {
+  code: ({ node, inline, className, children, ...props }) => (
+    <CodeBlock inline={inline} className={className} isDark={true} {...props}>
+      {children}
+    </CodeBlock>
+  ),
+};
+
+function StreamingMessage({ content, isStreaming }) {
+  const [chunks, setChunks] = useState([]);
+  const prevLenRef = useRef(0);
+  const chunkIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!content || content.length <= prevLenRef.current) return;
+    const newText = content.slice(prevLenRef.current);
+    prevLenRef.current = content.length;
+    const id = ++chunkIdRef.current;
+    const dur = Math.min(0.25 + newText.length * 0.006, 0.6);
+    setChunks((c) => [...c, { id, text: newText, dur }]);
+  }, [content]);
+
+  // When streaming ends, collapse all chunks into a single ReactMarkdown render
+  // to get proper syntax highlighting, links, etc.
+  if (!isStreaming && content) {
+    return <ReactMarkdown components={mdComponents}>{content}</ReactMarkdown>;
+  }
+
+  return (
+    <span style={{ whiteSpace: "pre-wrap" }}>
+      {chunks.map(({ id, text, dur }) => (
+        <span key={id} className="r-chunk" style={{ "--dur": `${dur}s` }}>
+          {text}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ToolCallItem({ toolCall, isMessageComplete }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (toolCall.status === "done") setOpen(true);
+  }, [toolCall.status]);
+  useEffect(() => {
+    if (isMessageComplete) setOpen(false);
+  }, [isMessageComplete]);
+  let parsedResult = null;
+  if (toolCall.result) {
+    try {
+      parsedResult = JSON.parse(toolCall.result);
+    } catch {
+      parsedResult = toolCall.result;
+    }
+  }
+  return (
+    <div className="rounded-lg border border-base-300 bg-base-200 text-xs overflow-hidden">
+      <div
+        className={`flex items-center gap-2 px-3 py-1.5 select-none ${toolCall.status === "done" ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => toolCall.status === "done" && setOpen((v) => !v)}
+      >
+        {toolCall.status === "calling" ? (
+          <span className="loading loading-spinner loading-xs text-primary" />
+        ) : (
+          <Wrench className="h-3.5 w-3.5 text-success shrink-0" />
+        )}
+        <span className="font-mono font-medium truncate flex-1">{toolCall.name}</span>
+        {toolCall.status === "calling" ? (
+          <span className="text-base-content/50 italic">calling…</span>
+        ) : open ? (
+          <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        )}
+      </div>
+      {toolCall.status === "done" && open && (
+        <div className="border-t border-base-300 px-3 py-2 bg-base-100 font-mono whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+          {typeof parsedResult === "object" ? JSON.stringify(parsedResult, null, 2) : String(parsedResult)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Chat({ params, userMessage, isOrchestralModel = false, searchParams, isEmbedUser }) {
   const messagesContainerRef = useRef(null);
+  const attachScrollListener = useCallback((el) => {
+    if (!el) return;
+    messagesContainerRef.current = el;
+    const onScroll = () => {
+      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_NEAR_BOTTOM_THRESHOLD;
+    };
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+  const isAtBottomRef = useRef(true);
   const dispatch = useDispatch();
   const inputRef = useRef(null);
   const [showTestCases, setShowTestCases] = useState(false);
@@ -110,12 +208,34 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     () => validatePromptVariables(prompt, variablesKeyValue),
     [prompt, variablesKeyValue]
   );
+  const SCROLL_NEAR_BOTTOM_THRESHOLD = 50;
+
+  const messagesCount = messages.length;
+
   useEffect(() => {
     const el = messagesContainerRef.current;
     if (el) {
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      isAtBottomRef.current = true;
     }
-  }, [messages]);
+  }, [messagesCount]);
+
+  // MutationObserver: fires on every DOM change inside the container (text appended,
+  // nodes added). This catches Immer in-place mutations during streaming that
+  // never change React refs and would be missed by useEffect dependencies.
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+
+    const observer = new MutationObserver(() => {
+      if (isAtBottomRef.current) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+
+    observer.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -538,7 +658,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
             <div
               data-testid="chat-messages-container"
               id="chat-messages-container"
-              ref={messagesContainerRef}
+              ref={attachScrollListener}
               className="flex flex-col w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-1 mb-4 pr-2"
               onClick={handleRichUIActions}
             >
@@ -554,15 +674,19 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                   >
                     <div className="chat-image avatar"></div>
                     <div className="chat-header">
-                      {message.sender === "expected"
-                        ? "Expected Response"
-                        : message.sender === "error"
-                          ? "Error"
-                          : message.testCaseResult
-                            ? "Model Answer"
-                            : message.sender}
-                      {message.isEdited && <span className="text-xs text-warning ml-2 font-medium">(edited)</span>}
-                      <time className="text-xs opacity-50 pl-2">{message.time}</time>
+                      {!(message.sender === "assistant" && message.isLoading && !message.content) && (
+                        <>
+                          {message.sender === "expected"
+                            ? "Expected Response"
+                            : message.sender === "error"
+                              ? "Error"
+                              : message.testCaseResult
+                                ? "Model Answer"
+                                : message.sender}
+                          {message.isEdited && <span className="text-xs text-warning ml-2 font-medium">(edited)</span>}
+                          <time className="text-xs opacity-50 pl-2">{message.time}</time>
+                        </>
+                      )}
                       {message?.sender === "assistant" && message?.fallback && (
                         <div className="my-1">
                           <div className="max-w-[30rem] text-primary rounded-lg text-xs overflow-hidden transition-all duration-200 hover:bg-base-200/90">
@@ -735,12 +859,12 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                           ) : (
                             /* Regular Assistant/User/Expected/Error Message - Show model answer if testcase was run */
                             <div
-                              className={`chat-bubble break-all gap-0 justify-start relative w-full ${
+                              className={`break-words gap-0 justify-start relative w-full ${
                                 message.sender === "assistant"
-                                  ? "mr-8"
+                                  ? "mr-8 bg-transparent p-0"
                                   : message.sender === "error"
-                                    ? "bg-error/10 border border-error/30 text-error"
-                                    : ""
+                                    ? "chat-bubble bg-error/10 border border-error/30 text-error"
+                                    : "chat-bubble"
                               } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0" : ""}`}
                             >
                               {/* Show loader overlay if this is the message being tested */}
@@ -803,11 +927,35 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       </button>
                                     )}
 
+                                  {/* Reasoning accordion (shown when model emits reasoning events) */}
+                                  {message.reasoning && (
+                                    <ReasoningAccordion
+                                      reasoning={message.reasoning}
+                                      isStreaming={!!(message.isStreaming || message.isLoading)}
+                                      messageContent={message.content}
+                                    />
+                                  )}
+
+                                  {/* Tool calls (tool_call / tool_result events) */}
+                                  {message.toolCalls?.length > 0 && (
+                                    <div className="flex flex-col gap-1 mb-2">
+                                      {message.toolCalls.map((tc) => (
+                                        <ToolCallItem
+                                          key={tc.call_id}
+                                          toolCall={tc}
+                                          isMessageComplete={!message.isStreaming && !message.isLoading}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+
                                   {/* Loading state for assistant message */}
-                                  {message.isLoading ? (
+                                  {message.isLoading && !message.content && !message.toolCalls?.length ? (
                                     <div className="py-1">
                                       <span className="loading loading-dots loading-sm"></span>
                                     </div>
+                                  ) : message.isStreaming && message.content ? (
+                                    <StreamingMessage content={message.content} isStreaming={message.isStreaming} />
                                   ) : message.sender === "expected" ? (
                                     /* Expected Response - Plain text display with label */
                                     <div className="whitespace-pre-wrap">{message.content}</div>

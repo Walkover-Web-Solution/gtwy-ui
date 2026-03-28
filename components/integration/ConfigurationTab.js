@@ -75,6 +75,14 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
+    key: "hidePromptHelper",
+    type: "toggle",
+    label: "Hide Prompt Helper",
+    description: "Hide prompt helper button",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
     key: "showResponseType",
     type: "toggle",
     label: "Show Response Type",
@@ -286,6 +294,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     variables_path: config?.variables_path || {},
     models: config?.models || {},
     apikey_object_id: integrationData?.apikey_object_id || {},
+    prompt: config.prompt || {},
   }));
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 

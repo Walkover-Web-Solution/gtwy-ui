@@ -71,6 +71,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     embedToken,
     alertingEmbedToken,
     versionData,
+    variablesPath,
     organizations,
     preTools,
     currentUser,
@@ -83,6 +84,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
     versionData:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.apiCalls || {},
+    variablesPath:
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.variables_path ||
+      {},
     organizations: state.userDetailsReducer.organizations,
     preTools:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.pre_tools || [],
@@ -425,7 +429,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         window.removeEventListener("message", handleMessage);
       };
     }
-  }, [isValidOrg, resolvedParams.id, versionData, resolvedSearchParams.get("version"), path]);
+  }, [isValidOrg, resolvedParams.id, versionData, resolvedSearchParams.get("version"), path, variablesPath]);
   async function handleMessage(e) {
     if (e.data?.metadata?.type !== "tool") return;
     // todo: need to make api call to update the name & description
@@ -524,6 +528,28 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                       },
                     })
                   );
+            }
+          }
+          if (
+            (e?.data?.action === "updated" || e?.data?.action === "published") &&
+            data?.script_id &&
+            path[5] &&
+            resolvedSearchParams?.get("version")
+          ) {
+            const validFieldKeys = new Set(Object.keys(data?.fields || {}));
+            const currentToolVariablesPath = variablesPathRef.current?.[data.script_id] || {};
+            const hasStaleKeys = Object.keys(currentToolVariablesPath).some((key) => !validFieldKeys.has(key));
+            if (hasStaleKeys) {
+              const cleanedToolVariablesPath = Object.fromEntries(
+                Object.entries(currentToolVariablesPath).filter(([key]) => validFieldKeys.has(key))
+              );
+              dispatch(
+                updateBridgeVersionAction({
+                  bridgeId: path[5],
+                  versionId: resolvedSearchParams?.get("version"),
+                  dataToSend: { variables_path: { [data.script_id]: cleanedToolVariablesPath } },
+                })
+              );
             }
           }
         });

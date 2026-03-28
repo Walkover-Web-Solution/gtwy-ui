@@ -8,9 +8,15 @@ import { extractVariablesFromPrompt } from "@/utils/promptUtils";
  * Allows embed users to create custom prompts with dynamic field generation
  */
 const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate, onConfigChange }) => {
-  // Track if we're making an internal update to prevent sync loop
-  const isInternalUpdateRef = useRef(false);
-
+  const lastInternalConfigRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const handleChange = useCallback((value) => {
+    lastInternalConfigRef.current = JSON.stringify(value);
+    onChangeRef.current(value);
+  }, []);
   // Initialize prompt structure
   const [promptConfig, setPromptConfig] = useState(() => {
     const configPrompt = configuration?.prompt;
@@ -80,6 +86,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
           value: existingField?.value || "",
           type: existingField?.type || "input",
           hidden: existingField?.hidden !== undefined ? existingField.hidden : false,
+          displayValue: existingField?.displayValue || "",
         });
       }
     });
@@ -96,8 +103,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
           embedFields: fieldsToKeep,
         };
 
-        // Notify parent component of the field changes
-        onChange({
+        handleChange({
           useDefaultPrompt: false,
           customPrompt: updated.customPrompt || "",
           embedFields: fieldsToKeep,
@@ -106,44 +112,22 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
         return updated;
       });
     }
-  }, [detectedVariables, promptConfig.useDefaultPrompt, promptConfig.embedFields, onChange]);
+  }, [detectedVariables, promptConfig.useDefaultPrompt, promptConfig.embedFields, handleChange]);
 
   // Handle toggle for "Use default prompt"
   const handleUseDefaultToggle = useCallback(
     (checked) => {
-      isInternalUpdateRef.current = true;
       setPromptConfig((prev) => {
-        const updated = {
-          ...prev,
+        const updated = { ...prev, useDefaultPrompt: checked };
+        handleChange({
           useDefaultPrompt: checked,
-        };
-
-        // When toggling to default mode, send string; when toggling to custom, send object
-        if (checked) {
-          // Default mode: send object with useDefaultPrompt: true
-          onChange({
-            useDefaultPrompt: true,
-            customPrompt: updated.customPrompt || "",
-            embedFields: updated.embedFields || [],
-          });
-        } else {
-          // Custom mode: send as object
-          onChange({
-            useDefaultPrompt: false,
-            customPrompt: updated.customPrompt || "",
-            embedFields: updated.embedFields || [],
-          });
-        }
-
-        // Reset flag after a short delay to allow state to update
-        setTimeout(() => {
-          isInternalUpdateRef.current = false;
-        }, 100);
-
+          customPrompt: updated.customPrompt || "",
+          embedFields: updated.embedFields || [],
+        });
         return updated;
       });
     },
-    [onChange]
+    [handleChange]
   );
 
   // Validation function
@@ -173,7 +157,6 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
 
   // Update validation on changes
   useEffect(() => {
-    if (isInternalUpdateRef.current) return;
     const { isValid, error } = validatePromptConfig(promptConfig);
     setValidationError(error);
     if (onValidate) onValidate(isValid);
@@ -187,130 +170,66 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
         customPrompt: value,
       };
       setPromptConfig(updated);
-      // Always send as object when in custom mode
-      onChange({
+      handleChange({
         useDefaultPrompt: false,
         customPrompt: value,
         embedFields: updated.embedFields || [],
       });
     },
-    [promptConfig, onChange]
+    [promptConfig, handleChange]
   );
 
-  // Handle field visibility toggle
-  const handleFieldVisibilityToggle = useCallback(
-    (fieldName, hidden) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, hidden } : field
-      );
-      const updated = {
-        ...promptConfig,
-        embedFields: updatedFields,
-      };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
-  );
-
-  // Handle field type change
-  const handleFieldTypeChange = useCallback(
-    (fieldName, type) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, type } : field
-      );
-      const updated = {
-        ...promptConfig,
-        embedFields: updatedFields,
-      };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
-  );
-
-  // Handle field description change
-  const handleFieldDescriptionChange = useCallback(
-    (fieldName, description) => {
-      const updatedFields = promptConfig.embedFields.map((field) =>
-        field.name === fieldName ? { ...field, description } : field
-      );
-      const updated = {
-        ...promptConfig,
-        embedFields: updatedFields,
-      };
-      setPromptConfig(updated);
-      onChange(updated);
-    },
-    [promptConfig, onChange]
-  );
-
-  // Sync with external configuration changes
+  const configPromptKey = JSON.stringify(configuration?.prompt ?? null);
   useEffect(() => {
-    // Skip sync if we're making an internal update
-    if (isInternalUpdateRef.current) {
-      return;
-    }
+    if (lastInternalConfigRef.current === configPromptKey) return;
 
     const configPrompt = configuration?.prompt;
-
-    // Check if it's different from current state
-    let shouldUpdate = false;
-    let newConfig = {};
-
     setPromptConfig((prev) => {
+      let next;
       if (typeof configPrompt === "string") {
-        // String means default prompt mode
-        newConfig = {
-          useDefaultPrompt: true,
-          customPrompt: prev.customPrompt || "",
-          // Don't inherit embedFields when switching to string mode externally
-          // unless we are sure it's the same context (which is hard to know here).
-          // But since we added key={embed_id} in parent, this component re-mounts on context switch.
-          // So we only care about prop updates within the SAME context.
-          // In same context, if config becomes string, we can keep fields?
-          // Actually, if config becomes string, it means user (or system) reset to default.
-          embedFields: prev.embedFields || [],
-        };
-        shouldUpdate = newConfig.useDefaultPrompt !== prev.useDefaultPrompt;
+        next = { useDefaultPrompt: true, customPrompt: "", embedFields: [] };
       } else if (typeof configPrompt === "object" && configPrompt !== null) {
-        // Prioritize explicit useDefaultPrompt flag if present
         const isDefault =
           configPrompt.useDefaultPrompt === true ||
-          (configPrompt.useDefaultPrompt === undefined && !configPrompt.customPrompt && !configPrompt.role);
-
-        if (isDefault) {
-          // Default mode
-          newConfig = {
-            useDefaultPrompt: true,
-            customPrompt: configPrompt.customPrompt || prev.customPrompt || "",
-            embedFields: configPrompt.embedFields || prev.embedFields || [],
-          };
-        } else {
-          // Custom mode
-          newConfig = {
-            useDefaultPrompt: false,
-            customPrompt: configPrompt.customPrompt || "",
-            embedFields: configPrompt.embedFields || [],
-          };
-        }
-        shouldUpdate = JSON.stringify(newConfig) !== JSON.stringify(prev);
-      } else if (!configPrompt) {
-        // No prompt config, use defaults
-        newConfig = {
-          useDefaultPrompt: true,
-          customPrompt: "",
-          embedFields: [],
+          (configPrompt.useDefaultPrompt === undefined && !configPrompt.customPrompt);
+        next = {
+          useDefaultPrompt: isDefault,
+          customPrompt: configPrompt.customPrompt || "",
+          embedFields: configPrompt.embedFields || [],
         };
-        shouldUpdate = JSON.stringify(newConfig) !== JSON.stringify(prev);
+      } else {
+        next = { useDefaultPrompt: true, customPrompt: "", embedFields: [] };
       }
-
-      if (shouldUpdate) {
-        return newConfig;
-      }
-      return prev;
+      return JSON.stringify(next) !== JSON.stringify(prev) ? next : prev;
     });
-  }, [configuration?.prompt]);
+  }, [configPromptKey]);
+
+  // Consolidated field update handler
+  const updateField = useCallback(
+    (fieldName, updates) => {
+      const updatedFields = promptConfig.embedFields.map((field) =>
+        field.name === fieldName ? { ...field, ...updates } : field
+      );
+      const updated = { ...promptConfig, embedFields: updatedFields };
+      setPromptConfig(updated);
+      handleChange(updated);
+    },
+    [promptConfig, handleChange]
+  );
+
+  const handleFieldVisibilityToggle = useCallback(
+    (fieldName, hidden) => updateField(fieldName, { hidden }),
+    [updateField]
+  );
+  const handleFieldTypeChange = useCallback((fieldName, type) => updateField(fieldName, { type }), [updateField]);
+  const handleFieldDescriptionChange = useCallback(
+    (fieldName, description) => updateField(fieldName, { description }),
+    [updateField]
+  );
+  const handleFieldDisplayValueChange = useCallback(
+    (fieldName, displayValue) => updateField(fieldName, { displayValue }),
+    [updateField]
+  );
 
   return (
     <>
@@ -371,50 +290,57 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                 <div className="space-y-2">
                   {promptConfig.embedFields.map((field) => (
                     <div key={field.name} className="p-3 bg-base-100 rounded border border-base-300 space-y-2">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <code className="text-sm bg-base-200 px-2 py-1 rounded font-mono truncate">{`{{${field.name}}}`}</code>
-                          <span className="text-sm text-base-content/70 shrink-0">(Custom)</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {/* Field Type Selector (shown when visible) */}
-                          {/* {!field.hidden && ( */}
-                          <div className="space-y-1">
-                            {!field.hidden ? (
-                              <div className="flex items-center gap-2">
-                                <select
-                                  className="select select-sm select-bordered min-w-[150px]"
-                                  value={field.type}
-                                  onChange={(e) => handleFieldTypeChange(field.name, e.target.value)}
-                                >
-                                  <option value="input">Input</option>
-                                  <option value="textarea">Textarea</option>
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  className="input input-sm input-bordered w-full min-w-[150px]"
-                                  placeholder="Description"
-                                  value={field.description || ""}
-                                  onChange={(e) => handleFieldDescriptionChange(field.name, e.target.value)}
-                                  onBlur={() => onPromptBlur?.(promptConfig)}
-                                />
-                              </div>
-                            )}
-                          </div>
-                          {/* Show/Hide Toggle */}
-                          <label className="label cursor-pointer gap-1">
-                            <span className="label-text text-sm">Hide</span>
-                            <input
-                              type="checkbox"
-                              className="toggle toggle-sm"
-                              checked={field.hidden}
-                              onChange={(e) => handleFieldVisibilityToggle(field.name, e.target.checked)}
-                            />
-                          </label>
-                        </div>
+                      {/* Row 1: variable name + (Custom) */}
+                      <div className="flex items-center gap-2">
+                        <code className="text-sm bg-base-200 px-2 py-1 rounded font-mono">{`{{${field.name}}}`}</code>
+                        <span className="text-sm text-base-content/70">(Custom)</span>
+                      </div>
+
+                      {/* Row 2: displayValue input (visible) or description input (hidden) */}
+                      {!field.hidden ? (
+                        <input
+                          type="text"
+                          className="input input-sm input-bordered w-full"
+                          placeholder={`Display label (default: ${field.name})`}
+                          value={field.displayValue || ""}
+                          onChange={(e) => handleFieldDisplayValueChange(field.name, e.target.value)}
+                          onBlur={() => onPromptBlur?.(promptConfig)}
+                          title="Custom label shown to users for this field"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          className="input input-sm input-bordered w-full"
+                          placeholder="Description"
+                          value={field.description || ""}
+                          onChange={(e) => handleFieldDescriptionChange(field.name, e.target.value)}
+                          onBlur={() => onPromptBlur?.(promptConfig)}
+                        />
+                      )}
+
+                      {/* Row 3: type selector (when visible) + Hide toggle */}
+                      <div className="flex items-center justify-between gap-2">
+                        {!field.hidden ? (
+                          <select
+                            className="select select-sm select-bordered"
+                            value={field.type}
+                            onChange={(e) => handleFieldTypeChange(field.name, e.target.value)}
+                          >
+                            <option value="input">Input</option>
+                            <option value="textarea">Textarea</option>
+                          </select>
+                        ) : (
+                          <span />
+                        )}
+                        <label className="label cursor-pointer gap-2 py-0">
+                          <span className="label-text text-sm">Hide</span>
+                          <input
+                            type="checkbox"
+                            className="toggle toggle-sm"
+                            checked={field.hidden}
+                            onChange={(e) => handleFieldVisibilityToggle(field.name, e.target.checked)}
+                          />
+                        </label>
                       </div>
                     </div>
                   ))}

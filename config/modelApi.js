@@ -1,5 +1,6 @@
 import axios from "@/utils/interceptor";
 import { toast } from "react-toastify";
+import { getFromCookies } from "@/utils/utility";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -67,10 +68,10 @@ export const updateApikey = async (dataToSend) => {
   }
 };
 
-export const deleteApikey = async (id) => {
+export const deleteApikey = async (id, service) => {
   try {
     const response = await axios.delete(`${URL}/api/apikeys`, {
-      data: { apikey_object_id: id },
+      data: { apikey_object_id: id, service },
     });
     return response;
   } catch (error) {
@@ -93,23 +94,50 @@ export const getAllApikey = async (org_id) => {
 // Model Playground and Testing APIs
 export const dryRun = async ({ localDataToSend, bridge_id }) => {
   try {
-    let dryRun;
     const modelType = localDataToSend.configuration.type;
-    if (modelType !== "completion" && modelType !== "embedding")
+    const isChat = modelType !== "completion" && modelType !== "embedding";
+    const isStream = !!localDataToSend.flag;
+
+    // Streaming path — use native fetch so the ReadableStream body is accessible
+    if (isChat && isStream) {
+      const localToken = getFromCookies("local_token");
+      const response = await fetch(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: localToken || "",
+        },
+        body: JSON.stringify(localDataToSend),
+      });
+      if (!response.ok) {
+        let body = "";
+        try {
+          body = await response.text();
+        } catch {
+          /* ignore */
+        }
+        throw new Error(`API error: ${response.status}${body ? ` — ${body}` : ""}`);
+      }
+      return { success: true, stream: true, response };
+    }
+
+    // Non-streaming path (original behaviour)
+    let dryRun;
+    if (isChat)
       dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
     if (modelType === "completion")
       dryRun = await axios.post(`${URL}/api/v1/model/playground/completion/${bridge_id}`, localDataToSend);
     if (modelType === "embedding")
       dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
-    if (modelType !== "completion" && modelType !== "embedding") {
+    if (isChat) {
       return dryRun.data;
     }
     return { success: true, data: dryRun.data };
   } catch (error) {
-    console.error("dry run error", error, error.response.data.error);
+    console.error("dry run error", error, error?.response?.data?.error);
 
     const errorMessage =
-      error?.response?.data?.error || error?.response?.data?.detail?.error || "Something went wrong.";
+      error?.response?.data?.error || error?.response?.data?.detail?.error || error?.message || "Something went wrong.";
 
     const hasBothErrors = errorMessage.includes("Initial Error:") && errorMessage.includes("Fallback Error:");
 

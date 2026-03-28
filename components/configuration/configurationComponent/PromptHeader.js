@@ -79,7 +79,7 @@ const PromptHeader = memo(
       <div
         data-testid="prompt-header-default"
         id="prompt-header-default"
-        className="flex items-center justify-between px-0 pb-1"
+        className="flex items-center justify-between px-0 pb-1 mt-2"
       >
         {/* Left: Title — shown when textarea is active (advanced view or plain prompt) */}
         <div className="flex items-center gap-2">

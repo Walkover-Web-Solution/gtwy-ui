@@ -85,6 +85,9 @@ const useTutorialVideos = () => {
         case "chatbot_agent_creation":
           return title.includes("chatbot") || title.includes("embed") || type === "chatbot_agent_creation";
 
+        case "onboarding":
+          return title.includes("onboarding") || type === "onboarding";
+
         default:
           return type === tutorialType || title.includes(tutorialType);
       }
@@ -106,6 +109,7 @@ const useTutorialVideos = () => {
 
     // Individual getter functions for direct use
     getApiAgentCreationVideo: () => getTutorialVideo("api_agent_creation"),
+    getOnBoardingVideo: () => getTutorialVideo("onboarding"),
     getFunctionCreationVideo: () => getTutorialVideo("function_creation"),
     getKnowledgeBaseVideo: () => getTutorialVideo("knowledge_base"),
     getAdvanceParameterVideo: () => getTutorialVideo("advanced_parameter"),

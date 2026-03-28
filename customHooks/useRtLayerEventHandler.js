@@ -1,7 +1,12 @@
 // hooks/useRtLayerEventHandler.js
 "use client";
 import { addThreadNMessageUsingRtLayer, addThreadUsingRtLayer } from "@/store/reducer/historyReducer";
-import { handleRtLayerMessage, setChatTestCaseIdAction, addChatErrorMessage } from "@/store/action/chatAction";
+import {
+  handleRtLayerMessage,
+  handleRtLayerStreamChunk,
+  setChatTestCaseIdAction,
+  addChatErrorMessage,
+} from "@/store/action/chatAction";
 import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
 
 import { usePathname } from "next/navigation";
@@ -89,7 +94,38 @@ function useRtLayerEventHandler(channelIdentifier = "") {
     (message) => {
       try {
         const parsedData = typeof message === "string" ? JSON.parse(message) : message;
-        const { response, error } = parsedData;
+        const { response, error, event } = parsedData;
+
+        // Handle streaming events early
+        if (event) {
+          const channelId = channelIdentifier;
+          if (channelId) {
+            if (event === "start") {
+              // Create loading/streaming message
+              const messageData = {
+                id: parsedData.message_id,
+                content: "",
+                role: "assistant",
+                model: parsedData.model,
+                isLoading: true,
+                isStreaming: true,
+                fromRTLayer: true,
+              };
+              dispatch(handleRtLayerMessage(channelId, messageData));
+              return;
+            } else if (event === "delta") {
+              dispatch(handleRtLayerStreamChunk(channelId, parsedData.message_id, parsedData.content || ""));
+              return;
+            } else if (event === "error") {
+              const errorMessage =
+                parsedData.error || parsedData.fallback_error || "An error occurred during streaming";
+              dispatch(addChatErrorMessage(channelId, errorMessage));
+              return;
+            }
+            // For 'done' event, let it fall through as it contains the 'response' object and can be processed normally.
+          }
+        }
+
         if (!response && !error) {
           console.error("No response found in data");
           return { success: false, error: "No response found" };
@@ -195,11 +231,11 @@ function useRtLayerEventHandler(channelIdentifier = "") {
 
             const llmUrls = buildLlmUrls(rawImages, []);
             const messageData = {
-              id: response.data.id || response.data.message_id,
+              id: response.data.id || response.data.message_id || parsedData.message_id,
               content: response.data.content,
               role: response.data.role || "assistant",
               model: response.data.model,
-              finish_reason: response.data.finish_reason,
+              finish_reason: response.data.finish_reason || parsedData.finish_reason,
               fallback: response.data.fall_back,
               firstAttemptError: response.data.firstAttemptError,
               images: rawImages,
@@ -207,8 +243,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
               tools_data: response.data.tools_data || {},
               annotations: response.data.annotations,
               fromRTLayer: true,
-              usage: parsedData.response?.usage, // Include usage data if available
-              type: response?.type,
+              usage: parsedData.response?.usage || parsedData.usage, // Include usage data if available
+              type: response?.type || parsedData.type,
               ai_response: response?.ai_response || {},
             };
             if (channelId) {
