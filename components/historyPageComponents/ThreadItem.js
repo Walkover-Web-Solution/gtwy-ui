@@ -19,7 +19,7 @@ import CodeBlock from "../codeBlock/CodeBlock";
 import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { formatRelativeTime, openModal } from "@/utils/utility";
+import { formatRelativeTime, getToolName, openModal } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink } from "lucide-react";
@@ -172,6 +172,7 @@ const ThreadItem = ({
     knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
     isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
     orgBridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
+    allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
   }));
   const [isDropupOpen, setIsDropupOpen] = useState(false);
   const { sliderState, openSlider, closeSlider } = useSlider();
@@ -272,6 +273,13 @@ const ThreadItem = ({
         return item.llm_message || item.user || "";
     }
   }, [messageType, item]);
+  const getToolNameHelper = useCallback(
+    (tool) => {
+      const toolId = tool?.name;
+      return getToolName(toolId, allBridgesMap, orgBridges, integrationData);
+    },
+    [allBridgesMap, orgBridges, integrationData]
+  );
 
   // Helper function to detect if content contains HTML
   const containsHTML = (str) => {
@@ -432,36 +440,39 @@ const ThreadItem = ({
 
   const renderToolData = useCallback(
     (tool, index) => (
-      <div
-        key={index}
-        className="bg-base-200 rounded-lg flex gap-4 duration-200 items-center justify-between hover:bg-base-300 p-1"
-      >
+      console.log("tool", tool),
+      (
         <div
-          onClick={(event) => handleToolPrimaryClick(event, tool)}
-          className="cursor-pointer flex items-center justify-center py-4 pl-2"
+          key={index}
+          className="bg-base-200 rounded-lg flex gap-4 duration-200 items-center justify-between hover:bg-base-300 p-1"
         >
-          <div className="text-center">{truncate(integrationData?.[tool.name]?.title || tool?.name, 20)}</div>
-        </div>
-        <div className="flex gap-3">
-          <div className="tooltip tooltip-top relative text-base-content" data-tip="function logs">
-            <SquareFunctionIcon
-              size={22}
-              onClick={(event) => handleToolPrimaryClick(event, tool)}
-              className="opacity-80 cursor-pointer"
-            />
+          <div
+            onClick={(event) => handleToolPrimaryClick(event, tool)}
+            className="cursor-pointer flex items-center justify-center py-4 pl-2"
+          >
+            <div className="text-center">{truncate(getToolNameHelper(tool), 20)}</div>
           </div>
-          <div className="tooltip tooltip-top pr-2 relative text-base-content" data-tip="function data">
-            <FileClockIcon
-              size={22}
-              onClick={() => {
-                setToolsData(tool);
-                toolsDataModalRef.current?.showModal();
-              }}
-              className="opacity-80 bg-inherit cursor-pointer"
-            />
+          <div className="flex gap-3">
+            <div className="tooltip tooltip-top relative text-base-content" data-tip="function logs">
+              <SquareFunctionIcon
+                size={22}
+                onClick={(event) => handleToolPrimaryClick(event, tool)}
+                className="opacity-80 cursor-pointer"
+              />
+            </div>
+            <div className="tooltip tooltip-top pr-2 relative text-base-content" data-tip="function data">
+              <FileClockIcon
+                size={22}
+                onClick={() => {
+                  setToolsData(tool);
+                  toolsDataModalRef.current?.showModal();
+                }}
+                className="opacity-80 bg-inherit cursor-pointer"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )
     ),
     [handleToolPrimaryClick, integrationData, setToolsData]
   );
@@ -690,7 +701,7 @@ const ThreadItem = ({
                       >
                         <div className="cursor-pointer flex items-center justify-center py-4 pl-2">
                           <div className="text-center">
-                            <div className="font-medium text-sm">{tool?.name || "Unknown"}</div>
+                            <div className="font-medium text-sm">{getToolNameHelper(tool)}</div>
                           </div>
                         </div>
                         <div className="flex gap-3">

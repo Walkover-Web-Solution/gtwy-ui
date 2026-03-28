@@ -1084,3 +1084,19 @@ export const isValidDomain = (input) => {
     /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
   return domainPattern.test(trimmedInput);
 };
+export const getToolName = (toolId, allBridgesMap = {}, orgBridges = [], integrationData = {}) => {
+  if (!toolId) return "Unknown";
+
+  // Check in allBridgesMap first (full data if available)
+  if (allBridgesMap?.[toolId]?.name) return allBridgesMap[toolId].name;
+
+  // Fallback to orgBridges (might be already fetched for the current org)
+  const bridgeInOrg = orgBridges?.find?.((b) => b?._id === toolId);
+  if (bridgeInOrg?.name) return bridgeInOrg.name;
+
+  // Check integrationData for external tools
+  if (integrationData?.[toolId]?.title) return integrationData[toolId].title;
+
+  // If not found or not an ID, return original name
+  return toolId;
+};

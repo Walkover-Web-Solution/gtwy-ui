@@ -3,7 +3,7 @@ import { ADVANCED_BRIDGE_PARAMETERS } from "@/jsonFiles/bridgeParameter";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
-import { generateRandomID, openModal, trimPropertyNames } from "@/utils/utility";
+import { generateRandomID, getToolName, openModal, trimPropertyNames } from "@/utils/utility";
 import { getDefaultJsonSchema, generateCombinedSchema } from "@/utils/defaultJsonSchemas";
 import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
@@ -76,10 +76,14 @@ const AdvancedParameters = ({
     bridge,
     richUiWidgets,
     showResponseType,
+    orgBridges,
+    allBridgesMap,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
     const integrationData = state?.bridgeReducer?.org?.[params?.org_id]?.integrationData || {};
+    const orgBridges = state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [];
+    const allBridgesMap = state?.bridgeReducer?.allBridgesMap || {};
 
     // Use bridgeData when isPublished=true, otherwise use versionData
     const activeData = isPublished ? bridgeDataFromState : versionData;
@@ -100,6 +104,8 @@ const AdvancedParameters = ({
       bridge: activeData,
       richUiWidgets: state?.richUiTemplateReducer?.templates || [],
       showResponseType: state.appInfoReducer.embedUserDetails.showResponseType,
+      orgBridges,
+      allBridgesMap,
     };
   });
   const [inputConfiguration, setInputConfiguration] = useState(configuration);
@@ -168,7 +174,7 @@ const AdvancedParameters = ({
               return toolChoice === value?._id;
             })
             .map((value) => ({
-              name: value?.script_id || value?.title,
+              name: integrationData?.[value?.script_id]?.title || value?.title,
               id: value?._id,
             }))
         : [];
@@ -179,8 +185,8 @@ const AdvancedParameters = ({
               const toolChoice = typeof tool_choice_data === "string" ? tool_choice_data : "";
               return toolChoice === item.bridge_id;
             })
-            .map(([name, item]) => ({
-              name,
+            .map(([id, item]) => ({
+              name: getToolName(item.bridge_id, allBridgesMap, orgBridges, integrationData),
               id: item.bridge_id,
             }))
         : [];
@@ -1125,7 +1131,8 @@ const AdvancedParameters = ({
                               key={func?._id}
                               className="p-2 hover:bg-base-200 cursor-pointer"
                               onClick={() => {
-                                setSelectedOptions([{ name: func?.title, id: func?._id }]);
+                                const toolName = integrationData?.[func?.script_id]?.title || func?.title;
+                                setSelectedOptions([{ name: toolName, id: func?._id }]);
                                 handleDropdownChange(func?._id, key);
                                 setShowDropdown(false);
                               }}
@@ -1166,7 +1173,13 @@ const AdvancedParameters = ({
                               key={agent.bridge_id}
                               className="p-2 hover:bg-base-200 cursor-pointer"
                               onClick={() => {
-                                setSelectedOptions([{ name, id: agent.bridge_id }]);
+                                const agentName = getToolName(
+                                  agent.bridge_id,
+                                  allBridgesMap,
+                                  orgBridges,
+                                  integrationData
+                                );
+                                setSelectedOptions([{ name: agentName, id: agent.bridge_id }]);
                                 handleDropdownChange(agent.bridge_id, key);
                                 setShowDropdown(false);
                               }}
@@ -1183,7 +1196,9 @@ const AdvancedParameters = ({
                                   className="radio radio-xs"
                                   disabled={isReadOnly}
                                 />
-                                <span className="font-medium text-xs">{name}</span>
+                                <span className="font-medium text-xs">
+                                  {getToolName(agent.bridge_id, allBridgesMap, orgBridges, integrationData)}
+                                </span>
                               </label>
                             </div>
                           ))}
