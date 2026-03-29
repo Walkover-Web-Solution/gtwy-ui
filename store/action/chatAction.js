@@ -371,8 +371,9 @@ export const sendMessageWithApiStreaming =
         return { userMessage, loadingMessage, response: result };
       }
 
-      // Streaming path: read SSE body from fetch Response
-      const reader = result.response.body.getReader();
+      // Streaming path: read SSE body from fetch Response or Axios Response
+      const streamBody = result.response.body || result.response.data;
+      const reader = streamBody.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 

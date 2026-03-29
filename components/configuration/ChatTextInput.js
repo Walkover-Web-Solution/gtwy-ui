@@ -315,7 +315,12 @@ function ChatTextInput({
               user_urls: userUrls,
               variables,
               orchestrator_flag: isOrchestralModel,
-              flag: bridge?.configuration?.stream !== true ? false : true,
+              flag:
+                bridge?.configuration?.stream !== true ||
+                bridge?.configuration?.response_type?.is_template === true ||
+                bridge?.configuration?.type === "image"
+                  ? false
+                  : true,
             },
             bridge_id: params?.id,
           });
