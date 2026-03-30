@@ -373,6 +373,9 @@ export const sendMessageWithApiStreaming =
 
       // Streaming path: read SSE body from fetch Response or Axios Response
       const streamBody = result.response.body || result.response.data;
+      if (!streamBody) {
+        throw new Error('Stream body not available in response');
+      }
       const reader = streamBody.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
