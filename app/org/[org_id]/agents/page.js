@@ -74,20 +74,20 @@ const UsageProgressDonut = ({ percent, label }) => (
 export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onResetUsage }) => {
   const { hasLimit, usagePercent, usageValue, limitValue, remaining } = stats;
   const [limit, setLimit] = useState(limitValue ?? "");
-  const [resetPeriod, setResetPeriod] = useState(item?.bridge_limit_reset_period ?? "");
+  const [resetPeriod, setResetPeriod] = useState(item?.agent_limit?.reset_period ?? "");
   const [isLimitDirty, setIsLimitDirty] = useState(false);
 
   const handleLimitChange = (e) => {
     const value = e.target.value;
     setLimit(value);
     const original = limitValue ?? "";
-    setIsLimitDirty(String(value) !== String(original) || resetPeriod !== (item?.bridge_limit_reset_period ?? ""));
+    setIsLimitDirty(String(value) !== String(original) || resetPeriod !== (item?.agent_limit?.reset_period ?? ""));
   };
 
   const handleResetPeriodChange = (e) => {
     const value = e.target.value;
     setResetPeriod(value);
-    setIsLimitDirty(String(limit) !== String(limitValue ?? "") || value !== (item?.bridge_limit_reset_period ?? ""));
+    setIsLimitDirty(String(limit) !== String(limitValue ?? "") || value !== (item?.agent_limit?.reset_period ?? ""));
   };
 
   return (
@@ -682,9 +682,9 @@ function Home({ params, searchParams, isEmbedUser }) {
           <EmptyCell />
         ),
         averageResponseTime: averageResponseTime[item?._id] ? averageResponseTime[item?._id] : "Not used in 24h",
-        agent_limit: renderLimitCell(item?.bridge_limit),
-        agent_limit_original: item?.bridge_limit || 0,
-        agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
+        agent_limit: renderLimitCell(item?.agent_limit?.limit),
+        agent_limit_original: item?.agent_limit?.limit || 0,
+        agent_usage: item?.agent_limit?.usage ? parseFloat(item.agent_limit.usage).toFixed(4) : 0,
         isLoading: loadingAgentId === item._id,
         users: item?.users,
         last_used: renderMetricsTimestamp(item, lastUsed),
@@ -710,7 +710,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <EmptyCell />
         ),
         updated_at_original: updatedAt,
-        bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
+        reset_period: item?.agent_limit?.reset_period || null,
       };
     });
 
@@ -789,8 +789,8 @@ function Home({ params, searchParams, isEmbedUser }) {
       ) : (
         <EmptyCell />
       ),
-      agent_limit: renderLimitCell(item?.bridge_limit),
-      agent_limit_original: item?.bridge_limit || 0,
+      agent_limit: renderLimitCell(item?.agent_limit?.limit),
+      agent_limit_original: item?.agent_limit?.limit || 0,
       averageResponseTime:
         averageResponseTime[item?._id] === 0 ? (
           <div className="text-xs">Not used in 24h</div>
@@ -813,7 +813,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       ),
       updated_by_original: users?.find((user) => String(user?.user_id) === String(item.last_publisher_id))?.name,
       updated_at_original: updatedAt,
-      agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
+      agent_usage: item?.agent_limit?.usage ? parseFloat(item.agent_limit.usage).toFixed(4) : 0,
     };
   });
 

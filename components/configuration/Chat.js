@@ -52,6 +52,26 @@ const mdComponents = {
   ),
 };
 
+const ChatImage = ({ src, alt, onClick }) => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <div
+      className={`relative group cursor-pointer inline-flex flex-col w-full max-w-[250px] sm:max-w-[400px] rounded-lg overflow-hidden border border-base-content/10 shadow-sm transition-all duration-300 ${
+        isLoading ? "skeleton min-h-[200px] bg-base-300/50" : "bg-base-200/50"
+      }`}
+      onClick={onClick}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-auto transition-opacity duration-300 ${isLoading ? "opacity-0" : "opacity-100"}`}
+        onLoad={() => setIsLoading(false)}
+      />
+    </div>
+  );
+};
+
 function StreamingMessage({ content, isStreaming }) {
   const [chunks, setChunks] = useState([]);
   const prevLenRef = useRef(0);
@@ -478,19 +498,16 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
         {/* LLM/Assistant images */}
         {hasLlmImages && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-4 mt-1">
             {message.llm_urls.map((urlObj, imgIndex) => {
               const imageUrl = typeof urlObj === "string" ? urlObj : urlObj?.url;
               const isImage = typeof urlObj === "string" || urlObj?.type === "image";
 
               return imageUrl && isImage ? (
-                <Image
+                <ChatImage
                   key={`llm-img-${imgIndex}`}
                   src={imageUrl}
                   alt={`Generated Image ${imgIndex + 1}`}
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 object-cover rounded-lg cursor-pointer"
                   onClick={() => window.open(imageUrl, "_blank")}
                 />
               ) : null;
@@ -915,7 +932,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   {/* Edit Button for Assistant Messages */}
                                   {message.sender === "assistant" &&
                                     !message.isLoading &&
-                                    message?.type !== "richui_json" && (
+                                    message?.type !== "richui_json" &&
+                                    message?.type !== "template" &&
+                                    !(message?.llm_urls?.length > 0) && (
                                       <button
                                         data-testid={`chat-edit-message-button-${message.id}`}
                                         id={`chat-edit-message-button-${message.id}`}

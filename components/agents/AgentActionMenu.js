@@ -31,8 +31,8 @@ export const AgentMenuItems = ({
   const dispatch = useDispatch();
 
   const getUsageStatsForRow = (row) => {
-    const limitValue = Number(row?.agent_limit_original ?? row?.bridge_limit ?? 0);
-    const usageValue = Number(row?.agent_usage ?? row?.bridge_usage ?? 0);
+    const limitValue = Number(row?.agent_limit_original ?? row?.agent_limit?.limit ?? 0);
+    const usageValue = Number(row?.agent_limit?.usage ?? 0);
     const totalTokens = Number(row?.totalTokens ?? row?.total_tokens ?? 0);
     const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
     const usagePercent = hasLimit ? Math.min(100, Math.max(0, (usageValue / limitValue) * 100)) : 0;
@@ -41,16 +41,18 @@ export const AgentMenuItems = ({
   };
 
   const handleUpdateBridgeLimit = async (bridgeItem, limit, resetPeriod) => {
-    const dataToSend = { bridge_limit: limit };
+    const dataToSend = { agent_limit: { limit: limit } };
     if (resetPeriod) {
-      dataToSend.bridge_limit_reset_period = resetPeriod;
+      dataToSend.agent_limit.reset_period = resetPeriod;
     }
     const res = await dispatch(updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend }));
     if (res?.success) toast.success("Agent Usage Limit Updated Successfully");
   };
 
   const resetUsage = async (bridgeItem) => {
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend: { bridge_usage: 0 } }));
+    const res = await dispatch(
+      updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend: { agent_limit: { usage: 0 } } })
+    );
     if (res?.success) toast.success("Agent Usage Reset Successfully");
   };
 
