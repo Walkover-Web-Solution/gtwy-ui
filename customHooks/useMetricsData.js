@@ -12,14 +12,20 @@ export const convertApiData = (
   customStartDate = null,
   customEndDate = null
 ) => {
+  const safeApiData = Array.isArray(apiData) ? apiData : [];
   const factorOptions = ["bridge_id", "apikey_id", "model"];
   const currentFactor = factorOptions[factor];
 
   const uniqueEntries = {};
 
   // Process API data into unique entries
-  apiData.forEach((entry) => {
+  safeApiData.forEach((entry) => {
     const entryDate = new Date(entry.created_at);
+    const costValue = Number(entry.cost_sum) || 0;
+    const tokenValue = Number(entry.total_token_count) || 0;
+    const successCountValue = Number(entry.success_count) || 0;
+    const latencyValue = Number(entry.latency_sum) || 0;
+    const recordCountValue = Math.max(Number(entry.record_count) || 0, successCountValue);
 
     // Round down to nearest 15 minutes for range < 5
     if (range < 5) {
@@ -48,14 +54,18 @@ export const convertApiData = (
       uniqueEntries[uniqueKey] = {
         date: entryDate,
         id: entryId,
-        cost: entry.cost_sum || 0,
-        tokens: entry.total_token_count || 0,
-        successCount: entry.success_count || 0,
+        cost: costValue,
+        tokens: tokenValue,
+        successCount: successCountValue,
+        latency: latencyValue,
+        recordCount: recordCountValue,
       };
     } else {
-      uniqueEntries[uniqueKey].cost += entry.cost_sum || 0;
-      uniqueEntries[uniqueKey].tokens += entry.total_token_count || 0;
-      uniqueEntries[uniqueKey].successCount += entry.success_count || 0;
+      uniqueEntries[uniqueKey].cost += costValue;
+      uniqueEntries[uniqueKey].tokens += tokenValue;
+      uniqueEntries[uniqueKey].successCount += successCountValue;
+      uniqueEntries[uniqueKey].latency += latencyValue;
+      uniqueEntries[uniqueKey].recordCount += recordCountValue;
     }
   });
 
@@ -176,6 +186,10 @@ export const convertApiData = (
         groupedByDate[dateStr].items[existingItemIndex].cost += entry.cost;
         groupedByDate[dateStr].items[existingItemIndex].tokens += entry.tokens;
         groupedByDate[dateStr].items[existingItemIndex].successCount += entry.successCount;
+        groupedByDate[dateStr].items[existingItemIndex].latency += entry.latency || 0;
+        groupedByDate[dateStr].items[existingItemIndex].totalRequests += entry.recordCount || 0;
+        groupedByDate[dateStr].items[existingItemIndex].inputTokens += entry.inputTokens || 0;
+        groupedByDate[dateStr].items[existingItemIndex].outputTokens += entry.outputTokens || 0;
       } else {
         groupedByDate[dateStr].items.push({
           id: entry.id,
@@ -183,6 +197,10 @@ export const convertApiData = (
           cost: entry.cost,
           tokens: entry.tokens,
           successCount: entry.successCount,
+          latency: entry.latency,
+          totalRequests: entry.recordCount || 0,
+          inputTokens: entry.inputTokens || 0,
+          outputTokens: entry.outputTokens || 0,
         });
       }
 
@@ -216,12 +234,16 @@ export const aggregateDataByFactor = (rawData) => {
           tokens: 0,
           cost: 0,
           successCount: 0,
+          inputTokens: 0,
+          outputTokens: 0,
         };
       }
 
       aggregated[itemId].tokens += item.tokens;
       aggregated[itemId].cost += item.cost;
       aggregated[itemId].successCount += item.successCount;
+      aggregated[itemId].inputTokens += item.inputTokens || 0;
+      aggregated[itemId].outputTokens += item.outputTokens || 0;
     });
   });
 
@@ -231,6 +253,7 @@ export const aggregateDataByFactor = (rawData) => {
 // Custom hook for metrics data management
 export const useMetricsData = (orgId, allBridges, apikeyData) => {
   const [rawData, setRawData] = useState([]);
+  const [latencySummary, setLatencySummary] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const fetchMetricsData = useCallback(
@@ -254,11 +277,14 @@ export const useMetricsData = (orgId, allBridges, apikeyData) => {
         }
 
         const response = await getMetricsDataApi(requestBody);
-        const data = convertApiData(response, factor, range, allBridges, apikeyData, customStartDate, customEndDate);
+        const metricsRows = Array.isArray(response?.data) ? response.data : [];
+        const data = convertApiData(metricsRows, factor, range, allBridges, apikeyData, customStartDate, customEndDate);
+        setLatencySummary(response?.latency_summary || null);
         setRawData(data);
       } catch (error) {
         console.error("Error fetching metrics data:", error);
         setRawData([]);
+        setLatencySummary(null);
       } finally {
         setLoading(false);
       }
@@ -268,6 +294,7 @@ export const useMetricsData = (orgId, allBridges, apikeyData) => {
 
   return {
     rawData,
+    latencySummary,
     loading,
     fetchMetricsData,
   };
