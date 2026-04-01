@@ -79,7 +79,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     url_slugname: "",
     availability: "public",
     description: "",
-    allowedUsers: [],
+    publicUsers: [],
     newEmail: "",
   }));
 
@@ -91,7 +91,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         url_slugname: bridge.url_slugname || "",
         availability: bridge.availability || "public",
         description: bridge.description || "",
-        allowedUsers: bridge.allowedUsers || [],
+        publicUsers: bridge.settings?.publicUsers || [],
       }));
     }
   }, [bridge]);
@@ -417,22 +417,22 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const handleAddEmail = useCallback(() => {
     if (!formData.newEmail?.includes("@")) return;
 
-    if (formData.allowedUsers.includes(formData.newEmail)) {
+    if (formData.publicUsers.includes(formData.newEmail)) {
       toast.warn("This email has already been added.");
       return;
     }
 
     setFormData((prev) => ({
       ...prev,
-      allowedUsers: [...(prev.allowedUsers || []), prev.newEmail],
+      publicUsers: [...(prev.publicUsers || []), prev.newEmail],
       newEmail: "",
     }));
-  }, [formData.newEmail, formData.allowedUsers]);
+  }, [formData.newEmail, formData.publicUsers]);
 
   const handleRemoveUser = useCallback((indexToRemove) => {
     setFormData((prev) => ({
       ...prev,
-      allowedUsers: prev.allowedUsers.filter((_, i) => i !== indexToRemove),
+      publicUsers: prev.publicUsers.filter((_, i) => i !== indexToRemove),
     }));
   }, []);
 
@@ -650,7 +650,9 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
               url_slugname: formData.url_slugname,
               availability: formData.availability,
               description: formData.description,
-              allowedUsers: formData.availability === "private" ? formData.allowedUsers : [],
+              settings: {
+                publicUsers: formData.availability === "private" ? formData.publicUsers : [],
+              },
             },
           };
 
@@ -1009,10 +1011,10 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                         <span className="label-text font-medium">Allowed Users</span>
                       </label>
 
-                      {formData.allowedUsers?.length > 0 && (
+                      {formData.publicUsers?.length > 0 && (
                         <div className="mb-3 p-3 bg-base-200/50 rounded-lg min-h-[3rem]">
                           <div className="flex flex-wrap gap-2">
-                            {formData.allowedUsers.map((user, index) => (
+                            {formData.publicUsers.map((user, index) => (
                               <div key={index} className="badge badge-outline gap-2 py-3 px-3">
                                 <span className="text-sm">{user}</span>
                                 <button

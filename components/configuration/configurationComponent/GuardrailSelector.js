@@ -14,7 +14,9 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
     const bridgeDataFromState = state.bridgeReducer?.allBridgesMap?.[params?.id];
 
     return {
-      guardrailsData: isPublished ? bridgeDataFromState?.guardrails || {} : versionData?.guardrails || {},
+      guardrailsData: isPublished
+        ? bridgeDataFromState?.settings?.guardrails || {}
+        : versionData?.settings?.guardrails || {},
       GUARDRAILS_TEMPLATES: state.flowDataReducer?.flowData?.guardrailsTemplatesData || {},
     };
   });
@@ -44,10 +46,12 @@ const GuardrailSelector = ({ params, searchParams, isPublished, isEditor = true 
       });
 
       const dataToSend = {
-        guardrails: {
-          is_enabled: enabled,
-          guardrails_configuration,
-          guardrails_custom_prompt: selected?.includes("custom") ? customPromptValue : "",
+        settings: {
+          guardrails: {
+            is_enabled: enabled,
+            guardrails_configuration,
+            guardrails_custom_prompt: selected?.includes("custom") ? customPromptValue : "",
+          },
         },
       };
 

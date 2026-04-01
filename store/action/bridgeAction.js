@@ -595,6 +595,14 @@ export const updateBridgeVersionAction =
         optimisticData.web_search_filters = dataToSend.web_search_filters;
       }
 
+      // Handle settings if present (deep merge)
+      if (dataToSend.settings) {
+        optimisticData.settings = {
+          ...currentVersion.settings,
+          ...dataToSend.settings,
+        };
+      }
+
       dispatch(
         updateBridgeVersionReducer({
           bridges: optimisticData,

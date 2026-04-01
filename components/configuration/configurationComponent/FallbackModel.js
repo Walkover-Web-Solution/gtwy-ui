@@ -56,7 +56,7 @@ const FallbackModel = ({
       serviceModels: state?.modelReducer?.serviceModels || {},
       currentService: service,
       currentModel: isPublished ? bridgeDataFromState?.configuration?.model : versionData?.configuration?.model,
-      fallbackModel: isPublished ? bridgeDataFromState?.fall_back : versionData?.fall_back,
+      fallbackModel: isPublished ? bridgeDataFromState?.settings?.fall_back : versionData?.settings?.fall_back,
       DefaultModel: state?.serviceReducer?.default_model || [],
       embedDefaultApiKeys: state.appInfoReducer.embedUserDetails?.apikey_object_id || {},
       showDefaultApikeys: state.appInfoReducer.embedUserDetails?.addDefaultApiKeys,
@@ -168,11 +168,13 @@ const FallbackModel = ({
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            fall_back: {
-              ...(fallbackModel || {}),
-              is_enable: !!isFallbackEnabled,
-              service: service || null,
-              model: newDefaultModel || null,
+            settings: {
+              fall_back: {
+                ...(fallbackModel || {}),
+                is_enable: !!isFallbackEnabled,
+                service: service || null,
+                model: newDefaultModel || null,
+              },
             },
           },
         })
@@ -192,11 +194,13 @@ const FallbackModel = ({
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            fall_back: {
-              ...(fallbackModel || {}),
-              is_enable: enableNext,
-              service: fallbackService || null,
-              model: model || null,
+            settings: {
+              fall_back: {
+                ...(fallbackModel || {}),
+                is_enable: enableNext,
+                service: fallbackService || null,
+                model: model || null,
+              },
             },
           },
         })
@@ -214,9 +218,11 @@ const FallbackModel = ({
         bridgeId: params.id,
         versionId: searchParams?.version,
         dataToSend: {
-          fall_back: {
-            ...(fallbackModel || {}),
-            is_enable: next,
+          settings: {
+            fall_back: {
+              ...(fallbackModel || {}),
+              is_enable: next,
+            },
           },
         },
       })

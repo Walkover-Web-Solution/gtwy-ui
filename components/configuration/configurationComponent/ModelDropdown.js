@@ -150,7 +150,7 @@ const ModelDropdown = ({
       autoModelSelect: isPublished
         ? (bridgeDataFromState?.auto_model_select ?? false)
         : (versionData?.auto_model_select ?? false),
-      fallbackModel: activeData?.fall_back,
+      fallbackModel: activeData?.settings?.fall_back,
     };
   });
 

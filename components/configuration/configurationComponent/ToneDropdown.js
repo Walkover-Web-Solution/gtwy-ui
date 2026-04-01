@@ -69,7 +69,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
   const isReadOnly = isPublished || !isEditor;
   const { reduxTone } = useCustomSelector((state) => ({
     reduxTone:
-      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.tone || null,
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.settings?.tone || null,
   }));
   const dispatch = useDispatch();
 
@@ -91,7 +91,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
           updateBridgeVersionAction({
             versionId: searchParams?.version,
             dataToSend: {
-              configuration: {
+              settings: {
                 tone: "",
               },
             },
@@ -104,7 +104,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
             updateBridgeVersionAction({
               versionId: searchParams?.version,
               dataToSend: {
-                configuration: {
+                settings: {
                   tone: {
                     value: tone.value,
                     prompt: tone.prompt,

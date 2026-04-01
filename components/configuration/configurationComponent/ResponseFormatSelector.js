@@ -17,8 +17,8 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
 
     return {
       response_format: isPublished
-        ? bridgeDataFromState?.configuration?.response_format
-        : versionData?.configuration?.response_format,
+        ? bridgeDataFromState?.settings?.response_format
+        : versionData?.settings?.response_format,
     };
   });
 
@@ -89,7 +89,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
     const type = key === "custom" ? "webhook" : key;
 
     const updatedDataToSend = {
-      configuration: {
+      settings: {
         response_format: {
           type,
           cred,
