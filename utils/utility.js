@@ -10,6 +10,7 @@ import {
 import AIMLIcon from "@/icons/AIMLIcon";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
+import DeepgramIcon from "@/icons/DeepgramIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
@@ -287,6 +288,8 @@ export const getIconOfService = (service, height, width) => {
       return <MistralIcon height={height} width={width} />;
     case "grok":
       return <Grok height={height} width={width} />;
+    case "deepgram":
+      return <DeepgramIcon height={height} width={width} />;
     default:
       return <OpenAiIcon height={height} width={width} />;
   }
