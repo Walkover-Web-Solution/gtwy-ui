@@ -155,6 +155,11 @@ function ConfigHistorySlider({ versionId }) {
 
   const handleCloseConfigHistorySlider = useCallback(() => {
     toggleSidebar("default-config-history-slider", "right");
+    // Reset filters when closing
+    setFilters({
+      [CONFIG_HISTORY_FILTER_KEYS.USER_IDS]: [],
+      [CONFIG_HISTORY_FILTER_KEYS.TYPES]: [],
+    });
   }, []);
 
   return (

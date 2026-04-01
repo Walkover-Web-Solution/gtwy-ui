@@ -43,6 +43,11 @@ function FullscreenEditorModal({
   }, [isOpen, modalId]);
 
   const handleClose = useCallback(() => {
+    onClose?.();
+    closeModal(modalId);
+  }, [onClose, modalId]);
+
+  const handleSave = useCallback(() => {
     onSave?.(localValue);
     onClose?.();
     closeModal(modalId);
@@ -62,7 +67,7 @@ function FullscreenEditorModal({
             <button onClick={handleClose} className="btn btn-sm" type="button">
               Close
             </button>
-            <button onClick={handleClose} className="btn btn-primary btn-sm" type="button">
+            <button onClick={handleSave} className="btn btn-primary btn-sm" type="button">
               Save & Close
             </button>
           </div>

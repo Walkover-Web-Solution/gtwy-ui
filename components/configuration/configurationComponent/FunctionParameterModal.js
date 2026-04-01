@@ -276,6 +276,27 @@ const ParameterCard = ({
               ))}
             </select>
           )}
+          {name === "Pre Tool" && (
+            <div className="flex flex-row items-center">
+              <label className="text-xs mb-0 mr-1 whitespace-nowrap">Value Path:</label>
+              <input
+                data-testid={`param-value-path-input-${currentPath}`}
+                id={`param-value-path-input-${currentPath}`}
+                disabled={isReadOnly}
+                type="text"
+                placeholder="your_path"
+                className={`input input-xs input-bordered text-xs ${
+                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                }`}
+                value={variablesPath[currentPath] || ""}
+                onChange={(e) => {
+                  const updatedVariablesPath = { ...variablesPath };
+                  updatedVariablesPath[currentPath] = e.target.value;
+                  onVariablePathChange(updatedVariablesPath);
+                }}
+              />
+            </div>
+          )}
           <button
             data-testid={`param-delete-button-${currentPath}`}
             id={`param-delete-button-${currentPath}`}
@@ -351,7 +372,7 @@ const ParameterCard = ({
             )}
           </div>
         )}
-        {((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
+        {name !== "Pre Tool" && ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
           <div className="mb-1 flex flex-row ml-1 items-center justify-end">
             <label className="block text-xs mb-0 mr-1">Value Path:</label>
             <input
@@ -1368,23 +1389,21 @@ function FunctionParameterModal({
                     </div>
 
                     {/* Description Field */}
-                    {name !== "Pre Tool" && (
-                      <div>
-                        <label className="block text-xs mb-1">Description</label>
-                        <textarea
-                          id="function-param-desc-textarea"
-                          disabled={isReadOnly}
-                          className="textarea bg-base-100 textarea-sm textarea-bordered w-full resize-y"
-                          rows={2}
-                          value={toolData?.description || ""}
-                          onChange={(e) => {
-                            setToolData({ ...toolData, description: e.target.value });
-                            setIsModified(true);
-                          }}
-                          placeholder="Enter tool description"
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-xs mb-1">Description</label>
+                      <textarea
+                        id="function-param-desc-textarea"
+                        disabled={isReadOnly}
+                        className="textarea bg-base-100 textarea-sm textarea-bordered w-full resize-y"
+                        rows={2}
+                        value={toolData?.description || ""}
+                        onChange={(e) => {
+                          setToolData({ ...toolData, description: e.target.value });
+                          setIsModified(true);
+                        }}
+                        placeholder="Enter tool description"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

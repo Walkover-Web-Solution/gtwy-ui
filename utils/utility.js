@@ -10,6 +10,7 @@ import {
 import AIMLIcon from "@/icons/AIMLIcon";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
+import DeepgramIcon from "@/icons/DeepgramIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
@@ -249,6 +250,24 @@ export const toggleSidebar = (sidebarId, direction = "left") => {
   }
 };
 
+export const closeSidebar = (sidebarId, direction = "left") => {
+  const sidebar = document.getElementById(sidebarId);
+  if (!sidebar) return;
+
+  const translateClass = direction === "left" ? "-translate-x-full" : "translate-x-full";
+
+  // Only close if it's currently visible (open)
+  if (!sidebar.classList.contains(translateClass)) {
+    sidebar.classList.add(translateClass);
+
+    // Clean up listeners
+    document.removeEventListener("click", sidebar._clickHandler, true);
+    document.removeEventListener("keyup", sidebar._keyHandler, true);
+    sidebar._clickHandler = null;
+    sidebar._keyHandler = null;
+  }
+};
+
 export const getIconOfService = (service, height, width) => {
   switch (service) {
     case "openai":
@@ -269,6 +288,8 @@ export const getIconOfService = (service, height, width) => {
       return <MistralIcon height={height} width={width} />;
     case "grok":
       return <Grok height={height} width={width} />;
+    case "deepgram":
+      return <DeepgramIcon height={height} width={width} />;
     default:
       return <OpenAiIcon height={height} width={width} />;
   }

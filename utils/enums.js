@@ -104,11 +104,11 @@ export const CONFIG_HISTORY_FEATURE_OPTIONS = [
   { value: "model", label: "Model" },
   { value: "guardrails", label: "Guardrails" },
   { value: "fall_back", label: "Fallback" },
-  { value: "starterQuestion", label: "Starter Questions" },
-  { value: "function_ids", label: "Functions" },
+  { value: "IsstarterQuestionEnable", label: "Starter Questions" },
+  { value: "functionData", label: "Functions" },
   { value: "bridge_summary", label: "Bridge Summary" },
   { value: "agents", label: "Connected Agents" },
-  { value: "api_keys", label: "API Keys" },
+  { value: "apikey_object_id", label: "API Keys" },
 ];
 
 export const CONFIG_HISTORY_HIDDEN_TYPES = ["system_prompt_version_id", "variables_state"];
