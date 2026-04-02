@@ -176,6 +176,8 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
 
         const totalCost = series[0][dataPointIndex] || 0;
         const totalTokens = series[1][dataPointIndex] || 0;
+        const totalInputTokens = (periodData.items || []).reduce((sum, item) => sum + (item?.inputTokens || 0), 0);
+        const totalOutputTokens = (periodData.items || []).reduce((sum, item) => sum + (item?.outputTokens || 0), 0);
         const topItems = [...(periodData.items || [])].sort((a, b) => (b.cost || 0) - (a.cost || 0)).slice(0, 5);
 
         return `
@@ -201,6 +203,11 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
               <div style="font-size:12px; opacity:0.85;">Cost: <strong>$${totalCost.toFixed(3)}</strong></div>
               <div style="font-size:12px; opacity:0.85;">Tokens: <strong>${Intl.NumberFormat("en-US").format(totalTokens)}</strong></div>
             </div>
+
+            <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:10px;">
+              <div style="font-size:12px; opacity:0.85;">Input: <strong>${Intl.NumberFormat("en-US").format(totalInputTokens)}</strong></div>
+              <div style="font-size:12px; opacity:0.85;">Output: <strong>${Intl.NumberFormat("en-US").format(totalOutputTokens)}</strong></div>
+            </div>
             
             <div style="font-size: 11px; opacity: 0.75; margin-bottom: 8px;">
               Top ${FACTOR_OPTIONS[factor]} by cost
@@ -210,32 +217,36 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
               .map(
                 (item) => `
               <div style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 4px;
-                padding: 2px 0;
+                margin-bottom: 8px;
+                padding: 4px 0;
+                border-bottom: 1px dashed ${currentTheme === "dark" ? "#374151" : "#e5e7eb"};
               ">
-                <div style="
-                  color: ${currentTheme === "dark" ? "#f9fafb" : "#111827"};
-                  font-size: 11px;
-                  font-weight: 500;
-                  flex: 1;
-                  margin-right: 8px;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  white-space: nowrap;
-                ">
-                  ${item.name}
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                  <div style="
+                    color: ${currentTheme === "dark" ? "#f9fafb" : "#111827"};
+                    font-size: 11px;
+                    font-weight: 500;
+                    flex: 1;
+                    margin-right: 8px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                  ">
+                    ${item.name}
+                  </div>
+                  <div style="
+                    color: ${currentTheme === "dark" ? "#d1fae5" : "#065f46"};
+                    font-weight: 600;
+                    font-size: 11px;
+                    min-width: 50px;
+                    text-align: right;
+                  ">
+                    $${(item.cost || 0).toFixed(3)}
+                  </div>
                 </div>
-                <div style="
-                  color: ${currentTheme === "dark" ? "#d1fae5" : "#065f46"};
-                  font-weight: 600;
-                  font-size: 11px;
-                  min-width: 50px;
-                  text-align: right;
-                ">
-                  $${(item.cost || 0).toFixed(3)}
+                <div style="display:flex; justify-content:space-between; gap:8px; margin-top:2px;">
+                  <div style="font-size:11px; opacity:0.8;">In: <strong>${Intl.NumberFormat("en-US").format(item.inputTokens || 0)}</strong></div>
+                  <div style="font-size:11px; opacity:0.8;">Out: <strong>${Intl.NumberFormat("en-US").format(item.outputTokens || 0)}</strong></div>
                 </div>
               </div>
             `

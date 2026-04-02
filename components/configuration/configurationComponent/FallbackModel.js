@@ -329,13 +329,13 @@ const FallbackModel = ({
                                 disabled={isPublished}
                               >
                                 {getIconOfService(svc.value, 16, 16)}
-                                <span className="capitalize">{svc.displayName || svc.value}</span>
+                                <span>{svc.displayName || svc.value}</span>
                               </a>
                             ) : (
                               <div className="w-full flex items-center justify-between">
                                 <span className="flex items-center gap-2 opacity-50 cursor-not-allowed pointer-events-none">
                                   {getIconOfService(svc.value, 16, 16)}
-                                  <span className="capitalize">{svc.displayName || svc.value}</span>
+                                  <span>{svc.displayName || svc.value}</span>
                                 </span>
                                 <span className="text-xs text-error">No API Key Available</span>
                               </div>

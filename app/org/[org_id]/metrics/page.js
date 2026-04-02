@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect, useMemo, useState } from "react";
-import { Activity, BarChart3, Coins, Sparkles } from "lucide-react";
+import { Activity, BarChart3, Coins } from "lucide-react";
 import { TIME_RANGE_OPTIONS } from "@/utils/enums";
 import Protected from "@/components/Protected";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -48,7 +48,7 @@ function Page({ params }) {
     descriptions: state.flowDataReducer?.flowData?.descriptionsData?.descriptions || {},
   }));
 
-  const { rawData, latencySummary, loading, fetchMetricsData } = useMetricsData(orgId, allBridges, apikeyData);
+  const { rawData, loading, fetchMetricsData } = useMetricsData(orgId, allBridges, apikeyData);
   const { updateURLParams, getDisplayRangeText } = useMetricsURL(searchParams);
   const { actualTheme } = useThemeManager();
 
@@ -70,68 +70,63 @@ function Page({ params }) {
       });
     });
 
-    const avgCostPer1KTokens = totalTokens > 0 ? (totalCost / totalTokens) * 1000 : 0;
-
     return {
       totalCost,
       totalTokens,
       activeEntities: activeEntityIds.size,
-      avgCostPer1KTokens,
       periodCount: rawData.length,
     };
   }, [rawData]);
 
   const reliabilityStats = useMemo(() => {
+    const weightedSamples = [];
     let totalLatency = 0;
     let totalRequests = 0;
     let totalSuccess = 0;
-    let allLatencies = [];
 
     rawData.forEach((period) => {
       (period?.items || []).forEach((item) => {
-        const latency = Number(item?.latency) || 0;
-        totalLatency += latency;
-        totalRequests += Number(item?.totalRequests) || 0;
-        totalSuccess += Number(item?.successCount) || 0;
-        if (latency > 0) allLatencies.push(latency);
+        const requestCount = Number(item?.totalRequests) || 0;
+        const latencySum = Number(item?.latency) || 0;
+        const successCount = Number(item?.successCount) || 0;
+
+        if (requestCount <= 0) {
+          return;
+        }
+
+        const averageLatency = latencySum / requestCount;
+        totalLatency += latencySum;
+        totalRequests += requestCount;
+        totalSuccess += successCount;
+        weightedSamples.push({ latency: averageLatency, weight: requestCount });
       });
     });
 
-    const fallbackAvgLatency = totalRequests > 0 ? totalLatency / totalRequests : 0;
-    const fallbackSuccessRate = totalRequests > 0 ? Math.min(100, (totalSuccess / totalRequests) * 100) : 0;
+    const avgLatency = totalRequests > 0 ? totalLatency / totalRequests : 0;
+    const successRate = totalRequests > 0 ? Math.min(100, (totalSuccess / totalRequests) * 100) : 0;
 
-    // Calculate true P95 percentile (95% of requests are faster than this)
-    let fallbackP95Latency = 0;
-    if (allLatencies.length > 0) {
-      allLatencies.sort((a, b) => a - b);
-      const p95Index = Math.ceil((95 / 100) * allLatencies.length) - 1;
-      fallbackP95Latency = allLatencies[Math.max(0, p95Index)];
+    let p95Latency = 0;
+    if (weightedSamples.length > 0 && totalRequests > 0) {
+      weightedSamples.sort((a, b) => a.latency - b.latency);
+      const p95Threshold = totalRequests * 0.95;
+      let cumulativeWeight = 0;
+
+      for (const sample of weightedSamples) {
+        cumulativeWeight += sample.weight;
+        if (cumulativeWeight >= p95Threshold) {
+          p95Latency = sample.latency;
+          break;
+        }
+      }
     }
-
-    const avgLatency =
-      latencySummary && Number.isFinite(Number(latencySummary.avgLatency))
-        ? Number(latencySummary.avgLatency)
-        : fallbackAvgLatency;
-    const p95Latency =
-      latencySummary && Number.isFinite(Number(latencySummary.p95Latency))
-        ? Number(latencySummary.p95Latency)
-        : fallbackP95Latency;
-    const successRate =
-      latencySummary && Number.isFinite(Number(latencySummary.successRate))
-        ? Math.min(100, Number(latencySummary.successRate))
-        : fallbackSuccessRate;
-    const resolvedTotalRequests =
-      latencySummary && Number.isFinite(Number(latencySummary.totalRequests))
-        ? Number(latencySummary.totalRequests)
-        : totalRequests;
 
     return {
       avgLatency,
       p95Latency,
       successRate,
-      totalRequests: resolvedTotalRequests,
+      totalRequests,
     };
-  }, [rawData, latencySummary]);
+  }, [rawData]);
 
   const compactNumber = (value) =>
     Intl.NumberFormat("en-US", {
@@ -193,10 +188,6 @@ function Page({ params }) {
     <div className="p-4 md:p-8 min-h-screen bg-gradient-to-b from-base-200/20 via-transparent to-transparent">
       {/* Page Header */}
       <header className="mb-6 md:mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-base-300 text-xs text-base-content/70 mb-3">
-          <Sparkles size={14} />
-          Insights Workspace
-        </div>
         <h1 className="text-2xl md:text-3xl font-bold text-base-content">Metrics Dashboard</h1>
         <p className="text-base-content/80 mt-1">
           {descriptions?.["Metrics"] || "Monitor your application's key metrics at a glance."}
@@ -249,15 +240,6 @@ function Page({ params }) {
           </div>
           <div className="text-2xl font-semibold">{overviewStats.activeEntities}</div>
           <div className="text-xs text-base-content/60 mt-1">Agents, models, or API keys</div>
-        </div>
-
-        <div className="rounded-xl border border-base-300 bg-base-100/80 p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-base-content/70 uppercase tracking-wide">Cost / 1K Tokens</span>
-            <Sparkles size={16} className="text-secondary" />
-          </div>
-          <div className="text-2xl font-semibold">${overviewStats.avgCostPer1KTokens.toFixed(3)}</div>
-          <div className="text-xs text-base-content/60 mt-1">Computed from current selection</div>
         </div>
       </section>
 

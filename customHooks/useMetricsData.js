@@ -23,6 +23,8 @@ export const convertApiData = (
     const entryDate = new Date(entry.created_at);
     const costValue = Number(entry.cost_sum) || 0;
     const tokenValue = Number(entry.total_token_count) || 0;
+    const inputTokenValue = Number(entry.input_tokens ?? entry.inputTokens) || 0;
+    const outputTokenValue = Number(entry.output_tokens ?? entry.outputTokens) || 0;
     const successCountValue = Number(entry.success_count) || 0;
     const latencyValue = Number(entry.latency_sum) || 0;
     const recordCountValue = Math.max(Number(entry.record_count) || 0, successCountValue);
@@ -56,6 +58,8 @@ export const convertApiData = (
         id: entryId,
         cost: costValue,
         tokens: tokenValue,
+        inputTokens: inputTokenValue,
+        outputTokens: outputTokenValue,
         successCount: successCountValue,
         latency: latencyValue,
         recordCount: recordCountValue,
@@ -63,6 +67,8 @@ export const convertApiData = (
     } else {
       uniqueEntries[uniqueKey].cost += costValue;
       uniqueEntries[uniqueKey].tokens += tokenValue;
+      uniqueEntries[uniqueKey].inputTokens += inputTokenValue;
+      uniqueEntries[uniqueKey].outputTokens += outputTokenValue;
       uniqueEntries[uniqueKey].successCount += successCountValue;
       uniqueEntries[uniqueKey].latency += latencyValue;
       uniqueEntries[uniqueKey].recordCount += recordCountValue;

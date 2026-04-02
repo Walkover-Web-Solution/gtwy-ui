@@ -135,6 +135,17 @@ const ReliabilityChart = memo(({ rawData, currentTheme }) => {
     legend: {
       position: "top",
       horizontalAlign: "right",
+      fontSize: "12px",
+      offsetY: 2,
+      itemMargin: {
+        horizontal: 16,
+        vertical: 6,
+      },
+      markers: {
+        width: 10,
+        height: 10,
+        radius: 2,
+      },
       labels: {
         colors: "oklch(var(--bc))",
       },

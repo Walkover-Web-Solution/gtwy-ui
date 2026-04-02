@@ -132,7 +132,7 @@ const ServiceDropdown = ({
           label: (
             <div className="flex items-center gap-2">
               {getIconOfService(svc.value, 16, 16)}
-              <span className="capitalize">{svc.displayName || svc.value}</span>
+              <span>{svc.displayName || svc.value}</span>
             </div>
           ),
         };

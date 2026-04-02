@@ -24,10 +24,11 @@ const TokenUsageOverview = memo(({ rawData }) => {
   }
 
   const totalTokens = aggregatedData.reduce((sum, item) => sum + (item.tokens || 0), 0);
+  const totalInputTokens = aggregatedData.reduce((sum, item) => sum + (item.inputTokens || 0), 0);
+  const totalOutputTokens = aggregatedData.reduce((sum, item) => sum + (item.outputTokens || 0), 0);
   const totalCost = aggregatedData.reduce((sum, item) => sum + (item.cost || 0), 0);
   const maxTokens = Math.max(...aggregatedData.map((i) => i.tokens), 0);
   const totalEntities = aggregatedData.length;
-  const avgCostPer1KTokens = totalTokens > 0 ? (totalCost / totalTokens) * 1000 : 0;
   const topFiveShare =
     totalTokens > 0
       ? (aggregatedData.slice(0, 5).reduce((sum, item) => sum + (item.tokens || 0), 0) / totalTokens) * 100
@@ -40,7 +41,7 @@ const TokenUsageOverview = memo(({ rawData }) => {
           <h2 className="text-lg font-bold">Token Usage Overview</h2>
           <p className="text-sm text-base-content/65">Ranked by token consumption and contribution share.</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-right w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 text-right w-full">
           <div className="px-2 py-1.5 rounded-md bg-base-200/60 min-w-[88px]">
             <div className="text-[10px] uppercase text-base-content/60">Total Tokens</div>
             <div className="text-sm font-semibold" title={formatFullNumber(totalTokens)}>
@@ -48,12 +49,20 @@ const TokenUsageOverview = memo(({ rawData }) => {
             </div>
           </div>
           <div className="px-2 py-1.5 rounded-md bg-base-200/60 min-w-[88px]">
-            <div className="text-[10px] uppercase text-base-content/60">Total Cost</div>
-            <div className="text-sm font-semibold">${totalCost.toFixed(2)}</div>
+            <div className="text-[10px] uppercase text-base-content/60">Input Tokens</div>
+            <div className="text-sm font-semibold" title={formatFullNumber(totalInputTokens)}>
+              {formatNumber(totalInputTokens)}
+            </div>
           </div>
           <div className="px-2 py-1.5 rounded-md bg-base-200/60 min-w-[88px]">
-            <div className="text-[10px] uppercase text-base-content/60">Cost / 1K</div>
-            <div className="text-sm font-semibold">${avgCostPer1KTokens.toFixed(3)}</div>
+            <div className="text-[10px] uppercase text-base-content/60">Output Tokens</div>
+            <div className="text-sm font-semibold" title={formatFullNumber(totalOutputTokens)}>
+              {formatNumber(totalOutputTokens)}
+            </div>
+          </div>
+          <div className="px-2 py-1.5 rounded-md bg-base-200/60 min-w-[88px]">
+            <div className="text-[10px] uppercase text-base-content/60">Total Cost</div>
+            <div className="text-sm font-semibold">${totalCost.toFixed(2)}</div>
           </div>
           <div className="px-2 py-1.5 rounded-md bg-base-200/60 min-w-[88px]">
             <div className="text-[10px] uppercase text-base-content/60">Top 5 Share</div>
@@ -105,6 +114,9 @@ const TokenUsageOverview = memo(({ rawData }) => {
                 <div className="text-right flex-shrink-0">
                   <div className="font-bold text-xs text-base-content" title={formatFullNumber(item.tokens)}>
                     {formatNumber(item.tokens)} tokens
+                  </div>
+                  <div className="text-[11px] text-base-content/70">
+                    In {formatNumber(item.inputTokens || 0)} | Out {formatNumber(item.outputTokens || 0)}
                   </div>
                   <div className="text-xs text-base-content/70">${item.cost.toFixed(3)} cost</div>
                 </div>
