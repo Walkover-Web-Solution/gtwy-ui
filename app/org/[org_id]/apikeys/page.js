@@ -10,6 +10,7 @@ import {
   formatDate,
   formatRelativeTime,
   getIconOfService,
+  getServiceDisplayName,
   openModal,
   toggleSidebar,
   getApiKeyStatusClass,
@@ -86,15 +87,6 @@ const Page = () => {
     openModal(MODAL_TYPE.CONNECTED_AGENTS_MODAL);
   }, []);
 
-  const getServiceDisplayName = useCallback(
-    (serviceKey) => {
-      return Array.isArray(SERVICES)
-        ? SERVICES.find((svc) => svc?.value === serviceKey)?.displayName || serviceKey
-        : serviceKey;
-    },
-    [SERVICES]
-  );
-
   const dataWithIcons = filterApiKeys.map((item) => ({
     ...item,
     actualName: item.name,
@@ -103,7 +95,7 @@ const Page = () => {
     service: (
       <div className="flex items-center gap-2">
         {getIconOfService(item.service, 18, 18)}
-        <span>{getServiceDisplayName(item.service)}</span>
+        <span>{getServiceDisplayName(item.service, SERVICES)}</span>
       </div>
     ),
     last_used: item.last_used ? (
@@ -246,7 +238,7 @@ const Page = () => {
           <div key={serviceKey} className="mb-2 mt-4">
             <h2 className="text-xl font-semibold flex items-center gap-2 pl-4">
               {getIconOfService(serviceKey, 24, 24)}
-              {getServiceDisplayName(serviceKey)}
+              {getServiceDisplayName(serviceKey, SERVICES)}
             </h2>
             <CustomTable
               data={items}

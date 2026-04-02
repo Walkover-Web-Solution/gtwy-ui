@@ -15,6 +15,7 @@ import ApiKeysInput from "../sliders/ApiKeysInput";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
 import { MODAL_TYPE } from "@/utils/enums";
+import { getServiceDisplayName } from "@/utils/utility";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -200,12 +201,6 @@ const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
 
   if (filteredServiceModels.length === 0) return null;
 
-  const getServiceDisplayName = (serviceKey) => {
-    return Array.isArray(SERVICES)
-      ? SERVICES.find((svc) => svc?.value === serviceKey)?.displayName || serviceKey
-      : serviceKey;
-  };
-
   return (
     <div className="space-y-2">
       {filteredServiceModels.map(([service, types]) => {
@@ -223,7 +218,7 @@ const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
               onClick={() => toggleService(service)}
               className="w-full flex items-center justify-between p-2 bg-base-200 text-sm"
             >
-              <span className="font-medium">{getServiceDisplayName(service)}</span>
+              <span className="font-medium">{getServiceDisplayName(service, SERVICES)}</span>
               <span className="text-xs text-base-content/60">
                 {expandedServices[service] ? "▼" : "▶"} {allModels.length} models
               </span>

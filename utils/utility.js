@@ -274,6 +274,12 @@ export const getIconOfService = (service, height, width) => {
   }
 };
 
+export const getServiceDisplayName = (serviceKey, services = []) => {
+  return Array.isArray(services)
+    ? services.find((svc) => svc?.value === serviceKey)?.displayName || serviceKey
+    : serviceKey;
+};
+
 export function getStatusClass(status) {
   switch (status?.toString().trim().toLowerCase()) {
     case "drafted":
