@@ -656,7 +656,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {/*                              SIDE BAR                              */}
         {/* ------------------------------------------------------------------ */}
         <div
-          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-screen bg-base-100 my-3 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-5 ${sidebarZIndex}`}
+          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
           style={{
             width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "220px" : "50px",
             transform: isMobile ? (isMobileVisible ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
@@ -751,7 +751,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             </div>
 
             {/* Main navigation - scrollable */}
-            <div className={`flex-1  scrollbar-hide overflow-x-hidden scroll-smooth p-2`}>
+            <div className={`flex-1 scrollbar-hide overflow-x-hidden scroll-smooth p-1`}>
               <div className="">
                 {/* Main Menu Button - Show only in Admin Mode */}
                 {isAdminMode && (
@@ -782,11 +782,11 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     {NAV_SECTIONS.map(({ title, items }, idx) => (
                       <div key={idx} className="">
                         {showSidebarContent && title && (
-                          <h3 className="my-2 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
+                          <h3 className="my-1 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
                             {title}
                           </h3>
                         )}
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {items.map((key) => (
                             <button
                               id={`main-slider-nav-${key}`}
@@ -854,8 +854,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             </div>
 
             {/* Footer Actions Section */}
-            <div className="border-t border-base-content/20 p-2">
-              <div className="space-y-2">
+            <div className="border-t border-base-content/20 p-1">
+              <div className="space-y-1">
                 {/* Primary action: Admin */}
                 <button
                   id="main-slider-admin-settings-toggle"
@@ -1028,7 +1028,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             </div>
 
             {/* GTWY Label Section */}
-            <div className="border-t border-base-300 p-2">
+            <div className="border-t border-base-300 p-1">
               <div className="text-center">
                 {showSidebarContent ? (
                   <span className="text-sm text-base-content/70">GTWY</span>
