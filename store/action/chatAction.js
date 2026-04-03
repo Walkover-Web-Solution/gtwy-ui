@@ -174,17 +174,10 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
     convertedMessages.push(expectedMessage);
   }
 
-  // Convert to conversation format for the backend
-  const backendConversation = testCaseConversation.map((msg) => ({
-    role: msg.role,
-    content: msg.content,
-  }));
-
   dispatch(
     loadTestCaseMessages({
       channelId,
       messages: convertedMessages,
-      conversation: backendConversation,
       testCaseId,
     })
   );
@@ -329,7 +322,6 @@ export const sendMessageWithRtLayer =
 
       // Make API call (this should trigger RT layer response)
       const response = await apiCall({
-        conversation: [], // Will be populated from Redux state
         user: messageContent,
       });
       return { userMessage, loadingMessage, response };
@@ -374,7 +366,7 @@ export const sendMessageWithApiStreaming =
       // Streaming path: read SSE body from fetch Response or Axios Response
       const streamBody = result.response.body || result.response.data;
       if (!streamBody) {
-        throw new Error('Stream body not available in response');
+        throw new Error("Stream body not available in response");
       }
       const reader = streamBody.getReader();
       const decoder = new TextDecoder();
