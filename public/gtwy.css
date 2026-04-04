@@ -1,0 +1,29 @@
+.gtwy-embed-header {
+    position: absolute; top: 0; left: 0; right: 0; height: 50px;
+    background: #808080; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10000; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px);
+}
+.gtwy-header-content { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.gtwy-header-buttons { display: flex; gap: 8px; align-items: center; }
+.gtwy-header-btn {
+    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border: none; border-radius: 6px; background: rgba(255, 255, 255, 0.1);
+    color: white; cursor: pointer; transition: all 0.2s ease; backdrop-filter: blur(10px);
+}
+.gtwy-header-btn:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.gtwy-header-btn:active { transform: translateY(0); background: rgba(255, 255, 255, 0.15); }
+.gtwy-fullscreen-btn.fullscreen { background: rgba(255, 255, 255, 0.2); }
+.gtwy-close-btn:hover { background: rgba(255, 59, 48, 0.8); }
+#gtwy-iframe-parent-container.with-header #iframe-component-gtwyInterfaceEmbed { margin-top: 50px; height: calc(100% - 50px); }
+#gtwy-iframe-parent-container.parent-container #iframe-component-gtwyInterfaceEmbed { margin-top: 0; height: 100%; }
+.slide-left, .slide-right, .slide-full {
+    position: fixed !important; z-index: 9999 !important; max-height: 98vh !important;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
+}
+.slide-left { left: 0 !important; top: 0 !important; width: 999px !important; transform: translateX(-100%) !important; }
+.slide-left.open { transform: translateX(0) !important; }
+.slide-right { right: 0 !important; top: 0 !important; width: 999px !important; transform: translateX(100%) !important; }
+.slide-right.open { transform: translateX(0) !important; }
+.slide-full { top: 0 !important; left: 0 !important; width: 100vw !important; opacity: 0 !important; }
+.slide-full.open { opacity: 1 !important; }

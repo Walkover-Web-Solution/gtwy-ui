@@ -1,5 +1,4 @@
 /* eslint-disable */
-// IIFE Scope (optimized for performance and size)
 (function () {
     class GtwyEmbedManager {
         constructor() {
@@ -7,16 +6,25 @@
             this.parentContainer = null;
             this.scriptIds = {};
             this.config = {
-                height: '100', heightUnit: 'vh', width: '100', widthUnit: 'vw',
-                buttonName: '', slide: 'full', hideCloseButton: 'false',
-                hideFullScreenButton: 'false', hideHeader: 'false', skipLoadGtwy: false
+                height: '100', heightUnit: 'vh',
+                width: '100', widthUnit: 'vw',
+                buttonName: '', 
+                slide: 'full', 
+                hideCloseButton: 'false',
+                hideFullScreenButton: 'false', 
+                hideHeader: 'false', 
+                skipLoadGtwy: false
             };
             this.urls = {
                 gtwyUrl: 'https://embed.gtwy.ai/embed',
-                login: 'https://db.gtwy.ai/api/embed/login'
+                login: 'https://db.gtwy.ai/api/embed/login',
+                cssUrl: 'https://embed.gtwy.ai/gtwy.css'
             };
             this.state = {
-                bodyLoaded: false, fullscreen: false, isInitialized: false, hasParentContainer: false,
+                bodyLoaded: false, 
+                fullscreen: false, 
+                isInitialized: false, 
+                hasParentContainer: false,
                 tempDataToSend: {}
             };
             this.initializeEventListeners();
@@ -26,14 +34,10 @@
             const script = document.getElementById('gtwy-user-script') || document.getElementById('gtwy-main-script');
             if (!script) return {};
 
-            const attrs = ['embedToken', 'hideCloseButton', 'parentId', 'hideFullScreenButton', 'hideHeader', 'defaultOpen', 'slide', 'agent_id', 'agent_name', 'version_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId'];
+            const attrs = ['embedToken', 'hideCloseButton', 'parentId', 'hideFullScreenButton', 'hideHeader', 'defaultOpen', 'slide', 'agent_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId'];
             return attrs.reduce((props, attr) => {
                 if (script.hasAttribute(attr)) {
-                    let value = script.getAttribute(attr);
-                    
-                    if (['config', 'headerButtons', 'eventsToSubscribe'].includes(attr)) {
-                        try { value = JSON.parse(value); } catch (e) { console.error(`Error parsing ${attr}:`, e); }
-                    }
+                    const value = script.getAttribute(attr);
                     
                     if (attr === 'defaultOpen') this.config.defaultOpen = value || false;
                     if (attr === 'slide' && ['full', 'left', 'right'].includes(value)) this.config.slide = value;
@@ -41,7 +45,6 @@
                     if (['hideHeader', 'hideCloseButton', 'hideFullScreenButton'].includes(attr)) this.config[attr] = value;
                     
                     props[attr] = value;
-                    this.state.tempDataToSend = { ...this.state.tempDataToSend, [attr]: value };
                 }
                 return props;
             }, {});
@@ -145,41 +148,11 @@
 
         addStyles() {
             if (document.getElementById('gtwy-styles')) return;
-            
-            const style = document.createElement('style');
-            style.id = 'gtwy-styles';
-            style.textContent = `
-                .gtwy-embed-header {
-                    position: absolute; top: 0; left: 0; right: 0; height: 50px;
-                    background: #808080; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                    z-index: 10000; display: flex; align-items: center; justify-content: space-between;
-                    padding: 0 16px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); backdrop-filter: blur(10px);
-                }
-                .gtwy-header-content { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-                .gtwy-header-buttons { display: flex; gap: 8px; align-items: center; }
-                .gtwy-header-btn {
-                    display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-                    border: none; border-radius: 6px; background: rgba(255, 255, 255, 0.1);
-                    color: white; cursor: pointer; transition: all 0.2s ease; backdrop-filter: blur(10px);
-                }
-                .gtwy-header-btn:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
-                .gtwy-header-btn:active { transform: translateY(0); background: rgba(255, 255, 255, 0.15); }
-                .gtwy-fullscreen-btn.fullscreen { background: rgba(255, 255, 255, 0.2); }
-                .gtwy-close-btn:hover { background: rgba(255, 59, 48, 0.8); }
-                #gtwy-iframe-parent-container.with-header #iframe-component-gtwyInterfaceEmbed { margin-top: 50px; height: calc(100% - 50px); }
-                #gtwy-iframe-parent-container.parent-container #iframe-component-gtwyInterfaceEmbed { margin-top: 0; height: 100%; }
-                .slide-left, .slide-right, .slide-full {
-                    position: fixed !important; z-index: 9999 !important; max-height: 98vh !important;
-                    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
-                }
-                .slide-left { left: 0 !important; top: 0 !important; width: 999px !important; transform: translateX(-100%) !important; }
-                .slide-left.open { transform: translateX(0) !important; }
-                .slide-right { right: 0 !important; top: 0 !important; width: 999px !important; transform: translateX(100%) !important; }
-                .slide-right.open { transform: translateX(0) !important; }
-                .slide-full { top: 0 !important; left: 0 !important; width: 100vw !important; opacity: 0 !important; }
-                .slide-full.open { opacity: 1 !important; }
-            `;
-            document.head.appendChild(style);
+            const link = document.createElement('link');
+            link.id = 'gtwy-styles';
+            link.rel = 'stylesheet';
+            link.href = this.urls.cssUrl;
+            document.head.appendChild(link);
         }
 
         applySlideStyles(slideType) {
@@ -197,6 +170,7 @@
                 this.initializeGtwyEmbed().then(() => this.openGtwy());
                 return;
             }
+            
             const dataToSend = {};
             if (agent_id) dataToSend.agent_id = agent_id;
             if (meta && Object.keys(meta).length > 0) dataToSend.meta = meta;
@@ -207,6 +181,7 @@
             if (Object.keys(dataToSend).length > 0) {
                 SendDataToGtwyEmbed(dataToSend);
             }
+
             const container = document.getElementById('gtwy-iframe-parent-container');
             const iframe = document.getElementById('gtwyInterfaceEmbed');
 
@@ -285,7 +260,7 @@
 
         loadContent() {
             if (this.state.bodyLoaded) return;
-            this.extractScriptProps();
+            this.state.tempDataToSend = { ...this.state.tempDataToSend, ...this.extractScriptProps() };
             this.createIframeContainer();
             
             if (!this.config.skipLoadGtwy && !this.state.tempDataToSend?.gtwy_user) {
@@ -302,16 +277,14 @@
             const iframe = document.getElementById('iframe-component-gtwyInterfaceEmbed');
             if (!iframe) return;
 
-            if (this.state.tempDataToSend?.gtwy_user === 'true') {
-                const customId = this.scriptIds.customIframeId || this.props.customIframeId;
-                if (customId) {
-                    window.open(customId, '_blank', 'noopener,noreferrer');
-                    this.closeGtwy();
-                    return;
-                }
+            const customId = this.scriptIds.customIframeId || this.props.customIframeId;
+
+            if (this.state.tempDataToSend?.gtwy_user === 'true' && customId) {
+                window.open(customId, '_blank', 'noopener,noreferrer');
+                this.closeGtwy();
+                return;
             }
 
-            const customId = this.scriptIds.customIframeId || this.props.customIframeId;
             iframe.src = customId || `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(this.state.tempDataToSend))}`;
             
             this.applyConfig(this.config);
@@ -480,23 +453,19 @@
 
         updateProps(newProps) {
             this.props = { ...this.props, ...newProps };
-            this.setPropValues(newProps);
-        }
-
-        setPropValues(props) {
-            if ([true, 'true'].includes(props.fullScreen)) {
+            if ([true, 'true'].includes(newProps.fullScreen)) {
                 document.getElementById('gtwy-iframe-parent-container')?.classList.add('full-screen-gtwyInterfaceEmbed');
                 this.state.tempDataToSend = { ...this.state.tempDataToSend, hideFullScreenButton: true };
                 sendMessageToGtwy({ type: 'gtwyInterfaceData', data: { hideFullScreenButton: true } });
             }
-            if ('slide' in props) this.props.slide = props.slide;
+            if ('slide' in newProps) this.props.slide = newProps.slide;
         }
 
         sendInitialData() {
             setTimeout(() => {
                 if (this.state.tempDataToSend) {
                     sendMessageToGtwy({ type: 'gtwyInterfaceData', data: this.state.tempDataToSend });
-                    const shouldOpen = [this.state.tempDataToSend?.defaultOpen, this.state.config?.defaultOpen, this.config.defaultOpen]
+                    const shouldOpen = [this.state.tempDataToSend?.defaultOpen, this.config.defaultOpen]
                         .some(val => [true, 'true'].includes(val));
                     if (shouldOpen) this.openGtwy();
                     this.state.tempDataToSend = null;
@@ -509,29 +478,28 @@
 
     const SendDataToGtwyEmbed = function (dataToSend) {
         if (typeof dataToSend === 'string') {
-            try { dataToSend = JSON.parse(dataToSend); } 
-            catch (e) { console.error('Failed to parse dataToSend:', e); return; }
+            try { 
+                dataToSend = JSON.parse(dataToSend);
+            } 
+            catch (e) { 
+                console.error('Failed to parse dataToSend:', e);
+                return;
+            }
         }
 
         if ('parentId' in dataToSend) {
-            gtwyEmbedManager.state.tempDataToSend = { ...gtwyEmbedManager.state.tempDataToSend, ...dataToSend };
             const prevParentId = gtwyEmbedManager.props['parentId'];
             const existingParent = document.getElementById(prevParentId);
 
-            if (existingParent?.contains(gtwyEmbedManager.parentContainer)) {
-                if (prevParentId !== dataToSend.parentId) {
-                    if (prevParentId && existingParent?.contains(gtwyEmbedManager.parentContainer)) {
-                        existingParent.removeChild(gtwyEmbedManager.parentContainer);
-                    } else if (document.body.contains(gtwyEmbedManager.parentContainer)) {
-                        document.body.removeChild(gtwyEmbedManager.parentContainer);
-                    }
-                    gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
-                    gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
+            if (prevParentId !== dataToSend.parentId) {
+                if (existingParent?.contains(gtwyEmbedManager.parentContainer)) {
+                    existingParent.removeChild(gtwyEmbedManager.parentContainer);
+                } else if (document.body.contains(gtwyEmbedManager.parentContainer)) {
+                    document.body.removeChild(gtwyEmbedManager.parentContainer);
                 }
-            } else {
-                gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
-                gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
             }
+            gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
+            gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
         }
 
         const propsToUpdate = {};
