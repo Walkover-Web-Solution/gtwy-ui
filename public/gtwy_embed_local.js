@@ -8,11 +8,11 @@
             this.config = {
                 height: '100', heightUnit: 'vh',
                 width: '100', widthUnit: 'vw',
-                buttonName: '', 
-                slide: 'full', 
+                buttonName: '',
+                slide: 'full',
                 hideCloseButton: 'false',
-                hideFullScreenButton: 'false', 
-                hideHeader: 'false', 
+                hideFullScreenButton: 'false',
+                hideHeader: 'false',
                 skipLoadGtwy: false
             };
             this.urls = {
@@ -21,9 +21,9 @@
                 cssUrl: 'http://localhost:3000/gtwy.css'
             };
             this.state = {
-                bodyLoaded: false, 
-                fullscreen: false, 
-                isInitialized: false, 
+                bodyLoaded: false,
+                fullscreen: false,
+                isInitialized: false,
                 hasParentContainer: false,
                 tempDataToSend: {}
             };
@@ -38,7 +38,7 @@
             return attrs.reduce((props, attr) => {
                 if (script.hasAttribute(attr)) {
                     const value = script.getAttribute(attr);
-                    
+
                     if (attr === 'defaultOpen') this.config.defaultOpen = value || false;
                     if (attr === 'slide' && ['full', 'left', 'right'].includes(value)) this.config.slide = value;
                     if (attr === 'skipLoadGtwy') this.config.skipLoadGtwy = value === 'true' || value === true;
@@ -398,7 +398,7 @@
 
             const tempData = { ...data.data };
             if (this.state.tempDataToSend?.agent_id) tempData.agent_id = this.state.tempDataToSend.agent_id;
-            if (this.state.tempDataToSend?.agent_name) tempData.agent_name = this.state.tempDataToSend.agent_name;
+            if (this.state.tempDataToSend?.agent_name) tempData.agent_name = null;
 
             iframe.src = `${this.urls.gtwyUrl}?interfaceDetails=${encodeURIComponent(JSON.stringify(tempData))}`;
             this.config = { ...this.config, ...(data?.data?.config || {}) };
