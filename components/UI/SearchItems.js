@@ -102,7 +102,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
 
   return (
     <div className={containerClasses}>
-      <div className="relative">
+      <div className="relative mb-2">
         <input
           data-testid="search-items-input"
           id="search-items-input"
@@ -111,7 +111,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
           aria-label={`Search ${itemLabel} by Name, SlugName, Service, or ID`}
           placeholder={filterParam ? "Filtered - Click X to clear" : "Search"}
           value={searchTerm}
-          className={`${inputClasses} mb-2`}
+          className={inputClasses}
           data-allow-org-nav={isWorkspaceItem ? "true" : "false"}
           onChange={(e) => {
             const newValue = e.target.value;
@@ -125,21 +125,21 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
           readOnly={!filterParam && !isWorkspaceItem}
         />
         {!isWorkspaceItem && (
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute inset-y-0 right-2 flex items-center gap-1">
             {filterParam && (
               <button
                 data-testid="search-items-clear-filter-button"
                 id="search-items-clear-filter-button"
                 onClick={clearFilter}
-                className="btn btn-xs btn-ghost p-1 hover:bg-error hover:text-error-content"
+                className="btn btn-xs btn-ghost btn-square h-6 min-h-0 w-6 p-0 hover:bg-error hover:text-error-content"
                 title="Clear filter"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
             {!filterParam && (
               <kbd
-                className={`kbd kbd-xs bg-base-200 text-base-content/70 border border-base-content/20 mb-2 ${isMac ? "px-1.5" : "px-1"}`}
+                className={`kbd kbd-xs bg-base-200 text-base-content/70 border border-base-content/20 ${isMac ? "px-1.5" : "px-1"}`}
               >
                 {shortcutText}
               </kbd>
