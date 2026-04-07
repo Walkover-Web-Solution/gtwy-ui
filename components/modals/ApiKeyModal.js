@@ -55,7 +55,6 @@ const ApiKeyModal = ({
       const currentData = {
         name: formData.get("name") || "",
         apikey: formData.get("apikey") || "",
-        comment: formData.get("comment") || "",
         service: service || formData.get("service") || "",
         apikey_limit: formData.get("apikey_limit") || "",
         apikey_limit_reset_period: formData.get("apikey_limit_reset_period") || "",
@@ -71,7 +70,6 @@ const ApiKeyModal = ({
         const hasChanges =
           currentData.name !== (selectedApiKey.name || "") ||
           currentData.apikey !== (selectedApiKey.apikey || "") ||
-          currentData.comment !== (selectedApiKey.comment || "") ||
           currentData.service !== (selectedApiKey.service || service || "") ||
           (currentData.apikey_limit !== "" &&
             Number(currentData.apikey_limit) !== Number(selectedApiKey.apikey_limit || 0)) ||
@@ -107,7 +105,6 @@ const ApiKeyModal = ({
         name: formData.get("name"),
         service: service || formData.get("service"),
         apikey: formData.get("apikey"),
-        comment: formData.get("comment"),
         apikey_limit: Number(formData.get("apikey_limit")) || 0,
         apikey_limit_reset_period: formData.get("apikey_limit_reset_period") || "",
         apikey_usage: selectedApiKey ? selectedApiKey.apikey_usage : 0,
@@ -118,7 +115,6 @@ const ApiKeyModal = ({
         if (isEditing) {
           const isIdChange = apikeyData.some((item) => item.apikey === data.apikey && item._id === data._id);
           const isNameChange = apikeyData.some((item) => item.name === data.name && item._id === data._id);
-          const isCommentChange = apikeyData.some((item) => item.comment === data.comment && item._id === data._id);
           const apikeyLimitChange = apikeyData.some(
             (item) => item.apikey_limit === data.apikey_limit && item._id === data._id
           );
@@ -133,7 +129,6 @@ const ApiKeyModal = ({
               apikey_object_id: data._id,
               name: data.name,
               apikey: data.apikey,
-              comment: data.comment,
               service: selectedService,
               apikey_limit: data.apikey_limit,
               apikey_limit_reset_period: data.apikey_limit_reset_period,
@@ -141,12 +136,11 @@ const ApiKeyModal = ({
             };
             await dispatch(updateApikeyAction(dataToSend));
           }
-          if (!isNameChange || !isCommentChange || !apikeyLimitChange || !apikeyResetPeriodChange) {
+          if (!isNameChange || !apikeyLimitChange || !apikeyResetPeriodChange) {
             const dataToSend = {
               org_id: orgId,
               apikey_object_id: data._id,
               name: data.name,
-              comment: data.comment,
               service: selectedService,
               apikey_limit: data.apikey_limit,
               apikey_limit_reset_period: data.apikey_limit_reset_period,
@@ -159,8 +153,6 @@ const ApiKeyModal = ({
             name: data.name,
             service: data.service,
             apikey: data.apikey,
-            comment: data.comment,
-
             apikey_limit: data.apikey_limit,
             apikey_limit_reset_period: data.apikey_limit_reset_period,
           };
@@ -206,7 +198,7 @@ const ApiKeyModal = ({
                 .replace(/_/g, " ")
                 .replace(/^\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
             : field.charAt(0).toUpperCase() + field.slice(1);
-          const isRequired = field !== "comment" && field !== "apikey_limit";
+          const isRequired = field !== "apikey_limit";
           return (
             <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
               <label className="label-text">

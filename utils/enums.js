@@ -1,6 +1,6 @@
 import { BookIcon, BotIcon, KeyIcon, SettingsIcon, TestTubeDiagonalIcon, WrenchIcon } from "@/components/Icons";
 export const PAUTH_KEY_COLUMNS = ["name", "authkey", "created_at"];
-export const API_KEY_COLUMNS = ["name", "apikey", "comment", "apikey_usage", "last_used", "last_used_status"];
+export const API_KEY_COLUMNS = ["name", "apikey", "apikey_usage", "last_used", "last_used_status"];
 export const WEBHOOKALERT_COLUMNS = ["name", "url", "headers", "alertType", "bridges"];
 export const ALERT_TYPE = ["Error", "Variable"];
 
@@ -88,7 +88,7 @@ export const MODAL_TYPE = {
   FULLSCREEN_JSON_SCHEMA: "FULLSCREEN_JSON_SCHEMA",
 };
 
-export const API_KEY_MODAL_INPUT = ["name", "apikey", "comment", "apikey_limit"];
+export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];
 
 export const USER_FEEDBACK_FILTER_OPTIONS = ["all", "1", "2"];
 

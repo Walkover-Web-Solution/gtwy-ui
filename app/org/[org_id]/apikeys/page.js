@@ -142,7 +142,6 @@ const Page = () => {
         name: item.name,
         apikey_object_id: item._id,
         service: apikeyData?.find((api) => api._id === item._id)?.service,
-        comment: item.comment,
         apikey_limit: item?.apikey_limit || 1,
         apikey_usage: 0,
         org_id: item.org_id,
@@ -247,7 +246,7 @@ const Page = () => {
               columnsToShow={API_KEY_COLUMNS}
               sorting
               sortingColumns={["name", "last_used", "apikey_usage"]}
-              keysToWrap={["apikey", "comment"]}
+              keysToWrap={["apikey"]}
               endComponent={EndComponent}
               handleRowClick={(data) => showConnectedAgents(data)}
               keysToExtractOnRowClick={["_id", "name", "version_ids"]}
