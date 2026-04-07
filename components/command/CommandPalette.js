@@ -126,7 +126,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         case "docs":
           return knowledgeBase.map((d) => ({
             id: d._id,
-            title: d.name || d._id,
+            title: d.title || d.name || d._id,
             subtitle: "Knowledge Base",
             type: "docs",
           }));
@@ -266,9 +266,9 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "apikeys",
   }));
 
-  const kbGroup = filterBy(knowledgeBase, ["name", "_id"]).map((d) => ({
+  const kbGroup = filterBy(knowledgeBase, ["title", "name", "_id"]).map((d) => ({
     id: d._id,
-    title: d.name || d._id,
+    title: d.title || d.name || d._id,
     subtitle: "Knowledge Base",
     type: "docs",
   }));
