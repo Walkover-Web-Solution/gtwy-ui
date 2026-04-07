@@ -56,6 +56,7 @@ function ChatTextInput({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const [validationError, setValidationError] = useState(null);
+  const [imagePreviewLoaded, setImagePreviewLoaded] = useState({});
   const dispatch = useDispatch();
   const [fileInput, setFileInput] = useState(null); // Use state for the file input element
   const versionId = searchParams?.version;
@@ -119,6 +120,17 @@ function ChatTextInput({
   );
 
   const [localDataToSend, setLocalDataToSend] = useState(dataToSend);
+
+  useEffect(() => {
+    setImagePreviewLoaded((prev) => {
+      const next = {};
+      uploadedImages.forEach((url, index) => {
+        const key = `${url}-${index}`;
+        next[key] = prev[key] || false;
+      });
+      return next;
+    });
+  }, [uploadedImages]);
 
   const { isVision, isFileSupported, isVideoSupported } = useMemo(() => {
     const validationConfig =
@@ -289,16 +301,22 @@ function ChatTextInput({
     dispatch(setChatError(channelIdentifier, ""));
     if (modelType !== "completion") inputRef.current.value = "";
 
+    // Capture current attachments and clear preview immediately for snappier UX.
+    const selectedUploadedImages = [...uploadedImages];
+    const selectedUploadedFiles = [...uploadedFiles];
+    dispatch(setChatUploadedFiles(channelIdentifier, []));
+    dispatch(setChatUploadedImages(channelIdentifier, []));
+
     try {
       let responseData;
       let data;
-      const userUrls = buildUserUrls(uploadedImages, uploadedFiles);
+      const userUrls = buildUserUrls(selectedUploadedImages, selectedUploadedFiles);
       if (modelType !== "completion" && modelType !== "embedding") {
         data = {
           role: "user",
           content: newMessage,
-          images: uploadedImages, // Include images in the data
-          files: uploadedFiles,
+          images: selectedUploadedImages,
+          files: selectedUploadedFiles,
           youtube_url: mediaUrls, // Include media URLs in the data
         };
 
@@ -333,10 +351,6 @@ function ChatTextInput({
             youtube_url: mediaUrls,
           })
         );
-
-        // Clear uploaded files after successful RT layer message creation
-        dispatch(setChatUploadedFiles(channelIdentifier, []));
-        dispatch(setChatUploadedImages(channelIdentifier, []));
 
         responseData = result.response;
 
@@ -586,18 +600,42 @@ function ChatTextInput({
         <div
           data-testid="chat-preview-container"
           id="chat-preview-container"
-          className="absolute bottom-16 left-0 w-full flex flex-nowrap overflow-x-auto items-end gap-2 p-2 bg-base-100 border-t rounded-t-lg"
+          className="absolute bottom-16 left-0 inline-flex w-fit max-w-full flex-nowrap overflow-x-auto items-end gap-2 p-2 border border-base-300/70 rounded-lg bg-base-200/40"
         >
           {/* Image Previews */}
           {uploadedImages.map((url, index) => (
             <div key={index} className="relative flex-shrink-0">
-              <Image
-                src={url}
-                alt={`Uploaded Preview ${index + 1}`}
-                width={64}
-                height={64}
-                className="w-16 h-16 object-cover bg-base-300 p-1 rounded-lg"
-              />
+              {(() => {
+                const previewKey = `${url}-${index}`;
+                const isLoaded = imagePreviewLoaded[previewKey];
+
+                return (
+                  <div className="relative w-16 h-16 rounded-lg border border-base-300 overflow-hidden bg-base-200">
+                    {!isLoaded && <div className="absolute inset-0 animate-pulse bg-base-300" />}
+                    <Image
+                      src={url}
+                      alt={`Uploaded Preview ${index + 1}`}
+                      width={64}
+                      height={64}
+                      onLoad={() =>
+                        setImagePreviewLoaded((prev) => ({
+                          ...prev,
+                          [previewKey]: true,
+                        }))
+                      }
+                      onError={() =>
+                        setImagePreviewLoaded((prev) => ({
+                          ...prev,
+                          [previewKey]: true,
+                        }))
+                      }
+                      className={`w-16 h-16 object-cover transition-opacity duration-200 ${
+                        isLoaded ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
+                  </div>
+                );
+              })()}
               <button
                 data-testid={`chat-remove-image-${index}`}
                 id={`chat-remove-image-${index}`}
@@ -614,7 +652,7 @@ function ChatTextInput({
           {/* File Previews */}
           {uploadedFiles.map((url, index) => (
             <div key={index} className="relative flex-shrink-0">
-              <div className="flex items-center h-16 gap-2 bg-base-300 p-2 rounded-lg">
+              <div className="flex items-center h-16 gap-2 bg-base-300 p-2 rounded-lg border border-base-300">
                 <PdfIcon height={24} width={24} />
                 <p className="text-sm max-w-[120px] truncate" title={url}>
                   {url.split("/").pop()}
