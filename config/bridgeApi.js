@@ -202,9 +202,32 @@ export const getConnectedAgentFlowApi = async ({ versionId }) => {
 };
 
 // Bridge Configuration History
-export const getBridgeConfigHistory = async (versionId, page = 1, pageSize = 30) => {
+export const getBridgeConfigHistory = async (versionId, page = 1, pageSize = 30, filters = {}) => {
   try {
-    const response = await axios.get(`${URL}/api/v1/config/getuserupdates/${versionId}?page=${page}&limit=${pageSize}`);
+    // Build query string with filters
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: pageSize.toString(),
+    });
+
+    // Add filter parameters if they exist
+    if (filters.user_ids && filters.user_ids.length > 0) {
+      queryParams.append("user_ids", filters.user_ids.join(","));
+    }
+
+    if (filters.types && filters.types.length > 0) {
+      queryParams.append("types", filters.types.join(","));
+    }
+
+    if (filters.date_from) {
+      queryParams.append("date_from", filters.date_from);
+    }
+
+    if (filters.date_to) {
+      queryParams.append("date_to", filters.date_to);
+    }
+
+    const response = await axios.get(`${URL}/api/v1/config/getuserupdates/${versionId}?${queryParams.toString()}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching bridge config history:", error);
@@ -236,10 +259,8 @@ export const createAgentFromTemplateApi = async (templateId) => {
 export const convertAgentToTemplate = async (agentId, templateName) => {
   try {
     const response = await axios.post(`${URL}/api/template/${agentId}`, { templateName });
-    toast.success("Agent converted to template successfully");
     return response?.data;
   } catch (error) {
-    toast.error(error?.response?.data?.message || "Failed to convert agent to template");
     console.error("Error converting agent to template:", error);
     throw error;
   }

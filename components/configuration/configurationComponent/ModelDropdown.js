@@ -105,7 +105,14 @@ const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
 
 ModelPreview.displayName = "ModelPreview";
 
-const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) => {
+const ModelDropdown = ({
+  params,
+  searchParams,
+  isPublished,
+  isEditor = true,
+  isEmbedUser = false,
+  hideAdvancedConfigurations = false,
+}) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const dispatch = useDispatch();
@@ -266,6 +273,8 @@ const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) =
     setModelSpecs(opt?.meta?.specs);
   }, []);
 
+  const showFallbackModelHint = ((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && modelType !== "image";
+
   return (
     <>
       <div className="flex items-center justify-between gap-2">
@@ -320,34 +329,37 @@ const ModelDropdown = ({ params, searchParams, isPublished, isEditor = true }) =
               maxLabelLength={20}
             />
           </div>
-          <InfoTooltip
-            tooltipContent={
-              !isFallbackEnabled ? (
-                <span className="text-xs max-w-[220px] flex flex-col gap-1">
-                  <span className="font-semibold text-warning">Fallback Model</span>
-                  <span className="opacity-80">You can select a fallback model below.</span>
-                </span>
-              ) : (
-                <span className="text-xs flex flex-col gap-1">
-                  <span className="font-semibold text-warning">Fallback Model</span>
-                  <span>
-                    <span className="opacity-70">Service:</span>{" "}
-                    <span className="font-medium capitalize">{fallbackServiceName}</span>
+          {showFallbackModelHint && (
+            <InfoTooltip
+              tooltipContent={
+                !isFallbackEnabled ? (
+                  <span className="text-xs max-w-[220px] flex flex-col gap-1">
+                    <span className="font-semibold text-warning">Fallback Model</span>
+                    <span className="opacity-80">You can select a fallback model below.</span>
                   </span>
-                  <span>
-                    <span className="opacity-70">Model:</span> <span className="font-medium">{fallbackModelName}</span>
+                ) : (
+                  <span className="text-xs flex flex-col gap-1">
+                    <span className="font-semibold text-warning">Fallback Model</span>
+                    <span>
+                      <span className="opacity-70">Service:</span>{" "}
+                      <span className="font-medium capitalize">{fallbackServiceName}</span>
+                    </span>
+                    <span>
+                      <span className="opacity-70">Model:</span>{" "}
+                      <span className="font-medium">{fallbackModelName}</span>
+                    </span>
                   </span>
-                </span>
-              )
-            }
-          >
-            <button
-              type="button"
-              className={`btn btn-sm btn-ghost border rounded border-base-200 px-2 ${isFallbackEnabled ? "" : "opacity-70"}`}
+                )
+              }
             >
-              <CircleAlert size={16} className={isFallbackEnabled ? "text-warning" : "text-gray-400"} />
-            </button>
-          </InfoTooltip>
+              <button
+                type="button"
+                className={`btn btn-sm btn-ghost border rounded border-base-200 px-2 ${isFallbackEnabled ? "" : "opacity-70"}`}
+              >
+                <CircleAlert size={16} className={isFallbackEnabled ? "text-warning" : "text-gray-400"} />
+              </button>
+            </InfoTooltip>
+          )}
         </div>
 
         <ModelPreview hoveredModel={hoveredModel} modelSpecs={modelSpecs} dropdownRef={dropdownRef} />

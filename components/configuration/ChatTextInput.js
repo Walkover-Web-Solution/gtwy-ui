@@ -7,6 +7,7 @@ import {
   setChatUploadedFiles,
   setChatUploadedImages,
   sendMessageWithRtLayer,
+  sendMessageWithApiStreaming,
   setChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import Image from "next/image";
@@ -39,11 +40,13 @@ function ChatTextInput({
     if (inputRef.current) {
       // Use requestAnimationFrame to ensure the DOM is ready
       requestAnimationFrame(() => {
-        inputRef.current.style.height = "auto";
-        inputRef.current.style.height = "40px"; // Reset to default height
-        // Clear any existing content
-        if (inputRef.current.value === "") {
-          inputRef.current.style.height = "40px";
+        if (inputRef.current) {
+          inputRef.current.style.height = "auto";
+          inputRef.current.style.height = "40px"; // Reset to default height
+          // Clear any existing content
+          if (inputRef.current.value === "") {
+            inputRef.current.style.height = "40px";
+          }
         }
       });
     }
@@ -299,7 +302,6 @@ function ChatTextInput({
           youtube_url: mediaUrls, // Include media URLs in the data
         };
 
-        // Use RT layer action for non-orchestral models
         const apiCall = async () => {
           return await dryRun({
             localDataToSend: {
@@ -313,14 +315,20 @@ function ChatTextInput({
               user_urls: userUrls,
               variables,
               orchestrator_flag: isOrchestralModel,
+              flag:
+                bridge?.configuration?.stream !== true ||
+                bridge?.configuration?.response_type?.is_template === true ||
+                bridge?.configuration?.type === "image"
+                  ? false
+                  : true,
             },
             bridge_id: params?.id,
           });
         };
 
-        // Send message with RT layer handling (loading will persist until RT response)
+        // Send message — streams SSE response from dryRun directly
         const result = await dispatch(
-          sendMessageWithRtLayer(channelIdentifier, newMessage, apiCall, isOrchestralModel, {
+          sendMessageWithApiStreaming(channelIdentifier, newMessage, apiCall, isOrchestralModel, {
             user_urls: userUrls,
             youtube_url: mediaUrls,
           })
@@ -355,6 +363,7 @@ function ChatTextInput({
                 type: modelType,
               },
               text: newMessage,
+              flag: bridge?.configuration?.stream !== true ? false : true,
               orchestrator_flag: isOrchestralModel,
             },
             bridge_id: params?.id,
@@ -389,6 +398,7 @@ function ChatTextInput({
                 ...localDataToSend.configuration,
               },
               input: bridge?.inputConfig?.input?.input,
+              flag: bridge?.configuration?.stream !== true ? false : true,
               orchestrator_flag: isOrchestralModel,
             },
             bridge_id: params?.id,

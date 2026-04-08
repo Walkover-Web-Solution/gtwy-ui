@@ -63,7 +63,7 @@ function EmbedListSuggestionDropdownMenu({
           const title = value?.title || integrationData?.[fnName]?.title;
           return (
             title !== undefined &&
-            title?.toLowerCase()?.includes(searchQuery.toLowerCase()) &&
+            title?.toLowerCase()?.includes(searchQuery?.trim().toLowerCase()) &&
             !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id)
           );
         })
@@ -130,7 +130,7 @@ function EmbedListSuggestionDropdownMenu({
     return list.filter(
       (t) =>
         !selected.has(t.value) &&
-        t?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase() || "") &&
+        t?.name?.toLowerCase()?.includes(searchQuery?.trim().toLowerCase() || "") &&
         showInbuiltTools?.[t?.value]
     );
   }, [prebuiltToolsData, toolsVersionData, searchQuery, showInbuiltTools]);

@@ -16,7 +16,7 @@ const AgentSetupGuide = ({
   onSwitchToConnectorsTab = () => {},
   setApiKeyError = () => {},
 }) => {
-  const { bridgeApiKey, prompt, shouldPromptShow, service, showDefaultApikeys, modelName, bridgeType } =
+  const { bridgeApiKey, prompt, shouldPromptShow, service, showDefaultApikeys, modelName, bridgeType, embedFields } =
     useCustomSelector((state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
       const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -43,8 +43,10 @@ const AgentSetupGuide = ({
         showDefaultApikeys,
         modelName: modelName,
         bridgeType: bridgeDataFromState?.bridgeType,
+        embedFields: state.appInfoReducer.embedUserDetails?.prompt?.embedFields || [],
       };
     });
+
   // Helper to check if prompt has meaningful content
   const hasPromptContent = (promptValue) => {
     if (!promptValue) return false;
@@ -222,6 +224,9 @@ const AgentSetupGuide = ({
                 if ((step === "1" || step === "2") && !shouldPromptShow) {
                   return null;
                 }
+                if (step === "2" && isEmbedUser && showDefaultApikeys) {
+                  return null;
+                }
 
                 const isCompleted = getStepCompletion(step);
 
@@ -266,9 +271,22 @@ const AgentSetupGuide = ({
                               </div>
                             )}
                           </div>
-                          <p className={`text-sm mb-2 ${isCompleted ? "text-success/70" : "text-base-content/70"}`}>
-                            {detail}
-                          </p>
+                          {step === "1" && isEmbedUser && embedFields.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {embedFields.map((field) => (
+                                <span
+                                  key={field.name}
+                                  className="badge badge-sm bg-base-300 border-base-300 text-base-content font-mono"
+                                >
+                                  {field.displayValue || field.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className={`text-sm mb-2 ${isCompleted ? "text-success/70" : "text-base-content/70"}`}>
+                              {detail}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -10,6 +10,7 @@ import {
 import AIMLIcon from "@/icons/AIMLIcon";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
+import DeepgramIcon from "@/icons/DeepgramIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
@@ -249,6 +250,24 @@ export const toggleSidebar = (sidebarId, direction = "left") => {
   }
 };
 
+export const closeSidebar = (sidebarId, direction = "left") => {
+  const sidebar = document.getElementById(sidebarId);
+  if (!sidebar) return;
+
+  const translateClass = direction === "left" ? "-translate-x-full" : "translate-x-full";
+
+  // Only close if it's currently visible (open)
+  if (!sidebar.classList.contains(translateClass)) {
+    sidebar.classList.add(translateClass);
+
+    // Clean up listeners
+    document.removeEventListener("click", sidebar._clickHandler, true);
+    document.removeEventListener("keyup", sidebar._keyHandler, true);
+    sidebar._clickHandler = null;
+    sidebar._keyHandler = null;
+  }
+};
+
 export const getIconOfService = (service, height, width) => {
   switch (service) {
     case "openai":
@@ -269,9 +288,17 @@ export const getIconOfService = (service, height, width) => {
       return <MistralIcon height={height} width={width} />;
     case "grok":
       return <Grok height={height} width={width} />;
+    case "deepgram":
+      return <DeepgramIcon height={height} width={width} />;
     default:
       return <OpenAiIcon height={height} width={width} />;
   }
+};
+
+export const getServiceDisplayName = (serviceKey, services = []) => {
+  return Array.isArray(services)
+    ? services.find((svc) => svc?.value === serviceKey)?.displayName || serviceKey
+    : serviceKey;
 };
 
 export function getStatusClass(status) {
@@ -1083,4 +1110,20 @@ export const isValidDomain = (input) => {
   const domainPattern =
     /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
   return domainPattern.test(trimmedInput);
+};
+export const getToolName = (toolId, allBridgesMap = {}, orgBridges = [], integrationData = {}) => {
+  if (!toolId) return "Unknown";
+
+  // Check in allBridgesMap first (full data if available)
+  if (allBridgesMap?.[toolId]?.name) return allBridgesMap[toolId].name;
+
+  // Fallback to orgBridges (might be already fetched for the current org)
+  const bridgeInOrg = orgBridges?.find?.((b) => b?._id === toolId);
+  if (bridgeInOrg?.name) return bridgeInOrg.name;
+
+  // Check integrationData for external tools
+  if (integrationData?.[toolId]?.title) return integrationData[toolId].title;
+
+  // If not found or not an ID, return original name
+  return toolId;
 };

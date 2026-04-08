@@ -658,7 +658,9 @@ function Home({ params, searchParams, isEmbedUser }) {
                 <span className="font-semibold text-base-content">{formatUsageNumber(promptTotalTokens)} tokens</span>
               )}
               {promptEnhancerPercentage != null && (
-                <span className="text-base-content/70">{promptEnhancerPercentage}% Optimizable</span>
+                <span className={promptEnhancerPercentage < 50 ? "text-error/60" : "text-base-content/70"}>
+                  {promptEnhancerPercentage}% Optimized
+                </span>
               )}
             </div>
           ) : (
@@ -764,7 +766,9 @@ function Home({ params, searchParams, isEmbedUser }) {
               <span className="font-semibold text-base-content">{formatUsageNumber(promptTotalTokens)} tokens</span>
             )}
             {promptEnhancerPercentage != null && (
-              <span className="text-base-content/70">{promptEnhancerPercentage}% Optimizable</span>
+              <span className={promptEnhancerPercentage < 50 ? "text-error/60" : "text-base-content/70"}>
+                {promptEnhancerPercentage}% Optimized
+              </span>
             )}
           </div>
         ) : (

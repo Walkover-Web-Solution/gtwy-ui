@@ -93,6 +93,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     widthUnit: "",
     type: "",
     themeColor: "",
+    theme: "system",
     chatbotTitle: "Chatbot",
     chatbotSubtitle: "Smart Help, On Demand",
     iconUrl: "",
@@ -261,6 +262,23 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
             />
             <span className="text-sm text-base-content/70">{formData.themeColor}</span>
           </div>
+        </label>
+
+        {/* Theme Mode */}
+        <label className="form-control w-full">
+          <div className="label">
+            <span className="label-text font-medium text-xs">Theme</span>
+          </div>
+          <select
+            className="select select-bordered select-sm w-full"
+            value={formData.theme}
+            name="theme"
+            onChange={(e) => handleBlur(e)}
+          >
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
+          </select>
         </label>
       </>
     );

@@ -16,6 +16,7 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
             <span className="label-text">Description</span>
           </label>
           <textarea
+            autoFocus
             data-testid="agent-description-textarea"
             id="agent-description-textarea"
             className="textarea bg-base-100 textarea-bordered w-full h-32"

@@ -15,6 +15,7 @@ import ApiKeysInput from "../sliders/ApiKeysInput";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
 import { MODAL_TYPE } from "@/utils/enums";
+import { getServiceDisplayName } from "@/utils/utility";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -71,6 +72,14 @@ const CONFIG_SCHEMA = [
     type: "toggle",
     label: "Hide Pre Tool",
     description: "Display pre tool",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
+    key: "hidePromptHelper",
+    type: "toggle",
+    label: "Hide Prompt Helper",
+    description: "Hide prompt helper button",
     defaultValue: false,
     section: "Interface Options",
   },
@@ -209,7 +218,7 @@ const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
               onClick={() => toggleService(service)}
               className="w-full flex items-center justify-between p-2 bg-base-200 text-sm"
             >
-              <span className="font-medium capitalize">{service}</span>
+              <span className="font-medium">{getServiceDisplayName(service, SERVICES)}</span>
               <span className="text-xs text-base-content/60">
                 {expandedServices[service] ? "▼" : "▶"} {allModels.length} models
               </span>
@@ -286,6 +295,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     variables_path: config?.variables_path || {},
     models: config?.models || {},
     apikey_object_id: integrationData?.apikey_object_id || {},
+    prompt: config.prompt || {},
   }));
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 

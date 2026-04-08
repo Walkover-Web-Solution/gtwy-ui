@@ -13,10 +13,14 @@ import {
   setUploadedImages,
   addRtLayerMessage,
   addErrorMessage,
+  appendRtLayerMessageChunk,
   updateRtLayerMessage,
   setChatTestCaseId,
   clearChatTestCaseId,
   clearChannelData,
+  addToolCallToMessage,
+  updateToolCallResult,
+  appendReasoningChunk,
 } from "../reducer/chatReducer";
 import { haveSameItems, buildUserUrls, buildLlmUrls } from "@/utils/attachmentUtils";
 
@@ -270,9 +274,16 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
     })
   );
 
-  // Clear loading state when RT layer message is received
-  dispatch(setChatLoading(channelId, false));
+  // Clear loading state when RT layer message is received, unless it's a streaming start message
+  if (!socketMessage.isStreaming) {
+    dispatch(setChatLoading(channelId, false));
+  }
   return uiMessage;
+};
+
+// Handle RT layer streaming update for chunks
+export const handleRtLayerStreamChunk = (channelId, messageId, chunk) => (dispatch) => {
+  dispatch(appendRtLayerMessageChunk({ channelId, messageId, chunk }));
 };
 
 // Handle RT layer streaming update
@@ -336,6 +347,171 @@ export const sendMessageWithRtLayer =
       throw error;
     }
     // Note: No finally block - loading cleared only when RT response received or on error
+  };
+
+// Send message and handle response via API streaming (start/delta/done SSE events)
+export const sendMessageWithApiStreaming =
+  (channelId, messageContent, apiCall, isOrchestralModel = false, additionalData = {}) =>
+  async (dispatch) => {
+    let userMessage = null;
+    let loadingMessage = null;
+    const streamingState = { messageId: null, content: "" };
+    let rafId = null;
+
+    try {
+      dispatch(setChatLoading(channelId, true));
+      userMessage = dispatch(sendUserMessage(channelId, messageContent, null, additionalData));
+      loadingMessage = dispatch(addLoadingAssistantMessage(channelId));
+
+      const result = await apiCall();
+
+      // Non-streaming response — let sendMessageWithRtLayer semantics apply
+      if (!result?.stream) {
+        dispatch(setChatLoading(channelId, false));
+        return { userMessage, loadingMessage, response: result };
+      }
+
+      // Streaming path: read SSE body from fetch Response or Axios Response
+      const streamBody = result.response.body || result.response.data;
+      if (!streamBody) {
+        throw new Error('Stream body not available in response');
+      }
+      const reader = streamBody.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // Flush accumulated content to Redux on the next animation frame
+      const scheduleFlush = () => {
+        if (rafId) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          if (streamingState.messageId) {
+            dispatch(handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, false));
+          }
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); // keep incomplete line for next chunk
+
+        for (const line of lines) {
+          // SSE format: lines start with "data: "
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+          const jsonStr = trimmed.slice(5).trim(); // strip "data:" prefix
+          if (!jsonStr) continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+
+            if (parsed.event === "start") {
+              const msgId = parsed.message_id || `stream_${channelId}_${Date.now()}`;
+              streamingState.messageId = msgId;
+              streamingState.content = "";
+              dispatch(
+                handleRtLayerMessage(channelId, {
+                  id: msgId,
+                  content: "",
+                  role: "assistant",
+                  model: parsed.model,
+                  isStreaming: true,
+                  fromRTLayer: true,
+                  images: [],
+                  llm_urls: [],
+                  tools_data: {},
+                  annotations: null,
+                })
+              );
+            } else if (parsed.event === "delta") {
+              // Accumulate content; flush to Redux once per animation frame
+              streamingState.content += parsed.content || "";
+              scheduleFlush();
+            } else if (parsed.event === "reasoning") {
+              if (streamingState.messageId) {
+                dispatch(
+                  appendReasoningChunk({ channelId, messageId: streamingState.messageId, chunk: parsed.content || "" })
+                );
+              }
+            } else if (parsed.event === "tool_call") {
+              dispatch(
+                addToolCallToMessage({
+                  channelId,
+                  messageId: streamingState.messageId,
+                  toolCall: {
+                    call_id: parsed.call_id,
+                    name: parsed.name,
+                    args: parsed.args || {},
+                    status: "calling",
+                    result: null,
+                  },
+                })
+              );
+            } else if (parsed.event === "tool_result") {
+              dispatch(
+                updateToolCallResult({
+                  channelId,
+                  messageId: streamingState.messageId,
+                  callId: parsed.call_id,
+                  name: parsed.name,
+                  result: parsed.content,
+                })
+              );
+            } else if (parsed.event === "error") {
+              if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+              dispatch(addChatErrorMessage(channelId, parsed.error || "Something went wrong. Please try again."));
+              return { userMessage, loadingMessage: null, response: { success: false } };
+            } else if (parsed.event === "done") {
+              // Cancel any pending RAF flush and do a final complete dispatch
+              if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+              dispatch(handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, true));
+            }
+          } catch (parseErr) {
+            console.debug("[SSE] Skipping non-JSON line:", jsonStr, parseErr);
+          }
+        }
+      }
+
+      // Flush any remaining buffer line
+      if (buffer.trim().startsWith("data:")) {
+        try {
+          const parsed = JSON.parse(buffer.trim().slice(5).trim());
+          if (parsed.event === "done" && streamingState.messageId) {
+            if (rafId) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
+            dispatch(handleRtLayerStreamingUpdate(channelId, streamingState.messageId, streamingState.content, true));
+          }
+        } catch (parseErr) {
+          console.debug("[SSE] Skipping non-JSON buffer remainder:", buffer, parseErr);
+        }
+      }
+
+      return { userMessage, loadingMessage, response: { success: true } };
+    } catch (error) {
+      // Cancel any pending animation frame to prevent stale flush after error
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      if (userMessage) dispatch(removeMessage({ channelId, messageId: userMessage.id }));
+      if (loadingMessage) dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
+      dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
+      dispatch(setChatLoading(channelId, false));
+      throw error;
+    }
   };
 
 // Set testcase_id for channel (persisted until manual clear)

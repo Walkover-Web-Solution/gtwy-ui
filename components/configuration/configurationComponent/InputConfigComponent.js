@@ -11,6 +11,7 @@ import MigratePromptModal from "../../modals/MigratePromptModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { promptObjectToString } from "@/utils/promptUtils";
 import Protected from "@/components/Protected";
+import FullscreenEditorModal, { FullscreenEditorButton } from "../../modals/FullscreenEditorModal";
 
 // Ultra-smooth InputConfigComponent with ref-based approach
 const InputConfigComponent = memo(
@@ -47,6 +48,13 @@ const InputConfigComponent = memo(
 
     const [isTextareaFocused, setIsTextareaFocused] = useState(false);
     const [embedFieldValues, setEmbedFieldValues] = useState(null);
+    const [fullscreenEditor, setFullscreenEditor] = useState({
+      isOpen: false,
+      title: "Prompt",
+      value: "",
+      fieldKey: null,
+      fieldType: null,
+    });
 
     const isStructuredPrompt = typeof reduxPrompt === "object" && reduxPrompt !== null;
 
@@ -149,7 +157,6 @@ const InputConfigComponent = memo(
       if (!isEmbedCustomPrompt) return;
       const valueToSave = {};
       visibleEmbedFields.forEach((f) => {
-        if (f.deprecated) return;
         valueToSave[f.name] = activeEmbedFieldValues[f.name] ?? "";
       });
       savePrompt(valueToSave);
@@ -157,17 +164,25 @@ const InputConfigComponent = memo(
       setPromptState((prev) => ({ ...prev, prompt: valueToSave, newContent: "" }));
     }, [isEmbedCustomPrompt, visibleEmbedFields, activeEmbedFieldValues, savePrompt, setPromptState]);
 
-    const handleClearDeprecatedField = useCallback(() => {
-      if (!isEmbedCustomPrompt) return;
-      const valueToSave = {};
-      visibleEmbedFields.forEach((f) => {
-        if (f.deprecated) return; // exclude all deprecated (including the one being cleared)
-        valueToSave[f.name] = activeEmbedFieldValues[f.name] ?? "";
-      });
-      savePrompt(valueToSave);
-      setEmbedFieldValues(null);
-      setPromptState((prev) => ({ ...prev, prompt: valueToSave, newContent: "" }));
-    }, [isEmbedCustomPrompt, visibleEmbedFields, activeEmbedFieldValues, savePrompt, setPromptState]);
+    const filteredEmbedFields = useMemo(
+      () => visibleEmbedFields.filter((field) => !(field.deprecated && !activeEmbedFieldValues[field.name])),
+      [visibleEmbedFields, activeEmbedFieldValues]
+    );
+
+    const handleClearDeprecatedField = useCallback(
+      (fieldName) => {
+        if (!isEmbedCustomPrompt) return;
+        const valueToSave = {};
+        visibleEmbedFields.forEach((f) => {
+          if (f.name === fieldName) return; // exclude only the one being cleared
+          valueToSave[f.name] = activeEmbedFieldValues[f.name] ?? "";
+        });
+        savePrompt(valueToSave);
+        setEmbedFieldValues(null);
+        setPromptState((prev) => ({ ...prev, prompt: valueToSave, newContent: "" }));
+      },
+      [isEmbedCustomPrompt, visibleEmbedFields, activeEmbedFieldValues, savePrompt, setPromptState]
+    );
 
     const handlePromptChange = useCallback(
       (value) => {
@@ -309,6 +324,25 @@ const InputConfigComponent = memo(
                 onSave={handleSavePrompt}
                 onFocus={handleTextareaFocus}
                 onTextAreaBlur={handleTextareaBlur}
+                fullscreenButton={
+                  !uiState.isPromptHelperOpen ? (
+                    <FullscreenEditorButton
+                      tooltip="Open prompt in fullscreen"
+                      className="opacity-50 hover:opacity-100"
+                      onClick={() => {
+                        const currentVal =
+                          textareaRef.current?.value || (typeof reduxPrompt === "string" ? reduxPrompt : "");
+                        setFullscreenEditor({
+                          isOpen: true,
+                          title: "Prompt",
+                          value: currentVal,
+                          fieldKey: null,
+                          fieldType: null,
+                        });
+                      }}
+                    />
+                  ) : null
+                }
               />
             </>
           ) : isEmbedCustomPrompt ? (
@@ -321,19 +355,19 @@ const InputConfigComponent = memo(
                   </button>
                 </div>
               )}
-              {visibleEmbedFields.map((field) => (
+              {filteredEmbedFields.map((field) => (
                 <div key={field.name} className="form-control">
                   <label className="label py-0 flex items-center gap-2">
                     <span className="label-text text-xs font-medium capitalize text-base-content/70 mb-2">
-                      {field.name}
+                      {field.displayValue || field.name}
                     </span>
                     {field.deprecated && <span className="badge badge-warning badge-xs text-xs">deprecated</span>}
                   </label>
                   <div className="relative">
                     {field.type === "textarea" ? (
                       <textarea
-                        className={`textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-32 ${
-                          field.deprecated ? "opacity-60 pr-8" : ""
+                        className={`textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-32 pr-8 ${
+                          field.deprecated ? "opacity-60" : ""
                         }`}
                         value={activeEmbedFieldValues[field.name] || ""}
                         onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
@@ -345,13 +379,17 @@ const InputConfigComponent = memo(
                           if (!isPublished && isEditor) handleSaveEmbedFields();
                         }}
                         disabled={isPublished || !isEditor}
-                        placeholder={field.deprecated ? "(no longer used in prompt)" : `Enter ${field.name}...`}
+                        placeholder={
+                          field.deprecated
+                            ? "(no longer used in prompt)"
+                            : `Enter ${field.displayValue || field.name}...`
+                        }
                       />
                     ) : (
                       <input
                         type="text"
-                        className={`input input-bordered w-full text-sm input-sm ${
-                          field.deprecated ? "opacity-60 pr-8" : ""
+                        className={`input input-bordered w-full text-sm input-sm pr-8 ${
+                          field.deprecated ? "opacity-60" : ""
                         }`}
                         value={activeEmbedFieldValues[field.name] || ""}
                         onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
@@ -363,7 +401,26 @@ const InputConfigComponent = memo(
                           if (!isPublished && isEditor) handleSaveEmbedFields();
                         }}
                         disabled={isPublished || !isEditor}
-                        placeholder={field.deprecated ? "(no longer used in prompt)" : `Enter ${field.name}...`}
+                        placeholder={
+                          field.deprecated
+                            ? "(no longer used in prompt)"
+                            : `Enter ${field.displayValue || field.name}...`
+                        }
+                      />
+                    )}
+                    {!field.deprecated && (
+                      <FullscreenEditorButton
+                        tooltip={`Open ${field.name} in fullscreen`}
+                        className="absolute top-1 right-1 opacity-50 hover:opacity-100 z-10"
+                        onClick={() => {
+                          setFullscreenEditor({
+                            isOpen: true,
+                            title: `Prompt — ${field.name}`,
+                            value: activeEmbedFieldValues[field.name] || "",
+                            fieldKey: field.name,
+                            fieldType: "embed",
+                          });
+                        }}
                       />
                     )}
                     {field.deprecated && !isPublished && isEditor && (
@@ -393,34 +450,49 @@ const InputConfigComponent = memo(
                       {fieldConfig.label || key}
                     </span>
                   </label>
-                  {fieldConfig.type === "textarea" ? (
-                    <textarea
-                      className="textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-72  "
-                      value={(structuredFields || {})[key] || ""}
-                      onChange={(e) => handleFieldChange(key, e.target.value)}
-                      onFocus={handleTextareaFocus}
-                      onBlur={(e) => {
-                        handleTextareaBlur(e);
-                        if (!isPublished && isEditor) handleSavePrompt();
+                  <div className="relative">
+                    {fieldConfig.type === "textarea" ? (
+                      <textarea
+                        className="textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-72 pr-8"
+                        value={(structuredFields || {})[key] || ""}
+                        onChange={(e) => handleFieldChange(key, e.target.value)}
+                        onFocus={handleTextareaFocus}
+                        onBlur={(e) => {
+                          handleTextareaBlur(e);
+                          if (!isPublished && isEditor) handleSavePrompt();
+                        }}
+                        disabled={isPublished || !isEditor}
+                        placeholder={fieldConfig.placeholder || `Enter ${key}...`}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="input input-bordered w-full text-sm input-sm pr-8"
+                        value={(structuredFields || {})[key] || ""}
+                        onChange={(e) => handleFieldChange(key, e.target.value)}
+                        onFocus={handleTextareaFocus}
+                        onBlur={(e) => {
+                          handleTextareaBlur(e);
+                          if (!isPublished && isEditor) handleSavePrompt();
+                        }}
+                        disabled={isPublished || !isEditor}
+                        placeholder={fieldConfig.placeholder || `Enter ${key}...`}
+                      />
+                    )}
+                    <FullscreenEditorButton
+                      tooltip={`Open ${fieldConfig.label || key} in fullscreen`}
+                      className="absolute top-1 right-1 opacity-50 hover:opacity-100 z-10"
+                      onClick={() => {
+                        setFullscreenEditor({
+                          isOpen: true,
+                          title: `Prompt — ${fieldConfig.label || key}`,
+                          value: (structuredFields || {})[key] || "",
+                          fieldKey: key,
+                          fieldType: "structured",
+                        });
                       }}
-                      disabled={isPublished || !isEditor}
-                      placeholder={fieldConfig.placeholder || `Enter ${key}...`}
                     />
-                  ) : (
-                    <input
-                      type="text"
-                      className="input input-bordered w-full text-sm input-sm"
-                      value={(structuredFields || {})[key] || ""}
-                      onChange={(e) => handleFieldChange(key, e.target.value)}
-                      onFocus={handleTextareaFocus}
-                      onBlur={(e) => {
-                        handleTextareaBlur(e);
-                        if (!isPublished && isEditor) handleSavePrompt();
-                      }}
-                      disabled={isPublished || !isEditor}
-                      placeholder={fieldConfig.placeholder || `Enter ${key}...`}
-                    />
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -438,6 +510,26 @@ const InputConfigComponent = memo(
               onFocus={handleTextareaFocus}
               onTextAreaBlur={handleTextareaBlur}
               readOnly={isStructuredPrompt && viewMode === PROMPT_VIEW_MODE.ADVANCED}
+              fullscreenButton={
+                !uiState.isPromptHelperOpen ? (
+                  <FullscreenEditorButton
+                    tooltip="Open prompt in fullscreen"
+                    className="opacity-50 hover:opacity-100"
+                    onClick={() => {
+                      const currentVal =
+                        textareaRef.current?.value ||
+                        (typeof reduxPrompt === "string" ? reduxPrompt : promptObjectToString(reduxPrompt));
+                      setFullscreenEditor({
+                        isOpen: true,
+                        title: "Prompt",
+                        value: currentVal,
+                        fieldKey: null,
+                        fieldType: null,
+                      });
+                    }}
+                  />
+                ) : null
+              }
             />
           )}
 
@@ -470,6 +562,43 @@ const InputConfigComponent = memo(
           currentPrompt={typeof reduxPrompt === "string" ? reduxPrompt : ""}
           onConfirm={isEmbedStringPrompt ? handleEmbedMigrateConfirm : handleMigrateConfirm}
           embedFields={isEmbedStringPrompt ? visibleEmbedFields : null}
+        />
+
+        <FullscreenEditorModal
+          modalId={MODAL_TYPE.FULLSCREEN_PROMPT}
+          title={fullscreenEditor.title}
+          value={fullscreenEditor.value}
+          isOpen={fullscreenEditor.isOpen}
+          onClose={() => setFullscreenEditor((prev) => ({ ...prev, isOpen: false }))}
+          onSave={(finalVal) => {
+            if (fullscreenEditor.fieldType === "embed") {
+              const updatedValues = { ...activeEmbedFieldValues, [fullscreenEditor.fieldKey]: finalVal };
+              const valueToSave = {};
+              visibleEmbedFields.forEach((f) => {
+                if (f.deprecated) return;
+                valueToSave[f.name] = updatedValues[f.name] ?? "";
+              });
+              savePrompt(valueToSave);
+              setEmbedFieldValues(null);
+              setPromptState((prev) => ({ ...prev, prompt: valueToSave, newContent: "" }));
+            } else if (fullscreenEditor.fieldType === "structured") {
+              const updatedStructuredFields = {
+                ...(structuredFields || {}),
+                [fullscreenEditor.fieldKey]: finalVal,
+              };
+              handleFieldChange(fullscreenEditor.fieldKey, finalVal);
+              savePrompt(updatedStructuredFields);
+              setPromptState((prev) => ({ ...prev, prompt: updatedStructuredFields, newContent: "" }));
+            } else {
+              if (textareaRef.current) {
+                textareaRef.current.value = finalVal;
+              }
+              savePrompt(finalVal);
+              setPromptState((prev) => ({ ...prev, prompt: finalVal, newContent: "" }));
+            }
+          }}
+          placeholder="Enter your prompt..."
+          disabled={isPublished || !isEditor}
         />
       </div>
     );

@@ -22,6 +22,7 @@ import {
   integration,
   publishBridgeVersionApi,
   publishBulkVersionApi,
+  submitPostPublishFeedbackApi,
   updateBridge,
   updateBridgeVersionApi,
   updateFunctionApi,
@@ -721,6 +722,16 @@ export const publishBridgeVersionAction =
       console.error(error);
     }
   };
+
+export const submitPostPublishFeedbackAction = (payload) => async () => {
+  try {
+    const response = await submitPostPublishFeedbackApi(payload);
+    return response?.data || response;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
 
 export const addorRemoveResponseIdInBridgeAction = (bridge_id, org_id, responseObj) => async (dispatch) => {
   try {

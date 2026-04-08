@@ -149,7 +149,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         />
         {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
           .filter((item) => {
-            const matchesSearch = item?.title?.toLowerCase()?.includes(searchQuery?.toLowerCase());
+            const matchesSearch = item?.title?.toLowerCase()?.includes(searchQuery?.trim().toLowerCase());
             // Check if item already exists in knowbaseVersionData (handle both old and new format)
             const alreadyExists = knowbaseVersionData?.some((docItem) => {
               if (typeof docItem === "string") {

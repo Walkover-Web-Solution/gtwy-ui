@@ -258,11 +258,11 @@ const Layout = ({ children, isEmbedUser }) => {
   // Memoize loading component to avoid unnecessary re-renders
   const LoadingComponent = useMemo(
     () => (
-      <div className="flex items-center justify-center min-h-screen bg-neutral">
+      <div className="flex items-center justify-center min-h-screen bg-base-100">
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Zap size={20} className="text-success" />
-            <span className="text-neutral-content text-sm tracking-widest">GTWY is loading...</span>
+            <span className="text-base-content text-sm tracking-widest">GTWY is loading...</span>
             <span className="loading loading-dots loading-sm text-success" />
           </div>
         </div>

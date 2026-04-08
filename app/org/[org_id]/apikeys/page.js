@@ -10,13 +10,14 @@ import {
   formatDate,
   formatRelativeTime,
   getIconOfService,
+  getServiceDisplayName,
   openModal,
   toggleSidebar,
   getApiKeyStatusClass,
 } from "@/utils/utility";
 import { BookIcon, RefreshIcon, SquarePenIcon, TrashIcon } from "@/components/Icons";
 import { usePathname } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
@@ -32,10 +33,11 @@ const Page = () => {
   const dispatch = useDispatch();
   const path = pathName?.split("?")[0].split("/");
   const orgId = path[2] || "";
-  const { apikeyData, descriptions, linksData } = useCustomSelector((state) => ({
+  const { apikeyData, descriptions, linksData, SERVICES } = useCustomSelector((state) => ({
     apikeyData: state?.apiKeysReducer?.apikeys?.[orgId] || [],
     descriptions: state.flowDataReducer.flowData.descriptionsData?.descriptions || {},
     linksData: state.flowDataReducer.flowData.linksData || [],
+    SERVICES: state?.serviceReducer?.services || [],
   }));
   const [filterApiKeys, setFilterApiKeys] = useState(apikeyData);
 
@@ -67,17 +69,19 @@ const Page = () => {
 
   const deleteApikey = useCallback(
     async (item) => {
+      const apiKeyDetails = apikeyData?.find((api) => api._id === item._id);
       await executeDelete(async () => {
         return dispatch(
           deleteApikeyAction({
             org_id: item.org_id,
             name: item.name,
             id: item._id,
+            service: apiKeyDetails?.service,
           })
         );
       });
     },
-    [dispatch, executeDelete]
+    [dispatch, executeDelete, apikeyData]
   );
 
   const showConnectedAgents = useCallback((item) => {
@@ -88,11 +92,12 @@ const Page = () => {
   const dataWithIcons = filterApiKeys.map((item) => ({
     ...item,
     actualName: item.name,
+    serviceKey: item.service,
     apikey_usage: item?.apikey_usage ? parseFloat(item.apikey_usage).toFixed(4) : 0,
     service: (
       <div className="flex items-center gap-2">
         {getIconOfService(item.service, 18, 18)}
-        <span className="capitalize">{item.service}</span>
+        <span>{getServiceDisplayName(item.service, SERVICES)}</span>
       </div>
     ),
     last_used: item.last_used ? (
@@ -190,6 +195,17 @@ const Page = () => {
     );
   };
 
+  const groupedApiKeys = useMemo(() => {
+    return dataWithIcons.reduce((acc, item) => {
+      const serviceKey = item.serviceKey;
+      if (!acc[serviceKey]) {
+        acc[serviceKey] = [];
+      }
+      acc[serviceKey].push(item);
+      return acc;
+    }, {});
+  }, [dataWithIcons]);
+
   return (
     <div className="w-full">
       <div className="px-2">
@@ -220,20 +236,11 @@ const Page = () => {
         </div>
       </div>
       {filterApiKeys.length > 0 ? (
-        Object.entries(
-          dataWithIcons.reduce((acc, item) => {
-            const service = item.service.props.children[1].props.children;
-            if (!acc[service]) {
-              acc[service] = [];
-            }
-            acc[service].push(item);
-            return acc;
-          }, {})
-        ).map(([service, items]) => (
-          <div key={service} className="mb-2 mt-4">
-            <h2 className="text-xl font-semibold capitalize flex items-center gap-2 pl-4">
-              {getIconOfService(service.toLowerCase(), 24, 24)}
-              {service}
+        Object.entries(groupedApiKeys).map(([serviceKey, items]) => (
+          <div key={serviceKey} className="mb-2 mt-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2 pl-4">
+              {getIconOfService(serviceKey, 24, 24)}
+              {getServiceDisplayName(serviceKey, SERVICES)}
             </h2>
             <CustomTable
               data={items}

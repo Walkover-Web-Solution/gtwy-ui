@@ -67,10 +67,10 @@ export const updateApikey = async (dataToSend) => {
   }
 };
 
-export const deleteApikey = async (id) => {
+export const deleteApikey = async (id, service) => {
   try {
     const response = await axios.delete(`${URL}/api/apikeys`, {
-      data: { apikey_object_id: id },
+      data: { apikey_object_id: id, service },
     });
     return response;
   } catch (error) {
@@ -93,23 +93,36 @@ export const getAllApikey = async (org_id) => {
 // Model Playground and Testing APIs
 export const dryRun = async ({ localDataToSend, bridge_id }) => {
   try {
-    let dryRun;
     const modelType = localDataToSend.configuration.type;
-    if (modelType !== "completion" && modelType !== "embedding")
-      dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
+    const isChat = modelType !== "completion" && modelType !== "embedding";
+    const isStream = !!localDataToSend.flag;
+    let dryRun;
+    const axiosConfig = isStream ? { responseType: "stream", adapter: "fetch" } : {};
+
+    if (isChat)
+      dryRun = await axios.post(
+        `${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`,
+        localDataToSend,
+        axiosConfig
+      );
     if (modelType === "completion")
-      dryRun = await axios.post(`${URL}/api/v1/model/playground/completion/${bridge_id}`, localDataToSend);
+      dryRun = await axios.post(`${URL}/api/v1/model/playground/completion/${bridge_id}`, localDataToSend, axiosConfig);
     if (modelType === "embedding")
-      dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
-    if (modelType !== "completion" && modelType !== "embedding") {
-      return dryRun.data;
+      dryRun = await axios.post(
+        `${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`,
+        localDataToSend,
+        axiosConfig
+      );
+
+    if (isStream) {
+      return { success: true, stream: true, response: dryRun };
     }
     return { success: true, data: dryRun.data };
   } catch (error) {
-    console.error("dry run error", error, error.response.data.error);
+    console.error("dry run error", error, error?.response?.data?.error);
 
     const errorMessage =
-      error?.response?.data?.error || error?.response?.data?.detail?.error || "Something went wrong.";
+      error?.response?.data?.error || error?.response?.data?.detail?.error || error?.message || "Something went wrong.";
 
     const hasBothErrors = errorMessage.includes("Initial Error:") && errorMessage.includes("Fallback Error:");
 

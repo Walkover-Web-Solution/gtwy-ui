@@ -52,7 +52,6 @@ export const MODAL_TYPE = {
   DELETE_PREBUILT_TOOL_MODAL: "DELETE_PREBUILT_TOOL_MODAL",
   DELETE_TOOL_MODAL: "DELETE_TOOL_MODAL",
   DELETE_AGENT_MODAL: "DELETE_AGENT_MODAL",
-  REMOVE_AGENT_MODAL: "REMOVE_AGENT_MODAL",
   DELETE_PRE_TOOL_MODAL: "DELETE_PRE_TOOL_MODAL",
   DELETE_KNOWLEDGE_BASE_MODAL: "DELETE_KNOWLEDGE_BASE_MODAL",
   BRIDGE_TYPE_MODAL: "BRIDGE_TYPE_MODAL",
@@ -82,12 +81,37 @@ export const MODAL_TYPE = {
   TEMPLATE_MODAL: "TEMPLATE_MODAL",
   TEMPLATE_PLAYGROUND: "TEMPLATE_PLAYGROUND",
   SAVE_WIDGET_MODAL: "SAVE_WIDGET_MODAL",
+  POST_PUBLISH_FEEDBACK_MODAL: "post_publish_feedback_modal",
   MIGRATE_PROMPT_WARNING_MODAL: "MIGRATE_PROMPT_WARNING_MODAL",
+  FULLSCREEN_PROMPT: "FULLSCREEN_PROMPT",
+  FULLSCREEN_JSON_SCHEMA: "FULLSCREEN_JSON_SCHEMA",
 };
 
 export const API_KEY_MODAL_INPUT = ["name", "apikey", "comment", "apikey_limit"];
 
 export const USER_FEEDBACK_FILTER_OPTIONS = ["all", "1", "2"];
+
+export const CONFIG_HISTORY_FILTER_KEYS = {
+  USER_IDS: "user_ids",
+  TYPES: "types",
+};
+
+export const CONFIG_HISTORY_FEATURE_OPTIONS = [
+  { value: "name", label: "Agent Name" },
+  { value: "prompt", label: "Prompt" },
+  { value: "type", label: "Model Type" },
+  { value: "service", label: "Service" },
+  { value: "model", label: "Model" },
+  { value: "guardrails", label: "Guardrails" },
+  { value: "fall_back", label: "Fallback" },
+  { value: "IsstarterQuestionEnable", label: "Starter Questions" },
+  { value: "functionData", label: "Functions" },
+  { value: "bridge_summary", label: "Bridge Summary" },
+  { value: "agents", label: "Connected Agents" },
+  { value: "apikey_object_id", label: "API Keys" },
+];
+
+export const CONFIG_HISTORY_HIDDEN_TYPES = ["system_prompt_version_id", "variables_state"];
 
 export const BATCH_PROCESSING_STATUSES = ["in_progress", "processing", "queued", "pending", "validating", "finalizing"];
 
@@ -238,6 +262,16 @@ export const TUTORIALS = [
     icon: TestTubeDiagonalIcon,
   },
 ];
+export const HISTORY_FILTER_BY_FIELDS = {
+  thread_id: "",
+  sub_thread_id: "",
+  message_id: "",
+  user: "",
+  llm_message: "",
+  updated_llm_message: "",
+  variables: "",
+};
+
 export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id"]);
 export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
 export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide"]);

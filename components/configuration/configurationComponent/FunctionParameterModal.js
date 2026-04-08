@@ -82,196 +82,221 @@ const ParameterCard = ({
             }}
             placeholder="Parameter name"
           />
-          <div className="flex items-center mr-4 gap-2">
-            <label className="flex items-center gap-1 text-xs">
-              <input
-                data-testid={`param-required-checkbox-${currentPath}`}
-                id={`param-required-checkbox-${currentPath}`}
-                type="checkbox"
-                className="checkbox checkbox-xs"
-                checked={(() => {
-                  const keyParts = currentPath.split(".");
-                  if (keyParts.length === 1) {
-                    // For top-level parameters, check in toolData.required_params
-                    return (toolData?.required_params || []).includes(paramKey);
-                  } else {
-                    // For nested parameters, navigate to the direct parent field
-                    const parentKeyParts = keyParts.slice(0, -1);
-                    let currentField = toolData?.fields;
+          {name !== "Pre Tool" && (
+            <div className="flex items-center mr-4 gap-2">
+              <label className="flex items-center gap-1 text-xs">
+                <input
+                  data-testid={`param-required-checkbox-${currentPath}`}
+                  id={`param-required-checkbox-${currentPath}`}
+                  type="checkbox"
+                  className="checkbox checkbox-xs"
+                  checked={(() => {
+                    const keyParts = currentPath.split(".");
+                    if (keyParts.length === 1) {
+                      // For top-level parameters, check in toolData.required_params
+                      return (toolData?.required_params || []).includes(paramKey);
+                    } else {
+                      // For nested parameters, navigate to the direct parent field
+                      const parentKeyParts = keyParts.slice(0, -1);
+                      let currentField = toolData?.fields;
 
-                    // Navigate to the parent field that contains this parameter
-                    for (let i = 0; i < parentKeyParts.length; i++) {
-                      const key = parentKeyParts[i];
-                      if (currentField?.[key]?.type === "array") {
-                        currentField = currentField[key]?.items;
-                      } else {
-                        if (i === parentKeyParts.length - 1) {
-                          // This is the direct parent - check its required_params
-                          currentField = currentField?.[key];
+                      // Navigate to the parent field that contains this parameter
+                      for (let i = 0; i < parentKeyParts.length; i++) {
+                        const key = parentKeyParts[i];
+                        if (currentField?.[key]?.type === "array") {
+                          currentField = currentField[key]?.items;
                         } else {
-                          // Navigate deeper into nested structure
-                          currentField = currentField?.[key]?.parameter;
-                        }
-                      }
-                    }
-
-                    return (currentField?.required_params || []).includes(paramKey);
-                  }
-                })()}
-                disabled={(() => {
-                  if (isPublished) return true;
-                  const keyParts = currentPath.split(".");
-                  if (keyParts.length === 1) {
-                    // Top-level parameters are always enabled
-                    return false;
-                  } else {
-                    // For nested parameters, check if all parent parameters are required
-                    let isParentRequired = true;
-
-                    // Check each level of parent to ensure they are all required
-                    for (let i = 0; i < keyParts.length - 1; i++) {
-                      const key = keyParts[i];
-
-                      if (i === 0) {
-                        // Check if top-level parent is required
-                        isParentRequired = (toolData?.required_params || []).includes(key);
-                      } else {
-                        // Check if nested parent is required
-                        const parentPath = keyParts.slice(0, i);
-                        let parentField = toolData?.fields;
-
-                        // Navigate to the field that should contain the required_params
-                        for (let j = 0; j < parentPath.length; j++) {
-                          const parentKey = parentPath[j];
-                          if (parentField?.[parentKey]?.type === "array") {
-                            parentField = parentField[parentKey]?.items;
+                          if (i === parentKeyParts.length - 1) {
+                            // This is the direct parent - check its required_params
+                            currentField = currentField?.[key];
                           } else {
-                            if (j === parentPath.length - 1) {
-                              parentField = parentField?.[parentKey];
-                            } else {
-                              parentField = parentField?.[parentKey]?.parameter;
-                            }
+                            // Navigate deeper into nested structure
+                            currentField = currentField?.[key]?.parameter;
                           }
                         }
-
-                        isParentRequired = isParentRequired && (parentField?.required_params || []).includes(key);
                       }
 
-                      if (!isParentRequired) break;
+                      return (currentField?.required_params || []).includes(paramKey);
                     }
+                  })()}
+                  disabled={(() => {
+                    if (isPublished) return true;
+                    const keyParts = currentPath.split(".");
+                    if (keyParts.length === 1) {
+                      // Top-level parameters are always enabled
+                      return false;
+                    } else {
+                      // For nested parameters, check if all parent parameters are required
+                      let isParentRequired = true;
 
-                    return !isParentRequired;
-                  }
-                })()}
-                onChange={() => onRequiredChange(currentPath)}
-              />
-              <span
-                className={`text-base-content ${(() => {
-                  const keyParts = currentPath.split(".");
-                  if (keyParts.length > 1) {
-                    // Check if parent is required to determine text opacity
-                    let isParentRequired = true;
-                    for (let i = 0; i < keyParts.length - 1; i++) {
-                      const key = keyParts[i];
-                      if (i === 0) {
-                        isParentRequired = (toolData?.required_params || []).includes(key);
-                      } else {
-                        const parentPath = keyParts.slice(0, i);
-                        let parentField = toolData?.fields;
-                        for (let j = 0; j < parentPath.length; j++) {
-                          const parentKey = parentPath[j];
-                          if (parentField?.[parentKey]?.type === "array") {
-                            parentField = parentField[parentKey]?.items;
-                          } else {
-                            if (j === parentPath.length - 1) {
-                              parentField = parentField?.[parentKey];
+                      // Check each level of parent to ensure they are all required
+                      for (let i = 0; i < keyParts.length - 1; i++) {
+                        const key = keyParts[i];
+
+                        if (i === 0) {
+                          // Check if top-level parent is required
+                          isParentRequired = (toolData?.required_params || []).includes(key);
+                        } else {
+                          // Check if nested parent is required
+                          const parentPath = keyParts.slice(0, i);
+                          let parentField = toolData?.fields;
+
+                          // Navigate to the field that should contain the required_params
+                          for (let j = 0; j < parentPath.length; j++) {
+                            const parentKey = parentPath[j];
+                            if (parentField?.[parentKey]?.type === "array") {
+                              parentField = parentField[parentKey]?.items;
                             } else {
-                              parentField = parentField?.[parentKey]?.parameter;
+                              if (j === parentPath.length - 1) {
+                                parentField = parentField?.[parentKey];
+                              } else {
+                                parentField = parentField?.[parentKey]?.parameter;
+                              }
                             }
                           }
+
+                          isParentRequired = isParentRequired && (parentField?.required_params || []).includes(key);
                         }
-                        isParentRequired = isParentRequired && (parentField?.required_params || []).includes(key);
+
+                        if (!isParentRequired) break;
                       }
-                      if (!isParentRequired) break;
+
+                      return !isParentRequired;
                     }
-                    return !isParentRequired ? "opacity-50" : "";
-                  }
-                  return "";
-                })()}`}
-              >
-                Required{" "}
-                {(() => {
-                  const keyParts = currentPath.split(".");
-                  if (keyParts.length > 1) {
-                    // Check if parent is required
-                    let isParentRequired = true;
-                    for (let i = 0; i < keyParts.length - 1; i++) {
-                      const key = keyParts[i];
-                      if (i === 0) {
-                        isParentRequired = (toolData?.required_params || []).includes(key);
-                      } else {
-                        const parentPath = keyParts.slice(0, i);
-                        let parentField = toolData?.fields;
-                        for (let j = 0; j < parentPath.length; j++) {
-                          const parentKey = parentPath[j];
-                          if (parentField?.[parentKey]?.type === "array") {
-                            parentField = parentField[parentKey]?.items;
-                          } else {
-                            if (j === parentPath.length - 1) {
-                              parentField = parentField?.[parentKey];
+                  })()}
+                  onChange={() => onRequiredChange(currentPath)}
+                />
+                <span
+                  className={`text-base-content ${(() => {
+                    const keyParts = currentPath.split(".");
+                    if (keyParts.length > 1) {
+                      // Check if parent is required to determine text opacity
+                      let isParentRequired = true;
+                      for (let i = 0; i < keyParts.length - 1; i++) {
+                        const key = keyParts[i];
+                        if (i === 0) {
+                          isParentRequired = (toolData?.required_params || []).includes(key);
+                        } else {
+                          const parentPath = keyParts.slice(0, i);
+                          let parentField = toolData?.fields;
+                          for (let j = 0; j < parentPath.length; j++) {
+                            const parentKey = parentPath[j];
+                            if (parentField?.[parentKey]?.type === "array") {
+                              parentField = parentField[parentKey]?.items;
                             } else {
-                              parentField = parentField?.[parentKey]?.parameter;
+                              if (j === parentPath.length - 1) {
+                                parentField = parentField?.[parentKey];
+                              } else {
+                                parentField = parentField?.[parentKey]?.parameter;
+                              }
                             }
                           }
+                          isParentRequired = isParentRequired && (parentField?.required_params || []).includes(key);
                         }
-                        isParentRequired = isParentRequired && (parentField?.required_params || []).includes(key);
+                        if (!isParentRequired) break;
                       }
-                      if (!isParentRequired) break;
+                      return !isParentRequired ? "opacity-50" : "";
                     }
-                    return !isParentRequired ? "(parent must be required first)" : "";
-                  }
-                  return "";
-                })()}
-              </span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                data-testid={`param-fill-ai-checkbox-${currentPath}`}
-                id={`param-fill-ai-checkbox-${currentPath}`}
-                type="checkbox"
-                className="checkbox checkbox-xs"
-                checked={!(currentPath in variablesPath)}
-                disabled={name === "Pre Tool" || isPublished || !isEditor}
-                onChange={() => {
-                  const updatedVariablesPath = { ...variablesPath };
-                  if (currentPath in updatedVariablesPath) {
-                    delete updatedVariablesPath[currentPath];
-                  } else {
-                    updatedVariablesPath[currentPath] = "";
-                  }
-                  onVariablePathChange(updatedVariablesPath);
-                }}
-              />
-              <span className="text-xs">Fill with AI</span>
-            </label>
-          </div>
+                    return "";
+                  })()}`}
+                >
+                  Required{" "}
+                  {(() => {
+                    const keyParts = currentPath.split(".");
+                    if (keyParts.length > 1) {
+                      // Check if parent is required
+                      let isParentRequired = true;
+                      for (let i = 0; i < keyParts.length - 1; i++) {
+                        const key = keyParts[i];
+                        if (i === 0) {
+                          isParentRequired = (toolData?.required_params || []).includes(key);
+                        } else {
+                          const parentPath = keyParts.slice(0, i);
+                          let parentField = toolData?.fields;
+                          for (let j = 0; j < parentPath.length; j++) {
+                            const parentKey = parentPath[j];
+                            if (parentField?.[parentKey]?.type === "array") {
+                              parentField = parentField[parentKey]?.items;
+                            } else {
+                              if (j === parentPath.length - 1) {
+                                parentField = parentField?.[parentKey];
+                              } else {
+                                parentField = parentField?.[parentKey]?.parameter;
+                              }
+                            }
+                          }
+                          isParentRequired = isParentRequired && (parentField?.required_params || []).includes(key);
+                        }
+                        if (!isParentRequired) break;
+                      }
+                      return !isParentRequired ? "(parent must be required first)" : "";
+                    }
+                    return "";
+                  })()}
+                </span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  data-testid={`param-fill-ai-checkbox-${currentPath}`}
+                  id={`param-fill-ai-checkbox-${currentPath}`}
+                  type="checkbox"
+                  className="checkbox checkbox-xs"
+                  checked={!(currentPath in variablesPath)}
+                  disabled={isPublished || !isEditor}
+                  onChange={() => {
+                    const updatedVariablesPath = { ...variablesPath };
+                    if (currentPath in updatedVariablesPath) {
+                      delete updatedVariablesPath[currentPath];
+                    } else {
+                      updatedVariablesPath[currentPath] = "";
+                    }
+                    onVariablePathChange(updatedVariablesPath);
+                  }}
+                />
+                <span className="text-xs">Fill with AI</span>
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          <select
-            data-testid={`param-type-select-${currentPath}`}
-            id={`param-type-select-${currentPath}`}
-            disabled={isReadOnly}
-            className="select select-xs select-bordered text-xs"
-            value={param.type || "string"}
-            onChange={(e) => onTypeChange(currentPath, e.target.value)}
-          >
-            {PARAMETER_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+          {name !== "Pre Tool" && (
+            <select
+              data-testid={`param-type-select-${currentPath}`}
+              id={`param-type-select-${currentPath}`}
+              disabled={isReadOnly}
+              className="select select-xs select-bordered text-xs"
+              value={param.type || "string"}
+              onChange={(e) => onTypeChange(currentPath, e.target.value)}
+            >
+              {PARAMETER_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          )}
+          {name === "Pre Tool" && (
+            <div className="flex flex-row items-center">
+              <label className="text-xs mb-0 mr-1 whitespace-nowrap">Value Path:</label>
+              <input
+                data-testid={`param-value-path-input-${currentPath}`}
+                id={`param-value-path-input-${currentPath}`}
+                disabled={isReadOnly}
+                type="text"
+                placeholder="your_path"
+                className={`input input-xs input-bordered text-xs ${
+                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                }`}
+                value={variablesPath[currentPath] || ""}
+                onChange={(e) => {
+                  const updatedVariablesPath = { ...variablesPath };
+                  updatedVariablesPath[currentPath] = e.target.value;
+                  onVariablePathChange(updatedVariablesPath);
+                }}
+              />
+            </div>
+          )}
           <button
             data-testid={`param-delete-button-${currentPath}`}
             id={`param-delete-button-${currentPath}`}
@@ -288,20 +313,24 @@ const ParameterCard = ({
       {/* Fill with AI and Value Path Options - Moved to Top */}
 
       {/* Description */}
-      <div className="text-xs">
-        <textarea
-          data-testid={`param-description-textarea-${currentPath}`}
-          id={`param-description-textarea-${currentPath}`}
-          placeholder="Description of parameter..."
-          className="col-[1] row-[1] m-0 w-full overflow-y-hidden whitespace-pre-wrap break-words outline-none bg-transparent p-0 caret-black placeholder:text-quaternary dark:caret-slate-200 text-xs resize-none"
-          value={param.description || ""}
-          onChange={(e) => onDescriptionChange(currentPath, e.target.value)}
-        />
-      </div>
+      {name !== "Pre Tool" && (
+        <div className="text-xs">
+          <textarea
+            data-testid={`param-description-textarea-${currentPath}`}
+            id={`param-description-textarea-${currentPath}`}
+            placeholder="Description of parameter..."
+            className="col-[1] row-[1] m-0 w-full overflow-y-hidden whitespace-pre-wrap break-words outline-none bg-transparent p-0 caret-black placeholder:text-quaternary dark:caret-slate-200 text-xs resize-none"
+            value={param.description || ""}
+            onChange={(e) => onDescriptionChange(currentPath, e.target.value)}
+          />
+        </div>
+      )}
 
       {/* Additional Options */}
-      <div className={`flex flex-row ${param.type !== "object" ? "justify-between" : "justify-end"}`}>
-        {param.type !== "object" && (
+      <div
+        className={`flex flex-row ${param.type !== "object" && name !== "Pre Tool" ? "justify-between" : "justify-end"}`}
+      >
+        {name !== "Pre Tool" && param.type !== "object" && (
           <div className="flex items-center gap-1 text-xs mb-1">
             <input
               id={`param-enum-checkbox-${currentPath}`}
@@ -343,7 +372,7 @@ const ParameterCard = ({
             )}
           </div>
         )}
-        {((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
+        {name !== "Pre Tool" && ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
           <div className="mb-1 flex flex-row ml-1 items-center justify-end">
             <label className="block text-xs mb-0 mr-1">Value Path:</label>
             <input
@@ -495,11 +524,13 @@ function FunctionParameterModal({
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
     if (prevFunctionNameRef.current !== functionName) {
-      const newVariablesPath = variables_path[functionName] || {};
-      setVariablesPath(newVariablesPath);
+      if (name !== "Pre Tool") {
+        const newVariablesPath = variables_path[functionName] || {};
+        setVariablesPath(newVariablesPath);
+      }
       prevFunctionNameRef.current = functionName;
     }
-  }, [functionName, variables_path]);
+  }, [functionName, variables_path, name]);
 
   useEffect(() => {
     if (!toolData) {
@@ -621,18 +652,6 @@ function FunctionParameterModal({
         },
       };
 
-      // For Pre Tool, mark new top-level parameters as required by default
-      if (name === "Pre Tool") {
-        const prevRequired = prevToolData.required_params || [];
-        const nextRequired = prevRequired.includes(newKey) ? prevRequired : [...prevRequired, newKey];
-
-        return {
-          ...prevToolData,
-          fields: newFields,
-          required_params: nextRequired,
-        };
-      }
-
       return {
         ...prevToolData,
         fields: newFields,
@@ -660,14 +679,6 @@ function FunctionParameterModal({
             type: "string",
             description: "",
           };
-
-          // For Pre Tool, mark new nested parameters as required by default
-          if (name === "Pre Tool") {
-            const prevRequired = field.required_params || [];
-            if (!prevRequired.includes(newKey)) {
-              field.required_params = [...prevRequired, newKey];
-            }
-          }
 
           return field;
         });

@@ -15,19 +15,35 @@ const Chatbot = ({ params, searchParams }) => {
     }
     return result;
   }, [searchParams]);
-  const { bridgeName, bridgeSlugName, chatbot_token, variablesKeyValue, configuration, service, bridgeType } =
-    useCustomSelector((state) => {
-      const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[searchParams?.version] || {};
-      return {
-        bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name,
-        bridgeSlugName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.slugName,
-        chatbot_token: state?.ChatBot?.chatbot_token || "",
-        variablesKeyValue: versionState?.variables || [],
-        configuration: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration,
-        service: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.service,
-        bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
-      };
-    });
+  const {
+    bridgeName,
+    bridgeSlugName,
+    chatbot_token,
+    variablesKeyValue,
+    configuration,
+    service,
+    bridgeType,
+    stream,
+    widget,
+    model_type,
+  } = useCustomSelector((state) => {
+    const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[searchParams?.version] || {};
+    return {
+      bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name,
+      bridgeSlugName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.slugName,
+      chatbot_token: state?.ChatBot?.chatbot_token || "",
+      variablesKeyValue: versionState?.variables || [],
+      configuration: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration,
+      service: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.service,
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
+      stream: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.stream,
+      model_type:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.type,
+      widget:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type
+          ?.is_template,
+    };
+  });
   // Convert variables array to object
   const variables = useMemo(() => {
     const coerceValue = (rawValue, fallback, type) => {
@@ -72,6 +88,39 @@ const Chatbot = ({ params, searchParams }) => {
       });
     }
   }, [bridgeName]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (window?.SendDataToChatbot) {
+        window.SendDataToChatbot({
+          stream: String(stream),
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(timeoutId);
+  }, [stream]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (window?.SendDataToChatbot) {
+        window.SendDataToChatbot({
+          image_model: String(model_type),
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(timeoutId);
+  }, [model_type]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (window?.SendDataToChatbot) {
+        window.SendDataToChatbot({
+          widget: String(widget),
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(timeoutId);
+  }, [widget]);
 
   // Send bridge slug name when it changes
   useEffect(() => {

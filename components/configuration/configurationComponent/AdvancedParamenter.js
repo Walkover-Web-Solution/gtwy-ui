@@ -1,9 +1,9 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { ADVANCED_BRIDGE_PARAMETERS, KEYS_NOT_TO_DISPLAY } from "@/jsonFiles/bridgeParameter";
+import { ADVANCED_BRIDGE_PARAMETERS } from "@/jsonFiles/bridgeParameter";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
-import { generateRandomID, openModal, trimPropertyNames } from "@/utils/utility";
+import { generateRandomID, getToolName, openModal, trimPropertyNames } from "@/utils/utility";
 import { getDefaultJsonSchema, generateCombinedSchema } from "@/utils/defaultJsonSchemas";
 import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
@@ -18,6 +18,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
 import { Check, CircleQuestionMark, ExternalLink } from "lucide-react";
 import RenderNode from "@/components/richUI/RenderNode";
+import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
 
 const AdvancedParameters = ({
   params,
@@ -44,6 +45,7 @@ const AdvancedParameters = ({
   });
   const [messages, setMessages] = useState([]);
   const [activeWidgetButtons, setActiveWidgetButtons] = useState([]);
+  const [jsonSchemaFullscreen, setJsonSchemaFullscreen] = useState(false);
   const dropdownContainerRef = useRef(null);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -74,10 +76,14 @@ const AdvancedParameters = ({
     bridge,
     richUiWidgets,
     showResponseType,
+    orgBridges,
+    allBridgesMap,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
     const integrationData = state?.bridgeReducer?.org?.[params?.org_id]?.integrationData || {};
+    const orgBridges = state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [];
+    const allBridgesMap = state?.bridgeReducer?.allBridgesMap || {};
 
     // Use bridgeData when isPublished=true, otherwise use versionData
     const activeData = isPublished ? bridgeDataFromState : versionData;
@@ -98,6 +104,8 @@ const AdvancedParameters = ({
       bridge: activeData,
       richUiWidgets: state?.richUiTemplateReducer?.templates || [],
       showResponseType: state.appInfoReducer.embedUserDetails.showResponseType,
+      orgBridges,
+      allBridgesMap,
     };
   });
   const [inputConfiguration, setInputConfiguration] = useState(configuration);
@@ -126,9 +134,6 @@ const AdvancedParameters = ({
     if (!modelInfoData) return [];
 
     return Object.entries(modelInfoData || {}).filter(([key, paramConfig]) => {
-      // Skip keys that shouldn't be displayed
-      if (KEYS_NOT_TO_DISPLAY?.includes(key)) return false;
-
       // Get level from ADVANCED_BRIDGE_PARAMETERS or default to 1
       const paramLevel = paramConfig?.level ?? 1;
       return paramLevel === level;
@@ -169,7 +174,7 @@ const AdvancedParameters = ({
               return toolChoice === value?._id;
             })
             .map((value) => ({
-              name: value?.script_id || value?.title,
+              name: integrationData?.[value?.script_id]?.title || value?.title,
               id: value?._id,
             }))
         : [];
@@ -180,8 +185,8 @@ const AdvancedParameters = ({
               const toolChoice = typeof tool_choice_data === "string" ? tool_choice_data : "";
               return toolChoice === item.bridge_id;
             })
-            .map(([name, item]) => ({
-              name,
+            .map(([id, item]) => ({
+              name: getToolName(item.bridge_id, allBridgesMap, orgBridges, integrationData),
               id: item.bridge_id,
             }))
         : [];
@@ -445,7 +450,6 @@ const AdvancedParameters = ({
   // Helper function to render parameter fields
   const renderParameterField = (key, { field, min = 0, max, step, default: defaultValue, options }) => {
     const isDeafaultObject = typeof modelInfoData?.[key]?.default === "object";
-    if (KEYS_NOT_TO_DISPLAY?.includes(key)) return null;
     if (key === "response_type" && isEmbedUser && !showResponseType) {
       return null;
     }
@@ -499,23 +503,28 @@ const AdvancedParameters = ({
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             )}
-            {field === "boolean" && (
-              <input
-                data-testid={`advanced-param-checkbox-${key}`}
-                id={`advanced-param-checkbox-${key}`}
-                name={key}
-                type="checkbox"
-                className="checkbox checkbox-xs"
-                checked={isDefaultValue ? true : inputConfiguration?.[key] || false}
-                onChange={(e) => {
-                  if (isDefaultValue) {
-                    setSliderValue(e.target.checked, key, isDeafaultObject);
-                  }
-                  handleInputChange(e, key);
-                }}
-                disabled={isReadOnly}
-              />
-            )}
+            {field === "boolean" &&
+              (() => {
+                const modelDefault = modelInfoData?.[key]?.default;
+                const checkedValue = isDefaultValue ? !!modelDefault : inputConfiguration?.[key] || false;
+                return (
+                  <input
+                    data-testid={`advanced-param-checkbox-${key}`}
+                    id={`advanced-param-checkbox-${key}`}
+                    name={key}
+                    type="checkbox"
+                    className="checkbox checkbox-xs"
+                    checked={checkedValue}
+                    onChange={(e) => {
+                      if (isDefaultValue) {
+                        setSliderValue(e.target.checked, key, isDeafaultObject);
+                      }
+                      handleInputChange(e, key);
+                    }}
+                    disabled={isReadOnly}
+                  />
+                );
+              })()}
           </div>
           {/* Set Default button - shows when parameter has default value and is not currently default */}
           {hasDefaultValue && !isDefaultValue && !isReadOnly && (
@@ -833,7 +842,7 @@ const AdvancedParameters = ({
                         id={`advanced-param-json-schema-header-${key}`}
                         className="flex justify-between items-center"
                       >
-                        <div className="flex gap-2 mt-4 ml-auto">
+                        <div className="flex gap-2 mt-4 ml-auto items-center">
                           <span
                             className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
                             onClick={() => {
@@ -854,16 +863,61 @@ const AdvancedParameters = ({
                         </div>
                       </div>
 
-                      <textarea
-                        id={`advanced-param-json-schema-textarea-${key}`}
-                        key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
-                        type="input"
-                        defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
-                        onBlur={(e) => {
-                          try {
-                            const parsedValue = JSON.parse(e.target.value);
+                      <div className="relative">
+                        <textarea
+                          id={`advanced-param-json-schema-textarea-${key}`}
+                          key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
+                          type="input"
+                          defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
+                          onBlur={(e) => {
+                            try {
+                              const parsedValue = JSON.parse(e.target.value);
 
-                            // Trim schema name and all property names
+                              // Trim schema name and all property names
+                              const trimmedValue = {
+                                ...parsedValue,
+                                name: parsedValue.name?.trim(),
+                                schema: parsedValue.schema
+                                  ? {
+                                      ...parsedValue.schema,
+                                      properties: trimPropertyNames(parsedValue.schema.properties),
+                                    }
+                                  : parsedValue.schema,
+                              };
+
+                              handleSelectChange(
+                                { target: { value: "json_schema" } },
+                                key,
+                                defaultValue,
+                                trimmedValue,
+                                true
+                              );
+                            } catch (error) {
+                              console.error(error);
+                              toast.error("Invalid JSON schema");
+                            }
+                          }}
+                          className="textarea textarea-bordered w-full h-32 font-mono text-xs pr-8"
+                          placeholder="Enter JSON schema..."
+                          disabled={isReadOnly}
+                        />
+                        <FullscreenEditorButton
+                          tooltip="Open JSON schema in fullscreen"
+                          className="absolute top-1 right-1 opacity-50 hover:opacity-100"
+                          onClick={() => {
+                            setJsonSchemaFullscreen(true);
+                          }}
+                        />
+                      </div>
+                      <FullscreenEditorModal
+                        modalId={MODAL_TYPE.FULLSCREEN_JSON_SCHEMA}
+                        title="JSON Schema"
+                        value={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
+                        isOpen={jsonSchemaFullscreen}
+                        onClose={() => setJsonSchemaFullscreen(false)}
+                        onSave={(finalVal) => {
+                          try {
+                            const parsedValue = JSON.parse(finalVal);
                             const trimmedValue = {
                               ...parsedValue,
                               name: parsedValue.name?.trim(),
@@ -874,7 +928,7 @@ const AdvancedParameters = ({
                                   }
                                 : parsedValue.schema,
                             };
-
+                            setObjectFieldValue(finalVal);
                             handleSelectChange(
                               { target: { value: "json_schema" } },
                               key,
@@ -887,9 +941,9 @@ const AdvancedParameters = ({
                             toast.error("Invalid JSON schema");
                           }
                         }}
-                        className="textarea textarea-bordered w-full h-32 font-mono text-xs"
                         placeholder="Enter JSON schema..."
                         disabled={isReadOnly}
+                        mono
                       />
                       <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
                       <JsonSchemaModal
@@ -1069,7 +1123,7 @@ const AdvancedParameters = ({
                         </div>
                         {Object.values(version_function_data)
                           .filter((func) => {
-                            const funcName = func?.script_id || func?.title || "";
+                            const funcName = integrationData?.[func?.script_id]?.title || func?.title || "";
                             return funcName.toLowerCase().includes(searchQuery.toLowerCase());
                           })
                           .map((func) => (
@@ -1077,7 +1131,8 @@ const AdvancedParameters = ({
                               key={func?._id}
                               className="p-2 hover:bg-base-200 cursor-pointer"
                               onClick={() => {
-                                setSelectedOptions([{ name: func?.title, id: func?._id }]);
+                                const toolName = integrationData?.[func?.script_id]?.title || func?.title;
+                                setSelectedOptions([{ name: toolName, id: func?._id }]);
                                 handleDropdownChange(func?._id, key);
                                 setShowDropdown(false);
                               }}
@@ -1111,14 +1166,23 @@ const AdvancedParameters = ({
                         </div>
                         {Object.entries(connected_agents)
                           .filter(([name, agent]) => {
-                            return name.toLowerCase().includes(searchQuery.toLowerCase());
+                            const agentName = getToolName(agent.bridge_id, allBridgesMap, orgBridges, integrationData);
+                            return String(agentName || name)
+                              .toLowerCase()
+                              .includes(searchQuery.toLowerCase());
                           })
                           .map(([name, agent]) => (
                             <div
                               key={agent.bridge_id}
                               className="p-2 hover:bg-base-200 cursor-pointer"
                               onClick={() => {
-                                setSelectedOptions([{ name, id: agent.bridge_id }]);
+                                const agentName = getToolName(
+                                  agent.bridge_id,
+                                  allBridgesMap,
+                                  orgBridges,
+                                  integrationData
+                                );
+                                setSelectedOptions([{ name: agentName, id: agent.bridge_id }]);
                                 handleDropdownChange(agent.bridge_id, key);
                                 setShowDropdown(false);
                               }}
@@ -1135,7 +1199,9 @@ const AdvancedParameters = ({
                                   className="radio radio-xs"
                                   disabled={isReadOnly}
                                 />
-                                <span className="font-medium text-xs">{name}</span>
+                                <span className="font-medium text-xs">
+                                  {getToolName(agent.bridge_id, allBridgesMap, orgBridges, integrationData)}
+                                </span>
                               </label>
                             </div>
                           ))}

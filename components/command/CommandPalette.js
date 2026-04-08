@@ -582,17 +582,23 @@ const CommandPalette = ({ isEmbedUser }) => {
         !pathname.endsWith("/org") &&
         !pathname.endsWith("/login")
       ) {
-        e.preventDefault();
-        openPalette();
+        const isPageLoading = document.querySelector('[data-testid="loading-spinner"]') !== null;
+        if (!isPageLoading) {
+          e.preventDefault();
+          openPalette();
+        }
       }
       // Check for Ctrl+/ or Cmd+/ to toggle keyboard shortcuts modal
       if ((e.ctrlKey || e.metaKey) && e.key === "/" && !isEmbedUser) {
-        e.preventDefault();
-        const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-        if (modal && modal.hasAttribute("open")) {
-          closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-        } else {
-          openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+        const isPageLoading = document.querySelector('[data-testid="loading-spinner"]') !== null;
+        if (!isPageLoading) {
+          e.preventDefault();
+          const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          if (modal && modal.hasAttribute("open")) {
+            closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          } else {
+            openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          }
         }
       }
       if (e.key === "Escape") {
