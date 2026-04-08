@@ -5,7 +5,7 @@ import { shallowEqual } from "react-redux";
 // Specialized selector for configuration state
 export const useConfigurationSelector = (params, searchParams) => {
   const paramsId = params?.id;
-  const version = searchParams?.version;
+  const version = searchParams?.version || searchParams?.get?.("version");
   const isPublished = searchParams?.isPublished === "true" || searchParams?.get?.("isPublished") === "true";
 
   return useCustomSelector(
@@ -30,7 +30,7 @@ export const useConfigurationSelector = (params, searchParams) => {
           modelName: isPublished ? bridgeData?.configuration?.model : versionData?.configuration?.model,
           isLoading: state?.bridgeReducer?.loading,
           hasError: state?.bridgeReducer?.error,
-          hasData: !!(bridgeData || versionData),
+          hasData: !!activeData,
           oldContent: bridgeData?.configuration?.prompt || "",
         };
       },
@@ -43,7 +43,7 @@ export const useConfigurationSelector = (params, searchParams) => {
 // Specialized selector for prompt-related state
 export const usePromptSelector = (params, searchParams) => {
   const paramsId = params?.id;
-  const version = searchParams?.version;
+  const version = searchParams?.version || searchParams?.get?.("version");
   const isPublished = searchParams?.isPublished === "true" || searchParams?.get?.("isPublished") === "true";
   return useCustomSelector(
     useCallback(

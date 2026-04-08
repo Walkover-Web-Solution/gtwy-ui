@@ -142,7 +142,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const containerRef = useRef(null);
 
   // Optimized selector with better memoization
-  const { bridgeType, versionService, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
+  const { bridgeType, versionService, bridgeName, isFocus, reduxPrompt, bridge, hasError, hasData } =
     useConfigurationSelector(resolvedParams, resolvedSearchParams);
 
   // Separate selector for allbridges to prevent unnecessary re-renders
@@ -572,8 +572,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     mountRef.current = true;
   }, [bridgeType]);
 
-  // Show skeleton loading state only for initial load (when no data exists)
-  if (isLoading && !hasData && !hasError) {
+  if (!hasData && !hasError) {
     return (
       <div className="w-full h-full">
         <ConfigurationSkeleton />
