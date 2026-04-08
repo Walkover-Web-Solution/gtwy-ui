@@ -43,6 +43,7 @@ function Page({ params, searchParams }) {
   const [threadPage, setThreadPage] = useState(1);
   const [hasMoreThreadData, setHasMoreThreadData] = useState(true);
   const [isErrorTrue, setIsErrorTrue] = useState(false);
+  const [isBatchMode, setIsBatchMode] = useState(false);
 
   const closeSliderOnEsc = useCallback((event) => {
     if (event.key === "Escape") setIsSliderOpen(false);
@@ -90,7 +91,18 @@ function Page({ params, searchParams }) {
       const endDate = resolvedSearchParams?.end;
       const keyword = searchRef.current?.value || "";
       const result = await dispatch(
-        getHistoryAction(resolvedParams.id, 1, filterOption, isErrorTrue, selectedVersion, keyword, startDate, endDate)
+        getHistoryAction(
+          resolvedParams.id,
+          1,
+          filterOption,
+          isErrorTrue,
+          selectedVersion,
+          keyword,
+          startDate,
+          endDate,
+          undefined,
+          isBatchMode ? "batch" : undefined
+        )
       );
       const version = search.get("version") || selectedVersion;
       const type = search.get("type") || resolvedSearchParams?.type || "";
@@ -174,11 +186,13 @@ function Page({ params, searchParams }) {
         selectedVersion,
         keyword,
         startDate,
-        endDate
+        endDate,
+        undefined,
+        isBatchMode ? "batch" : undefined
       )
     );
     if (result?.length < 40) setHasMore(false);
-  }, [page, resolvedParams.id]);
+  }, [page, resolvedParams.id, isBatchMode]);
 
   if (loading || !historyData)
     return (
@@ -246,6 +260,8 @@ function Page({ params, searchParams }) {
             selectedVersion={selectedVersion}
             setIsErrorTrue={setIsErrorTrue}
             isErrorTrue={isErrorTrue}
+            isBatchMode={isBatchMode}
+            setIsBatchMode={setIsBatchMode}
           />
         </React.Suspense>
       </div>

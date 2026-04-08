@@ -54,7 +54,8 @@ export const getThreads = async (
   keyword,
   startDate,
   endDate,
-  filterBy
+  filterBy,
+  type
 ) => {
   try {
     const params = {
@@ -64,6 +65,10 @@ export const getThreads = async (
       version_id: versionId === "all" || versionId === "undefined" ? null : versionId,
       error: isErrorTrue ? "true" : "false",
     };
+
+    if (type) {
+      params.type = type;
+    }
 
     if (keyword) {
       params.keyword = keyword;

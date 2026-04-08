@@ -17,7 +17,7 @@ import {
 } from "../reducer/historyReducer";
 
 export const getHistoryAction =
-  (id, page = 1, user_feedback, isErrorTrue, selectedVersion, keyword, startDate, endDate, filterBy) =>
+  (id, page = 1, user_feedback, isErrorTrue, selectedVersion, keyword, startDate, endDate, filterBy, type) =>
   async (dispatch) => {
     try {
       const data = await getThreads(
@@ -29,7 +29,8 @@ export const getHistoryAction =
         keyword,
         startDate,
         endDate,
-        filterBy
+        filterBy,
+        type
       );
       if (data && data.data) {
         dispatch(fetchAllHistoryReducer({ data: data.data, page }));
