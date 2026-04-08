@@ -45,6 +45,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE?.DELETE_KNOWLEDGE_BASE_MODAL);
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
     showSuggestion: false,
@@ -149,7 +150,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         />
         {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
           .filter((item) => {
-            const matchesSearch = item?.title?.toLowerCase()?.includes(searchQuery?.toLowerCase());
+            const matchesSearch = item?.title?.toLowerCase()?.includes(normalizedSearchQuery);
             // Check if item already exists in knowbaseVersionData (handle both old and new format)
             const alreadyExists = knowbaseVersionData?.some((docItem) => {
               if (typeof docItem === "string") {
