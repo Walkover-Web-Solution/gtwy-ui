@@ -82,6 +82,27 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const [isAdminMode, setIsAdminMode] = useState(false); // New state for admin settings mode
   // Theme detection placeholder (not actively used)
 
+  const dispatchInviteDialog = useCallback(() => {
+    const authToken = getFromCookies("proxy_token") || "";
+    const fireEvent = () => window.dispatchEvent(new CustomEvent("openAddUserDialog", { detail: { authToken } }));
+    if (typeof window.initVerification === "function") {
+      fireEvent();
+    } else {
+      const proxySrc = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
+      const existing = document.querySelector(`script[src="${proxySrc}"]`);
+      if (!existing) {
+        const script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src = proxySrc;
+        script.onload = fireEvent;
+        script.onerror = (err) => console.error("Failed to load proxy script:", err);
+        document.body.appendChild(script);
+      } else {
+        existing.addEventListener("load", fireEvent, { once: true });
+      }
+    }
+  }, []);
+
   // Effect to detect mobile screen size
   useEffect(() => {
     const handleResize = () => {
@@ -440,7 +461,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   onClick={() => {
                     setIsOrgDropdownExpanded(false);
                     setIsOrgDropdownOpen(false);
-                    window.dispatchEvent(new Event("openAddUserDialog"));
+                    dispatchInviteDialog();
                   }}
                   className="text-xs text-blue-400 hover:text-blue-600 transition-colors font-medium"
                 >
