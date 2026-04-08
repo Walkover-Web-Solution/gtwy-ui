@@ -1,4 +1,5 @@
 "use client";
+import { PROXY_SCRIPT_SRC } from "@/utils/enums";
 import { getFromCookies } from "@/utils/utility";
 import { useEffect } from "react";
 
@@ -22,7 +23,7 @@ const page = () => {
 
     const scriptSrc = document.createElement("script");
     scriptSrc.type = "text/javascript";
-    scriptSrc.src = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
+    scriptSrc.src = PROXY_SCRIPT_SRC;
 
     scriptSrc.onload = () => {
       if (window.initVerification) {

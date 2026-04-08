@@ -1,10 +1,9 @@
 "use client";
+import { PROXY_SCRIPT_SRC } from "@/utils/enums";
 import { getFromCookies } from "@/utils/utility";
 import { useEffect } from "react";
 
 export const runtime = "edge";
-
-const PROXY_SCRIPT_SRC = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
 
 const removeProxyScript = () => {
   const existing = document.querySelector(`script[src="${PROXY_SCRIPT_SRC}"]`);
