@@ -283,9 +283,9 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "integrations",
   }));
 
-  const authGroup = filterBy(authData, ["name", "service", "_id"]).map((d) => ({
-    id: d._id,
-    title: d.name || d._id,
+  const authGroup = filterBy(authData, ["name", "service", "id", "authkey"]).map((d) => ({
+    id: d.id,
+    title: d.name || d.id,
     subtitle: "Auth Key",
     type: "Auths",
   }));
