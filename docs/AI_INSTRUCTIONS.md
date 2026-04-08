@@ -200,3 +200,166 @@ When creating a new component:
      - Validation (`isValidJson`, `validateUrl`)
      - UI Logic (`openModal`, `closeModal`, `toggleSidebar`)
      - Data formatting (`updatedData`, `removeDuplicateFields`)
+
+---
+
+# Embed Architecture
+
+The embed system allows GTWY agents to be embedded as iframes in external websites. It is a core product surface and touches multiple layers of the application.
+
+## High-Level Flow
+
+```
+External Website                         GTWY Embed (iframe)
+─────────────────                        ────────────────────
+<script id="gtwy-main-script"           app/embed/layout.js
+  embedToken="..." src="gtwy.js" />        ↓
+        ↓                               Parses URL params → sets sessionStorage
+GtwyEmbedManager (public/gtwy.js)       Dispatches setEmbedUserDetailsAction()
+  → POST /api/embed/login                   ↓
+  → Creates iframe container             Redux: appInfoReducer.embedUserDetails
+  → Exposes window.openGtwy()               ↓
+        ↓                               Renders agent UI (chat, config, etc.)
+postMessage('gtwyInterfaceData', {...})      ↓
+        ↑                               sendDataToParent(status, data, message)
+postMessage({ type: 'gtwy', ... })       → window.parent.postMessage(...)
+```
+
+## Key Files
+
+| File                              | Purpose                                                                                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public/gtwy.js`                  | Embed manager script loaded on external sites. Creates iframe, handles auth, exposes global API (`window.openGtwy`, `window.closeGtwy`, `window.GtwyEmbed`) |
+| `app/embed/layout.js`             | Iframe entry point. Parses URL params, listens for `postMessage`, dispatches Redux state, routes to agent creation or configuration                         |
+| `store/reducer/appInfoReducer.js` | Stores `embedUserDetails` (theme, models, prompt, UI toggles)                                                                                               |
+| `store/action/bridgeAction.js`    | `createEmbedAgentAction()` — creates agents from embed context                                                                                              |
+| `utils/utility.js`                | `sendDataToParent()` — sends postMessage to parent window                                                                                                   |
+| `utils/enums.js`                  | `EMBED_OBJECT_KEYS`, `EMBED_ARRAY_KEYS`, `EMBED_PASSTHROUGH_KEYS`, `EMBED_SKIP_KEYS` — config key classification                                            |
+
+## Embed Components
+
+| Component            | Path                                                           | Purpose                                                     |
+| -------------------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| `ThemePaletteEditor` | `components/gtwy_embed/ThemePaletteEditor.js`                  | OKLCH color palette editor for light/dark themes            |
+| `ToolsConfiguration` | `components/gtwy_embed/ToolsConfiguration.js`                  | Tools/functions configuration for embed agents              |
+| `EmbedPromptBuilder` | `components/gtwy_embed/EmbedPromptBuilder.js`                  | Dynamic prompt builder with `{{variable}}` field generation |
+| `EmbedList`          | `components/configuration/configurationComponent/EmbedList.js` | Tools/functions list UI with prebuilt tools support         |
+
+## RAG Embed
+
+RAG (Knowledge Base) embed is a separate embed surface for document management:
+
+| Component            | Path                                        | Purpose                                   |
+| -------------------- | ------------------------------------------- | ----------------------------------------- |
+| `RAGEmbedContent`    | `components/ragEmbed/RAGEmbedContent.js`    | Integration guide and script setup        |
+| `RAGEmbedDetailView` | `components/ragEmbed/RAGEmbedDetailView.js` | Detail view with integration/testing tabs |
+| `RAGIntegrationTab`  | `components/ragEmbed/RAGIntegrationTab.js`  | Integration documentation                 |
+| `RAGTestingTab`      | `components/ragEmbed/RAGTestingTab.js`      | Test interface for RAG global functions   |
+
+**RAG Global API:** `window.openRag()`, `window.closeRag()`, `window.showDocuments()`, `window.openDocument(docId)`
+
+## Communication Protocol
+
+### Parent → Embed (postMessage)
+
+```javascript
+sendMessageToGtwy({
+  type: "gtwyInterfaceData",
+  data: {
+    agent_id,
+    agent_name,
+    agent_purpose,
+    meta,
+    history,
+    theme_config,
+    themeMode,
+    models,
+    prompt,
+    tools_id,
+    slide,
+    hideCloseButton,
+    hideFullScreenButton,
+    hideHeader,
+    defaultOpen,
+    parentId,
+  },
+});
+```
+
+### Embed → Parent (postMessage)
+
+```javascript
+// Loaded notification
+window.parent.postMessage({ type: "gtwyLoaded", data: "gtwyLoaded" }, "*");
+
+// Agent events via sendDataToParent()
+window.parent.postMessage(
+  {
+    type: "gtwy",
+    status: "drafted" | "success",
+    data: { agent_id, name },
+    message: "...",
+  },
+  "*"
+);
+
+// Close notification
+window.parent.postMessage({ type: "closeGtwy", data: {} }, "*");
+```
+
+## Embed Redux State Shape
+
+```javascript
+state.appInfoReducer.embedUserDetails = {
+  isEmbedUser: boolean,
+  theme_config: { light: {...}, dark: {...} },  // OKLCH color tokens
+  themeMode: 'light' | 'dark' | 'system',
+  models: [],
+  apikey_object_id: string,
+  prompt: {
+    useDefaultPrompt: boolean,
+    customPrompt: string,
+    embedFields: [{ name, type, hidden, displayValue, description }]
+  },
+  hideAdvancedParameters: boolean,
+  hideCreateManuallyButton: boolean,
+  hideAdvancedConfigurations: boolean,
+  hidePreTool: boolean,
+  // ... additional UI toggle flags
+}
+```
+
+## Theme System in Embed
+
+1. Parent sends `theme_config` (OKLCH color values for light/dark) and `themeMode`
+2. `useThemeManager` hook applies theme via `document.documentElement.setAttribute('data-theme', ...)`
+3. `applyThemeObject()` in `utils/themeLoader.js` injects `<style id="gtwy-theme-style">` with CSS variables
+4. Colors map to DaisyUI variables (`--b1`, `--p`, `--s`, `--a`, etc.) via `VAR_ALIAS_MAP`
+
+## Script Attributes (gtwy.js)
+
+The embed script reads these attributes from `<script id="gtwy-main-script">`:
+
+| Attribute              | Purpose                                                 |
+| ---------------------- | ------------------------------------------------------- |
+| `embedToken`           | Authentication token                                    |
+| `parentId`             | DOM container ID (optional, defaults to fixed position) |
+| `slide`                | Position: `"full"` \| `"left"` \| `"right"`             |
+| `defaultOpen`          | Auto-open on page load                                  |
+| `hideCloseButton`      | Hide close button in header                             |
+| `hideFullScreenButton` | Hide fullscreen toggle                                  |
+| `hideHeader`           | Hide entire embed header                                |
+| `agent_id`             | Target a specific agent                                 |
+| `agent_name`           | Create agent with this name                             |
+| `agent_purpose`        | Create agent with AI-generated config                   |
+
+## Extensible Config Schema
+
+`utils/integrationSliderUtils.js` defines 80+ configurable options organized by category (Interface, Display, Advanced, Theme, Pre-Tool). When adding new embed configuration options, add them to `CONFIG_SCHEMA` and the appropriate `EMBED_*_KEYS` set in `enums.js`.
+
+## Guidelines for Modifying Embed
+
+1. **Adding new config options**: Add key to the appropriate set in `EMBED_OBJECT_KEYS` / `EMBED_ARRAY_KEYS` / `EMBED_PASSTHROUGH_KEYS` in `utils/enums.js`, handle in `app/embed/layout.js` message handler, and add to `embedUserDetails` reducer state.
+2. **Adding new postMessage events**: Follow the existing pattern — define type constant, handle in layout.js `window.addEventListener('message', ...)`, and document the event contract.
+3. **Modifying theme tokens**: Update both `ThemePaletteEditor.js` and `utils/themeLoader.js` `VAR_ALIAS_MAP` to keep the editor and runtime in sync.
+4. **Testing embeds locally**: Use `public/gtwy_embed_local.js` which points to `localhost`.
