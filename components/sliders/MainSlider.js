@@ -23,7 +23,7 @@ import { setCurrentOrgIdAction } from "@/store/action/orgAction";
 import OrgSlider from "./OrgSlider";
 import TutorialModal from "@/components/modals/TutorialModal";
 import DemoModal from "../modals/DemoModal";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, PROXY_SCRIPT_SRC } from "@/utils/enums";
 import Protected from "../Protected";
 import BridgeSlider from "./BridgeSlider";
 import {
@@ -88,7 +88,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     if (typeof window.initVerification === "function") {
       fireEvent();
     } else {
-      const proxySrc = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
+      const proxySrc = PROXY_SCRIPT_SRC;
       const existing = document.querySelector(`script[src="${proxySrc}"]`);
       if (!existing) {
         const script = document.createElement("script");

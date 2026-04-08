@@ -8,6 +8,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import ErrorPage from "@/app/not-found";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
 import { trackAuthEvent } from "@/utils/posthog";
+import { PROXY_SCRIPT_SRC } from "@/utils/enums";
 
 const handleUserDetailsAndSwitchOrg = async (url, dispatch, userDetails) => {
   const userDetailsData = await dispatch(userDetails());
@@ -121,7 +122,7 @@ const WithAuth = (Children) => {
             }
           }, 100);
         };
-        script.src = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
+        script.src = PROXY_SCRIPT_SRC;
         document.body.appendChild(script); // Add the script to the page
       };
 

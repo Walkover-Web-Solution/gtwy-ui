@@ -331,3 +331,5 @@ export const PRE_TOOL_CONFIG_SCHEMA = {
 };
 
 export const ON_CLICK_ACTION_TYPES = ["reply", "sendDataToFrontend"];
+
+export const PROXY_SCRIPT_SRC = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
