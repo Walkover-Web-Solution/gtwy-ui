@@ -207,38 +207,24 @@ const Sidebar = memo(
 
         setThreadPage(1);
 
-        // Navigate with search parameters
-        const searchUrl = new URL(window.location.href);
-        searchUrl.searchParams.set("version", searchParams?.version || "all");
-        if (startDate) searchUrl.searchParams.set("start", startDate);
-        if (endDate) searchUrl.searchParams.set("end", endDate);
-        if (currentMessageId) {
-          searchUrl.searchParams.set("message_id", currentMessageId);
-        }
-        if (searchParams?.type) searchUrl.searchParams.set("type", searchParams.type);
-
-        router.push(searchUrl.pathname + searchUrl.search, undefined, { shallow: true });
+        const finalUrl = new URL(window.location.href);
+        finalUrl.searchParams.set("version", searchParams?.version || "all");
+        if (startDate) finalUrl.searchParams.set("start", startDate);
+        if (endDate) finalUrl.searchParams.set("end", endDate);
+        if (currentMessageId) finalUrl.searchParams.set("message_id", currentMessageId);
+        if (searchParams?.type) finalUrl.searchParams.set("type", searchParams.type);
 
         if (result?.data?.length) {
           const firstResult = result.data[0];
-          const threadId = encodeURIComponent(firstResult.thread_id.replace(/&/g, "%26"));
-          const subThreadId = encodeURIComponent(
-            firstResult.sub_thread?.[0]?.sub_thread_id || threadId.replace(/&/g, "%26")
-          );
-
-          const resultUrl = new URL(window.location.href);
-          resultUrl.searchParams.set("version", searchParams?.version || "all");
-          resultUrl.searchParams.set("thread_id", threadId);
-          resultUrl.searchParams.set("subThread_id", subThreadId);
-          if (startDate) resultUrl.searchParams.set("start", startDate);
-          if (endDate) resultUrl.searchParams.set("end", endDate);
-          if (currentMessageId) {
-            resultUrl.searchParams.set("message_id", currentMessageId);
-          }
-          if (searchParams?.type) resultUrl.searchParams.set("type", searchParams.type);
-
-          router.push(resultUrl.pathname + resultUrl.search, undefined, { shallow: true });
+          const rawThreadId = firstResult.thread_id;
+          const rawSubThreadId = firstResult.sub_thread?.[0]?.sub_thread_id || rawThreadId;
+          finalUrl.searchParams.set("thread_id", rawThreadId);
+          finalUrl.searchParams.set("subThread_id", rawSubThreadId);
+          router.push(finalUrl.pathname + finalUrl.search, undefined, { shallow: true });
         } else {
+          finalUrl.searchParams.delete("thread_id");
+          finalUrl.searchParams.delete("subThread_id");
+          router.push(finalUrl.pathname + finalUrl.search, undefined, { shallow: true });
           dispatch(clearThreadData());
         }
       } catch (error) {
@@ -476,7 +462,17 @@ const Sidebar = memo(
                   <button
                     data-testid="history-sidebar-filter-by-apply"
                     id="history-sidebar-filter-by-apply"
-                    className="btn btn-primary btn-xs w-full mt-2"
+                    disabled={(() => {
+                      try {
+                        const parsed = JSON.parse(filterByText);
+                        return !Object.values(parsed).some((v) =>
+                          typeof v === "object" ? Object.keys(v).length > 0 : v && v.trim() !== ""
+                        );
+                      } catch {
+                        return true;
+                      }
+                    })()}
+                    className="btn btn-primary btn-xs w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => {
                       let parsedFilterBy;
                       try {
