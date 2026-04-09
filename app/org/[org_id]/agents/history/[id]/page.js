@@ -151,7 +151,8 @@ function Page({ params, searchParams }) {
       if (currentRole === "user" || currentRole === "tools_call" || currentRole === "error") {
         try {
           setSelectedItem({ variables: item.variables, ...item, value });
-          if (value === "system Prompt" || value === "more" || item?.[value] === null) setIsSliderOpen(true);
+          const shouldOpenSidebar = value === "more" || item?.[value] === null;
+          setIsSliderOpen(shouldOpenSidebar);
         } catch (error) {
           console.error("Failed to fetch single message:", error);
         }
