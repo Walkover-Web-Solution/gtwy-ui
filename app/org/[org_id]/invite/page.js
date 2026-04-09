@@ -37,7 +37,7 @@ function UserManagementPage({ params }) {
       authToken: getFromCookies("proxy_token") || "",
       pass: true,
       type: "user-management",
-      exclude_role_ids: process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID,
+      exclude_role_ids: [process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID],
       success: () => {},
       failure: (error) => console.error("failure reason", error),
     });
