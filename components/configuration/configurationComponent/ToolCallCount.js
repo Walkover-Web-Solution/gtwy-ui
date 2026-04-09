@@ -10,12 +10,14 @@ function ToolCallCount({ params, searchParams, isPublished, isEditor = true }) {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const dispatch = useDispatch();
-  const { tool_call_count, modelType, model } = useCustomSelector((state) => {
+  const { maximum_iterations, modelType, model } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
 
     return {
-      tool_call_count: isPublished ? bridgeDataFromState?.tool_call_count : versionData?.tool_call_count,
+      maximum_iterations: isPublished
+        ? bridgeDataFromState?.settings?.maximum_iterations
+        : versionData?.settings?.maximum_iterations,
       modelType: isPublished
         ? bridgeDataFromState?.configuration?.type?.toLowerCase()
         : versionData?.configuration?.type?.toLowerCase(),
@@ -29,7 +31,11 @@ function ToolCallCount({ params, searchParams, isPublished, isEditor = true }) {
       updateBridgeVersionAction({
         bridgeId: params.id,
         versionId: searchParams.version,
-        dataToSend: { tool_call_count: new_value },
+        dataToSend: {
+          settings: {
+            maximum_iterations: new_value,
+          },
+        },
       })
     );
   };
@@ -59,8 +65,8 @@ function ToolCallCount({ params, searchParams, isPublished, isEditor = true }) {
         className="input input-sm input-bordered w-full"
         min={1}
         max={30}
-        key={tool_call_count}
-        defaultValue={tool_call_count || 3}
+        key={maximum_iterations}
+        defaultValue={maximum_iterations || 3}
         onInput={(e) => {
           const value = parseInt(e.target.value, 10);
           if (value > 30) e.target.value = 30;
