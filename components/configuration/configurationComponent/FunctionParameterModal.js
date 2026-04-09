@@ -720,14 +720,14 @@ function FunctionParameterModal({
       };
     });
     setVariablesPath((prev) => {
-      const updatedPath = { ...prev };
-      delete updatedPath[path];
-      const remainingPaths = Object.entries(updatedPath);
-      const formattedPaths = {};
-      remainingPaths.forEach(([key, value]) => {
-        formattedPaths[key] = value;
+      const next = {};
+      Object.entries(prev || {}).forEach(([key, value]) => {
+        if (key === path || key.startsWith(`${path}.`)) {
+          return;
+        }
+        next[key] = value;
       });
-      return formattedPaths;
+      return next;
     });
     setIsModified(true);
   }, []);
@@ -858,9 +858,24 @@ function FunctionParameterModal({
         };
       });
 
+      const oldPath = currentPath;
+      const newPath = [...parentPath, newName].join(".");
+      setVariablesPath((prev) => {
+        const next = {};
+        Object.entries(prev || {}).forEach(([key, value]) => {
+          if (key === oldPath || key.startsWith(`${oldPath}.`)) {
+            const suffix = key.slice(oldPath.length);
+            next[`${newPath}${suffix}`] = value;
+            return;
+          }
+          next[key] = value;
+        });
+        return next;
+      });
+
       setIsModified(true);
     },
-    [updateField]
+    [updateField, setVariablesPath]
   );
 
   const handleToolNameChange = useCallback(() => {

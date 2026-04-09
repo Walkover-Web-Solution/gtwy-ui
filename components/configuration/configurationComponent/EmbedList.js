@@ -124,6 +124,25 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     () => bridge_functions.map((id) => function_data?.[id]),
     [bridge_functions, function_data]
   );
+
+  const getValidVariablePathSet = (fields = {}, parentPath = []) => {
+    const validPaths = new Set();
+
+    const walk = (currentFields = {}, pathParts = []) => {
+      Object.entries(currentFields || {}).forEach(([key, field]) => {
+        const nextPathParts = [...pathParts, key];
+        const currentPath = nextPathParts.join(".");
+        validPaths.add(currentPath);
+
+        if (field?.type === "object" && field?.parameter && typeof field.parameter === "object") {
+          walk(field.parameter, nextPathParts);
+        }
+      });
+    };
+
+    walk(fields, parentPath);
+    return validPaths;
+  };
   const handleSelectFunction = (functionId) => {
     if (functionId) {
       dispatch(
@@ -150,7 +169,8 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           dataToSend: {
             functionData: {
               function_id: id,
-              function_name: name,
+              function_operation: "0",
+              script_id: name,
             },
           },
         })
@@ -159,6 +179,15 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   };
 
   const handleSaveFunctionData = () => {
+    const validVariablePathSet = getValidVariablePathSet(toolData?.fields || {});
+    const cleanedVariablesPath = Object.fromEntries(
+      Object.entries(variablesPath || {}).filter(([pathKey]) => validVariablePathSet.has(pathKey))
+    );
+
+    if (!isEqual(cleanedVariablesPath, variablesPath)) {
+      setVariablesPath(cleanedVariablesPath);
+    }
+
     if (!isEqual(toolData, functionData)) {
       const { _id, ...dataToSend } = toolData;
       dispatch(
@@ -170,12 +199,12 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
       );
       setToolData("");
     }
-    if (!isEqual(variablesPath, variables_path[function_name])) {
+    if (!isEqual(cleanedVariablesPath, variables_path[function_name])) {
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { variables_path: { [function_name]: variablesPath } },
+          dataToSend: { variables_path: { [function_name]: cleanedVariablesPath } },
         })
       );
     }
