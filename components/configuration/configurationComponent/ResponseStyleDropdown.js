@@ -108,7 +108,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
         <option value="" disabled>
           Select a Response Style
         </option>
-        <option value="">None</option>
+        <option value="{}">None</option>
         {RESPONSE_STYLES.map((style) => (
           <option key={style.value} value={style.value}>
             {style.value}

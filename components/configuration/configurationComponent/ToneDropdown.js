@@ -140,7 +140,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
         <option value="" disabled>
           Select a tone
         </option>
-        <option value="">None</option>
+        <option value="{}">None</option>
         {TONES.map((tone) => (
           <option key={tone.value} value={tone.value}>
             {tone.value}
