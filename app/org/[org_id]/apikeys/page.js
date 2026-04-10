@@ -23,7 +23,6 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
 import ApiKeyGuideSlider from "@/components/configuration/configurationComponent/ApiKeyGuide";
 import ConnectedAgentsModal from "@/components/modals/ConnectedAgentsModal";
-import { toast } from "react-toastify";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 export const runtime = "edge";
@@ -146,10 +145,7 @@ const Page = () => {
         apikey_usage: 0,
         org_id: item.org_id,
       };
-      const response = await dispatch(updateApikeyAction(dataToSend));
-      if (response) {
-        toast.success("API key reset successfully");
-      }
+      await dispatch(updateApikeyAction(dataToSend));
     },
     [apikeyData, dispatch]
   );
