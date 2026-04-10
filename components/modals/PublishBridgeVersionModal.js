@@ -34,47 +34,68 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [convertToTemplate, setConvertToTemplate] = useState(false);
   const publishDropdownRef = useRef(null);
 
-  const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } =
-    useCustomSelector((state) => {
-      const isPublished = searchParams?.get("isPublished") === "true";
-      const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
-      const versionDataFromState =
-        state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+  const {
+    bridge,
+    versionData,
+    bridgeData,
+    agentList,
+    bridge_summary,
+    allBridgesMap,
+    prompt,
+    isEditor,
+    activeService,
+    hasApiKeyForActiveService,
+    activeServiceDisplayName,
+  } = useCustomSelector((state) => {
+    const isPublished = searchParams?.get("isPublished") === "true";
+    const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
+    const versionDataFromState = state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+    const activeData = isPublished ? bridgeDataFromState : versionDataFromState;
+    const rawService = activeData?.service || bridgeDataFromState?.service || "";
+    const serviceKey = typeof rawService === "string" ? rawService.toLowerCase() : "";
+    const serviceApiKeyMap = activeData?.apikey_object_id || {};
+    const services = state?.serviceReducer?.services || [];
+    const serviceLabel =
+      (Array.isArray(services) ? services.find((s) => s?.value === serviceKey)?.displayName : "") || serviceKey;
 
-      // Check if user has editor permissions
-      const orgId = params?.org_id;
-      const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
-      const currentUser = state.userDetailsReducer.userDetails;
-      const agentUsers = bridgeDataFromState?.users || [];
+    // Check if user has editor permissions
+    const orgId = params?.org_id;
+    const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
+    const currentUser = state.userDetailsReducer.userDetails;
+    const agentUsers = bridgeDataFromState?.users || [];
 
-      // Determine if user is allowed to edit based on role and agent access
-      const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
-      // Updated canEdit condition
-      const canEdit =
-        (currentOrgRole === "Editor" &&
-          (agentUsers?.length === 0 ||
-            !agentUsers ||
-            (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
-        (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
-        currentOrgRole === "Creator" ||
-        isAdminOrOwner;
+    // Determine if user is allowed to edit based on role and agent access
+    const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
+    // Updated canEdit condition
+    const canEdit =
+      (currentOrgRole === "Editor" &&
+        (agentUsers?.length === 0 ||
+          !agentUsers ||
+          (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
+      (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
+      currentOrgRole === "Creator" ||
+      isAdminOrOwner;
 
-      return {
-        bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
-        versionData: versionDataFromState,
-        bridgeData: bridgeDataFromState,
-        agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
-        bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
-        allBridgesMap: state.bridgeReducer.allBridgesMap || {},
-        prompt: isPublished
-          ? bridgeDataFromState?.configuration?.prompt || ""
-          : versionDataFromState?.configuration?.prompt || "",
-        isEditor: isEmbedUser ? true : canEdit,
-      };
-    });
+    return {
+      bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
+      versionData: versionDataFromState,
+      bridgeData: bridgeDataFromState,
+      agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
+      bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
+      allBridgesMap: state.bridgeReducer.allBridgesMap || {},
+      prompt: isPublished
+        ? bridgeDataFromState?.configuration?.prompt || ""
+        : versionDataFromState?.configuration?.prompt || "",
+      isEditor: isEmbedUser ? true : canEdit,
+      activeService: serviceKey,
+      hasApiKeyForActiveService: !!(serviceKey && serviceApiKeyMap?.[serviceKey]),
+      activeServiceDisplayName: serviceLabel,
+    };
+  });
 
   // Flag to determine if the UI should be in read-only mode
   const isReadOnly = !isEditor;
+  const shouldShowApiKeyWarning = Boolean(activeService) && !hasApiKeyForActiveService;
   // Memoized form data initialization
   const [formData, setFormData] = useState(() => ({
     url_slugname: "",
@@ -814,21 +835,42 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
           {/* Warning Section */}
           {!showComparison && (
-            <div className="alert bg-base/70 mb-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                  <h3 className="font-medium">Are you sure you want to publish this version?</h3>
-                </div>
-                <div className="pl-7">
-                  <p className="text-sm">Keep these important points in mind:</p>
-                  <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
-                    <li>Published version will be available to all users</li>
-                    <li>Changes will be immediately reflected in the published version</li>
-                    <li>Published changes cannot be reverted</li>
-                  </ul>
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="alert bg-base/70">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                    <h3 className="font-medium">Are you sure you want to publish this version?</h3>
+                  </div>
+                  <div className="pl-7">
+                    <p className="text-sm">Keep these important points in mind:</p>
+                    <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
+                      <li>Published version will be available to all users</li>
+                      <li>Changes will be immediately reflected in the published version</li>
+                      <li>Published changes cannot be reverted</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
+
+              {shouldShowApiKeyWarning && (
+                <div
+                  data-testid="publish-apikey-missing-warning"
+                  id="publish-apikey-missing-warning"
+                  className="alert alert-warning border border-warning/30 bg-warning/10"
+                >
+                  <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-base-content">API Key Not Configured</h3>
+                    <p className="text-sm text-base-content/40">
+                      No API key is configured for{" "}
+                      <span className="font-medium text-base-content/40">{activeServiceDisplayName}</span> in this
+                      version.
+                    </p>
+                  </div>
+                  <span className="badge badge-warning badge-sm">API Key Not Configured</span>
+                </div>
+              )}
             </div>
           )}
 
