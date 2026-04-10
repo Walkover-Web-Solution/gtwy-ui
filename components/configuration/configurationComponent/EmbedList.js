@@ -7,6 +7,7 @@ import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
 import { GetPreBuiltToolTypeIcon, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
+import { cleanVariablesPathByFields } from "@/utils/variableValidation";
 import RenderEmbed from "./RenderEmbed";
 import { isEqual } from "lodash";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -125,24 +126,6 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     [bridge_functions, function_data]
   );
 
-  const getValidVariablePathSet = (fields = {}, parentPath = []) => {
-    const validPaths = new Set();
-
-    const walk = (currentFields = {}, pathParts = []) => {
-      Object.entries(currentFields || {}).forEach(([key, field]) => {
-        const nextPathParts = [...pathParts, key];
-        const currentPath = nextPathParts.join(".");
-        validPaths.add(currentPath);
-
-        if (field?.type === "object" && field?.parameter && typeof field.parameter === "object") {
-          walk(field.parameter, nextPathParts);
-        }
-      });
-    };
-
-    walk(fields, parentPath);
-    return validPaths;
-  };
   const handleSelectFunction = (functionId) => {
     if (functionId) {
       dispatch(
@@ -179,12 +162,10 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   };
 
   const handleSaveFunctionData = () => {
-    const validVariablePathSet = getValidVariablePathSet(toolData?.fields || {});
-    const cleanedVariablesPath = Object.fromEntries(
-      Object.entries(variablesPath || {}).filter(([pathKey]) => validVariablePathSet.has(pathKey))
-    );
+    const currentVariablesPath = variablesPath || {};
+    const cleanedVariablesPath = cleanVariablesPathByFields(currentVariablesPath, toolData?.fields || {});
 
-    if (!isEqual(cleanedVariablesPath, variablesPath)) {
+    if (!isEqual(cleanedVariablesPath, currentVariablesPath)) {
       setVariablesPath(cleanedVariablesPath);
     }
 

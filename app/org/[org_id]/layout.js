@@ -36,6 +36,7 @@ import {
   getFinishReasonsAction,
   getLinksAction,
 } from "@/store/action/flowDataAction";
+import { cleanVariablesPathByFields } from "@/utils/variableValidation";
 import { userDetails } from "@/store/action/userDetailsAction";
 import { storeMarketingRefUserAction } from "@/store/action/marketingRefAction";
 import { getAllIntegrationDataAction } from "@/store/action/integrationAction";
@@ -493,13 +494,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
             path[5] &&
             resolvedSearchParams?.get("version")
           ) {
-            const validFieldKeys = new Set(Object.keys(data?.fields || {}));
-            const currentToolVariablesPath = variablesPathRef.current?.[data.script_id] || {};
-            const hasStaleKeys = Object.keys(currentToolVariablesPath).some((key) => !validFieldKeys.has(key));
-            if (hasStaleKeys) {
-              const cleanedToolVariablesPath = Object.fromEntries(
-                Object.entries(currentToolVariablesPath).filter(([key]) => validFieldKeys.has(key))
-              );
+            const currentToolVariablesPath = variablesPath?.[data.script_id] || {};
+            const cleanedToolVariablesPath = cleanVariablesPathByFields(currentToolVariablesPath, data?.fields || {});
+            if (Object.keys(cleanedToolVariablesPath).length !== Object.keys(currentToolVariablesPath).length) {
               dispatch(
                 updateBridgeVersionAction({
                   bridgeId: path[5],
