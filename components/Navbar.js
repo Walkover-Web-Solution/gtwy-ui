@@ -32,7 +32,6 @@ const VariableCollectionSlider = dynamic(() => import("./sliders/VariableCollect
 import AccessManagementModal from "./modals/AccessManagementModal";
 import AgentActionMenu from "@/components/agents/AgentActionMenu";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
-import NavbarSkeleton from "./skeletons/NavbarSkeleton";
 
 const BRIDGE_STATUS = {
   ACTIVE: 1,
@@ -80,8 +79,6 @@ const Navbar = ({ isEmbedUser, params }) => {
     publishedVersionId,
     showAgentName,
     isAdminOrOwner,
-    hasData,
-    hasError,
   } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
@@ -114,13 +111,6 @@ const Navbar = ({ isEmbedUser, params }) => {
       isAdminOrOwner,
       currentOrgRole: orgRole || "",
       currentUser: state?.userDetailsReducer?.userDetails || {},
-      hasData: isPublished
-        ? !!(
-            state?.bridgeReducer?.allBridgesMap?.[bridgeId] ||
-            state?.bridgeReducer?.org?.[orgId]?.orgs?.find((b) => b._id === bridgeId)
-          )
-        : !!state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId]?.[versionId],
-      hasError: state?.bridgeReducer?.error,
     };
   });
   // Define tabs based on user type
@@ -402,10 +392,6 @@ const Navbar = ({ isEmbedUser, params }) => {
     />
   );
   if (!shouldShowNavbar()) return null;
-
-  if (!hasData && !hasError) {
-    return <NavbarSkeleton />;
-  }
 
   return (
     <div className="bg-base-100 z-medium">
