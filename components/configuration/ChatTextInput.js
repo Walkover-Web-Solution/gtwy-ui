@@ -11,7 +11,7 @@ import {
   setChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import Image from "next/image";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { SendHorizontalIcon, UploadIcon, LinkIcon, PlayIcon, CloseCircleIcon } from "@/components/Icons";
@@ -52,6 +52,8 @@ function ChatTextInput({
     }
   }, [showTestCases, inputRef]);
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [mediaUrls, setMediaUrls] = useState(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState("");
@@ -94,13 +96,16 @@ function ChatTextInput({
   });
 
   // Redux selectors for chat state
-  const { conversation, loading, uploadedFiles, uploadedImages, storedTestCaseId } = useCustomSelector((state) => ({
-    conversation: state?.chatReducer?.conversationsByChannel?.[channelIdentifier] || [],
-    loading: state?.chatReducer?.loadingByChannel?.[channelIdentifier] || false,
-    uploadedFiles: state?.chatReducer?.uploadedFilesByChannel?.[channelIdentifier] || [],
-    uploadedImages: state?.chatReducer?.uploadedImagesByChannel?.[channelIdentifier] || [],
-    storedTestCaseId: state?.chatReducer?.testCaseIdByChannel?.[channelIdentifier] || null,
-  }));
+  const { conversation, loading, uploadedFiles, uploadedImages, storedTestCaseId, channelMessages } = useCustomSelector(
+    (state) => ({
+      conversation: state?.chatReducer?.conversationsByChannel?.[channelIdentifier] || [],
+      loading: state?.chatReducer?.loadingByChannel?.[channelIdentifier] || false,
+      uploadedFiles: state?.chatReducer?.uploadedFilesByChannel?.[channelIdentifier] || [],
+      uploadedImages: state?.chatReducer?.uploadedImagesByChannel?.[channelIdentifier] || [],
+      storedTestCaseId: state?.chatReducer?.testCaseIdByChannel?.[channelIdentifier] || null,
+      channelMessages: state?.chatReducer?.messagesByChannel?.[channelIdentifier] || [],
+    })
+  );
   const dataToSend = useMemo(
     () => ({
       configuration: {
@@ -119,6 +124,20 @@ function ChatTextInput({
   );
 
   const [localDataToSend, setLocalDataToSend] = useState(dataToSend);
+
+  const hasPendingAssistantResponse = useMemo(
+    () => channelMessages.some((msg) => msg?.sender === "assistant" && msg?.isLoading),
+    [channelMessages]
+  );
+
+  const isInteractionBlocked = loading || uploading || isSubmitting || hasPendingAssistantResponse;
+
+  useEffect(() => {
+    if (!loading && !hasPendingAssistantResponse) {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }, [loading, hasPendingAssistantResponse]);
 
   const { isVision, isFileSupported, isVideoSupported } = useMemo(() => {
     const validationConfig =
@@ -199,6 +218,10 @@ function ChatTextInput({
   }, [prompt, variablesKeyValue]);
 
   const handleSendMessage = async (e, forceRun = false) => {
+    if (loading || uploading || isSubmittingRef.current || hasPendingAssistantResponse) {
+      return;
+    }
+
     if (inputRef.current) {
       inputRef.current.style.height = "40px"; // Set initial height
     }
@@ -288,6 +311,9 @@ function ChatTextInput({
     }
     dispatch(setChatError(channelIdentifier, ""));
     if (modelType !== "completion") inputRef.current.value = "";
+
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
 
     try {
       let responseData;
@@ -424,6 +450,8 @@ function ChatTextInput({
         }
       }
     } catch {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       dispatch(setChatError(channelIdentifier, "Something went wrong. Please try again."));
       dispatch(setChatLoading(channelIdentifier, false)); // Clear loading on error
     }
@@ -464,7 +492,7 @@ function ChatTextInput({
           // Do nothing, let the default behavior create a new line
         } else {
           // Only prevent default and send if not loading
-          if (!loading && !uploading) {
+          if (!loading && !uploading && !isSubmittingRef.current && !hasPendingAssistantResponse) {
             event.preventDefault();
             handleSendMessage(event);
           }
@@ -768,9 +796,9 @@ function ChatTextInput({
                 id="chat-attachment-button"
                 tabIndex={0}
                 className={`btn btn-circle transition-all duration-200 ${
-                  uploading ? "btn-disabled bg-base-300" : "btn-ghost hover:btn-primary hover:scale-105"
+                  isInteractionBlocked ? "btn-disabled bg-base-300" : "btn-ghost hover:btn-primary hover:scale-105"
                 }`}
-                disabled={loading || uploading}
+                disabled={isInteractionBlocked}
               >
                 {uploading ? <span className="loading loading-spinner loading-sm"></span> : <Paperclip size={18} />}
               </label>
@@ -874,16 +902,16 @@ function ChatTextInput({
           <button
             id="chat-send-button"
             className={`btn btn-circle transition-all duration-200 ${
-              loading || uploading
+              isInteractionBlocked
                 ? "btn-disabled"
                 : " btn hover:btn-primary-focus hover:scale-105 shadow-lg hover:shadow-xl"
             }`}
             onClick={() => {
               handleSendMessage();
             }}
-            disabled={loading || uploading}
+            disabled={isInteractionBlocked}
           >
-            {loading || uploading ? (
+            {isInteractionBlocked ? (
               <span className="loading loading-dots loading-md"></span>
             ) : (
               <SendHorizontalIcon size={18} />
