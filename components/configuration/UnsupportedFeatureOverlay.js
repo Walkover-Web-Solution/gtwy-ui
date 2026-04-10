@@ -27,8 +27,13 @@ const UnsupportedFeatureOverlay = ({ featureName = "feature" }) => {
   };
 
   return (
-    <div className="absolute inset-0 z-10 backdrop-blur-sm bg-base-100/30 flex items-center justify-center">
-      <div className="bg-base-200 border border-base-300 rounded-lg p-6 shadow-lg max-w-md text-center">
+    <div
+      className="absolute inset-0 z-30 bg-base-100/55 backdrop-blur-sm flex items-start justify-center px-4 pb-4 pt-[220px]"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div className="bg-base-200 border border-base-300 rounded-lg p-6 shadow-lg max-w-md w-full text-center">
         <AlertCircle className="w-12 h-12 text-warning mx-auto mb-3" />
         <h3 className="text-lg font-semibold text-base-content mb-2">{title}</h3>
         <p className="text-sm text-base-content/70">{description}</p>
