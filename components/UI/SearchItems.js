@@ -55,8 +55,9 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
       );
 
       if (matchedItem) {
-        // Set the search term to the matched item's name or ID
-        const displayName = matchedItem.name || matchedItem.slugName || matchedItem._id || matchedItem.id;
+        // Prefer human-readable labels (like Knowledge Base title) over IDs.
+        const displayName =
+          matchedItem.title || matchedItem.name || matchedItem.slugName || matchedItem._id || matchedItem.id;
         setSearchTerm(displayName);
       }
     } else if (!filterParam) {
@@ -83,6 +84,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
       data?.filter(
         (item) =>
           (item?.name && item?.name?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
+          (item?.title && item?.title?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?.slugName && item?.slugName?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?.service && item?.service?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?._id && item?._id?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
