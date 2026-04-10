@@ -2,7 +2,6 @@
 
 import React, { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MoveRight } from "lucide-react";
 
 const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
   const router = useRouter();
@@ -42,35 +41,25 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
             role="tablist"
             aria-orientation="horizontal"
           >
-            {tabs.map((tab, index) => {
+            {tabs.map((tab) => {
               const isActive = tab.id === activeTab;
               const Icon = tab.icon;
-              const isLastTab = index === tabs.length - 1;
-
               return (
-                <React.Fragment key={tab.id}>
-                  <button
-                    data-testid={`tab-button-${tab.id}`}
-                    id={`tab-button-${tab.id}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`inline-flex items-center justify-center border border-transparent whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1  text-xs transition-all duration-200 flex-shrink-0 min-w-fit ${
-                      isActive ? " text-blue-600 border-base-300/30" : "text-base-content/60 hover:text-base-content"
-                    }`}
-                  >
-                    {Icon && <Icon size={12} className="w-3 h-3 mr-2" aria-hidden="true" />}
-                    <span>{tab.label}</span>
-                  </button>
-
-                  {/* Arrow indicator between tabs */}
-                  {!isLastTab && (
-                    <div className="flex items-center justify-center px-2 text-base-content/40" aria-hidden="true">
-                      <MoveRight size={20} className="flex-shrink-0" />
-                    </div>
-                  )}
-                </React.Fragment>
+                <button
+                  data-testid={`tab-button-${tab.id}`}
+                  id={`tab-button-${tab.id}`}
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`inline-flex items-center justify-center border border-transparent whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1  text-xs transition-all duration-200 flex-shrink-0 min-w-fit ${
+                    isActive ? " text-blue-600 border-base-300/30" : "text-base-content/60 hover:text-base-content"
+                  }`}
+                >
+                  {Icon && <Icon size={12} className="w-3 h-3 mr-2" aria-hidden="true" />}
+                  <span>{tab.label}</span>
+                </button>
               );
             })}
           </div>
