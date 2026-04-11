@@ -8,8 +8,7 @@ import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { setCurrentOrgIdAction } from "@/store/action/orgAction";
-import { setInCookies, getFromCookies, openModal } from "@/utils/utility";
-import { MODAL_TYPE } from "@/utils/enums";
+import { setInCookies, getFromCookies } from "@/utils/utility";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -64,17 +63,6 @@ function Page() {
         setIsRedirecting(false);
       }
     }
-  }, [searchParams, route]);
-
-  useEffect(() => {
-    if (searchParams.get("openCreateOrg") !== "true") return;
-
-    const timer = setTimeout(() => {
-      openModal(MODAL_TYPE.CREATE_ORG_MODAL);
-      route.replace("/org");
-    }, 50);
-
-    return () => clearTimeout(timer);
   }, [searchParams, route]);
 
   // Initialize displayed organizations when organizations data changes

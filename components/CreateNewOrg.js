@@ -30,6 +30,22 @@ const CreateOrg = ({ handleSwitchOrg }) => {
     setFilteredTimezones(filtered);
   }, [timezoneSearch]);
 
+  // Reset form state when modal closes
+  useEffect(() => {
+    const modalElement = document.getElementById(MODAL_TYPE.CREATE_ORG_MODAL);
+    if (!modalElement) return;
+
+    const handleModalClose = () => {
+      setOrgDetails({ name: "", about: "", timezone: "Asia/Kolkata" });
+      setTimezoneSearch("");
+      setFilteredTimezones(timezoneData);
+      setShowTimezoneDropdown(false);
+    };
+
+    modalElement.addEventListener("close", handleModalClose);
+    return () => modalElement.removeEventListener("close", handleModalClose);
+  }, []);
+
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setOrgDetails((prevDetails) => ({
@@ -200,7 +216,13 @@ const CreateOrg = ({ handleSwitchOrg }) => {
                 data-testid="create-org-close-button"
                 id="create-org-close-button"
                 type="button"
-                onClick={() => closeModal(MODAL_TYPE.CREATE_ORG_MODAL)}
+                onClick={() => {
+                  setOrgDetails({ name: "", about: "", timezone: "Asia/Kolkata" });
+                  setTimezoneSearch("");
+                  setFilteredTimezones(timezoneData);
+                  setShowTimezoneDropdown(false);
+                  closeModal(MODAL_TYPE.CREATE_ORG_MODAL);
+                }}
                 onKeyDown={(e) => e.stopPropagation()}
                 className="btn btn-sm"
               >

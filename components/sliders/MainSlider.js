@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Keyboard,
   Building2,
+  Plus,
 } from "lucide-react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -35,6 +36,7 @@ import {
   NAV_SECTIONS,
 } from "@/utils/mainSliderHelper";
 import InviteUserModal from "../modals/InviteuserModal";
+import CreateOrg from "@/components/CreateNewOrg";
 import { logoutUser } from "../../config/authApi";
 
 /* -------------------------------------------------------------------------- */
@@ -530,13 +532,13 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           <button
             id="main-slider-create-organisation-button"
             onClick={() => {
-              router.push("/org?openCreateOrg=true");
+              openModal(MODAL_TYPE.CREATE_ORG_MODAL);
               setIsOrgDropdownOpen(false);
               setIsOrgDropdownExpanded(false);
             }}
             className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
           >
-            <Building2 size={14} className="flex-shrink-0" />
+            <Plus size={14} className="flex-shrink-0" />
             <div className="font-medium text-sm">Create Organisation</div>
           </button>
 
@@ -1107,6 +1109,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {/* ------------------------------------------------------------------ */}
         <OrgSlider />
         <BridgeSlider />
+        {pathParts.length >= 4 && <CreateOrg handleSwitchOrg={handleSwitchOrg} />}
         <TutorialModal />
         <DemoModal speakToUs />
         <InviteUserModal />
