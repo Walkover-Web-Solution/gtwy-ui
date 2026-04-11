@@ -39,6 +39,7 @@ const Page = () => {
     linksData: state.flowDataReducer.flowData.linksData || [],
     SERVICES: state?.serviceReducer?.services || [],
   }));
+  // Filter API keys to only show keys for services that exist in current services
   const [filterApiKeys, setFilterApiKeys] = useState(apikeyData);
 
   useEffect(() => {
@@ -89,7 +90,13 @@ const Page = () => {
     openModal(MODAL_TYPE.CONNECTED_AGENTS_MODAL);
   }, []);
 
-  const dataWithIcons = filterApiKeys.map((item) => ({
+  // Only show API keys for services that currently exist
+  const validApiKeys = filterApiKeys.filter((apiKey) => {
+    const serviceExists = SERVICES.some((service) => service.value === apiKey?.service);
+    return serviceExists;
+  });
+
+  const dataWithIcons = validApiKeys.map((item) => ({
     ...item,
     actualName: item.name,
     serviceKey: item.service,
