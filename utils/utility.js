@@ -250,6 +250,18 @@ export const toggleSidebar = (sidebarId, direction = "left") => {
   }
 };
 
+export const openSidebar = (sidebarId, direction = "left") => {
+  const sidebar = document.getElementById(sidebarId);
+  if (!sidebar) return;
+
+  const translateClass = direction === "left" ? "-translate-x-full" : "translate-x-full";
+
+  // Only open if it's currently hidden (closed)
+  if (sidebar.classList.contains(translateClass)) {
+    toggleSidebar(sidebarId, direction);
+  }
+};
+
 export const closeSidebar = (sidebarId, direction = "left") => {
   const sidebar = document.getElementById(sidebarId);
   if (!sidebar) return;

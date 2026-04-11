@@ -48,14 +48,17 @@ const Sidebar = memo(
     batchFilter,
     setBatchFilter,
   }) => {
-    const { subThreads, userFeedbackCount, bridgeVersionsArray, reduxBatchCounts } = useCustomSelector((state) => ({
-      subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
-      userFeedbackCount: state?.historyReducer?.userFeedbackCount,
-      bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
-        ? state.bridgeReducer.allBridgesMap[params.id].versions
-        : [],
-      reduxBatchCounts: state?.historyReducer?.batchConversationLogsCount,
-    }));
+    const { subThreads, userFeedbackCount, bridgeVersionsArray, reduxBatchCounts, bridgeType } = useCustomSelector(
+      (state) => ({
+        subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
+        userFeedbackCount: state?.historyReducer?.userFeedbackCount,
+        bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
+          ? state.bridgeReducer.allBridgesMap[params.id].versions
+          : [],
+        reduxBatchCounts: state?.historyReducer?.batchConversationLogsCount,
+        bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase(),
+      })
+    );
 
     const [selectedThreadIds, _setSelectedThreadIds] = useState([]);
     const [expandedThreads, setExpandedThreads] = useState([]);
@@ -512,17 +515,6 @@ const Sidebar = memo(
                       onChange={() => handleCheckError(!isErrorTrue)}
                     />
                   </div>
-                  <div className="flex items-center justify-center gap-2 mt-2">
-                    <span className="text-xs">Show Batch History</span>
-                    <input
-                      data-testid="history-sidebar-batch-toggle"
-                      id="history-sidebar-batch-toggle"
-                      type="checkbox"
-                      className="toggle toggle-xs toggle-primary"
-                      checked={!!isBatchMode}
-                      onChange={handleBatchModeChange}
-                    />
-                  </div>
                 </div>
 
                 <div className="p-2 bg-base-200 rounded-lg">
@@ -627,6 +619,19 @@ const Sidebar = memo(
               />
             )}
           </form>
+          {bridgeType !== "chatbot" && (
+            <div className="flex items-center justify-between pl-3 pr-2 h-8 border border-base-300  bg-base-100">
+              <span className="text-xs">Show Batch History By Status</span>
+              <input
+                data-testid="history-sidebar-batch-toggle"
+                id="history-sidebar-batch-toggle"
+                type="checkbox"
+                className="toggle toggle-xs toggle-primary"
+                checked={!!isBatchMode}
+                onChange={handleBatchModeChange}
+              />
+            </div>
+          )}
         </div>
         <label htmlFor="my-drawer-2" aria-label="close sidebar" className="drawer-overlay"></label>
 

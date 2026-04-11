@@ -255,6 +255,7 @@ const AdvancedParameters = ({
     }
     const existingValue =
       typeof configuration?.[key] === "object" && configuration?.[key] !== null ? configuration?.[key] : {};
+
     let updatedDataToSend = isDeafaultObject
       ? {
           configuration: {
@@ -269,12 +270,12 @@ const AdvancedParameters = ({
             [key]: e.target.value,
           },
         };
-    if (Object.entries(newValue).length > 0) {
+    if (Object.entries(newValue).length > 0 || e.target.value === "json_schema") {
       updatedDataToSend = {
         configuration: {
           [key]: {
             ...existingValue,
-            [defaultValue?.key]: e.target.value,
+            [defaultValue?.key || "type"]: e.target.value,
             [e.target.value]: typeof newValue === "string" ? JSON.parse(newValue) : newValue,
           },
         },
@@ -882,7 +883,14 @@ const AdvancedParameters = ({
                         <div className="w-full text-xs font-mono">
                           <CodeMirror
                             id={`advanced-param-json-schema-textarea-${key}`}
-                            value={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
+                            value={
+                              objectFieldValue ??
+                              JSON.stringify(
+                                configuration?.[key]?.json_schema ?? configuration?.[key]?.value ?? {},
+                                null,
+                                2
+                              )
+                            }
                             extensions={[json()]}
                             theme={actualTheme}
                             editable={!isReadOnly}
@@ -890,10 +898,14 @@ const AdvancedParameters = ({
                             onBlur={() => {
                               try {
                                 const currentValueToParse =
-                                  objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2);
-                                const parsedValue = JSON.parse(currentValueToParse);
+                                  objectFieldValue ??
+                                  JSON.stringify(
+                                    configuration?.[key]?.json_schema ?? configuration?.[key]?.value ?? {},
+                                    null,
+                                    2
+                                  );
+                                const parsedValue = JSON.parse(currentValueToParse.trim());
 
-                                // Trim schema name and all property names
                                 const trimmedValue = {
                                   ...parsedValue,
                                   name: parsedValue.name?.trim(),
@@ -925,12 +937,19 @@ const AdvancedParameters = ({
                       <FullscreenEditorModal
                         modalId={MODAL_TYPE.FULLSCREEN_JSON_SCHEMA}
                         title="JSON Schema"
-                        value={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
+                        value={
+                          objectFieldValue ??
+                          JSON.stringify(
+                            configuration?.[key]?.json_schema ?? configuration?.[key]?.value ?? {},
+                            null,
+                            2
+                          )
+                        }
                         isOpen={jsonSchemaFullscreen}
                         onClose={() => setJsonSchemaFullscreen(false)}
                         onSave={(finalVal) => {
                           try {
-                            const parsedValue = JSON.parse(finalVal);
+                            const parsedValue = JSON.parse(String(finalVal).trim());
                             const trimmedValue = {
                               ...parsedValue,
                               name: parsedValue.name?.trim(),
@@ -941,7 +960,7 @@ const AdvancedParameters = ({
                                   }
                                 : parsedValue.schema,
                             };
-                            setObjectFieldValue(finalVal);
+                            setObjectFieldValue(JSON.stringify(parsedValue, undefined, 4));
                             handleSelectChange(
                               { target: { value: "json_schema" } },
                               key,

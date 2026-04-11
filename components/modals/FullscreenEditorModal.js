@@ -67,7 +67,6 @@ function FullscreenEditorModal({
 
     try {
       const isSuccess = onSave?.(localValue);
-      // If onSave explicitly returns false, do not close the modal
       if (isSuccess === false) {
         setErrorMsg("Invalid JSON schema");
         return;
@@ -77,7 +76,6 @@ function FullscreenEditorModal({
     } catch (e) {
       console.error(e);
       setErrorMsg("Invalid JSON schema");
-      // Don't close on error
     }
   }, [localValue, onSave, onClose, modalId, isJson]);
 

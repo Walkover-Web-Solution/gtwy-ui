@@ -4,8 +4,8 @@ import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getServiceAction } from "@/store/action/serviceAction";
 import { getModelAction } from "@/store/action/modelAction";
-import { toggleSidebar } from "@/utils/utility";
-import { ChevronRight, X, Sparkles, Search } from "lucide-react";
+import { toggleSidebar, openSidebar, closeSidebar } from "@/utils/utility";
+import { ChevronRight, X, Check, Sparkles, Search } from "lucide-react";
 
 export const runtime = "edge";
 
@@ -18,6 +18,8 @@ const ModelGardenPage = ({ params }) => {
     services: state.serviceReducer?.services || [],
     serviceModels: state.modelReducer?.serviceModels || {},
   }));
+
+  console.log("all models:", serviceModels);
 
   const [selectedService, setSelectedService] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -39,6 +41,8 @@ const ModelGardenPage = ({ params }) => {
     setSelectedService(serviceKey);
     setIsPanelOpen(true);
     setSearchQuery("");
+    closeSidebar(SLIDER_ID, "right"); // Close model details when switching services
+    setSelectedModel(null);
   };
 
   const handleClosePanel = () => {
@@ -48,7 +52,7 @@ const ModelGardenPage = ({ params }) => {
 
   const handleModelClick = useCallback((model) => {
     setSelectedModel(model);
-    toggleSidebar(SLIDER_ID, "right");
+    openSidebar(SLIDER_ID, "right");
   }, []);
 
   const handleCloseSlider = useCallback(() => {
@@ -66,15 +70,22 @@ const ModelGardenPage = ({ params }) => {
       if (models && typeof models === "object") {
         Object.entries(models).forEach(([modelName, modelData]) => {
           const spec = modelData?.validationConfig?.specification || {};
+          const configParams = modelData?.configuration?.additional_parameters || {};
+
+          // Look for max_tokens in different possible locations
+          const maxTokensData = configParams.max_tokens || spec.max_token || modelData.max_token;
+
           rows.push({
             name: modelData?.configuration?.model?.default || modelData?.model_name || modelName,
             type: modelData?.validationConfig?.type || type,
-            maxTokens: modelData?.max_token || spec?.max_token || null,
+            maxTokens: typeof maxTokensData === "object" ? maxTokensData.max : maxTokensData || null,
+            minTokens: typeof maxTokensData === "object" ? maxTokensData.min : null,
             inputCost: spec?.input_cost || null,
             outputCost: spec?.output_cost || null,
             description: spec?.description || null,
             knowledgeCutoff: spec?.knowledge_cutoff || null,
-            provider: selectedService,
+            vision: modelData?.validationConfig?.vision,
+            files: modelData?.validationConfig?.files,
             _raw: modelData,
           });
         });
@@ -110,18 +121,44 @@ const ModelGardenPage = ({ params }) => {
     if (!selectedModel) return [];
     const spec = selectedModel._raw?.validationConfig?.specification || {};
     const fields = [
-      { label: "Provider", value: selectedModel.provider },
       { label: "Model Name", value: selectedModel.name },
       { label: "Type", value: selectedModel.type },
       { label: "Description", value: selectedModel.description },
       { label: "Input Cost", value: selectedModel.inputCost },
       { label: "Output Cost", value: selectedModel.outputCost },
+      { label: "Min Tokens", value: selectedModel.minTokens?.toLocaleString?.() || selectedModel.minTokens },
       { label: "Max Tokens", value: selectedModel.maxTokens?.toLocaleString?.() || selectedModel.maxTokens },
       { label: "Knowledge Cutoff", value: selectedModel.knowledgeCutoff },
+      {
+        label: "Vision (Support Images)",
+        value:
+          selectedModel.vision === true ? (
+            <Check size={16} className="text-success" />
+          ) : (
+            <X size={16} className="text-error" />
+          ),
+      },
+      {
+        label: "Files (Support Files)",
+        value:
+          selectedModel.files === true ? (
+            <Check size={16} className="text-success" />
+          ) : (
+            <X size={16} className="text-error" />
+          ),
+      },
     ];
 
     // Include any extra spec fields not already shown
-    const knownKeys = new Set(["input_cost", "output_cost", "description", "knowledge_cutoff", "max_token"]);
+    const knownKeys = new Set([
+      "input_cost",
+      "output_cost",
+      "description",
+      "knowledge_cutoff",
+      "max_token",
+      "vision",
+      "files",
+    ]);
     Object.entries(spec).forEach(([key, value]) => {
       if (knownKeys.has(key) || !value) return;
       if (Array.isArray(value) && value.length === 0) return;
@@ -131,7 +168,7 @@ const ModelGardenPage = ({ params }) => {
       });
     });
 
-    return fields;
+    return fields.filter((f) => f.value !== null && f.value !== undefined && f.value !== "" && f.value !== "NaN");
   }, [selectedModel]);
 
   return (
@@ -237,12 +274,13 @@ const ModelGardenPage = ({ params }) => {
                     <thead className="sticky top-0 bg-base-200 z-10">
                       <tr>
                         <th className="text-xs uppercase tracking-wider">Name</th>
-                        <th className="text-xs uppercase tracking-wider">Provider</th>
                         <th className="text-xs uppercase tracking-wider">Type</th>
                         <th className="text-xs uppercase tracking-wider">Description</th>
                         <th className="text-xs uppercase tracking-wider">Input Cost</th>
                         <th className="text-xs uppercase tracking-wider">Output Cost</th>
-                        <th className="text-xs uppercase tracking-wider">Max Tokens</th>
+                        <th className="text-xs uppercase tracking-wider">Tokens (Min - Max)</th>
+                        <th className="text-xs uppercase tracking-wider">Vision</th>
+                        <th className="text-xs uppercase tracking-wider">Files</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -253,7 +291,6 @@ const ModelGardenPage = ({ params }) => {
                           className="hover:bg-base-200/50 transition-colors cursor-pointer"
                         >
                           <td className="font-medium text-sm whitespace-nowrap">{model.name}</td>
-                          <td className="text-sm capitalize whitespace-nowrap">{model.provider}</td>
                           <td>
                             <span className="badge badge-ghost badge-sm capitalize whitespace-nowrap">
                               {model.type}
@@ -275,10 +312,27 @@ const ModelGardenPage = ({ params }) => {
                             {model.outputCost ?? <span className="text-base-content/30">—</span>}
                           </td>
                           <td className="text-sm text-base-content/70 whitespace-nowrap">
-                            {model.maxTokens ? (
-                              model.maxTokens.toLocaleString?.() || model.maxTokens
+                            {model.minTokens || model.maxTokens ? (
+                              <>
+                                {model.minTokens?.toLocaleString?.() || model.minTokens || "0"} -{" "}
+                                {model.maxTokens?.toLocaleString?.() || model.maxTokens || "∞"}
+                              </>
                             ) : (
                               <span className="text-base-content/30">—</span>
+                            )}
+                          </td>
+                          <td className="text-sm">
+                            {model.vision === true ? (
+                              <Check size={16} className="text-success" />
+                            ) : (
+                              <X size={16} className="text-error opacity-30" />
+                            )}
+                          </td>
+                          <td className="text-sm">
+                            {model.files === true ? (
+                              <Check size={16} className="text-success" />
+                            ) : (
+                              <X size={16} className="text-error opacity-30" />
                             )}
                           </td>
                         </tr>
@@ -314,7 +368,6 @@ const ModelGardenPage = ({ params }) => {
             <div className="flex items-center justify-between px-6 py-4 border-b border-base-300 sticky top-0 bg-base-100 z-10">
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold truncate">{selectedModel.name}</h2>
-                <p className="text-xs text-base-content/50 capitalize mt-0.5">{selectedModel.provider}</p>
               </div>
               <button onClick={handleCloseSlider} className="btn btn-ghost btn-sm btn-square shrink-0 ml-3">
                 <X size={18} />
@@ -327,13 +380,7 @@ const ModelGardenPage = ({ params }) => {
                 {detailFields.map(({ label, value }) => (
                   <div key={label} className="border-b border-base-200 pb-3">
                     <dt className="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1">{label}</dt>
-                    <dd className="text-sm text-base-content break-words">
-                      {value != null && value !== "" ? (
-                        String(value)
-                      ) : (
-                        <span className="text-base-content/30 italic">Not available</span>
-                      )}
-                    </dd>
+                    <dd className="text-sm text-base-content break-words">{value}</dd>
                   </div>
                 ))}
               </div>
