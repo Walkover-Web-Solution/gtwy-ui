@@ -12,12 +12,32 @@ const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
 
   // Calculate position relative to dropdown with viewport constraints
   const dropdownRect = dropdownRef.current.getBoundingClientRect();
+
+  // Try to get the dropdown menu element instead of trigger
+  const dropdownMenu = dropdownRef.current?.querySelector(".dropdown-content");
+  const targetRect = dropdownMenu ? dropdownMenu.getBoundingClientRect() : dropdownRect;
   const viewportHeight = window.innerHeight;
+
+  const modalWidth = 260;
+  const viewportWidth = window.innerWidth;
+  let leftPosition;
+
+  const rightPosition = targetRect?.right;
+  if (rightPosition + modalWidth <= viewportWidth) {
+    leftPosition = rightPosition;
+  } else {
+    const leftSidePosition = targetRect?.left - modalWidth;
+    if (leftSidePosition >= 0) {
+      leftPosition = leftSidePosition;
+    } else {
+      leftPosition = Math.max(10, targetRect?.left + targetRect?.width / 2 - modalWidth / 2);
+    }
+  }
 
   const previewStyle = {
     position: "fixed",
     top: Math.max(20, dropdownRect?.top - 50),
-    left: dropdownRect?.right + -125, // Position to the right of dropdown
+    left: leftPosition,
     zIndex: 99999,
     maxHeight: `${viewportHeight}px`,
     overflowY: "auto",
