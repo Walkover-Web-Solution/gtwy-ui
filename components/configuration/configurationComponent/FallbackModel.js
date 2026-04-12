@@ -409,6 +409,12 @@ const FallbackModel = ({
 
                             if (currentModel === modelName || currentModel === option) return null;
 
+                            // Filter models based on org_id for OpenRouter service
+                            const modelOrgId = options?.[option]?.org_id;
+                            if (fallbackService === "open_router" && modelOrgId && modelOrgId !== params?.org_id) {
+                              return null; // Skip this model if it's assigned to a different org
+                            }
+
                             // Get display name from embedModelsConfig for embed users
                             const serviceConfig = embedModelsConfig?.[fallbackService];
                             const modelConfig = serviceConfig?.[modelName];

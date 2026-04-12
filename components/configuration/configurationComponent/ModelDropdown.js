@@ -208,6 +208,12 @@ const ModelDropdown = ({
         const modelConfig = serviceConfig?.[modelName];
         if (modelConfig?.hide === true) return;
 
+        // Filter models based on org_id for OpenRouter service
+        const modelOrgId = cfg?.org_id;
+        if (service === "open_router" && modelOrgId && modelOrgId !== params?.org_id) {
+          return; // Skip this model if it's assigned to a different org
+        }
+
         const specs = cfg?.validationConfig?.specification;
 
         const displayName = modelConfig?.value || modelName;
@@ -231,7 +237,7 @@ const ModelDropdown = ({
       });
     });
     return opts;
-  }, [modelsList, bridgeType, modelsConfig, service]);
+  }, [modelsList, bridgeType, modelsConfig, service, params?.org_id]);
   const handleSelect = useCallback(
     (val, opt) => {
       const selectedGroup = opt?.meta?.group;
