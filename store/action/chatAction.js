@@ -367,14 +367,14 @@ export const sendMessageWithApiStreaming =
 
       // Non-streaming response — let sendMessageWithRtLayer semantics apply
       if (!result?.stream) {
-        dispatch(setChatLoading(channelId, false));
+        // Keep loading until RT layer resolves the assistant/loading message.
         return { userMessage, loadingMessage, response: result };
       }
 
       // Streaming path: read SSE body from fetch Response or Axios Response
       const streamBody = result.response.body || result.response.data;
       if (!streamBody) {
-        throw new Error('Stream body not available in response');
+        throw new Error("Stream body not available in response");
       }
       const reader = streamBody.getReader();
       const decoder = new TextDecoder();
