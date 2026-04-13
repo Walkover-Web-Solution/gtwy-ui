@@ -19,7 +19,6 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { Lock } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 export const runtime = "edge";
 
 function Page({ params }) {
@@ -28,9 +27,6 @@ function Page({ params }) {
 
   const resolvedParams = use(params);
   const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { authData, isFirstPauthCreation, descriptions, orgRole, linksData } = useCustomSelector((state) => {
     const user = state.userDetailsReducer.userDetails || [];
     return {
@@ -97,15 +93,6 @@ function Page({ params }) {
             temporary_throttle_time: "30",
           })
         );
-
-        // Clear active URL filter so search input and table reset after creating a new key.
-        if (searchParams.get("filter")) {
-          const params = new URLSearchParams(searchParams.toString());
-          params.delete("filter");
-          const query = params.toString();
-          router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-        }
-
         toast.success("Auth key created successfully");
       } catch (error) {
         toast.error("Failed to create pauth key");
