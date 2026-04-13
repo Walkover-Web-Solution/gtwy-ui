@@ -53,7 +53,7 @@ const WithAuth = (Children) => {
       const runEffect = async (isEmbedUser) => {
         const proxyAuthToken = proxy_auth_token;
         const proxyToken = getFromCookies("proxy_token");
-        let redirectionUrl = getFromCookies("previous_url") || "/org";
+        let redirectionUrl = getFromCookies("previous_url") || "";
         if (isEmbedUser) {
           const proxy_auth_token = sessionStorage.getItem("proxy_token");
           const org_id = sessionStorage.getItem("gtwy_org_id");
@@ -67,7 +67,8 @@ const WithAuth = (Children) => {
           }
         }
         if (proxyToken) {
-          router.replace("/org");
+          const finalRedirectUrl = await handleUserDetailsAndSwitchOrg(redirectionUrl, dispatch, userDetails);
+          router.replace(finalRedirectUrl);
           return;
         }
 

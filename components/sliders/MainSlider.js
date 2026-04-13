@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   Keyboard,
   Building2,
-  Plus,
 } from "lucide-react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -24,7 +23,7 @@ import { setCurrentOrgIdAction } from "@/store/action/orgAction";
 import OrgSlider from "./OrgSlider";
 import TutorialModal from "@/components/modals/TutorialModal";
 import DemoModal from "../modals/DemoModal";
-import { MODAL_TYPE, PROXY_SCRIPT_SRC } from "@/utils/enums";
+import { MODAL_TYPE } from "@/utils/enums";
 import Protected from "../Protected";
 import BridgeSlider from "./BridgeSlider";
 import {
@@ -35,7 +34,6 @@ import {
   NAV_ITEM_CONFIG,
   NAV_SECTIONS,
 } from "@/utils/mainSliderHelper";
-import InviteUserModal from "../modals/InviteuserModal";
 import CreateOrg from "@/components/CreateNewOrg";
 import { logoutUser } from "../../config/authApi";
 
@@ -83,27 +81,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const [showContent, setShowContent] = useState(isSideBySideMode); // Control content visibility with delay
   const [isAdminMode, setIsAdminMode] = useState(false); // New state for admin settings mode
   // Theme detection placeholder (not actively used)
-
-  const dispatchInviteDialog = useCallback(() => {
-    const authToken = getFromCookies("proxy_token") || "";
-    const fireEvent = () => window.dispatchEvent(new CustomEvent("openAddUserDialog", { detail: { authToken } }));
-    if (typeof window.initVerification === "function") {
-      fireEvent();
-    } else {
-      const proxySrc = PROXY_SCRIPT_SRC;
-      const existing = document.querySelector(`script[src="${proxySrc}"]`);
-      if (!existing) {
-        const script = document.createElement("script");
-        script.type = "text/javascript";
-        script.src = proxySrc;
-        script.onload = fireEvent;
-        script.onerror = (err) => console.error("Failed to load proxy script:", err);
-        document.body.appendChild(script);
-      } else {
-        existing.addEventListener("load", fireEvent, { once: true });
-      }
-    }
-  }, []);
 
   // Effect to detect mobile screen size
   useEffect(() => {
@@ -291,11 +268,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const handleSwitchOrg = useCallback(
     async (id, name) => {
       if (!id || !name) {
-        // If no id/name provided, go to org selection page
-        router.push("/org?redirection=false");
-        if (isMobile) setIsMobileVisible(false);
-        setIsOrgDropdownExpanded(false);
-        setIsOrgDropdownOpen(false);
         return;
       }
 
@@ -429,9 +401,9 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
   // Reusable function for rendering organization dropdown content
   const renderOrganizationDropdown = useCallback(() => {
-    const totalOrgCount = Object.keys(organizations || {}).length;
-    const otherOrgCount = Object.keys(organizations || {}).filter((id) => id !== orgId).length;
-    const showMoreButton = totalOrgCount > 3; // show "More" only when there are more than 3 orgs total
+    const currentOrganizationEntry = organizations?.[orgId] ? [[orgId, organizations[orgId]]] : [];
+    const otherOrganizationEntries = Object.entries(organizations || {}).filter(([id]) => id !== orgId);
+    const organizationEntries = [...currentOrganizationEntry, ...otherOrganizationEntries];
 
     return (
       <>
@@ -457,60 +429,53 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           {!openDetails && (
             <>
               <div className="flex items-center justify-between px-3 mb-2">
-                <div className="text-xs font-medium text-base-content/50 uppercase tracking-wider">Organizations</div>
+                <div className="text-xs font-medium text-base-content/50 tracking-wider">Organizations</div>
                 <button
-                  id="main-slider-invite-user-button"
+                  id="main-slider-new-org-button"
                   onClick={() => {
                     setIsOrgDropdownExpanded(false);
                     setIsOrgDropdownOpen(false);
-                    dispatchInviteDialog();
+                    openModal(MODAL_TYPE.CREATE_ORG_MODAL);
                   }}
-                  className="text-xs text-blue-400 hover:text-blue-600 transition-colors font-medium"
+                  className="text-xs text-blue-500 hover:text-blue-600 transition-colors font-medium px-2 py-0.5"
                 >
-                  + Invite User
+                  + New org
                 </button>
               </div>
 
-              {/* Current Organization - shown as selected */}
-              {organizations?.[orgId] && (
-                <div className="w-full flex items-center cursor-pointer gap-3 px-3 py-2 bg-primary/10 border border-primary/20">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-primary truncate">{organizations[orgId].name}</div>
-                  </div>
-                </div>
-              )}
+              <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1">
+                {organizationEntries.map(([id, org]) => {
+                  const isCurrentOrg = id === orgId;
 
-              {/* Other Organizations */}
-              {Object.entries(organizations || {})
-                .filter(([id]) => id !== orgId) // Exclude current org
-                .slice(0, 2) // Show only first 2
-                .map(([id, org]) => (
-                  <button
-                    id={`main-slider-switch-org-${id}`}
-                    key={id}
-                    onClick={() => handleSwitchOrg(id, org.name)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-base-content truncate">{org.name}</div>
-                    </div>
-                  </button>
-                ))}
+                  if (isCurrentOrg) {
+                    return (
+                      <div
+                        id={`main-slider-switch-org-${id}`}
+                        key={id}
+                        className="w-full flex items-center cursor-pointer gap-3 px-3 py-2 bg-primary/10 border border-primary/20"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm text-primary truncate">{org.name}</div>
+                        </div>
+                      </div>
+                    );
+                  }
 
-              {showMoreButton && (
-                <button
-                  id="main-slider-view-more-orgs-button"
-                  onClick={() => handleSwitchOrg()}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-blue-400 text-sm truncate">
-                      more {otherOrgCount > 2 && `(+${otherOrgCount - 2})`}
-                    </div>
-                  </div>
-                </button>
-              )}
-              <hr className="border-base-300 my-2" />
+                  return (
+                    <button
+                      id={`main-slider-switch-org-${id}`}
+                      key={id}
+                      onClick={() => handleSwitchOrg(id, org.name)}
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-base-content truncate">{org.name}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <hr className="border-base-content/20 my-3" />
             </>
           )}
 
@@ -528,20 +493,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             <div className="font-medium text-sm">User Details</div>
           </button>
 
-          {/* Create Organisation button */}
-          <button
-            id="main-slider-create-organisation-button"
-            onClick={() => {
-              openModal(MODAL_TYPE.CREATE_ORG_MODAL);
-              setIsOrgDropdownOpen(false);
-              setIsOrgDropdownExpanded(false);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
-          >
-            <Plus size={14} className="flex-shrink-0" />
-            <div className="font-medium text-sm">Create Organisation</div>
-          </button>
-
           {/* Update Org Details button */}
           <button
             id="main-slider-org-details-button"
@@ -553,7 +504,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
           >
             <Building2 size={14} className="flex-shrink-0" />
-            <div className="text-sm">update organization</div>
+            <div className="text-sm">Update Organization</div>
           </button>
 
           {/* Refer & Earn button */}
@@ -586,14 +537,14 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         </div>
       </>
     );
-  }, [userdetails, organizations, orgId, handleSwitchOrg, handleLogout]);
+  }, [userdetails, organizations, orgId, handleSwitchOrg, handleLogout, openDetails, targetOrgId, isMobile]);
 
   /* ------------------------------------------------------------------------ */
   /*                                  Render                                  */
   /* ------------------------------------------------------------------------ */
 
   // Fixed sidebar width - always 64px collapsed, 256px expanded
-  const spacerW = isMobile ? "50px" : isOpen ? "256px" : "50px";
+  const spacerW = isMobile ? "50px" : isOpen ? "246px" : "50px";
   const sidebarAgentType = searchParams?.get("type")?.toLowerCase();
   const activeKey = useMemo(() => {
     if (pathParts[3] === "agents") {
@@ -636,7 +587,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
   if (openDetails) {
     return (
-      <div className="absolute top-23 right-2 mt-2 bg-base-100 border border-base-300 shadow-lg p-2 w-[320px] z-50 animate-in fade-in-0 zoom-in-95 duration-200 slide-in-from-top-2 z-[9999]">
+      <div className="absolute top-23 right-2 mt-2 bg-base-100 border-[1px] border-base-content/25 rounded-lg shadow-lg p-2 w-[250px] z-50 animate-in fade-in-0 zoom-in-95 duration-200 slide-in-from-top-2 z-[9999]">
         {renderOrganizationDropdown()}
       </div>
     );
@@ -695,7 +646,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         <div
           className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
           style={{
-            width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "220px" : "50px",
+            width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "246px" : "50px",
             transform: isMobile ? (isMobileVisible ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
             opacity: isMobile ? (isMobileVisible ? "1" : "0") : "1",
             transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
@@ -718,7 +669,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             <button
               id="main-slider-toggle-button"
               onClick={handleToggle}
-              className="absolute -right-3 top-[50px] w-7 h-7 bg-base-100 border border-base-300 flex items-center justify-center hover:bg-base-200 transition-colors z-10 shadow-sm"
+              className="absolute -right-4 top-[50px] w-7 h-7 bg-base-100 border border-base-300 flex items-center justify-center hover:bg-base-200 transition-colors z-10 shadow-sm"
             >
               {isOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
             </button>
@@ -727,7 +678,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           {/* -------------------------- NAVIGATION -------------------------- */}
           <div className="flex flex-col h-full">
             {/* Header section */}
-            <div className="p-2 border-b border-base-300 relative">
+            <div className={`${showSidebarContent ? "p-3" : "p-1"} border-b border-base-300 relative`}>
               {/* Organization */}
               {pathParts.length >= 4 && (
                 <div
@@ -738,10 +689,18 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   <button
                     id="main-slider-org-dropdown-button"
                     onClick={handleOrgClick}
-                    className="w-full flex items-center gap-3 py-2 hover:bg-base-200 transition-colors"
+                    className={`w-full flex items-center rounded-xl border border-base-content/25 bg-base-100 hover:bg-base-200/60 transition-colors ${
+                      showSidebarContent
+                        ? "gap-3 px-3 py-2.5"
+                        : "justify-center px-0 py-1.5 border-transparent bg-transparent"
+                    }`}
                   >
                     {/* First letter avatar */}
-                    <div className="shrink-0 w-8 h-8 bg-primary flex items-center justify-center">
+                    <div
+                      className={`shrink-0 bg-primary flex items-center justify-center ${
+                        showSidebarContent ? "w-8 h-8" : "w-7 h-7"
+                      }`}
+                    >
                       <span className="text-primary-content font-semibold text-sm">
                         {orgName.charAt(0).toUpperCase()}
                       </span>
@@ -749,11 +708,11 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     {showSidebarContent && (
                       <>
                         <div className="flex-1 text-left overflow-hidden">
-                          <div className="font-semibold text-sm truncate">{truncate(orgName, 20)}</div>
-                          <div className="text-xs text-base-content/60">Organization</div>
+                          <div className="font-semibold text-sm truncate leading-tight">{truncate(orgName, 20)}</div>
+                          <div className="text-xs text-base-content/60 mt-0.5">Organization</div>
                         </div>
                         <ChevronDown
-                          size={16}
+                          size={14}
                           className={`shrink-0 transition-transform ${isOrgDropdownExpanded ? "rotate-180" : ""}`}
                         />
                       </>
@@ -763,7 +722,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   {/* Dropdown for collapsed sidebar */}
                   {isOrgDropdownOpen && !showSidebarContent && (
                     <div
-                      className="absolute left-full top-0 ml-2 bg-base-100 border border-base-300 shadow-lg p-2 w-[320px] z-50 animate-in fade-in-0 zoom-in-95 duration-200 slide-in-from-top-2"
+                      className="absolute left-full top-0 ml-2 bg-base-100 border-[1px] border-base-content/25 rounded-lg shadow-lg p-2 w-[250px] z-50 animate-in fade-in-0 zoom-in-95 duration-200 slide-in-from-top-2"
                       onMouseEnter={() => {
                         // Clear timeout when hovering over dropdown
                         if (orgDropdownTimeout) {
@@ -779,7 +738,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
                   {/* Expanded dropdown for full sidebar - positioned from left edge */}
                   {isOrgDropdownExpanded && showSidebarContent && (
-                    <div className="absolute top-0 left-0 mt-2 bg-base-100 border border-base-300 shadow-lg p-2 w-[320px] z-50 animate-in fade-in-0 zoom-in-95 duration-200 slide-in-from-top-2">
+                    <div className="absolute top-full left-[0.3px] mt-2 bg-base-100 border-[1px] border-base-content/25 rounded-lg shadow-lg p-2 w-[calc(100%-0.6px)] z-50 animate-in fade-in-0 zoom-in-95 duration-200 slide-in-from-top-2">
                       {renderOrganizationDropdown()}
                     </div>
                   )}
@@ -790,24 +749,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             {/* Main navigation - scrollable */}
             <div className={`flex-1 scrollbar-hide overflow-x-hidden scroll-smooth p-1`}>
               <div className="">
-                {/* Main Menu Button - Show only in Admin Mode */}
-                {isAdminMode && (
-                  <div className="mb-4">
-                    <button
-                      id="main-slider-back-to-main-menu-button"
-                      onClick={handleAdminToggle}
-                      onMouseEnter={(e) => onItemEnter("main-menu", e)}
-                      onMouseLeave={onItemLeave}
-                      className={`w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content ${!showSidebarContent ? "justify-center" : ""}`}
-                    >
-                      <div className="shrink-0">
-                        <ArrowLeft size={16} />
-                      </div>
-                      {showSidebarContent && <span className="text-sm truncate">Main Menu</span>}
-                    </button>
-                  </div>
-                )}
-
                 {!isAdminMode ? (
                   // Normal Navigation with slide from left animation
                   <div
@@ -819,9 +760,12 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     {NAV_SECTIONS.map(({ title, items }, idx) => (
                       <div key={idx} className="">
                         {showSidebarContent && title && (
-                          <h3 className="my-1 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
-                            {title}
-                          </h3>
+                          <>
+                            {idx === 0 && <hr className="border-base-content/20 my-2" />}
+                            <h3 className="my-1 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
+                              {title}
+                            </h3>
+                          </>
                         )}
                         <div className="space-y-0.5">
                           {items.map((key) => (
@@ -863,9 +807,14 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     }}
                   >
                     {showSidebarContent && (
-                      <h3 className="my-2 text-xs text-base-content/50 uppercase tracking-wider px-2">
-                        Admin Settings
-                      </h3>
+                      <button
+                        id="main-slider-admin-header-back-button"
+                        onClick={handleAdminToggle}
+                        className="my-2 w-full flex items-center gap-2 text-xs text-base-content/50 uppercase tracking-wider px-2 hover:text-base-content/80 transition-colors"
+                      >
+                        <ArrowLeft size={12} />
+                        <span>Admin Settings</span>
+                      </button>
                     )}
                     <div className="space-y-1">
                       {settingsMenuItems.map((item) => (
@@ -1112,7 +1061,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {pathParts.length >= 4 && <CreateOrg handleSwitchOrg={handleSwitchOrg} />}
         <TutorialModal />
         <DemoModal speakToUs />
-        <InviteUserModal />
       </div>
     </>
   );

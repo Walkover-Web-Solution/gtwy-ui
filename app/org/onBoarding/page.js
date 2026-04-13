@@ -7,6 +7,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateUserMetaOnboarding } from "@/store/action/orgAction";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import FavIconSVG from "@/public/favicon";
+import { getFromCookies } from "@/utils/utility";
 
 export default function OnboardingPage() {
   const { currentUser } = useCustomSelector((state) => ({
@@ -28,7 +29,10 @@ export default function OnboardingPage() {
         },
       };
       await dispatch(updateUserMetaOnboarding(currentUser.id, updatedOrgDetails));
-      router.push("/org");
+      const currentOrgId = getFromCookies("current_org_id") || currentUser?.currentCompany?.id;
+      if (currentOrgId) {
+        router.push(`/org/${currentOrgId}/agents`);
+      }
     } catch (error) {
       console.error(error);
       setIsLoading(false);
