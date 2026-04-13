@@ -64,9 +64,9 @@ const Sidebar = memo(
     const [expandedThreads, setExpandedThreads] = useState([]);
     const [loadingSubThreads, setLoadingSubThreads] = useState(true);
     const [searchLoading, setSearchLoading] = useState(false);
-    const [filterByText, setFilterByText] = useState(JSON.stringify(HISTORY_FILTER_BY_FIELDS, null, 2));
-
-    // Fallback if not initialized yet
+    const [filterByFields, setFilterByFields] = useState({ ...HISTORY_FILTER_BY_FIELDS, variables: {} });
+    const [variableKey, setVariableKey] = useState("");
+    const [variableValue, setVariableValue] = useState("");
     const batchCounts = reduxBatchCounts || { completed: 0, processing: 0, queued: 0 };
 
     const searchQuery = (searchRef?.current && searchRef.current.value) || searchParams?.message_id || "";
@@ -164,22 +164,24 @@ const Sidebar = memo(
     const handleChange = useCallback(
       debounce((e) => {
         const value = e?.target?.value.trim() || searchParams?.message_id || "";
-        let parsedFilterBy;
-        try {
-          parsedFilterBy = JSON.parse(filterByText);
-        } catch {
-          parsedFilterBy = undefined;
+        const filterBy = { ...filterByFields };
+        if (variableKey.trim() && variableValue.trim()) {
+          filterBy.variables = { [variableKey.trim()]: variableValue.trim() };
+        } else {
+          delete filterBy.variables;
         }
-        handleSearch(e, value, parsedFilterBy);
+        handleSearch(e, value, filterBy);
       }, 500),
-      [searchParams?.message_id, filterByText]
+      [searchParams?.message_id, filterByFields, variableKey, variableValue]
     );
 
     const handleSearch = async (e, directValue, filterBy) => {
       e?.preventDefault();
       const searchValue = directValue !== undefined ? directValue : searchRef?.current?.value || "";
       const hasActiveFilterBy =
-        filterBy && typeof filterBy === "object" && Object.values(filterBy).some((v) => v && v.trim() !== "");
+        filterBy &&
+        typeof filterBy === "object" &&
+        Object.values(filterBy).some((v) => (typeof v === "object" ? Object.keys(v).length > 0 : v && v.trim() !== ""));
 
       if (!searchValue.trim() && !hasActiveFilterBy) {
         clearInput();
@@ -210,7 +212,11 @@ const Sidebar = memo(
 
         const activeFilterBy =
           filterBy && typeof filterBy === "object"
-            ? Object.fromEntries(Object.entries(filterBy).filter(([_key, v]) => v && v.trim() !== ""))
+            ? Object.fromEntries(
+                Object.entries(filterBy).filter(([_key, v]) =>
+                  typeof v === "object" ? Object.keys(v).length > 0 : v && v.trim() !== ""
+                )
+              )
             : undefined;
 
         const result = await dispatch(
@@ -444,7 +450,7 @@ const Sidebar = memo(
 
     return (
       <div
-        className="drawer-side justify-items-stretch text-xs bg-base-200 min-w-[290px] max-w-[290px] border-r border-base-300 relative"
+        className="drawer-side justify-items-stretch text-xs bg-base-200 w-[290px] min-w-[290px] max-w-[290px] border-r border-base-300 relative h-screen overflow-y-auto overflow-x-hidden"
         id="sidebar"
       >
         <CreateFineTuneModal params={params} selectedThreadIds={selectedThreadIds} />
@@ -463,7 +469,7 @@ const Sidebar = memo(
             <div className="collapse-title font-semibold min-h-0 py-3 flex items-center">
               <span className="text-xs">Advance Filter</span>
             </div>
-            <div className="collapse-content px-3">
+            <div className="collapse-content px-1">
               <div className="space-y-2">
                 <DateRangePicker
                   params={params}
@@ -522,37 +528,62 @@ const Sidebar = memo(
                   <p className="text-xs text-base-content/60 mb-2">
                     Fill in values for fields you want to search. Leave empty to skip that field.
                   </p>
-                  <textarea
-                    data-testid="history-sidebar-filter-by-textarea"
-                    id="history-sidebar-filter-by-textarea"
-                    className="textarea textarea-bordered w-full text-xs font-mono"
-                    rows={10}
-                    value={filterByText}
-                    onChange={(e) => setFilterByText(e.target.value)}
-                    spellCheck={false}
-                  />
+                  <div className="flex flex-col gap-2">
+                    {Object.keys(HISTORY_FILTER_BY_FIELDS)
+                      .filter((k) => k !== "variables")
+                      .map((fieldKey) => (
+                        <div key={fieldKey} className="flex flex-col gap-0.5">
+                          <label className="text-xs text-base-content/70 capitalize">
+                            {fieldKey.replace(/_/g, " ")}
+                          </label>
+                          <input
+                            type="text"
+                            className="input input-xs input-bordered w-full text-xs"
+                            placeholder={`Search ${fieldKey.replace(/_/g, " ")}...`}
+                            value={filterByFields[fieldKey] || ""}
+                            onChange={(e) => setFilterByFields((prev) => ({ ...prev, [fieldKey]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-xs text-base-content/70 capitalize">variables</label>
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          className="input input-xs input-bordered flex-1 text-xs"
+                          placeholder="key"
+                          value={variableKey}
+                          onChange={(e) => setVariableKey(e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          className="input input-xs input-bordered flex-1 text-xs"
+                          placeholder="value"
+                          value={variableValue}
+                          onChange={(e) => setVariableValue(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <button
                     data-testid="history-sidebar-filter-by-apply"
                     id="history-sidebar-filter-by-apply"
-                    disabled={(() => {
-                      try {
-                        const parsed = JSON.parse(filterByText);
-                        return !Object.values(parsed).some((v) =>
-                          typeof v === "object" ? Object.keys(v).length > 0 : v && v.trim() !== ""
-                        );
-                      } catch {
-                        return true;
-                      }
-                    })()}
+                    disabled={
+                      !Object.entries(filterByFields)
+                        .filter(([k]) => k !== "variables")
+                        .some(([, v]) => v && v.trim() !== "") &&
+                      !variableKey.trim() &&
+                      !variableValue.trim()
+                    }
                     className="btn btn-primary btn-xs w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => {
-                      let parsedFilterBy;
-                      try {
-                        parsedFilterBy = JSON.parse(filterByText);
-                      } catch {
-                        parsedFilterBy = undefined;
+                      const filterBy = { ...filterByFields };
+                      if (variableValue.trim()) {
+                        filterBy.variables = { [variableKey.trim() || "value"]: variableValue.trim() };
+                      } else {
+                        delete filterBy.variables;
                       }
-                      handleSearch(null, searchRef?.current?.value || "", parsedFilterBy);
+                      handleSearch(null, searchRef?.current?.value || "", filterBy);
                     }}
                   >
                     Apply Filter
@@ -562,7 +593,9 @@ const Sidebar = memo(
                     id="history-sidebar-filter-by-reset"
                     className="btn btn-ghost btn-xs w-full mt-1"
                     onClick={() => {
-                      setFilterByText(JSON.stringify(HISTORY_FILTER_BY_FIELDS, null, 2));
+                      setFilterByFields({ ...HISTORY_FILTER_BY_FIELDS, variables: {} });
+                      setVariableKey("");
+                      setVariableValue("");
                       clearInput();
                     }}
                   >

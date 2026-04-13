@@ -274,7 +274,6 @@ export const HISTORY_FILTER_BY_FIELDS = {
   message_id: "",
   user: "",
   llm_message: "",
-  updated_llm_message: "",
   variables: "",
 };
 
