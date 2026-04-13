@@ -450,15 +450,15 @@ const Sidebar = memo(
 
     return (
       <div
-        className="drawer-side justify-items-stretch text-xs bg-base-200 w-[290px] min-w-[290px] max-w-[290px] border-r border-base-300 relative h-screen overflow-y-auto overflow-x-hidden"
+        className="drawer-side justify-items-stretch text-xs bg-base-200 w-[310px] min-w-[310px] max-w-[310px] border-r border-base-300 relative h-screen overflow-y-auto overflow-x-hidden"
         id="sidebar"
       >
         <CreateFineTuneModal params={params} selectedThreadIds={selectedThreadIds} />
-        <div className="p-2 gap-2 flex flex-col">
+        <div className="p-2 gap-2 flex flex-col w-full min-w-0">
           <div
             data-testid="history-sidebar-advance-filter"
             id="history-sidebar-advance-filter"
-            className="collapse collapse-arrow border border-base-300 bg-base-100 rounded-lg min-h-0"
+            className="collapse collapse-arrow border border-base-300 bg-base-100 rounded-lg min-h-0 overflow-hidden"
           >
             <input
               data-testid="history-sidebar-advance-filter-toggle"
@@ -469,8 +469,8 @@ const Sidebar = memo(
             <div className="collapse-title font-semibold min-h-0 py-3 flex items-center">
               <span className="text-xs">Advance Filter</span>
             </div>
-            <div className="collapse-content px-1">
-              <div className="space-y-2">
+            <div className="collapse-content !p-0 w-full min-w-0">
+              <div className="space-y-2 px-2 pb-2 w-full min-w-0">
                 <DateRangePicker
                   params={params}
                   setFilterOption={setFilterOption}
@@ -523,7 +523,7 @@ const Sidebar = memo(
                   </div>
                 </div>
 
-                <div className="p-2 bg-base-200 rounded-lg">
+                <div className="p-2 bg-base-200 rounded-lg w-full min-w-0">
                   <p className="text-center mb-2 text-xs font-medium">Search by Fields</p>
                   <p className="text-xs text-base-content/60 mb-2">
                     Fill in values for fields you want to search. Leave empty to skip that field.
@@ -547,17 +547,17 @@ const Sidebar = memo(
                       ))}
                     <div className="flex flex-col gap-0.5">
                       <label className="text-xs text-base-content/70 capitalize">variables</label>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 w-full min-w-0">
                         <input
                           type="text"
-                          className="input input-xs input-bordered flex-1 text-xs"
+                          className="input input-xs input-bordered flex-1 min-w-0 text-xs"
                           placeholder="key"
                           value={variableKey}
                           onChange={(e) => setVariableKey(e.target.value)}
                         />
                         <input
                           type="text"
-                          className="input input-xs input-bordered flex-1 text-xs"
+                          className="input input-xs input-bordered flex-1 min-w-0 text-xs"
                           placeholder="value"
                           value={variableValue}
                           onChange={(e) => setVariableValue(e.target.value)}
