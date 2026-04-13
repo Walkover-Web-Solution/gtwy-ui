@@ -56,7 +56,7 @@ function ChatTextInput({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const [validationError, setValidationError] = useState(null);
-  const [imagePreviewLoaded, setImagePreviewLoaded] = useState({});
+  const [imagePreviewLoadedKeys, setImagePreviewLoadedKeys] = useState(() => new Set());
   const dispatch = useDispatch();
   const [fileInput, setFileInput] = useState(null); // Use state for the file input element
   const versionId = searchParams?.version;
@@ -120,17 +120,6 @@ function ChatTextInput({
   );
 
   const [localDataToSend, setLocalDataToSend] = useState(dataToSend);
-
-  useEffect(() => {
-    setImagePreviewLoaded((prev) => {
-      const next = {};
-      uploadedImages.forEach((url, index) => {
-        const key = `${url}-${index}`;
-        next[key] = prev[key] || false;
-      });
-      return next;
-    });
-  }, [uploadedImages]);
 
   const { isVision, isFileSupported, isVideoSupported } = useMemo(() => {
     const validationConfig =
@@ -306,6 +295,7 @@ function ChatTextInput({
     const selectedUploadedFiles = [...uploadedFiles];
     dispatch(setChatUploadedFiles(channelIdentifier, []));
     dispatch(setChatUploadedImages(channelIdentifier, []));
+    setImagePreviewLoadedKeys(new Set());
 
     try {
       let responseData;
@@ -607,7 +597,7 @@ function ChatTextInput({
             <div key={index} className="relative flex-shrink-0">
               {(() => {
                 const previewKey = `${url}-${index}`;
-                const isLoaded = imagePreviewLoaded[previewKey];
+                const isLoaded = imagePreviewLoadedKeys.has(previewKey);
 
                 return (
                   <div className="relative w-16 h-16 rounded-lg border border-base-300 overflow-hidden bg-base-200">
@@ -618,16 +608,20 @@ function ChatTextInput({
                       width={64}
                       height={64}
                       onLoad={() =>
-                        setImagePreviewLoaded((prev) => ({
-                          ...prev,
-                          [previewKey]: true,
-                        }))
+                        setImagePreviewLoadedKeys((prev) => {
+                          if (prev.has(previewKey)) return prev;
+                          const next = new Set(prev);
+                          next.add(previewKey);
+                          return next;
+                        })
                       }
                       onError={() =>
-                        setImagePreviewLoaded((prev) => ({
-                          ...prev,
-                          [previewKey]: true,
-                        }))
+                        setImagePreviewLoadedKeys((prev) => {
+                          if (prev.has(previewKey)) return prev;
+                          const next = new Set(prev);
+                          next.add(previewKey);
+                          return next;
+                        })
                       }
                       className={`w-16 h-16 object-cover transition-opacity duration-200 ${
                         isLoaded ? "opacity-100" : "opacity-0"
@@ -641,6 +635,13 @@ function ChatTextInput({
                 id={`chat-remove-image-${index}`}
                 className="absolute -top-2 -right-2 text-white rounded-full"
                 onClick={() => {
+                  const previewKey = `${url}-${index}`;
+                  setImagePreviewLoadedKeys((prev) => {
+                    if (!prev.has(previewKey)) return prev;
+                    const next = new Set(prev);
+                    next.delete(previewKey);
+                    return next;
+                  });
                   const newImages = uploadedImages.filter((_, i) => i !== index);
                   dispatch(setChatUploadedImages(channelIdentifier, newImages));
                 }}
