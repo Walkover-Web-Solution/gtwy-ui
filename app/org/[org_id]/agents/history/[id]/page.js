@@ -24,6 +24,7 @@ function Page({ params, searchParams }) {
   const dispatch = useDispatch();
   const sidebarRef = useRef(null);
   const searchRef = useRef();
+  const activeFilterByRef = useRef(undefined);
   const { historyData, thread, selectedVersion, previousPrompt } = useCustomSelector((state) => ({
     historyData: state?.historyReducer?.history || [],
     thread: state?.historyReducer?.thread || [],
@@ -170,12 +171,13 @@ function Page({ params, searchParams }) {
       getHistoryAction(
         resolvedParams.id,
         nextPage,
-        filterOption, // Use filterOption from state
-        isErrorTrue, // Use isErrorTrue from state
+        filterOption,
+        isErrorTrue,
         selectedVersion,
         keyword,
         startDate,
-        endDate
+        endDate,
+        activeFilterByRef.current
       )
     );
     if (result?.length < 40) setHasMore(false);
@@ -247,6 +249,7 @@ function Page({ params, searchParams }) {
             selectedVersion={selectedVersion}
             setIsErrorTrue={setIsErrorTrue}
             isErrorTrue={isErrorTrue}
+            activeFilterByRef={activeFilterByRef}
           />
         </React.Suspense>
       </div>

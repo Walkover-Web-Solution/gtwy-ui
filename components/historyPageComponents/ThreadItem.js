@@ -440,39 +440,36 @@ const ThreadItem = ({
 
   const renderToolData = useCallback(
     (tool, index) => (
-      console.log("tool", tool),
-      (
+      <div
+        key={index}
+        className="bg-base-200 rounded-lg flex gap-4 duration-200 items-center justify-between hover:bg-base-300 p-1"
+      >
         <div
-          key={index}
-          className="bg-base-200 rounded-lg flex gap-4 duration-200 items-center justify-between hover:bg-base-300 p-1"
+          onClick={(event) => handleToolPrimaryClick(event, tool)}
+          className="cursor-pointer flex items-center justify-center py-4 pl-2"
         >
-          <div
-            onClick={(event) => handleToolPrimaryClick(event, tool)}
-            className="cursor-pointer flex items-center justify-center py-4 pl-2"
-          >
-            <div className="text-center">{truncate(getToolNameHelper(tool), 20)}</div>
+          <div className="text-center">{truncate(getToolNameHelper(tool), 20)}</div>
+        </div>
+        <div className="flex gap-3">
+          <div className="tooltip tooltip-top relative text-base-content" data-tip="function logs">
+            <SquareFunctionIcon
+              size={22}
+              onClick={(event) => handleToolPrimaryClick(event, tool)}
+              className="opacity-80 cursor-pointer"
+            />
           </div>
-          <div className="flex gap-3">
-            <div className="tooltip tooltip-top relative text-base-content" data-tip="function logs">
-              <SquareFunctionIcon
-                size={22}
-                onClick={(event) => handleToolPrimaryClick(event, tool)}
-                className="opacity-80 cursor-pointer"
-              />
-            </div>
-            <div className="tooltip tooltip-top pr-2 relative text-base-content" data-tip="function data">
-              <FileClockIcon
-                size={22}
-                onClick={() => {
-                  setToolsData(tool);
-                  toolsDataModalRef.current?.showModal();
-                }}
-                className="opacity-80 bg-inherit cursor-pointer"
-              />
-            </div>
+          <div className="tooltip tooltip-top pr-2 relative text-base-content" data-tip="function data">
+            <FileClockIcon
+              size={22}
+              onClick={() => {
+                setToolsData(tool);
+                toolsDataModalRef.current?.showModal();
+              }}
+              className="opacity-80 bg-inherit cursor-pointer"
+            />
           </div>
         </div>
-      )
+      </div>
     ),
     [handleToolPrimaryClick, integrationData, setToolsData]
   );

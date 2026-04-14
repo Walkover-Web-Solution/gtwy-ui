@@ -266,6 +266,7 @@ export const HISTORY_FILTER_BY_FIELDS = {
   thread_id: "",
   sub_thread_id: "",
   message_id: "",
+  batch_id: "",
   user: "",
   llm_message: "",
   variables: "",

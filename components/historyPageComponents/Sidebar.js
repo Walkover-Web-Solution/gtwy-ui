@@ -39,6 +39,7 @@ const Sidebar = memo(
     selectedVersion,
     setIsErrorTrue,
     isErrorTrue,
+    activeFilterByRef,
   }) => {
     const { subThreads, userFeedbackCount, bridgeVersionsArray } = useCustomSelector((state) => ({
       subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
@@ -200,6 +201,10 @@ const Sidebar = memo(
               )
             : undefined;
 
+        if (activeFilterByRef) {
+          activeFilterByRef.current = Object.keys(activeFilterBy || {}).length > 0 ? activeFilterBy : undefined;
+        }
+
         const result = await dispatch(
           getHistoryAction(
             params?.id,
@@ -251,6 +256,7 @@ const Sidebar = memo(
       setPage(1);
       setHasMore(true);
       setFilterOption("all");
+      if (activeFilterByRef) activeFilterByRef.current = undefined;
 
       // Reset expanded threads state when clearing search - keep threads collapsed
       setExpandedThreads([]);

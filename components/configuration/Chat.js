@@ -757,7 +757,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   </span>
                                 </div>
                                 <a
-                                  href="https://gtwy.ai/blogs/finish-reasons?source=public"
+                                  href="https://app.docstar.io/p/finish-reasons?collectionId=inYU67SKiHgW"
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-warning/70 hover:text-warning transition-colors flex-shrink-0 ml-2"
