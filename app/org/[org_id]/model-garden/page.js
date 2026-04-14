@@ -19,8 +19,6 @@ const ModelGardenPage = ({ params }) => {
     serviceModels: state.modelReducer?.serviceModels || {},
   }));
 
-  console.log("all models:", serviceModels);
-
   const [selectedService, setSelectedService] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
