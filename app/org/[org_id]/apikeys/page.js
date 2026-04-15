@@ -89,6 +89,16 @@ const Page = () => {
     openModal(MODAL_TYPE.CONNECTED_AGENTS_MODAL);
   }, []);
 
+  const formatApiKeyUsage = (usage) => {
+    const numericUsage = Number.parseFloat(usage);
+    return Number.isFinite(numericUsage) ? `$${numericUsage.toFixed(4)}` : "$0.0000";
+  };
+
+  const getColumnLabel = (column) => {
+    if (column === "apikey_usage") return "Usage (USD)";
+    return column.replace(/_/g, " ");
+  };
+
   // Only show API keys for services that currently exist
   const validApiKeys = filterApiKeys.filter((apiKey) => {
     const serviceExists = SERVICES.some((service) => service.value === apiKey?.service);
@@ -99,7 +109,8 @@ const Page = () => {
     ...item,
     actualName: item.name,
     serviceKey: item.service,
-    apikey_usage: item?.apikey_usage ? parseFloat(item.apikey_usage).toFixed(4) : 0,
+    apikey_usage_original: Number.parseFloat(item?.apikey_usage) || 0,
+    apikey_usage: formatApiKeyUsage(item?.apikey_usage),
     service: (
       <div className="flex items-center gap-2">
         {getIconOfService(item.service, 18, 18)}
@@ -253,6 +264,7 @@ const Page = () => {
               endComponent={EndComponent}
               handleRowClick={(data) => showConnectedAgents(data)}
               keysToExtractOnRowClick={["_id", "name", "version_ids"]}
+              customGetColumnLabel={getColumnLabel}
             />
           </div>
         ))

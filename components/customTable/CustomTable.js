@@ -98,6 +98,13 @@ const CustomTable = ({
           return ascending ? costA - costB : costB - costA;
         }
 
+        // Numeric sorting for API key usage values even when formatted as currency strings
+        if (activeColumn === "apikey_usage") {
+          const usageA = Number(a.apikey_usage_original ?? a.apikey_usage ?? 0);
+          const usageB = Number(b.apikey_usage_original ?? b.apikey_usage ?? 0);
+          return ascending ? usageA - usageB : usageB - usageA;
+        }
+
         // Keep original sorting for totalTokens column for backward compatibility
         if (activeColumn === "totalTokens") {
           const toNumber = (value) => {
