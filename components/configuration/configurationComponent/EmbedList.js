@@ -16,6 +16,11 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import PrebuiltToolsConfigModal from "@/components/modals/PrebuiltToolsConfigModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { CircleQuestionMark } from "lucide-react";
+import {
+  WEB_SEARCH_PREBUILT_TOOL_VALUES,
+  WEB_SEARCH_WARNING_CLASS,
+  WebSearchWarningInfo,
+} from "./WebSearchTokenWarning";
 
 function getStatusClass(status) {
   switch (status?.toString().trim().toLowerCase()) {
@@ -381,6 +386,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                     {/* Render selected Prebuilt Tools with same UI */}
                     {selectedPrebuiltTools.map((item) => {
                       const missingDesc = !item?.description;
+                      const isWebSearchTool = WEB_SEARCH_PREBUILT_TOOL_VALUES.has(item?.value);
                       const isNotSupported =
                         !showInbuiltTools ||
                         (Array.isArray(showInbuiltTools)
@@ -393,7 +399,9 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                           data-testid={`embed-list-prebuilt-tool-${item?.value}`}
                           key={item?.value}
                           id={`embed-list-prebuilt-tool-${item?.value}`}
-                          className={`group flex w-full items-center border border-base-200 cursor-pointer bg-base-100 relative ${hasIssue ? "border-error" : ""} transition-colors duration-200 min-h-[44px]`}
+                          className={`group flex w-full items-center border cursor-pointer bg-base-100 relative ${
+                            hasIssue ? "border-error" : isWebSearchTool ? WEB_SEARCH_WARNING_CLASS : "border-base-200"
+                          } transition-colors duration-200 min-h-[44px]`}
                         >
                           <div className="p-2 flex-1 flex items-center gap-2">
                             {GetPreBuiltToolTypeIcon(item?.value, 16, 16)}
@@ -414,6 +422,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                                 </p>
                               )}
                             </div>
+                            {isWebSearchTool && <WebSearchWarningInfo />}
                           </div>
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
                             {(item?.value === "web_search" || item?.value === "Gtwy_Web_Search") && (

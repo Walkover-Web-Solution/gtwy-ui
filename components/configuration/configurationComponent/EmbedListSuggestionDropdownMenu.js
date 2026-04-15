@@ -54,6 +54,10 @@ function EmbedListSuggestionDropdownMenu({
   const handlePrebuiltToolClick = (tool) => {
     onSelectPrebuiltTool(tool);
   };
+
+  const handleBuiltInPreToolClick = (type) => {
+    onSelectBuiltInPreTool(type);
+  };
   const renderEmbedSuggestions = useMemo(
     () =>
       function_data &&
@@ -186,7 +190,7 @@ function EmbedListSuggestionDropdownMenu({
                   .map((k) => ({ type: k, label: PRE_TOOL_LABELS[k] }))
                   .filter((t) => !connectedPreToolTypes.includes(t.type))
                   .map((t) => (
-                    <li key={t.type} onClick={() => onSelectBuiltInPreTool(t.type)}>
+                    <li key={t.type} onClick={() => handleBuiltInPreToolClick(t.type)}>
                       <div className="flex justify-between items-center w-full">
                         <span className="text-sm">{t.label}</span>
                       </div>

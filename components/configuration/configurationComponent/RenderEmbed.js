@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { SettingsIcon, TrashIcon, RefreshIcon, SquareFunctionIcon } from "@/components/Icons";
 import useExpandableList from "@/customHooks/useExpandableList";
+import { WEB_SEARCH_WARNING_CLASS, WebSearchWarningInfo } from "./WebSearchTokenWarning";
 
 const RenderEmbed = ({
   bridgeFunctions,
@@ -44,13 +45,20 @@ const RenderEmbed = ({
     const embedItems = displayItems?.map((value) => {
       const functionName = value?.script_id;
       const title = value?.title || integrationData?.[functionName]?.title;
+      const isWebSearchPreTool = value?._type === "gtwy_web_search";
 
       return (
         <div
           data-testid={`render-embed-item-${value?._id}`}
           key={value?._id}
           id={value?._id}
-          className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full ${value?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200`}
+          className={`group flex items-center border cursor-pointer bg-base-100 relative min-h-[44px] w-full ${
+            value?.description?.trim() === ""
+              ? "border-red-600"
+              : isWebSearchPreTool
+                ? WEB_SEARCH_WARNING_CLASS
+                : "border-base-200"
+          } transition-colors duration-200`}
         >
           <div
             className="p-2 flex-1 flex items-center"
@@ -92,6 +100,7 @@ const RenderEmbed = ({
               ) : (
                 <span className="block text-sm font-normal truncate flex-1 min-w-0">{title}</span>
               )}
+              {isWebSearchPreTool && <WebSearchWarningInfo />}
             </div>
           </div>
 
