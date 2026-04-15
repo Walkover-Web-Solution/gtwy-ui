@@ -261,7 +261,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           data-testid={`connected-agent-item-${item?.bridge_id}`}
           key={item?.bridge_id}
           id={item?.bridge_id}
-          className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full overflow-hidden ${!bridge?.connected_agent_details?.description && !item.description ? "border-red-600" : ""} transition-colors duration-200`}
+          className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full overflow-hidden ${!bridge?.connected_agent_details?.description && !item.description ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
         >
           <div className="p-2 flex-1 flex items-center" onClick={() => handleAgentClicked(item)}>
             <div className="flex items-center gap-2 w-full">
@@ -281,7 +281,9 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           </div>
 
           {/* Action buttons that appear on hover */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+          <div
+            className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
+          >
             <button
               data-testid={`connected-agent-config-button-${item?.bridge_id}`}
               id={`connected-agent-config-button-${item?.bridge_id}`}
@@ -332,6 +334,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
     handleAgentClicked,
     handleOpenAgentVariable,
     handleOpenDeleteModal,
+    isReadOnly,
   ]);
 
   return (

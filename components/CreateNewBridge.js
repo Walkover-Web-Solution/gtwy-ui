@@ -274,6 +274,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
                     ref={textAreaPurposeRef}
                     autoFocus
                     onChange={handlePurposeInput}
+                    disabled={state.isAiLoading || state.isLoading}
                     className={`textarea textarea-bordered w-full min-h-[150px] max-h-[150px] bg-base-100 transition-all duration-300 text-base resize-none placeholder:text-base-content/40 ${
                       state.validationErrors.purpose
                         ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"

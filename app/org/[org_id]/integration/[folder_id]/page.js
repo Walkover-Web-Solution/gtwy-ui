@@ -46,7 +46,9 @@ const IntegrationDetailPage = ({ params }) => {
       if (!embedToken && selectedIntegration && currentUser?.id) {
         try {
           // Pass userId as org_id parameter
-          await dispatch(generateEmbedTokenAction(selectedIntegration.folder_id, currentUser.id));
+          await dispatch(
+            generateEmbedTokenAction(selectedIntegration.folder_id, currentUser.id, resolvedParams.org_id)
+          );
         } catch (error) {
           console.error("Error generating embed token:", error);
         }

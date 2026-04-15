@@ -13,6 +13,7 @@ import {
   updateIntegrationDataReducer,
   setEmbedToken,
 } from "../reducer/integrationReducer";
+import { updateGtwyAccessToken } from "../reducer/userDetailsReducer";
 
 export const createIntegrationAction = (data) => async (dispatch) => {
   try {
@@ -57,7 +58,7 @@ export const updateIntegrationDataAction = (orgId, dataToSend) => async (dispatc
   }
 };
 
-export const generateEmbedTokenAction = (folderId, userId) => async (dispatch) => {
+export const generateEmbedTokenAction = (folderId, userId, orgId) => async (dispatch) => {
   try {
     // Construct request data with folder_id and org_id (userId)
     const requestData = {
@@ -70,6 +71,9 @@ export const generateEmbedTokenAction = (folderId, userId) => async (dispatch) =
     // Store token in Redux if folderId is provided
     if (response?.data?.embedToken && folderId) {
       dispatch(setEmbedToken({ folderId, token: response.data.embedToken }));
+    }
+    if (response?.data?.gtwyAccessToken) {
+      dispatch(updateGtwyAccessToken({ orgId, gtwyAccessToken: response?.data?.gtwyAccessToken }));
     }
 
     return response;

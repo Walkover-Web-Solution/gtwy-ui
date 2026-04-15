@@ -43,18 +43,6 @@ export const generateAffiliateEmbedTokenApi = async (data) => {
   }
 };
 
-export const generateGtwyAccessTokenApi = async () => {
-  try {
-    const response = await axios.post(`${URL}/api/utils/token`, {
-      type: "embed",
-    });
-    return response;
-  } catch (error) {
-    console.error(error);
-    return error;
-  }
-};
-
 export const generateEmbedTokenApi = async (data) => {
   try {
     const response = await axios.post(`${URL}/api/utils/token`, {

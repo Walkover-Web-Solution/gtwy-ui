@@ -224,7 +224,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             data-testid={`knowledgebase-card-${item._id}`}
             id={`knowledgebase-card-${item._id}`}
             key={resourceId || index}
-            className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full ${item?.description?.trim() === "" ? "border-red-600" : ""}transition-colors duration-200`}
+            className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full ${item?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
           >
             <div className="flex items-center gap-2 w-full ml-2">
               {GetFileTypeIcon(item?.url?.includes(".pdf") ? "pdf" : "document", 16, 16)}
@@ -244,7 +244,9 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             </div>
 
             {/* Remove button that appears on hover */}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+            <div
+              className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
+            >
               <button
                 data-testid={`knowledgebase-edit-button-${item._id}`}
                 id={`knowledgebase-edit-button-${item._id}`}
@@ -278,7 +280,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
       .filter(Boolean);
 
     return <div className={`grid gap-2 w-full max-w-md`}>{knowledgebaseItems}</div>;
-  }, [knowbaseVersionData, knowledgeBaseData]);
+  }, [knowbaseVersionData, knowledgeBaseData, isReadOnly]);
   return (
     <div className="w-full gap-2 flex flex-col px-2 py-2 cursor-default">
       <div className="flex items-center gap-2 mb-2">
