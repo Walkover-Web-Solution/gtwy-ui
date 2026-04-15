@@ -262,6 +262,7 @@ const ApiKeyModal = ({
                 inputMode="decimal"
                 min="0"
               />
+              <p className="text-xs text-base-content/50">Set a limit to avoid overspending.</p>
             </div>
           );
         })}
