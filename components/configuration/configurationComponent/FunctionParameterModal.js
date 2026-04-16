@@ -11,6 +11,9 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { PlusCircleIcon, CircleQuestionMark } from "lucide-react";
 import { PARAMETER_TYPES } from "@/utils/enums";
+import CodeMirror from "@uiw/react-codemirror";
+import { json } from "@codemirror/lang-json";
+import { useThemeManager } from "@/customHooks/useThemeManager";
 
 // Parameter Card Component
 const ParameterCard = ({
@@ -276,6 +279,27 @@ const ParameterCard = ({
               ))}
             </select>
           )}
+          {name === "Pre Tool" && (
+            <div className="flex flex-row items-center">
+              <label className="text-xs mb-0 mr-1 whitespace-nowrap">Value Path:</label>
+              <input
+                data-testid={`param-value-path-input-${currentPath}`}
+                id={`param-value-path-input-${currentPath}`}
+                disabled={isReadOnly}
+                type="text"
+                placeholder="your_path"
+                className={`input input-xs input-bordered text-xs ${
+                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                }`}
+                value={variablesPath[currentPath] || ""}
+                onChange={(e) => {
+                  const updatedVariablesPath = { ...variablesPath };
+                  updatedVariablesPath[currentPath] = e.target.value;
+                  onVariablePathChange(updatedVariablesPath);
+                }}
+              />
+            </div>
+          )}
           <button
             data-testid={`param-delete-button-${currentPath}`}
             id={`param-delete-button-${currentPath}`}
@@ -351,7 +375,7 @@ const ParameterCard = ({
             )}
           </div>
         )}
-        {((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
+        {name !== "Pre Tool" && ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
           <div className="mb-1 flex flex-row ml-1 items-center justify-end">
             <label className="block text-xs mb-0 mr-1">Value Path:</label>
             <input
@@ -479,6 +503,7 @@ function FunctionParameterModal({
 
   const [isModified, setIsModified] = useState(false);
   const [objectFieldValue, setObjectFieldValue] = useState("");
+  const { actualTheme } = useThemeManager();
   const [isTextareaVisible, setIsTextareaVisible] = useState(false);
   const [isOldFieldViewTrue, setIsOldFieldViewTrue] = useState(false);
   const [showNameDescription, setShowNameDescription] = useState(false);
@@ -503,11 +528,13 @@ function FunctionParameterModal({
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
     if (prevFunctionNameRef.current !== functionName) {
-      const newVariablesPath = variables_path[functionName] || {};
-      setVariablesPath(newVariablesPath);
+      if (name !== "Pre Tool") {
+        const newVariablesPath = variables_path[functionName] || {};
+        setVariablesPath(newVariablesPath);
+      }
       prevFunctionNameRef.current = functionName;
     }
-  }, [functionName, variables_path]);
+  }, [functionName, variables_path, name]);
 
   useEffect(() => {
     if (!toolData) {
@@ -697,14 +724,14 @@ function FunctionParameterModal({
       };
     });
     setVariablesPath((prev) => {
-      const updatedPath = { ...prev };
-      delete updatedPath[path];
-      const remainingPaths = Object.entries(updatedPath);
-      const formattedPaths = {};
-      remainingPaths.forEach(([key, value]) => {
-        formattedPaths[key] = value;
+      const next = {};
+      Object.entries(prev || {}).forEach(([key, value]) => {
+        if (key === path || key.startsWith(`${path}.`)) {
+          return;
+        }
+        next[key] = value;
       });
-      return formattedPaths;
+      return next;
     });
     setIsModified(true);
   }, []);
@@ -835,9 +862,24 @@ function FunctionParameterModal({
         };
       });
 
+      const oldPath = currentPath;
+      const newPath = [...parentPath, newName].join(".");
+      setVariablesPath((prev) => {
+        const next = {};
+        Object.entries(prev || {}).forEach(([key, value]) => {
+          if (key === oldPath || key.startsWith(`${oldPath}.`)) {
+            const suffix = key.slice(oldPath.length);
+            next[`${newPath}${suffix}`] = value;
+            return;
+          }
+          next[key] = value;
+        });
+        return next;
+      });
+
       setIsModified(true);
     },
-    [updateField]
+    [updateField, setVariablesPath]
   );
 
   const handleToolNameChange = useCallback(() => {
@@ -1151,6 +1193,7 @@ function FunctionParameterModal({
     <Modal MODAL_ID={Model_Name}>
       <div
         id="function-param-modal-box"
+        data-testid="function-parameter-modal"
         className="modal-box max-w-4xl overflow-hidden text-xs max-h-[90%] my-20 flex flex-col"
       >
         {/* Modal Header */}
@@ -1163,6 +1206,7 @@ function FunctionParameterModal({
             <div className="flex justify-end gap-2 mt-1">
               <select
                 id="function-param-mode-select"
+                data-testid="function-parameter-mode-select"
                 disabled={isReadOnly}
                 className="select select-xs select-bordered text-xs min-w-20"
                 value={isTextareaVisible ? "advanced" : "simple"}
@@ -1343,6 +1387,7 @@ function FunctionParameterModal({
                       {name === "Orchestral Agent" || name === "Agent" ? (
                         <input
                           id="function-param-name-input"
+                          data-testid="function-parameter-name-input"
                           type="text"
                           className="input input-sm text-xs input-bordered w-full"
                           value={tool_name}
@@ -1351,6 +1396,7 @@ function FunctionParameterModal({
                       ) : (
                         <input
                           id="function-param-name-input"
+                          data-testid="function-parameter-name-input"
                           className="input input-sm text-xs input-bordered w-full"
                           value={toolName}
                           onChange={(e) => {
@@ -1366,23 +1412,22 @@ function FunctionParameterModal({
                     </div>
 
                     {/* Description Field */}
-                    {name !== "Pre Tool" && (
-                      <div>
-                        <label className="block text-xs mb-1">Description</label>
-                        <textarea
-                          id="function-param-desc-textarea"
-                          disabled={isReadOnly}
-                          className="textarea bg-base-100 textarea-sm textarea-bordered w-full resize-y"
-                          rows={2}
-                          value={toolData?.description || ""}
-                          onChange={(e) => {
-                            setToolData({ ...toolData, description: e.target.value });
-                            setIsModified(true);
-                          }}
-                          placeholder="Enter tool description"
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-xs mb-1">Description</label>
+                      <textarea
+                        id="function-param-desc-textarea"
+                        data-testid="function-parameter-desc-textarea"
+                        disabled={isReadOnly}
+                        className="textarea bg-base-100 textarea-sm textarea-bordered w-full resize-y"
+                        rows={2}
+                        value={toolData?.description || ""}
+                        onChange={(e) => {
+                          setToolData({ ...toolData, description: e.target.value });
+                          setIsModified(true);
+                        }}
+                        placeholder="Enter tool description"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -1391,6 +1436,7 @@ function FunctionParameterModal({
                 <h3 className="font-semibold text-xs text-base-content">Parameters</h3>
                 <button
                   id="function-param-add-param-button"
+                  data-testid="function-parameter-add-param-button"
                   disabled={isReadOnly}
                   onClick={handleAddParameter}
                   className="btn btn-sm btn-primary gap-1"
@@ -1433,25 +1479,33 @@ function FunctionParameterModal({
               </div>
             </>
           ) : (
-            <div className={isOldFieldViewTrue ? "flex items-center gap-2" : ""}>
-              <textarea
-                id="function-param-json-textarea"
-                disabled={isReadOnly}
-                type="input"
-                value={objectFieldValue}
-                className="textarea bg-base-100 textarea-bordered border border-base-300 w-full min-h-96 resize-y"
-                onChange={(e) => setObjectFieldValue(e.target.value)}
-                onBlur={handleTextFieldChange}
-                placeholder="Enter valid JSON object here..."
-              />
-              {isOldFieldViewTrue && (
-                <textarea
-                  id="function-param-old-fields-textarea"
-                  disabled={isReadOnly}
-                  type="text"
-                  value={toolData?.old_fields ? JSON.stringify(toolData["old_fields"], undefined, 4) : ""}
-                  className="textarea bg-base-100 textarea-bordered border border-base-300 w-full min-h-96 resize-y"
+            <div className={isOldFieldViewTrue ? "flex items-start gap-2" : ""}>
+              <div
+                data-testid="function-parameter-advanced-codemirror-wrapper"
+                className={isOldFieldViewTrue ? "w-1/2" : "w-full"}
+              >
+                <CodeMirror
+                  value={objectFieldValue}
+                  height="400px"
+                  extensions={[json()]}
+                  theme={actualTheme}
+                  editable={!isReadOnly}
+                  onChange={(val) => setObjectFieldValue(val)}
+                  onBlur={handleTextFieldChange}
+                  className="border border-base-300 rounded overflow-hidden text-sm"
                 />
+              </div>
+              {isOldFieldViewTrue && (
+                <div className="w-1/2">
+                  <CodeMirror
+                    value={toolData?.old_fields ? JSON.stringify(toolData["old_fields"], undefined, 4) : ""}
+                    height="400px"
+                    extensions={[json()]}
+                    theme={actualTheme}
+                    editable={false}
+                    className="border border-base-300 rounded overflow-hidden text-sm opacity-80"
+                  />
+                </div>
               )}
             </div>
           )}
@@ -1460,11 +1514,17 @@ function FunctionParameterModal({
         {/* Modal Actions - Always visible at bottom */}
         <div className="modal-action mt-2">
           <form method="dialog" className="flex flex-row gap-2">
-            <button id="function-param-close-button" className="btn btn-sm" onClick={handleCloseModal}>
+            <button
+              id="function-param-close-button"
+              data-testid="function-parameter-close-button"
+              className="btn btn-sm"
+              onClick={handleCloseModal}
+            >
               Close
             </button>
             <button
               id="function-param-save-button"
+              data-testid="function-parameter-save-button"
               className="btn btn-sm btn-primary"
               onClick={handleSaveData}
               disabled={!isModified || isLoading || isPublished}

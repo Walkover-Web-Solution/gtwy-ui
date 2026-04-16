@@ -7,10 +7,8 @@ import { getSingleMessage, switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { ThemeManager, useThemeManager } from "@/customHooks/useThemeManager";
 import { getAllApikeyAction } from "@/store/action/apiKeyAction";
-import { toast } from "react-toastify";
 import {
   createApiAction,
-  createBridgeAction,
   deleteFunctionAction,
   getAllBridgesAction,
   getAllFunctions,
@@ -37,6 +35,7 @@ import {
   getFinishReasonsAction,
   getLinksAction,
 } from "@/store/action/flowDataAction";
+import { cleanVariablesPathByFields } from "@/utils/variableValidation";
 import { userDetails } from "@/store/action/userDetailsAction";
 import { storeMarketingRefUserAction } from "@/store/action/marketingRefAction";
 import { getAllIntegrationDataAction } from "@/store/action/integrationAction";
@@ -266,24 +265,8 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   useEffect(() => {
     if (isValidOrg) {
       dispatch(
-        getAllBridgesAction((data) => {
+        getAllBridgesAction(() => {
           setLoading(false);
-          const hasChatbotPreview = data?.some((bridge) => bridge?.slugName === "chatbot preview");
-          if (!hasChatbotPreview && !isEmbedUser) {
-            dispatch(
-              createBridgeAction(
-                {
-                  dataToSend: {
-                    name: "chatbot preview",
-                    slugName: "chatbot preview",
-                    bridgeType: "chatbot",
-                  },
-                  orgid: resolvedParams?.org_id,
-                },
-                () => {}
-              )
-            );
-          }
         })
       );
       dispatch(getAllFunctions());
@@ -379,48 +362,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       document.head.appendChild(script);
     }
   }, [doctstar_embed_token, isEmbedUser]);
-
-  const PROXY_AUTH_TOKEN = getFromCookies("proxy_token");
-  // Initialize MSG91 proxy auth configuration
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Configuration for MSG91 Proxy Auth
-      const configuration = {
-        authToken: PROXY_AUTH_TOKEN,
-        pass: true,
-        type: "user-management",
-        exclude_role_ids: [process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID],
-        success: (data) => {
-          // get verified token in response
-          console.log("MSG91 Auth success response", data);
-          toast.success("Authentication verified successfully!");
-        },
-        failure: (error) => {
-          // handle error
-          console.log("MSG91 Auth failure reason", error);
-          toast.error("Authentication failed. Please try again.");
-        },
-      };
-
-      // Load MSG91 Proxy Auth Script
-      const script = document.createElement("script");
-      script.type = "text/javascript";
-      script.src = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
-      script.onload = function () {
-        if (typeof initVerification === "function") {
-          initVerification(configuration);
-        }
-      };
-      document.head.appendChild(script);
-
-      // Cleanup function to remove script on unmount
-      return () => {
-        if (script && script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-      };
-    }
-  }, []);
 
   useEffect(() => {
     if (isValidOrg) {
@@ -536,13 +477,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
             path[5] &&
             resolvedSearchParams?.get("version")
           ) {
-            const validFieldKeys = new Set(Object.keys(data?.fields || {}));
-            const currentToolVariablesPath = variablesPathRef.current?.[data.script_id] || {};
-            const hasStaleKeys = Object.keys(currentToolVariablesPath).some((key) => !validFieldKeys.has(key));
-            if (hasStaleKeys) {
-              const cleanedToolVariablesPath = Object.fromEntries(
-                Object.entries(currentToolVariablesPath).filter(([key]) => validFieldKeys.has(key))
-              );
+            const currentToolVariablesPath = variablesPath?.[data.script_id] || {};
+            const cleanedToolVariablesPath = cleanVariablesPathByFields(currentToolVariablesPath, data?.fields || {});
+            if (Object.keys(cleanedToolVariablesPath).length !== Object.keys(currentToolVariablesPath).length) {
               dispatch(
                 updateBridgeVersionAction({
                   bridgeId: path[5],

@@ -9,7 +9,7 @@ import {
 } from "@/store/action/bridgeAction";
 import { convertAgentToTemplate } from "@/config/bridgeApi";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal, sendDataToParent } from "@/utils/utility";
+import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
@@ -18,6 +18,7 @@ import Protected from "../Protected";
 import PublishVersionDataComparisonView from "../comparison/PublishVersionDataComparisonView";
 import { DIFFERNCE_DATA_DISPLAY_NAME, KEYS_TO_COMPARE } from "@/jsonFiles/bridgeParameter";
 import { AgentSummaryContent } from "./PromptSummaryModal";
+import PostPublishFeedbackModal from "./PostPublishFeedbackModal";
 
 function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_description, isEmbedUser }) {
   const dispatch = useDispatch();
@@ -33,53 +34,94 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [convertToTemplate, setConvertToTemplate] = useState(false);
   const publishDropdownRef = useRef(null);
 
-  const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } =
-    useCustomSelector((state) => {
-      const isPublished = searchParams?.get("isPublished") === "true";
-      const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
-      const versionDataFromState =
-        state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+  const {
+    bridge,
+    versionData,
+    bridgeData,
+    agentList,
+    bridge_summary,
+    allBridgesMap,
+    prompt,
+    isEditor,
+    activeService,
+    hasApiKeyForActiveService,
+    activeServiceDisplayName,
+    showDefaultApikeys,
+    bridgeType,
+    modelName,
+  } = useCustomSelector((state) => {
+    const isPublished = searchParams?.get("isPublished") === "true";
+    const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
+    const versionDataFromState = state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+    const activeData = isPublished ? bridgeDataFromState : versionDataFromState;
+    const rawService = activeData?.service || bridgeDataFromState?.service || "";
+    const serviceKey = typeof rawService === "string" ? rawService.toLowerCase() : "";
+    const serviceApiKeyMap = activeData?.apikey_object_id || bridgeDataFromState?.apikey_object_id || {};
+    const hasApiKey = !!(serviceKey && serviceApiKeyMap?.[serviceKey]);
+    const services = state?.serviceReducer?.services || [];
+    const serviceLabel =
+      (Array.isArray(services) ? services.find((s) => s?.value === serviceKey)?.displayName : "") || serviceKey;
 
-      // Check if user has editor permissions
-      const orgId = params?.org_id;
-      const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
-      const currentUser = state.userDetailsReducer.userDetails;
-      const agentUsers = bridgeDataFromState?.users || [];
+    // Check if user has editor permissions
+    const orgId = params?.org_id;
+    const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
+    const currentUser = state.userDetailsReducer.userDetails;
+    const agentUsers = bridgeDataFromState?.users || [];
 
-      // Determine if user is allowed to edit based on role and agent access
-      const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
-      // Updated canEdit condition
-      const canEdit =
-        (currentOrgRole === "Editor" &&
-          (agentUsers?.length === 0 ||
-            !agentUsers ||
-            (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
-        (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
-        currentOrgRole === "Creator" ||
-        isAdminOrOwner;
+    // Determine if user is allowed to edit based on role and agent access
+    const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
+    // Updated canEdit condition
+    const canEdit =
+      (currentOrgRole === "Editor" &&
+        (agentUsers?.length === 0 ||
+          !agentUsers ||
+          (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
+      (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
+      currentOrgRole === "Creator" ||
+      isAdminOrOwner;
 
-      return {
-        bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
-        versionData: versionDataFromState,
-        bridgeData: bridgeDataFromState,
-        agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
-        bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
-        allBridgesMap: state.bridgeReducer.allBridgesMap || {},
-        prompt: isPublished
-          ? bridgeDataFromState?.configuration?.prompt || ""
-          : versionDataFromState?.configuration?.prompt || "",
-        isEditor: isEmbedUser ? true : canEdit,
-      };
-    });
+    // Get embed user API key and default API keys flag if available
+    const embedApiKey = state?.appInfoReducer?.embedUserDetails?.apikey_object_id;
+    const defaultApiKeysEnabled = state?.appInfoReducer?.embedUserDetails?.addDefaultApiKeys;
+
+    return {
+      bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
+      versionData: versionDataFromState,
+      bridgeData: bridgeDataFromState,
+      agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
+      bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
+      allBridgesMap: state.bridgeReducer.allBridgesMap || {},
+      prompt: isPublished
+        ? bridgeDataFromState?.configuration?.prompt || ""
+        : versionDataFromState?.configuration?.prompt || "",
+      isEditor: isEmbedUser ? true : canEdit,
+      activeService: serviceKey,
+      hasApiKeyForActiveService: hasApiKey,
+      activeServiceDisplayName: serviceLabel,
+      embedUserApiKey: embedApiKey,
+      showDefaultApikeys: defaultApiKeysEnabled,
+      bridgeType: bridgeDataFromState?.bridgeType,
+      modelName: activeData?.configuration?.model,
+    };
+  });
 
   // Flag to determine if the UI should be in read-only mode
   const isReadOnly = !isEditor;
+
+  const isChatbotWithGpt5Nano = bridgeType === "chatbot" && modelName === "gpt-5-nano";
+
+  const showApiKeyWarning =
+    Boolean(activeService) &&
+    !hasApiKeyForActiveService &&
+    !(isEmbedUser && showDefaultApikeys) &&
+    !isChatbotWithGpt5Nano;
+
   // Memoized form data initialization
   const [formData, setFormData] = useState(() => ({
     url_slugname: "",
     availability: "public",
     description: "",
-    allowedUsers: [],
+    publicUsers: [],
     newEmail: "",
   }));
 
@@ -91,7 +133,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         url_slugname: bridge.url_slugname || "",
         availability: bridge.availability || "public",
         description: bridge.description || "",
-        allowedUsers: bridge.allowedUsers || [],
+        publicUsers: bridge.settings?.publicUsers || [],
       }));
     }
   }, [bridge]);
@@ -417,22 +459,22 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const handleAddEmail = useCallback(() => {
     if (!formData.newEmail?.includes("@")) return;
 
-    if (formData.allowedUsers.includes(formData.newEmail)) {
+    if (formData.publicUsers.includes(formData.newEmail)) {
       toast.warn("This email has already been added.");
       return;
     }
 
     setFormData((prev) => ({
       ...prev,
-      allowedUsers: [...(prev.allowedUsers || []), prev.newEmail],
+      publicUsers: [...(prev.publicUsers || []), prev.newEmail],
       newEmail: "",
     }));
-  }, [formData.newEmail, formData.allowedUsers]);
+  }, [formData.newEmail, formData.publicUsers]);
 
   const handleRemoveUser = useCallback((indexToRemove) => {
     setFormData((prev) => ({
       ...prev,
-      allowedUsers: prev.allowedUsers.filter((_, i) => i !== indexToRemove),
+      publicUsers: prev.publicUsers.filter((_, i) => i !== indexToRemove),
     }));
   }, []);
 
@@ -650,7 +692,9 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
               url_slugname: formData.url_slugname,
               availability: formData.availability,
               description: formData.description,
-              allowedUsers: formData.availability === "private" ? formData.allowedUsers : [],
+              settings: {
+                publicUsers: formData.availability === "private" ? formData.publicUsers : [],
+              },
             },
           };
 
@@ -706,6 +750,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         dispatch(getAllBridgesAction());
         setConvertToTemplate(false);
         closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
+        openModal(MODAL_TYPE.POST_PUBLISH_FEEDBACK_MODAL);
 
         if (shouldConvertToTemplate) {
           const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim());
@@ -747,13 +792,15 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-low-medium overflow-auto h-auto bg-base-100">
         <div
           id="publish-bridge-modal-container"
+          data-testid="publish-version-modal"
           className="bg-base-100 mb-auto mt-auto rounded-lg shadow-2xl max-w-6xl w-[90vw] my-8 flex flex-col p-6 md:p-10 transition-all duration-300 ease-in-out animate-fadeIn"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Publish Bridge Version</h2>
+            <h2 className="text-xl font-semibold">Publish Agent Version</h2>
             <div className="flex gap-2">
               <button
                 id="publish-toggle-comparison-button"
+                data-testid="publish-version-comparison-toggle"
                 onClick={toggleComparison}
                 className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
                 title="Compare Version Changes"
@@ -810,21 +857,42 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
           {/* Warning Section */}
           {!showComparison && (
-            <div className="alert bg-base/70 mb-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                  <h3 className="font-medium">Are you sure you want to publish this version?</h3>
-                </div>
-                <div className="pl-7">
-                  <p className="text-sm">Keep these important points in mind:</p>
-                  <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
-                    <li>Published version will be available to all users</li>
-                    <li>Changes will be immediately reflected in the published version</li>
-                    <li>Published changes cannot be reverted</li>
-                  </ul>
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="alert bg-base/70">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                    <h3 className="font-medium">Are you sure you want to publish this version?</h3>
+                  </div>
+                  <div className="pl-7">
+                    <p className="text-sm">Keep these important points in mind:</p>
+                    <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
+                      <li>Published version will be available to all users</li>
+                      <li>Changes will be immediately reflected in the published version</li>
+                      <li>Published changes cannot be reverted</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
+
+              {showApiKeyWarning && (
+                <div
+                  data-testid="publish-apikey-missing-warning"
+                  id="publish-apikey-missing-warning"
+                  className="alert alert-warning border border-warning/30 bg-warning/10"
+                >
+                  <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-base-content">API Key Not Configured</h3>
+                    <p className="text-sm text-base-content/40">
+                      No API key is configured for{" "}
+                      <span className="font-medium text-base-content/40">{activeServiceDisplayName}</span> in this
+                      version.
+                    </p>
+                  </div>
+                  <span className="badge badge-warning badge-sm">API Key Not Configured</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -955,6 +1023,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                     </label>
                     <input
                       id="publish-slug-name-input"
+                      data-testid="publish-version-slug-input"
                       type="text"
                       name="url_slugname"
                       placeholder="Enter a unique slug name"
@@ -977,6 +1046,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                     </label>
                     <textarea
                       id="publish-description-textarea"
+                      data-testid="publish-version-description-textarea"
                       name="description"
                       placeholder="Enter a description"
                       className="textarea bg-base-100 textarea-bordered w-full h-20"
@@ -992,6 +1062,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                     </label>
                     <select
                       id="publish-visibility-select"
+                      data-testid="publish-version-availability-select"
                       className="select select-bordered w-full"
                       name="availability"
                       value={formData.availability}
@@ -1009,10 +1080,10 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                         <span className="label-text font-medium">Allowed Users</span>
                       </label>
 
-                      {formData.allowedUsers?.length > 0 && (
+                      {formData.publicUsers?.length > 0 && (
                         <div className="mb-3 p-3 bg-base-200/50 rounded-lg min-h-[3rem]">
                           <div className="flex flex-wrap gap-2">
-                            {formData.allowedUsers.map((user, index) => (
+                            {formData.publicUsers.map((user, index) => (
                               <div key={index} className="badge badge-outline gap-2 py-3 px-3">
                                 <span className="text-sm">{user}</span>
                                 <button
@@ -1067,9 +1138,9 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-base-300">
+          <div className="flex items-center justify-end pt-4 border-t border-base-300">
             {!isEmbedUser && (
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+              <label className="flex items-center gap-2 cursor-pointer select-none mr-auto">
                 <input
                   type="checkbox"
                   className="checkbox checkbox-xs checkbox-primary"
@@ -1087,6 +1158,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
               </button>
               <button
                 id="publish-confirm-button"
+                data-testid="publish-version-publish-button"
                 className="btn btn-primary btn-sm"
                 onClick={() => handlePublishBridge(convertToTemplate)}
                 disabled={isLoading || (isPublicAgent && !formData.url_slugname.trim()) || isReadOnly}
@@ -1109,6 +1181,8 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       </div>
 
       <div className="modal-backdrop" onClick={handleCloseModal}></div>
+
+      <PostPublishFeedbackModal agentName={agent_name} orgId={params?.org_id} />
     </Modal>
   );
 }

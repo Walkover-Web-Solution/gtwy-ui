@@ -30,6 +30,7 @@ const MetricsFilters = memo(
             <span className="font-medium">Group by:</span>
             <details
               id="metrics-filter-group-by-dropdown"
+              data-testid="metrics-filter-group-by"
               className="dropdown dropdown-end"
               tabIndex={0}
               onBlur={(e) => {
@@ -67,6 +68,7 @@ const MetricsFilters = memo(
             <span className="font-medium">Agent:</span>
             <details
               id="metrics-filter-agent-dropdown"
+              data-testid="metrics-filter-agent-select"
               className="dropdown dropdown-end z-high"
               ref={(node) => {
                 if (node) {
@@ -134,6 +136,7 @@ const MetricsFilters = memo(
             <span className="font-medium">Time Range:</span>
             <details
               id="metrics-filter-time-range-dropdown"
+              data-testid="metrics-filter-time-range"
               className="dropdown dropdown-end"
               tabIndex={0}
               onBlur={(e) => {
@@ -166,6 +169,7 @@ const MetricsFilters = memo(
                 <li>
                   <a
                     id="metrics-filter-time-range-custom"
+                    data-testid="metrics-filter-custom-range"
                     className={`${range === 10 ? "active" : ""} flex items-center gap-2`}
                     onClick={(e) => {
                       onTimeRangeChange(TIME_RANGE_OPTIONS.length);

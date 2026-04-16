@@ -54,7 +54,7 @@ const ChatbotPreview = ({ showHeader = true, embedToken }) => {
       if (typeof window.SendDataToChatbot === "function") {
         clearInterval(checkChatbot);
         window.SendDataToChatbot({
-          bridgeName: "chatbot preview",
+          bridgeName: "chatbot_preview",
           parentId: "chatbot-preview-container",
           threadId: "chatbot_preview",
         });

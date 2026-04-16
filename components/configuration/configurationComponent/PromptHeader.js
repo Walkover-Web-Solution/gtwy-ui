@@ -1,5 +1,4 @@
 import React, { memo, useCallback } from "react";
-import { PROMPT_VIEW_MODE } from "@/utils/enums";
 import Protected from "@/components/Protected";
 import { FileDiff, X, Upload, Sparkles } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -18,8 +17,6 @@ const PromptHeader = memo(
     isFocused = false,
     setIsTextareaFocused = () => {},
     showDiffButton = true,
-    viewMode = PROMPT_VIEW_MODE.SIMPLE,
-    onViewModeChange = () => {},
     onMigratePrompt = () => {},
     isEmbedCustomPrompt = false,
     isEmbedUser = false,
@@ -81,9 +78,9 @@ const PromptHeader = memo(
         id="prompt-header-default"
         className="flex items-center justify-between px-0 pb-1 mt-2"
       >
-        {/* Left: Title — shown when textarea is active (advanced view or plain prompt) */}
+        {/* Left: Title — shown for plain string prompts */}
         <div className="flex items-center gap-2">
-          {viewMode === PROMPT_VIEW_MODE.ADVANCED && !isEmbedCustomPrompt && (
+          {!isStructuredPrompt && !isEmbedCustomPrompt && (
             <>
               <span className="text-sm font-semibold text-base-content">System Prompt</span>
               {isPublished && (
@@ -131,33 +128,6 @@ const PromptHeader = memo(
               <Sparkles size={12} />
               Prompt Helper
             </button>
-          )}
-
-          {/* Always-visible: Simple / Advanced segmented toggle — hidden for embed users with custom fields */}
-          {isStructuredPrompt && !isEmbedCustomPrompt && (
-            <div
-              className="flex items-center bg-base-200 rounded-lg p-0.5 gap-0.5"
-              data-testid="prompt-view-mode-toggle"
-            >
-              {[PROMPT_VIEW_MODE.SIMPLE, PROMPT_VIEW_MODE.ADVANCED].map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 capitalize ${
-                    viewMode === mode
-                      ? "bg-base-100 text-base-content shadow-sm"
-                      : "text-base-content/50 hover:text-base-content/80"
-                  } ${!canEdit ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                  onMouseDown={(e) => {
-                    if (!canEdit) return;
-                    e.preventDefault();
-                    onViewModeChange(mode);
-                  }}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
           )}
 
           {/* Always-visible: Migrate — only for plain string prompts */}

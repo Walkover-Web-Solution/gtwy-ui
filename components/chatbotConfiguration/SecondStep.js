@@ -88,7 +88,8 @@ const SecondStep = ({ slugName, prompt = "" }) => {
       hideIcon: 'true/false',
       variables: {
 ${variablesObject}
-      }
+      },
+      theme: 'dark/light'
     });`;
   };
 
@@ -130,6 +131,10 @@ ${variablesObject}
         <pre data-prefix=">" className="text-error">
           <code> bridgeName=</code>
           <code className="text-warning"> "{slugName}"</code>
+        </pre>
+        <pre data-prefix=">" className="text-error">
+          <code> theme=</code>
+          <code className="text-warning"> "dark/light"</code>
         </pre>
         <pre data-prefix=">" className="text-error">
           <code>&lt;/script&gt;</code>

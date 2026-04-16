@@ -14,6 +14,7 @@ export const saveApiKeysAction = (data, orgId) => async (dispatch) => {
   try {
     const response = await saveApiKeys(data);
     if (response.data?.success) {
+      toast.success(response.data?.message || "API Key created successfully");
       dispatch(createApiKeyReducer({ org_id: orgId, data: response?.data?.api }));
       trackUserAction("api_key_created", {
         org_id: orgId,
@@ -37,7 +38,6 @@ export const updateApikeyAction = (dataToSend) => async (dispatch) => {
       id: dataToSend.apikey_object_id,
       name: dataToSend.name,
       data: dataToSend.apikey,
-      comment: dataToSend.comment,
       apikey_limit: dataToSend.apikey_limit,
       apikey_usage: dataToSend.apikey_usage,
       apikey_limit_reset_period: dataToSend.apikey_limit_reset_period,
@@ -54,12 +54,12 @@ export const updateApikeyAction = (dataToSend) => async (dispatch) => {
           id: dataToSend.apikey_object_id,
           name: dataToSend.name,
           data: response.data.apikey,
-          comment: dataToSend.comment,
           apikey_limit: dataToSend.apikey_limit,
           apikey_usage: dataToSend.apikey_usage,
           apikey_limit_reset_period: dataToSend.apikey_limit_reset_period,
         })
       );
+      toast.success(response.data?.message || "API Key updated successfully");
       trackUserAction("api_key_updated", {
         org_id: dataToSend.org_id,
         api_key_id: dataToSend.apikey_object_id,
@@ -88,6 +88,7 @@ export const deleteApikeyAction =
       // Step 3: Make the API call in the background
       const response = await deleteApikey(id, service);
       if (response.data?.success) {
+        toast.success(response.data?.message || "API Key deleted successfully");
         dispatch(apikeyDeleteReducer({ org_id, name }));
         trackUserAction("api_key_deleted", {
           org_id: org_id,

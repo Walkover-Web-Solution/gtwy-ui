@@ -63,7 +63,7 @@ function EmbedListSuggestionDropdownMenu({
           const title = value?.title || integrationData?.[fnName]?.title;
           return (
             title !== undefined &&
-            title?.toLowerCase()?.includes(searchQuery.toLowerCase()) &&
+            title?.toLowerCase()?.includes(searchQuery?.trim().toLowerCase()) &&
             !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id)
           );
         })
@@ -130,7 +130,7 @@ function EmbedListSuggestionDropdownMenu({
     return list.filter(
       (t) =>
         !selected.has(t.value) &&
-        t?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase() || "") &&
+        t?.name?.toLowerCase()?.includes(searchQuery?.trim().toLowerCase() || "") &&
         showInbuiltTools?.[t?.value]
     );
   }, [prebuiltToolsData, toolsVersionData, searchQuery, showInbuiltTools]);
@@ -156,7 +156,7 @@ function EmbedListSuggestionDropdownMenu({
           data-testid="embed-suggestion-dropdown-menu"
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
-          className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0"
+          className={`menu menu-dropdown-toggle dropdown-content ${name === "preFunction" ? "z-[5]" : "z-high"} px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0`}
         >
           <div className="flex flex-col gap-2 w-full">
             {name === "preFunction" ? (

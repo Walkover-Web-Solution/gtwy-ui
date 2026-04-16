@@ -50,7 +50,7 @@ function useRtLayerEventHandler(channelIdentifier = "") {
       return channelIdentifier;
     }
     if (!bridgeId || !orgId) return null;
-    return (orgId + bridgeId).replace(/ /g, "_");
+    return (orgId + "_" + bridgeId).replace(/ /g, "_");
   }, [bridgeId, orgId, channelIdentifier]);
 
   // Helper function to show toast notification

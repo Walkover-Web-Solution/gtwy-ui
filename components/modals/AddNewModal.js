@@ -49,6 +49,15 @@ const PLACEHOLDERS = {
     knowledge_cutoff: "e.g., May 2025",
     usecase: "One per line, e.g., Code generation",
   },
+  deepgram: {
+    display_name: "e.g., Deepgram Nova",
+    model_name: "e.g., nova-3",
+    input_cost: "e.g., 0.40",
+    output_cost: "e.g., 0.40",
+    description: "Speech-to-text and audio intelligence model with low latency and strong transcription quality.",
+    knowledge_cutoff: "e.g., Jan 2026",
+    usecase: "One per line, e.g., Real-time call transcription",
+  },
   open_router: {
     display_name: "e.g., Deepseek Chat",
     model_name: "e.g., deepseek/deepseek-chat-v3-0324:free",

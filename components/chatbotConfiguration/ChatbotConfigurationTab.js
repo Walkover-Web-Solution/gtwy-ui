@@ -21,6 +21,7 @@ function RadioGroup({ onChange, name, value }) {
         <span className="label-text">Position</span>
       </div>
       <select
+        data-testid="chatbot-config-position-select"
         className="select select-bordered select-sm w-full"
         value={value || ""}
         onChange={(e) => onChange({ target: { name, value: e.target.value } })}
@@ -47,6 +48,7 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
       </div>
       <div className="join">
         <input
+          data-testid={`chatbot-config-${name}-input`}
           id={`dimension-input-${name}`}
           className="input input-bordered join-item input-sm max-w-[90px]"
           type="number"
@@ -57,6 +59,7 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
           name={name}
         />
         <select
+          data-testid={`chatbot-config-${name}-unit`}
           id={`dimension-select-${name}-unit`}
           className="select select-bordered join-item select-sm max-w-[70px]"
           value={unit || ""}
@@ -93,6 +96,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     widthUnit: "",
     type: "",
     themeColor: "",
+    theme: "system",
     chatbotTitle: "Chatbot",
     chatbotSubtitle: "Smart Help, On Demand",
     iconUrl: "",
@@ -156,6 +160,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               <span className="label-text font-medium text-xs">Chatbot Title</span>
             </div>
             <input
+              data-testid="chatbot-config-title-input"
               type="text"
               placeholder="Enter chatbot title"
               className="input input-bordered w-full input-sm"
@@ -171,6 +176,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               <span className="label-text font-medium text-xs">Chatbot Subtitle</span>
             </div>
             <input
+              data-testid="chatbot-config-subtitle-input"
               type="text"
               placeholder="Enter chatbot subtitle"
               className="input input-bordered w-full input-sm"
@@ -252,6 +258,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
           </div>
           <div className="flex items-center gap-3">
             <input
+              data-testid="chatbot-config-theme-color"
               type="color"
               key={formData?.themeColor}
               defaultValue={formData.themeColor}
@@ -261,6 +268,24 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
             />
             <span className="text-sm text-base-content/70">{formData.themeColor}</span>
           </div>
+        </label>
+
+        {/* Theme Mode */}
+        <label className="form-control w-full">
+          <div className="label">
+            <span className="label-text font-medium text-xs">Theme</span>
+          </div>
+          <select
+            data-testid="chatbot-config-theme-mode"
+            className="select select-bordered select-sm w-full"
+            value={formData.theme}
+            name="theme"
+            onChange={(e) => handleBlur(e)}
+          >
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system">System</option>
+          </select>
         </label>
       </>
     );

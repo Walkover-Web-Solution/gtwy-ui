@@ -16,7 +16,7 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.SAVE_WIDGET_MODAL} onClose={handleCancel}>
-      <div className="modal-box">
+      <div data-testid="save-widget-modal" className="modal-box">
         <h3 className="font-bold text-lg mb-4">Save Widget</h3>
 
         <div className="space-y-4">
@@ -25,6 +25,7 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
               <span className="label-text">Widget Name *</span>
             </label>
             <input
+              data-testid="save-widget-name-input"
               type="text"
               placeholder="Enter widget name"
               className="input input-bordered w-full"
@@ -39,6 +40,7 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
               <span className="label-text">Description</span>
             </label>
             <textarea
+              data-testid="save-widget-description-textarea"
               placeholder="Enter widget description (optional)"
               className="textarea textarea-bordered w-full h-24"
               value={widgetDescription}
@@ -48,10 +50,15 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
         </div>
 
         <div className="modal-action">
-          <button className="btn btn-ghost" onClick={handleCancel}>
+          <button data-testid="save-widget-cancel-button" className="btn btn-ghost" onClick={handleCancel}>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={!widgetName.trim()}>
+          <button
+            data-testid="save-widget-save-button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={!widgetName.trim()}
+          >
             Save Widget
           </button>
         </div>

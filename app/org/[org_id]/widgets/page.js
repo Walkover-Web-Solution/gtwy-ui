@@ -446,10 +446,10 @@ const TemplatesPage = ({ params }) => {
             </MainLayout>
 
             <div className="flex flex-row gap-4">
-              {filterWidgets?.length > 5 && (
+              {widgetsData?.length > 5 && (
                 <SearchItems data={widgetsData || []} setFilterItems={setFilterWidgets} item="Widget" />
               )}
-              <div className={`flex-shrink-0 ${filterWidgets?.length > 5 ? "mr-2" : "ml-2"}`}>
+              <div className={`flex-shrink-0 ${widgetsData?.length > 5 ? "mr-2" : "ml-2"}`}>
                 <button className="btn btn-primary btn-sm" onClick={handleCreateNew}>
                   + Create Widget
                 </button>

@@ -46,7 +46,12 @@ const renderFlattenedMessage = (message) => {
   ));
 };
 
-const ChatAiConfigDeatilViewModal = ({ modalContent }) => {
+const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
+  const isPrimitiveContent =
+    typeof modalContent === "string" || typeof modalContent === "number" || typeof modalContent === "boolean";
+  const copyData = typeof modalContent === "string" ? modalContent : JSON.stringify(modalContent, null, 2);
+  const contentEntries = isPrimitiveContent ? [["Prompt", modalContent]] : Object.entries(modalContent || {});
+
   return (
     <Modal MODAL_ID={MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL} onClose={() => closeModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL)}>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-start z-low-medium min-w-[100vw] min-h-[100vh] overflow-auto py-4">
@@ -55,7 +60,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent }) => {
           className="bg-base-100 rounded-lg shadow-2xl max-w-6xl w-[90vw] h-auto overflow-auto relative flex flex-col"
         >
           <div className="flex items-start justify-between p-6 border-b border-base-300">
-            <h3 className="text-2xl font-bold">Detailed View</h3>
+            <h3 className="text-2xl font-bold">{modalTitle || "Detailed View"}</h3>
             <button
               data-testid="chat-details-close-button"
               id="chat-details-close-button"
@@ -72,9 +77,9 @@ const ChatAiConfigDeatilViewModal = ({ modalContent }) => {
               id="chat-details-content-container"
               className="bg-base-200 rounded-lg p-6 h-auto overflow-auto relative"
             >
-              <CopyButton data={JSON.stringify(modalContent, null, 2)} btnStyle="text-sm" />
+              <CopyButton data={copyData} btnStyle="text-sm" />
               {modalContent &&
-                Object.entries(modalContent).map(([key, value]) => (
+                contentEntries.map(([key, value]) => (
                   <div key={key} className="mb-6 last:mb-0">
                     <h4 className="text-lg font-semibold mb-2">{key}</h4>
                     {Array.isArray(value) ? (

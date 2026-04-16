@@ -36,9 +36,9 @@ const AccessManagementModal = ({ agent }) => {
 
   // Load initial data and extract agent members when agent prop changes
   useEffect(() => {
-    if (agent && agent.users && users.length > 0) {
+    if (agent && agent?.settings?.editAccess && users.length > 0) {
       // Map agent user IDs to full user information
-      const enrichedMembers = agent.users.map((userId) => {
+      const enrichedMembers = agent?.settings?.editAccess.map((userId) => {
         // Find the corresponding user in the users array
         const userDetails = users.find((user) => user.user_id === userId);
 
@@ -142,8 +142,9 @@ const AccessManagementModal = ({ agent }) => {
     try {
       // Create payload with user ID and add_user_id:false to remove
       const dataToSend = {
-        user_id: userId,
-        add_user_id: false,
+        settings: {
+          editAccess: agentMembers.filter((member) => member.id !== userId),
+        },
       };
 
       const res = await dispatch(
@@ -189,8 +190,9 @@ const AccessManagementModal = ({ agent }) => {
     try {
       // Create payload with user ID and add_user_id:true to add
       const dataToSend = {
-        user_id: userId,
-        add_user_id: true,
+        settings: {
+          editAccess: [...agentMembers, userId],
+        },
       };
 
       const res = await dispatch(

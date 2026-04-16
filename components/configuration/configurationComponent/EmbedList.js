@@ -7,6 +7,7 @@ import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
 import { GetPreBuiltToolTypeIcon, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
+import { cleanVariablesPathByFields } from "@/utils/variableValidation";
 import RenderEmbed from "./RenderEmbed";
 import { isEqual } from "lodash";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -124,6 +125,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     () => bridge_functions.map((id) => function_data?.[id]),
     [bridge_functions, function_data]
   );
+
   const handleSelectFunction = (functionId) => {
     if (functionId) {
       dispatch(
@@ -150,7 +152,8 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           dataToSend: {
             functionData: {
               function_id: id,
-              function_name: name,
+              function_operation: "0",
+              script_id: name,
             },
           },
         })
@@ -159,6 +162,13 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   };
 
   const handleSaveFunctionData = () => {
+    const currentVariablesPath = variablesPath || {};
+    const cleanedVariablesPath = cleanVariablesPathByFields(currentVariablesPath, toolData?.fields || {});
+
+    if (!isEqual(cleanedVariablesPath, currentVariablesPath)) {
+      setVariablesPath(cleanedVariablesPath);
+    }
+
     if (!isEqual(toolData, functionData)) {
       const { _id, ...dataToSend } = toolData;
       dispatch(
@@ -170,12 +180,12 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
       );
       setToolData("");
     }
-    if (!isEqual(variablesPath, variables_path[function_name])) {
+    if (!isEqual(cleanedVariablesPath, variables_path[function_name])) {
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { variables_path: { [function_name]: variablesPath } },
+          dataToSend: { variables_path: { [function_name]: cleanedVariablesPath } },
         })
       );
     }

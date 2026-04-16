@@ -50,7 +50,7 @@ const MigratePromptModal = ({ currentPrompt = "", onConfirm, embedFields = null 
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.MIGRATE_PROMPT_MODAL}>
-      <div className="modal-box w-full max-w-4xl flex flex-col gap-4">
+      <div data-testid="migrate-prompt-modal" className="modal-box w-full max-w-4xl flex flex-col gap-4">
         <h3 className="text-lg font-semibold">Migrate Prompt to Structured Format</h3>
 
         {/* Side-by-side layout */}
@@ -106,6 +106,7 @@ const MigratePromptModal = ({ currentPrompt = "", onConfirm, embedFields = null 
                 <div className="form-control gap-1 ">
                   <span className="label-text font-medium capitalize">{PROMPT_SECTIONS.ROLE}</span>
                   <input
+                    data-testid="migrate-prompt-role-input"
                     type="text"
                     className="input input-bordered w-full text-sm input-sm"
                     placeholder="e.g. You are a helpful customer support assistant"
@@ -117,6 +118,7 @@ const MigratePromptModal = ({ currentPrompt = "", onConfirm, embedFields = null 
                 <div className="form-control gap-1">
                   <span className="label-text font-medium capitalize">{PROMPT_SECTIONS.GOAL}</span>
                   <input
+                    data-testid="migrate-prompt-goal-input"
                     type="text"
                     className="input input-bordered w-full text-sm input-sm"
                     placeholder="e.g. Help users resolve their issues quickly and accurately"
@@ -128,6 +130,7 @@ const MigratePromptModal = ({ currentPrompt = "", onConfirm, embedFields = null 
                 <div className="form-control gap-1 flex-1 flex flex-col">
                   <span className="label-text font-medium capitalize">{PROMPT_SECTIONS.INSTRUCTION}</span>
                   <textarea
+                    data-testid="migrate-prompt-instruction-textarea"
                     className="textarea textarea-bordered w-full flex-1 text-sm leading-relaxed"
                     style={{ minHeight: "260px" }}
                     placeholder="e.g. Always be polite. Ask clarifying questions if needed..."
@@ -141,10 +144,20 @@ const MigratePromptModal = ({ currentPrompt = "", onConfirm, embedFields = null 
         </div>
 
         <div className="flex justify-end gap-2 mt-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={handleCancel}>
+          <button
+            data-testid="migrate-prompt-cancel-button"
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={handleCancel}
+          >
             Cancel
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={handleConfirm}>
+          <button
+            data-testid="migrate-prompt-save-button"
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={handleConfirm}
+          >
             Migrate &amp; Save
           </button>
         </div>

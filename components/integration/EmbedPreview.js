@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const EmbedPreview = ({
   embedToken,
@@ -110,7 +111,9 @@ const EmbedPreview = ({
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <div className="flex justify-center">
+            <LoadingSpinner inline size={24} className="text-primary" height="auto" width="auto" />
+          </div>
           <p className="text-sm text-base-content/70 mt-4">Loading embed preview...</p>
         </div>
       </div>
@@ -144,7 +147,9 @@ const EmbedPreview = ({
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-2">
-              <div className="loading loading-spinner loading-lg text-primary"></div>
+              <div className="flex justify-center">
+                <LoadingSpinner inline size={24} className="text-primary" height="auto" width="auto" />
+              </div>
               <p className="text-sm text-base-content/70">Loading embed preview...</p>
             </div>
           </div>

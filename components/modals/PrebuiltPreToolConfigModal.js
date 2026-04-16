@@ -62,6 +62,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
     if (field.type === "textarea") {
       return (
         <textarea
+          data-testid={`pretool-config-field-${field.key}`}
           className="textarea textarea-bordered text-xs w-full"
           placeholder={field.placeholder}
           value={config[field.key] || ""}
@@ -100,6 +101,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
         <div className="flex flex-col gap-2 w-full">
           <div className="relative w-full">
             <input
+              data-testid="pretool-config-kb-search-input"
               type="text"
               className="input input-bordered input-sm text-xs w-full pr-6"
               placeholder="Search knowledge bases..."
@@ -114,6 +116,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
             )}
             {filtered.map((kb) => (
               <li
+                data-testid={`pretool-config-kb-item-${kb.title}`}
                 key={kb._id}
                 className={`text-xs px-3 py-2 cursor-pointer hover:bg-base-200 ${config.resource_id === kb._id ? "bg-primary/10 text-primary font-medium" : ""}`}
                 onMouseDown={(e) => {
@@ -141,6 +144,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
 
     return (
       <input
+        data-testid={`pretool-config-field-${field.key}`}
         type="text"
         className="input input-bordered input-sm text-xs w-full"
         placeholder={field.placeholder}
@@ -154,6 +158,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
     <Modal MODAL_ID={MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL}>
       {toolEntry && schema ? (
         <div
+          data-testid="pretool-config-modal"
           className={`modal-box flex flex-col gap-4 overflow-hidden ${toolEntry.type === "rag_knowledgebase" ? "min-h-[400px]" : ""}`}
         >
           <div className="flex items-center gap-1">
@@ -194,7 +199,9 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
           <div className={` ${toolEntry.type === "rag_knowledgebase" ? "mt-auto" : "mt-4"}`}>
             <div className="modal-action mt-0 items-center">
               <form method="dialog">
-                <button className="btn btn-sm">Close</button>
+                <button data-testid="pretool-config-close-button" className="btn btn-sm">
+                  Close
+                </button>
               </form>
               <div className="relative group">
                 {isSaveDisabled && disabledHint && (
@@ -202,7 +209,12 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
                     {disabledHint}
                   </span>
                 )}
-                <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={isSaveDisabled}>
+                <button
+                  data-testid="pretool-config-save-button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSave}
+                  disabled={isSaveDisabled}
+                >
                   Save
                 </button>
               </div>

@@ -126,7 +126,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         case "docs":
           return knowledgeBase.map((d) => ({
             id: d._id,
-            title: d.name || d._id,
+            title: d.title || d.name || d._id,
             subtitle: "Knowledge Base",
             type: "docs",
           }));
@@ -266,9 +266,9 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "apikeys",
   }));
 
-  const kbGroup = filterBy(knowledgeBase, ["name", "_id"]).map((d) => ({
+  const kbGroup = filterBy(knowledgeBase, ["title", "name", "_id"]).map((d) => ({
     id: d._id,
-    title: d.name || d._id,
+    title: d.title || d.name || d._id,
     subtitle: "Knowledge Base",
     type: "docs",
   }));
@@ -283,9 +283,9 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "integrations",
   }));
 
-  const authGroup = filterBy(authData, ["name", "service", "_id"]).map((d) => ({
-    id: d._id,
-    title: d.name || d._id,
+  const authGroup = filterBy(authData, ["name", "service", "id", "authkey"]).map((d) => ({
+    id: d.id,
+    title: d.name || d.id,
     subtitle: "Auth Key",
     type: "Auths",
   }));
@@ -582,17 +582,23 @@ const CommandPalette = ({ isEmbedUser }) => {
         !pathname.endsWith("/org") &&
         !pathname.endsWith("/login")
       ) {
-        e.preventDefault();
-        openPalette();
+        const isPageLoading = document.querySelector('[data-testid="loading-spinner"]') !== null;
+        if (!isPageLoading) {
+          e.preventDefault();
+          openPalette();
+        }
       }
       // Check for Ctrl+/ or Cmd+/ to toggle keyboard shortcuts modal
       if ((e.ctrlKey || e.metaKey) && e.key === "/" && !isEmbedUser) {
-        e.preventDefault();
-        const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-        if (modal && modal.hasAttribute("open")) {
-          closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-        } else {
-          openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+        const isPageLoading = document.querySelector('[data-testid="loading-spinner"]') !== null;
+        if (!isPageLoading) {
+          e.preventDefault();
+          const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          if (modal && modal.hasAttribute("open")) {
+            closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          } else {
+            openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          }
         }
       }
       if (e.key === "Escape") {

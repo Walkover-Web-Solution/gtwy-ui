@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
 import { ArrowRight } from "lucide-react";
-import GTWYIcon from "@/icons/FavIcon";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateUserMetaOnboarding } from "@/store/action/orgAction";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
+import FavIconSVG from "@/public/favicon";
 
 export default function OnboardingPage() {
   const { currentUser } = useCustomSelector((state) => ({
@@ -15,17 +15,24 @@ export default function OnboardingPage() {
   const { getApiAgentCreationVideo } = useTutorialVideos();
   const dispatch = useDispatch();
   const router = useRouter();
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const handleContinue = async () => {
-    const updatedOrgDetails = {
-      ...currentUser,
-      meta: {
-        ...currentUser?.meta,
-        newUser: "false",
-      },
-    };
-    await dispatch(updateUserMetaOnboarding(currentUser.id, updatedOrgDetails));
-    router.push("/org");
+    try {
+      setIsLoading(true);
+      const updatedOrgDetails = {
+        ...currentUser,
+        meta: {
+          ...currentUser?.meta,
+          newUser: "false",
+        },
+      };
+      await dispatch(updateUserMetaOnboarding(currentUser.id, updatedOrgDetails));
+      router.push("/org");
+    } catch (error) {
+      console.error(error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -44,13 +51,12 @@ export default function OnboardingPage() {
 
       {/* Logo — top-left */}
       <div className="absolute top-6 left-8 z-10">
-        <GTWYIcon width={60} height={60} />
+        <FavIconSVG width={60} height={60} />
       </div>
 
       <div className="relative z-10 text-center px-6 w-full max-w-3xl mx-auto">
         {/* Heading */}
         <div className="mb-8">
-          <p className="font-mono text-xs text-base-content/40 tracking-widest uppercase mb-4">Workspace ready</p>
           <h1 className="text-base-content text-3xl sm:text-4xl md:text-5xl mb-4 tracking-tight font-light">
             Your workspace is ready!
           </h1>
@@ -76,14 +82,19 @@ export default function OnboardingPage() {
 
         {/* CTA */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button onClick={handleContinue} className="btn btn-primary gap-2 group">
-            Start automating
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+          <button onClick={handleContinue} disabled={isLoading} className="btn btn-primary gap-2 group">
+            {isLoading ? (
+              <>
+                <span className="loading loading-spinner"></span>
+                Starting...
+              </>
+            ) : (
+              <>
+                Start automating
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+              </>
+            )}
           </button>
-        </div>
-
-        <div className="mt-16 pt-8 border-t border-base-content/10">
-          <p className="font-mono text-xs text-base-content/40 tracking-wider">GTWY_AI: WORKSPACE_INITIALIZED</p>
         </div>
       </div>
 

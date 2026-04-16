@@ -74,7 +74,7 @@ function ReasoningAccordion({ reasoning, isStreaming, messageContent }) {
           style={{
             display: "inline-flex",
             transition: "transform 0.3s ease",
-            transform: open ? "rotate(0deg)" : "rotate(-180deg)",
+            transform: open ? "rotate(-180deg)" : "rotate(0deg)",
           }}
         >
           <ChevronDown className="h-3 w-3" />

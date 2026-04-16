@@ -26,7 +26,7 @@ function ConnectedAgentListSuggestion({
       Object.values(bridges)
         .filter((bridge) => {
           const isActive = bridge?.bridge_status === 1 || bridge?.bridge_status === undefined;
-          const matchesSearch = bridge?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase());
+          const matchesSearch = bridge?.name?.toLowerCase()?.includes(searchQuery?.trim().toLowerCase());
           const isNotConnected =
             connect_agents && Object.values(connect_agents).some((agent) => agent?.bridge_id === bridge?._id);
           const notSameBridge = bridge?._id !== params?.id;

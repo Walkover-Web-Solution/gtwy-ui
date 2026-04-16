@@ -288,6 +288,20 @@ export const storeMarketingRefUser = async (data) => {
   }
 };
 
+export const submitPostPublishFeedbackApi = async (data) => {
+  try {
+    const response = await axios.post("https://flow.sokt.io/func/scriaYqqO3fa", data, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
 // Tutorial and Guide APIs
 export const getTutorial = async () => {
   try {

@@ -56,7 +56,7 @@ const FallbackModel = ({
       serviceModels: state?.modelReducer?.serviceModels || {},
       currentService: service,
       currentModel: isPublished ? bridgeDataFromState?.configuration?.model : versionData?.configuration?.model,
-      fallbackModel: isPublished ? bridgeDataFromState?.fall_back : versionData?.fall_back,
+      fallbackModel: isPublished ? bridgeDataFromState?.settings?.fall_back : versionData?.settings?.fall_back,
       DefaultModel: state?.serviceReducer?.default_model || [],
       embedDefaultApiKeys: state.appInfoReducer.embedUserDetails?.apikey_object_id || {},
       showDefaultApikeys: state.appInfoReducer.embedUserDetails?.addDefaultApiKeys,
@@ -168,11 +168,13 @@ const FallbackModel = ({
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            fall_back: {
-              ...(fallbackModel || {}),
-              is_enable: !!isFallbackEnabled,
-              service: service || null,
-              model: newDefaultModel || null,
+            settings: {
+              fall_back: {
+                ...(fallbackModel || {}),
+                is_enable: !!isFallbackEnabled,
+                service: service || null,
+                model: newDefaultModel || null,
+              },
             },
           },
         })
@@ -192,11 +194,13 @@ const FallbackModel = ({
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            fall_back: {
-              ...(fallbackModel || {}),
-              is_enable: enableNext,
-              service: fallbackService || null,
-              model: model || null,
+            settings: {
+              fall_back: {
+                ...(fallbackModel || {}),
+                is_enable: enableNext,
+                service: fallbackService || null,
+                model: model || null,
+              },
             },
           },
         })
@@ -214,9 +218,11 @@ const FallbackModel = ({
         bridgeId: params.id,
         versionId: searchParams?.version,
         dataToSend: {
-          fall_back: {
-            ...(fallbackModel || {}),
-            is_enable: next,
+          settings: {
+            fall_back: {
+              ...(fallbackModel || {}),
+              is_enable: next,
+            },
           },
         },
       })
@@ -329,13 +335,13 @@ const FallbackModel = ({
                                 disabled={isPublished}
                               >
                                 {getIconOfService(svc.value, 16, 16)}
-                                <span className="capitalize">{svc.displayName || svc.value}</span>
+                                <span>{svc.displayName || svc.value}</span>
                               </a>
                             ) : (
                               <div className="w-full flex items-center justify-between">
                                 <span className="flex items-center gap-2 opacity-50 cursor-not-allowed pointer-events-none">
                                   {getIconOfService(svc.value, 16, 16)}
-                                  <span className="capitalize">{svc.displayName || svc.value}</span>
+                                  <span>{svc.displayName || svc.value}</span>
                                 </span>
                                 <span className="text-xs text-error">No API Key Available</span>
                               </div>
@@ -455,7 +461,7 @@ const FallbackModel = ({
             {/* Multiple API Keys Label */}
             <div className="flex items-center gap-1">
               <span className="label-text font-medium">Multiple API Keys</span>
-              <InfoTooltip tooltipContent="Add multiple API keys from different services to use with your agent for enhanced functionality and redundancy.">
+              <InfoTooltip tooltipContent="Add API keys for different models/services. This ensures your agent continues working when switching models in runtime or using fallback options.">
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             </div>

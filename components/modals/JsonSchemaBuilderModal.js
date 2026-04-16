@@ -794,6 +794,11 @@ function JsonSchemaBuilderModal({
   );
 
   const handleSave = useCallback(() => {
+    if (!hideName && widgetButtons.length === 0) {
+      const input = document.getElementById("json-schema-name-input");
+      if (input && !input.reportValidity()) return;
+    }
+
     const trimmedProperties = trimPropertyNames(schemaData.properties);
 
     if (widgetButtons.length > 0) {
@@ -977,8 +982,10 @@ function JsonSchemaBuilderModal({
             )}
 
             {!hideName && (
-              <div className="mb-4">
-                <label className="block text-sm font-semibold mb-2">Schema Name</label>
+              <div className=" m-1 mb-4 ">
+                <label className="block text-sm font-semibold mb-2">
+                  Schema Name <span className="text-error">*</span>
+                </label>
                 <input
                   data-testid="json-schema-name-input"
                   id="json-schema-name-input"
@@ -988,6 +995,7 @@ function JsonSchemaBuilderModal({
                   className="input input-sm input-bordered w-full"
                   placeholder="Enter schema name..."
                   disabled={isReadOnly}
+                  required
                 />
               </div>
             )}

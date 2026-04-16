@@ -22,9 +22,11 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  CircleQuestionMark,
 } from "lucide-react";
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
+import InfoTooltip from "../InfoTooltip";
 import { createConversationForTestCase, toggleSidebar } from "@/utils/utility";
 import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 import { runTestCaseAction } from "@/store/action/testCasesAction";
@@ -50,6 +52,26 @@ const mdComponents = {
       {children}
     </CodeBlock>
   ),
+};
+
+const ChatImage = ({ src, alt, onClick }) => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <div
+      className={`relative group cursor-pointer inline-flex flex-col w-full max-w-[250px] sm:max-w-[400px] rounded-lg overflow-hidden border border-base-content/10 shadow-sm transition-all duration-300 ${
+        isLoading ? "skeleton min-h-[200px] bg-base-300/50" : "bg-base-200/50"
+      }`}
+      onClick={onClick}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className={`w-full h-auto transition-opacity duration-300 ${isLoading ? "opacity-0" : "opacity-100"}`}
+        onLoad={() => setIsLoading(false)}
+      />
+    </div>
+  );
 };
 
 function StreamingMessage({ content, isStreaming }) {
@@ -478,19 +500,16 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
         {/* LLM/Assistant images */}
         {hasLlmImages && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-4 mt-1">
             {message.llm_urls.map((urlObj, imgIndex) => {
               const imageUrl = typeof urlObj === "string" ? urlObj : urlObj?.url;
               const isImage = typeof urlObj === "string" || urlObj?.type === "image";
 
               return imageUrl && isImage ? (
-                <Image
+                <ChatImage
                   key={`llm-img-${imgIndex}`}
                   src={imageUrl}
                   alt={`Generated Image ${imgIndex + 1}`}
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 object-cover rounded-lg cursor-pointer"
                   onClick={() => window.open(imageUrl, "_blank")}
                 />
               ) : null;
@@ -581,6 +600,18 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
         <div className="flex items-center gap-2">
           {messages?.length > 0 && (
             <div className="flex items-center gap-2 justify-center">
+              <InfoTooltip
+                tooltipContent={`Matching strategies:
+ - Cosine finds semantically similar responses.
+ - Exact matches strict text patterns.
+ - AI uses model judgment to pick the best match.`}
+              >
+                <CircleQuestionMark
+                  size={14}
+                  className="text-gray-500 hover:text-gray-700 cursor-help"
+                  aria-label="Matching strategy information"
+                />
+              </InfoTooltip>
               <select
                 data-testid="chat-strategy-select"
                 id="chat-strategy-select"
@@ -726,7 +757,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   </span>
                                 </div>
                                 <a
-                                  href="https://gtwy.ai/blogs/finish-reasons?source=public"
+                                  href="https://app.docstar.io/p/finish-reasons?collectionId=inYU67SKiHgW"
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-warning/70 hover:text-warning transition-colors flex-shrink-0 ml-2"
@@ -915,7 +946,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   {/* Edit Button for Assistant Messages */}
                                   {message.sender === "assistant" &&
                                     !message.isLoading &&
-                                    message?.type !== "richui_json" && (
+                                    message?.type !== "richui_json" &&
+                                    message?.type !== "template" &&
+                                    !(message?.llm_urls?.length > 0) && (
                                       <button
                                         data-testid={`chat-edit-message-button-${message.id}`}
                                         id={`chat-edit-message-button-${message.id}`}

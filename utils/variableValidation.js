@@ -81,3 +81,33 @@ export const buildVariablesObject = (variablesKeyValue) => {
     return acc;
   }, {});
 };
+
+export const getValidVariablePathSet = (fields = {}, parentPath = []) => {
+  const validPaths = new Set();
+
+  const walk = (currentFields = {}, pathParts = []) => {
+    Object.entries(currentFields || {}).forEach(([key, field]) => {
+      const nextPathParts = [...pathParts, key];
+      const currentPath = nextPathParts.join(".");
+      validPaths.add(currentPath);
+
+      if (field?.type === "object" && field?.parameter && typeof field.parameter === "object") {
+        walk(field.parameter, nextPathParts);
+      }
+
+      if (field?.type === "array" && field?.items && typeof field.items === "object") {
+        walk(field.items, nextPathParts);
+      }
+    });
+  };
+
+  walk(fields, parentPath);
+  return validPaths;
+};
+
+export const cleanVariablesPathByFields = (variablesPath = {}, fields = {}) => {
+  const validVariablePathSet = getValidVariablePathSet(fields);
+  return Object.fromEntries(
+    Object.entries(variablesPath || {}).filter(([pathKey]) => validVariablePathSet.has(pathKey))
+  );
+};

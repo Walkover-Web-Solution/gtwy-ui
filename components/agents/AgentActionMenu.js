@@ -118,6 +118,7 @@ export const AgentMenuItems = ({
     <>
       {!isEmbedUser && isAdminOrOwner && (
         <button
+          data-testid="agent-action-manage-access"
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -131,6 +132,7 @@ export const AgentMenuItems = ({
       )}
 
       <button
+        data-testid="agent-action-usage-limits"
         onMouseDown={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -143,6 +145,7 @@ export const AgentMenuItems = ({
       </button>
 
       <button
+        data-testid="agent-action-pause-resume"
         onMouseDown={async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -166,6 +169,7 @@ export const AgentMenuItems = ({
 
       {isAdminOrOwner && (
         <button
+          data-testid="agent-action-delete"
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -180,6 +184,7 @@ export const AgentMenuItems = ({
 
       {isArchived && (
         <button
+          data-testid="agent-action-unarchive"
           onMouseDown={async (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -214,6 +219,7 @@ const AgentActionMenu = (props) => {
   return (
     <div className="relative" ref={menuRef}>
       <button
+        data-testid="agent-action-menu-toggle"
         onClick={() => setShowMenu((prev) => !prev)}
         className="p-2 hover:bg-base-200 rounded-md transition-colors"
         title="More options"

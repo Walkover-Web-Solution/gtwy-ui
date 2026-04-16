@@ -1,4 +1,5 @@
 "use client";
+import { PROXY_SCRIPT_SRC } from "@/utils/enums";
 import { getFromCookies } from "@/utils/utility";
 import { useEffect } from "react";
 
@@ -15,9 +16,14 @@ const page = () => {
         console.error("failure reason", error);
       },
     };
+    if (typeof window.initVerification === "function") {
+      window.initVerification(configuration);
+      return;
+    }
+
     const scriptSrc = document.createElement("script");
     scriptSrc.type = "text/javascript";
-    scriptSrc.src = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
+    scriptSrc.src = PROXY_SCRIPT_SRC;
 
     scriptSrc.onload = () => {
       if (window.initVerification) {
@@ -38,7 +44,7 @@ const page = () => {
     };
   }, []);
 
-  return <div id="proxyContainer"></div>;
+  return <div id="userProxyContainer"></div>;
 };
 
 export default page;

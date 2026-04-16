@@ -19,7 +19,7 @@ import CodeBlock from "../codeBlock/CodeBlock";
 import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { formatRelativeTime, openModal } from "@/utils/utility";
+import { formatRelativeTime, getToolName, openModal } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { AlertTriangle, CheckCircle2, Clock3, ExternalLink } from "lucide-react";
@@ -172,6 +172,7 @@ const ThreadItem = ({
     knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
     isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
     orgBridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
+    allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
   }));
   const [isDropupOpen, setIsDropupOpen] = useState(false);
   const { sliderState, openSlider, closeSlider } = useSlider();
@@ -272,6 +273,13 @@ const ThreadItem = ({
         return item.llm_message || item.user || "";
     }
   }, [messageType, item]);
+  const getToolNameHelper = useCallback(
+    (tool) => {
+      const toolId = tool?.name;
+      return getToolName(toolId, allBridgesMap, orgBridges, integrationData);
+    },
+    [allBridgesMap, orgBridges, integrationData]
+  );
 
   // Helper function to detect if content contains HTML
   const containsHTML = (str) => {
@@ -440,7 +448,7 @@ const ThreadItem = ({
           onClick={(event) => handleToolPrimaryClick(event, tool)}
           className="cursor-pointer flex items-center justify-center py-4 pl-2"
         >
-          <div className="text-center">{truncate(integrationData?.[tool.name]?.title || tool?.name, 20)}</div>
+          <div className="text-center">{truncate(getToolNameHelper(tool), 20)}</div>
         </div>
         <div className="flex gap-3">
           <div className="tooltip tooltip-top relative text-base-content" data-tip="function logs">
@@ -690,7 +698,7 @@ const ThreadItem = ({
                       >
                         <div className="cursor-pointer flex items-center justify-center py-4 pl-2">
                           <div className="text-center">
-                            <div className="font-medium text-sm">{tool?.name || "Unknown"}</div>
+                            <div className="font-medium text-sm">{getToolNameHelper(tool)}</div>
                           </div>
                         </div>
                         <div className="flex gap-3">

@@ -1,6 +1,6 @@
 import { BookIcon, BotIcon, KeyIcon, SettingsIcon, TestTubeDiagonalIcon, WrenchIcon } from "@/components/Icons";
 export const PAUTH_KEY_COLUMNS = ["name", "authkey", "created_at"];
-export const API_KEY_COLUMNS = ["name", "apikey", "comment", "apikey_usage", "last_used", "last_used_status"];
+export const API_KEY_COLUMNS = ["name", "apikey", "apikey_usage", "last_used", "last_used_status"];
 export const WEBHOOKALERT_COLUMNS = ["name", "url", "headers", "alertType", "bridges"];
 export const ALERT_TYPE = ["Error", "Variable"];
 
@@ -52,7 +52,6 @@ export const MODAL_TYPE = {
   DELETE_PREBUILT_TOOL_MODAL: "DELETE_PREBUILT_TOOL_MODAL",
   DELETE_TOOL_MODAL: "DELETE_TOOL_MODAL",
   DELETE_AGENT_MODAL: "DELETE_AGENT_MODAL",
-  REMOVE_AGENT_MODAL: "REMOVE_AGENT_MODAL",
   DELETE_PRE_TOOL_MODAL: "DELETE_PRE_TOOL_MODAL",
   DELETE_KNOWLEDGE_BASE_MODAL: "DELETE_KNOWLEDGE_BASE_MODAL",
   BRIDGE_TYPE_MODAL: "BRIDGE_TYPE_MODAL",
@@ -82,12 +81,15 @@ export const MODAL_TYPE = {
   TEMPLATE_MODAL: "TEMPLATE_MODAL",
   TEMPLATE_PLAYGROUND: "TEMPLATE_PLAYGROUND",
   SAVE_WIDGET_MODAL: "SAVE_WIDGET_MODAL",
+  POST_PUBLISH_FEEDBACK_MODAL: "post_publish_feedback_modal",
   MIGRATE_PROMPT_WARNING_MODAL: "MIGRATE_PROMPT_WARNING_MODAL",
   FULLSCREEN_PROMPT: "FULLSCREEN_PROMPT",
   FULLSCREEN_JSON_SCHEMA: "FULLSCREEN_JSON_SCHEMA",
+  CUSTOM_TONE_MODAL: "CUSTOM_TONE_MODAL",
+  CUSTOM_RESPONSE_STYLE_MODAL: "CUSTOM_RESPONSE_STYLE_MODAL",
 };
 
-export const API_KEY_MODAL_INPUT = ["name", "apikey", "comment", "apikey_limit"];
+export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];
 
 export const USER_FEEDBACK_FILTER_OPTIONS = ["all", "1", "2"];
 
@@ -104,11 +106,11 @@ export const CONFIG_HISTORY_FEATURE_OPTIONS = [
   { value: "model", label: "Model" },
   { value: "guardrails", label: "Guardrails" },
   { value: "fall_back", label: "Fallback" },
-  { value: "starterQuestion", label: "Starter Questions" },
-  { value: "function_ids", label: "Functions" },
+  { value: "IsstarterQuestionEnable", label: "Starter Questions" },
+  { value: "functionData", label: "Functions" },
   { value: "bridge_summary", label: "Bridge Summary" },
   { value: "agents", label: "Connected Agents" },
-  { value: "api_keys", label: "API Keys" },
+  { value: "apikey_object_id", label: "API Keys" },
 ];
 
 export const CONFIG_HISTORY_HIDDEN_TYPES = ["system_prompt_version_id", "variables_state"];
@@ -262,6 +264,16 @@ export const TUTORIALS = [
     icon: TestTubeDiagonalIcon,
   },
 ];
+export const HISTORY_FILTER_BY_FIELDS = {
+  thread_id: "",
+  sub_thread_id: "",
+  message_id: "",
+  batch_id: "",
+  user: "",
+  llm_message: "",
+  variables: "",
+};
+
 export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id"]);
 export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
 export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide"]);
@@ -330,3 +342,5 @@ export const PRE_TOOL_CONFIG_SCHEMA = {
 };
 
 export const ON_CLICK_ACTION_TYPES = ["reply", "sendDataToFrontend"];
+
+export const PROXY_SCRIPT_SRC = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";

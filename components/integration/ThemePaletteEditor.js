@@ -194,6 +194,7 @@ const ThemePaletteEditor = ({ theme, onColorChange, onColorBlur, defaultTheme })
                           <p className="text-[10px] font-mono text-base-content/60 break-all">{value || "—"}</p>
                         </div>
                         <input
+                          data-testid="embed-config-theme-color-input"
                           type="color"
                           className="w-10 h-10 border border-base-300 rounded cursor-pointer bg-transparent shrink-0"
                           value={hexValue}

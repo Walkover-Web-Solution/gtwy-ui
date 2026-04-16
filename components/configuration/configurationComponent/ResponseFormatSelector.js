@@ -17,8 +17,8 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
 
     return {
       response_format: isPublished
-        ? bridgeDataFromState?.configuration?.response_format
-        : versionData?.configuration?.response_format,
+        ? bridgeDataFromState?.settings?.response_format
+        : versionData?.settings?.response_format,
     };
   });
 
@@ -89,7 +89,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
     const type = key === "custom" ? "webhook" : key;
 
     const updatedDataToSend = {
-      configuration: {
+      settings: {
         response_format: {
           type,
           cred,
@@ -121,7 +121,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
     <div>
       <div className="flex items-center gap-2">
         <span className="label-text">Select Response Format</span>
-        <InfoTooltip tooltipContent="Configure the response format for your API calls">
+        <InfoTooltip tooltipContent="Choose the format in which you want to receive responses from your agent. The 'Default' option will use the standard response format, while the 'Custom' option allows you to specify a webhook URL and headers for more control over how responses are delivered.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
       </div>

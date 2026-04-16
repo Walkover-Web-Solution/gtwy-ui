@@ -1,11 +1,9 @@
 "use client";
-import { getFromCookies, openModal } from "@/utils/utility";
+import { PROXY_SCRIPT_SRC } from "@/utils/enums";
+import { getFromCookies } from "@/utils/utility";
 import { useEffect } from "react";
-import { MODAL_TYPE } from "@/utils/enums";
 
 export const runtime = "edge";
-
-const PROXY_SCRIPT_SRC = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
 
 const removeProxyScript = () => {
   const existing = document.querySelector(`script[src="${PROXY_SCRIPT_SRC}"]`);
@@ -13,6 +11,10 @@ const removeProxyScript = () => {
 };
 
 const loadProxyScript = (config, appendTo = document.body) => {
+  if (typeof window.initVerification === "function") {
+    window.initVerification(config);
+    return;
+  }
   removeProxyScript();
   const script = document.createElement("script");
   script.type = "text/javascript";
@@ -32,6 +34,7 @@ const page = () => {
   useEffect(() => {
     loadProxyScript({
       authToken: getFromCookies("proxy_token") || "",
+      type: "user-profile",
       success: () => {},
       failure: (error) => console.error("failure reason", error),
     });
@@ -42,7 +45,7 @@ const page = () => {
           authToken: getFromCookies("proxy_token") || "",
           pass: true,
           type: "user-management",
-          exclude_role_ids: process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID,
+          exclude_role_ids: [process.env.NEXT_PUBLIC_PROXY_USER_ROLE_ID],
           success: () => {},
           failure: () => {},
         },
@@ -51,13 +54,7 @@ const page = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handleOpenDialog = () => openModal(MODAL_TYPE.INVITE_USER);
-    window.addEventListener("openAddUserDialog", handleOpenDialog);
-    return () => window.removeEventListener("openAddUserDialog", handleOpenDialog);
-  }, []);
-
-  return <div id="proxyContainer"></div>;
+  return <div id="userProxyContainer"></div>;
 };
 
 export default page;

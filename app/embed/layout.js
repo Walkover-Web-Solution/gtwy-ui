@@ -10,8 +10,8 @@ import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { ThemeManager, useThemeManager } from "@/customHooks/useThemeManager";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import Protected from "@/components/Protected";
-import { Zap } from "lucide-react";
 import { EMBED_ARRAY_KEYS, EMBED_OBJECT_KEYS, EMBED_PASSTHROUGH_KEYS, EMBED_SKIP_KEYS } from "@/utils/enums";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Layout = ({ children, isEmbedUser }) => {
   const searchParams = useSearchParams();
@@ -259,13 +259,7 @@ const Layout = ({ children, isEmbedUser }) => {
   const LoadingComponent = useMemo(
     () => (
       <div className="flex items-center justify-center min-h-screen bg-base-100">
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Zap size={20} className="text-success" />
-            <span className="text-base-content text-sm tracking-widest">GTWY is loading...</span>
-            <span className="loading loading-dots loading-sm text-success" />
-          </div>
-        </div>
+        <LoadingSpinner />
         <ServiceInitializer />
       </div>
     ),

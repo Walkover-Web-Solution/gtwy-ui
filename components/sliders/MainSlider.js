@@ -23,7 +23,7 @@ import { setCurrentOrgIdAction } from "@/store/action/orgAction";
 import OrgSlider from "./OrgSlider";
 import TutorialModal from "@/components/modals/TutorialModal";
 import DemoModal from "../modals/DemoModal";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, PROXY_SCRIPT_SRC } from "@/utils/enums";
 import Protected from "../Protected";
 import BridgeSlider from "./BridgeSlider";
 import {
@@ -81,6 +81,27 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const [showContent, setShowContent] = useState(isSideBySideMode); // Control content visibility with delay
   const [isAdminMode, setIsAdminMode] = useState(false); // New state for admin settings mode
   // Theme detection placeholder (not actively used)
+
+  const dispatchInviteDialog = useCallback(() => {
+    const authToken = getFromCookies("proxy_token") || "";
+    const fireEvent = () => window.dispatchEvent(new CustomEvent("openAddUserDialog", { detail: { authToken } }));
+    if (typeof window.initVerification === "function") {
+      fireEvent();
+    } else {
+      const proxySrc = PROXY_SCRIPT_SRC;
+      const existing = document.querySelector(`script[src="${proxySrc}"]`);
+      if (!existing) {
+        const script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src = proxySrc;
+        script.onload = fireEvent;
+        script.onerror = (err) => console.error("Failed to load proxy script:", err);
+        document.body.appendChild(script);
+      } else {
+        existing.addEventListener("load", fireEvent, { once: true });
+      }
+    }
+  }, []);
 
   // Effect to detect mobile screen size
   useEffect(() => {
@@ -440,7 +461,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   onClick={() => {
                     setIsOrgDropdownExpanded(false);
                     setIsOrgDropdownOpen(false);
-                    window.dispatchEvent(new Event("openAddUserDialog"));
+                    dispatchInviteDialog();
                   }}
                   className="text-xs text-blue-400 hover:text-blue-600 transition-colors font-medium"
                 >
@@ -656,7 +677,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {/*                              SIDE BAR                              */}
         {/* ------------------------------------------------------------------ */}
         <div
-          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-screen bg-base-100 my-3 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-5 ${sidebarZIndex}`}
+          data-testid="main-sidebar"
+          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
           style={{
             width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "220px" : "50px",
             transform: isMobile ? (isMobileVisible ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
@@ -751,7 +773,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             </div>
 
             {/* Main navigation - scrollable */}
-            <div className={`flex-1  scrollbar-hide overflow-x-hidden scroll-smooth p-2`}>
+            <div className={`flex-1 scrollbar-hide overflow-x-hidden scroll-smooth p-1`}>
               <div className="">
                 {/* Main Menu Button - Show only in Admin Mode */}
                 {isAdminMode && (
@@ -782,11 +804,11 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     {NAV_SECTIONS.map(({ title, items }, idx) => (
                       <div key={idx} className="">
                         {showSidebarContent && title && (
-                          <h3 className="my-2 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
+                          <h3 className="my-1 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
                             {title}
                           </h3>
                         )}
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {items.map((key) => (
                             <button
                               id={`main-slider-nav-${key}`}
@@ -853,38 +875,28 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
               </div>
             </div>
 
-            {/* Tutorial & Help Section */}
-            <div className="border-t border-base-content/20 p-2 ">
-              <div className="">
-                {/* Admin Settings Button */}
+            {/* Footer Actions Section */}
+            <div className="border-t border-base-content/20 p-1">
+              <div className="space-y-1">
+                {/* Primary action: Admin */}
                 <button
                   id="main-slider-admin-settings-toggle"
                   onClick={handleAdminToggle}
                   onMouseEnter={(e) => onItemEnter("admin-toggle", e)}
                   onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 transition-colors ${
+                  className={`w-full flex items-center gap-3 rounded-lg p-2.5 transition-colors ${
                     isAdminMode ? "bg-primary text-primary-content shadow-sm" : "hover:bg-base-200 text-base-content"
                   } ${!showSidebarContent ? "justify-center" : ""}`}
                 >
                   {ITEM_ICONS.adminSettings}
                   {showSidebarContent && (
-                    <span className="text-xs truncate">{isAdminMode ? "Back to Main" : "Admin Settings"}</span>
+                    <span className="text-xs truncate font-medium">
+                      {isAdminMode ? "Back to Main" : "Admin Settings"}
+                    </span>
                   )}
                 </button>
-                <button
-                  id="main-slider-tutorial-button"
-                  onClick={() => {
-                    openModal(MODAL_TYPE.TUTORIAL_MODAL);
-                    if (isMobile) setIsMobileVisible(false);
-                  }}
-                  onMouseEnter={(e) => onItemEnter("tutorial", e)}
-                  onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                >
-                  {ITEM_ICONS.tutorial}
-                  {showSidebarContent && <span className="text-xs truncate">Tutorial</span>}
-                </button>
 
+                {/* Primary action: Lifetime access */}
                 {!currrentOrgDetail?.meta?.unlimited_access && (
                   <div className="relative">
                     <button
@@ -895,88 +907,150 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                       }}
                       onMouseEnter={(e) => onItemEnter("lifetimeAccess", e)}
                       onMouseLeave={onItemLeave}
-                      className={`w-full flex items-center gap-3 p-2 hover:bg-base-200 transition-all duration-300 border-2 border-yellow-400/50 ${!showSidebarContent ? "justify-center" : ""}`}
+                      className={`w-full flex items-center gap-3 rounded-lg p-2.5 transition-all duration-300 border border-yellow-500/60 bg-yellow-500/5 hover:bg-yellow-500/10 ${!showSidebarContent ? "justify-center" : ""}`}
                     >
-                      {/* Inner content */}
                       <div className="relative z-10 flex items-center gap-3 w-full">
                         <div className="relative">
                           {ITEM_ICONS.lifetimeAccess}
-                          {/* Sparkle effect */}
                           <div className="absolute -top-1 -right-1 w-1 h-1 bg-yellow-400 animate-ping opacity-40"></div>
                         </div>
                         {showSidebarContent && (
-                          <span className="text-xs truncate font-medium bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                          <span className="text-xs truncate font-semibold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
                             Free Lifetime Access
                           </span>
                         )}
                       </div>
                     </button>
 
-                    {/* Gift ribbon effect */}
                     {showSidebarContent && (
                       <div className="absolute -top-0.5 -right-0.5 text-xs opacity-60 transform rotate-12">🎁</div>
                     )}
                   </div>
                 )}
 
-                <button
-                  id="main-slider-speak-to-us-button"
-                  data-cal-namespace="30min"
-                  data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
-                  data-cal-origin="https://cal.id"
-                  data-cal-config='{"layout":"month_view"}'
-                  onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
-                  onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                >
-                  {ITEM_ICONS.speakToUs}
-                  {showSidebarContent && <span className="text-xs truncate">Speak To Us</span>}
-                </button>
+                {/* Secondary actions become compact horizontal footer in expanded mode */}
+                {showSidebarContent ? (
+                  <div className="border-t border-base-content/15 pt-2">
+                    <div className="grid grid-cols-4 gap-1">
+                      <button
+                        id="main-slider-tutorial-button"
+                        onClick={() => {
+                          openModal(MODAL_TYPE.TUTORIAL_MODAL);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("tutorial", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        {ITEM_ICONS.tutorial}
+                        <span className="text-[10px] leading-none">Tutorial</span>
+                      </button>
 
-                <button
-                  id="main-slider-feedback-button"
-                  type="button"
-                  onClick={() => {
-                    // Navigate to feedback page
-                    router.push(`/org/${orgId}/feedback`);
-                    if (isMobile) setIsMobileVisible(false);
-                  }}
-                  onMouseEnter={(e) => onItemEnter("feedback", e)}
-                  onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                >
-                  {ITEM_ICONS.feedbackAdmin}
-                  {showSidebarContent && <span className="text-xs truncate">Feedback</span>}
-                </button>
+                      <button
+                        id="main-slider-speak-to-us-button"
+                        data-cal-namespace="30min"
+                        data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
+                        data-cal-origin="https://cal.id"
+                        data-cal-config='{"layout":"month_view"}'
+                        onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        {ITEM_ICONS.speakToUs}
+                        <span className="text-[10px] leading-none">Speak</span>
+                      </button>
+
+                      <button
+                        id="main-slider-feedback-button"
+                        type="button"
+                        onClick={() => {
+                          router.push(`/org/${orgId}/feedback`);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("feedback", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        {ITEM_ICONS.feedbackAdmin}
+                        <span className="text-[10px] leading-none">Feedback</span>
+                      </button>
+
+                      <button
+                        id="main-slider-keyboard-shortcuts-button"
+                        onClick={() => {
+                          openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        <Keyboard size={16} className="text-base-content/70" />
+                        <span className="text-[10px] leading-none">Keys</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <button
+                      id="main-slider-tutorial-button"
+                      onClick={() => {
+                        openModal(MODAL_TYPE.TUTORIAL_MODAL);
+                        if (isMobile) setIsMobileVisible(false);
+                      }}
+                      onMouseEnter={(e) => onItemEnter("tutorial", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      {ITEM_ICONS.tutorial}
+                    </button>
+
+                    <button
+                      id="main-slider-speak-to-us-button"
+                      data-cal-namespace="30min"
+                      data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
+                      data-cal-origin="https://cal.id"
+                      data-cal-config='{"layout":"month_view"}'
+                      onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      {ITEM_ICONS.speakToUs}
+                    </button>
+
+                    <button
+                      id="main-slider-feedback-button"
+                      type="button"
+                      onClick={() => {
+                        router.push(`/org/${orgId}/feedback`);
+                        if (isMobile) setIsMobileVisible(false);
+                      }}
+                      onMouseEnter={(e) => onItemEnter("feedback", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      {ITEM_ICONS.feedbackAdmin}
+                    </button>
+
+                    <button
+                      id="main-slider-keyboard-shortcuts-button"
+                      onClick={() => {
+                        openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+                        if (isMobile) setIsMobileVisible(false);
+                      }}
+                      onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      <Keyboard size={18} className="text-base-content/70" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Keyboard Shortcuts Section */}
-            <div className="border-t border-base-content/20 p-2">
-              <button
-                id="main-slider-keyboard-shortcuts-button"
-                onClick={() => {
-                  openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-                  if (isMobile) setIsMobileVisible(false);
-                }}
-                onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
-                onMouseLeave={onItemLeave}
-                className={`w-full flex items-center gap-3 p-2.5 hover:bg-base-200 transition-colors rounded-lg ${!showSidebarContent ? "justify-center" : ""}`}
-              >
-                <Keyboard size={18} className="text-base-content/70" />
-                {showSidebarContent && (
-                  <div className="flex flex-col items-start flex-1">
-                    <span className="text-xs truncate">Keyboard Shortcuts</span>
-                    <span className="text-[10px] text-base-content/50 truncate">
-                      {typeof navigator !== "undefined" && navigator.platform.includes("Mac") ? "⌘" : "Ctrl"} + /
-                    </span>
-                  </div>
-                )}
-              </button>
-            </div>
-
             {/* GTWY Label Section */}
-            <div className="border-t border-base-300 p-2">
+            <div className="border-t border-base-300 p-1">
               <div className="text-center">
                 {showSidebarContent ? (
                   <span className="text-sm text-base-content/70">GTWY</span>

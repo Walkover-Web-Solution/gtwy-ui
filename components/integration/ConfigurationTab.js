@@ -15,6 +15,7 @@ import ApiKeysInput from "../sliders/ApiKeysInput";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
 import { MODAL_TYPE } from "@/utils/enums";
+import { getServiceDisplayName } from "@/utils/utility";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -217,7 +218,7 @@ const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
               onClick={() => toggleService(service)}
               className="w-full flex items-center justify-between p-2 bg-base-200 text-sm"
             >
-              <span className="font-medium capitalize">{service}</span>
+              <span className="font-medium">{getServiceDisplayName(service, SERVICES)}</span>
               <span className="text-xs text-base-content/60">
                 {expandedServices[service] ? "▼" : "▶"} {allModels.length} models
               </span>
@@ -437,7 +438,12 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
       <div className="flex items-center justify-between mb-4 pt-6 px-8">
         <h3 className="text-lg font-semibold">Live Preview</h3>
         <div className="flex items-center gap-2">
-          <button onClick={handleManualReload} className="btn btn-ghost btn-xs gap-1" title="Reload embed">
+          <button
+            onClick={handleManualReload}
+            data-testid="embed-config-reload-button"
+            className="btn btn-ghost btn-xs gap-1"
+            title="Reload embed"
+          >
             <RefreshCw className="h-4 w-4" />
           </button>
         </div>
@@ -463,6 +469,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                 {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
               </span>
               <button
+                data-testid="embed-config-save-button"
                 className="btn btn-primary btn-xs gap-1"
                 onClick={() => handleSave(configuration, theme)}
                 disabled={isSaving || !hasUnsavedChanges}
@@ -486,6 +493,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                           <span className="text-xs font-medium flex-1">{config.label}</span>
                           {config.type === "toggle" && (
                             <input
+                              data-testid={`embed-config-toggle-${config.key}`}
                               type="checkbox"
                               className="toggle toggle-xs"
                               checked={configuration[config.key] || false}
@@ -495,6 +503,13 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                         </label>
                         {config.type === "select" && (
                           <select
+                            data-testid={
+                              config.key === "themeMode"
+                                ? "embed-config-theme-mode-select"
+                                : config.key === "slide"
+                                  ? "embed-config-slide-position-select"
+                                  : `embed-config-select-${config.key}`
+                            }
                             className="select select-bordered select-xs w-full mt-1"
                             value={configuration[config.key] ?? config.defaultValue}
                             onChange={(e) => handleConfigChange(config.key, e.target.value)}

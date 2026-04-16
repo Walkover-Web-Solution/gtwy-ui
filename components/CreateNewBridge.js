@@ -209,8 +209,8 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
   ]);
 
   const handleCloseModal = useCallback(() => {
-    closeModal(MODAL_TYPE.CREATE_BRIDGE_MODAL);
-  }, []);
+    cleanState();
+  }, [cleanState]);
 
   return (
     <div>

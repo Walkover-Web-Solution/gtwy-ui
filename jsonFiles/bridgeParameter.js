@@ -69,18 +69,6 @@ export const ADVANCED_BRIDGE_PARAMETERS = {
   },
 };
 
-export const KEYS_NOT_TO_DISPLAY = [
-  "model",
-  "prompt",
-  "apikey",
-  "type",
-  "bridgeType",
-  "tools",
-  "response_format",
-  "stream",
-  "vision",
-];
-
 // eslint-disable-next-line import/no-unused-modules
 export function getDefaultValues(additionalParams, bridgeParams) {
   const defaults = {};
@@ -102,16 +90,14 @@ export const KEYS_TO_COMPARE = [
   "apikey_object_id",
   "gpt_memory",
   "function_ids",
-  "tool_call_count",
+  "settings",
   "IsstarterQuestionEnable",
   "actions",
   "apikey",
   "connected_agents",
   "user_reference",
   "doc_ids",
-  "guardrails",
   "gpt_memory_context",
-  "fall_back",
 ];
 
 export const CONFIGURATION_KEYS_TO_EXCLUDE = ["system_prompt_version_id"];

@@ -105,11 +105,12 @@ const ConfigurationPage = ({
                   data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
                   data-cal-origin="https://cal.id"
                   data-cal-config='{"layout":"month_view"}'
-                  className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content font-bold transition-colors cursor-pointer"
+                  className="flex items-center text-sm text-base-content/50 hover:text-base-content font-bold transition-colors cursor-pointer"
                 >
                   <span>Speak to us</span>
-                  <span>→</span>
                 </button>
+
+                <span className="text-sm text-base-content/30 select-none">|</span>
 
                 {/* Help Docs */}
 
@@ -117,27 +118,12 @@ const ConfigurationPage = ({
                   data-testid="help-docs-link"
                   id="help-docs-link"
                   href="https://gtwy.ai/resources"
-                  className="flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content font-bold transition-colors"
+                  className="flex items-center text-sm text-base-content/50 hover:text-base-content font-bold transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <span>Help Docs</span>
-                  <span>→</span>
                 </a>
-
-                {/* Integration Guide */}
-
-                <button
-                  data-testid="integration-guide-button"
-                  id="integration-guide-button"
-                  onClick={() => {
-                    handleNavigation("integration");
-                  }}
-                  className="flex items-center gap-1 text-sm text-base-content-50 hover:text-base-content font-bold transition-colors cursor-pointer"
-                >
-                  <span>Integration Guide</span>
-                  <span>→</span>
-                </button>
               </>
             )}
           </div>

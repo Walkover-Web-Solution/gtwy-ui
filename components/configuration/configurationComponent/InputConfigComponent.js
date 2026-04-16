@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePromptSelector } from "@/customHooks/useOptimizedSelector";
-import { MODAL_TYPE, PROMPT_SECTION_CONFIG, PROMPT_VIEW_MODE } from "@/utils/enums";
+import { MODAL_TYPE, PROMPT_SECTION_CONFIG } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import PromptSummaryModal from "../../modals/PromptSummaryModal";
 import Diff_Modal from "@/components/modals/DiffModal";
@@ -57,20 +57,12 @@ const InputConfigComponent = memo(
     });
 
     const isStructuredPrompt = typeof reduxPrompt === "object" && reduxPrompt !== null;
-
-    const [viewMode, setViewMode] = useState(
-      isStructuredPrompt ? (PROMPT_VIEW_MODE?.SIMPLE ?? "simple") : (PROMPT_VIEW_MODE?.ADVANCED ?? "advanced")
-    );
     const [structuredFields, setStructuredFields] = useState(isStructuredPrompt ? reduxPrompt : null);
 
     useEffect(() => {
       setStructuredFields(isStructuredPrompt ? reduxPrompt : null);
-      setViewMode(
-        isStructuredPrompt ? (PROMPT_VIEW_MODE?.SIMPLE ?? "simple") : (PROMPT_VIEW_MODE?.ADVANCED ?? "advanced")
-      );
       setEmbedFieldValues(null);
     }, [reduxPrompt]);
-
     const {
       isEmbedCustomPrompt,
       hiddenEmbedFields,
@@ -208,14 +200,14 @@ const InputConfigComponent = memo(
 
     const handleSavePrompt = useCallback(() => {
       let valueToSave;
-      if (viewMode === PROMPT_VIEW_MODE.SIMPLE) {
+      if (isStructuredPrompt) {
         valueToSave = { ...structuredFields };
       } else {
         valueToSave = (textareaRef.current?.value || "").trim();
       }
       savePrompt(valueToSave);
       setPromptState((prev) => ({ ...prev, prompt: valueToSave, newContent: "" }));
-    }, [savePrompt, setPromptState, viewMode, structuredFields]);
+    }, [savePrompt, setPromptState, isStructuredPrompt, structuredFields]);
 
     const handleMigrateConfirm = useCallback(
       (fields) => {
@@ -236,13 +228,12 @@ const InputConfigComponent = memo(
     );
 
     const handleOpenDiffModal = useCallback(() => {
-      const currentValue =
-        viewMode === PROMPT_VIEW_MODE.SIMPLE
-          ? promptObjectToString(structuredFields)
-          : textareaRef.current?.value || "";
+      const currentValue = isStructuredPrompt
+        ? promptObjectToString(structuredFields)
+        : textareaRef.current?.value || "";
       setPromptState((prev) => ({ ...prev, newContent: currentValue }));
       openModal(MODAL_TYPE?.DIFF_PROMPT);
-    }, [setPromptState, viewMode, structuredFields]);
+    }, [setPromptState, isStructuredPrompt, structuredFields]);
 
     const handleOpenPromptHelper = useCallback(() => {
       if (!uiState.isPromptHelperOpen && window.innerWidth > 710) {
@@ -263,12 +254,11 @@ const InputConfigComponent = memo(
 
     const showDiffButton = useMemo(() => {
       const old = typeof oldContent === "string" ? oldContent : JSON.stringify(oldContent || "");
-      const currentValue =
-        viewMode === PROMPT_VIEW_MODE.SIMPLE
-          ? JSON.stringify(structuredFields)
-          : textareaRef.current?.value || (typeof reduxPrompt === "string" ? reduxPrompt : "");
+      const currentValue = isStructuredPrompt
+        ? JSON.stringify(structuredFields)
+        : textareaRef.current?.value || (typeof reduxPrompt === "string" ? reduxPrompt : "");
       return old.trim() !== currentValue.trim();
-    }, [oldContent, reduxPrompt, viewMode, structuredFields]);
+    }, [oldContent, reduxPrompt, isStructuredPrompt, structuredFields]);
 
     const handleKeyDown = useCallback(
       (event) => {
@@ -284,11 +274,6 @@ const InputConfigComponent = memo(
       [uiState.isPromptHelperOpen, updateUiState]
     );
 
-    const advancedViewValue = useMemo(() => {
-      if (!isStructuredPrompt) return reduxPrompt || "";
-      return promptObjectToString(reduxPrompt);
-    }, [isStructuredPrompt, reduxPrompt]);
-
     return (
       <div data-testid="input-config-container" id="input-config-container" ref={promptTextAreaRef}>
         <PromptHeader
@@ -302,8 +287,6 @@ const InputConfigComponent = memo(
           prompt={reduxPrompt}
           setIsTextareaFocused={setIsTextareaFocused}
           isFocused={isTextareaFocused}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           showDiffButton={showDiffButton}
           isEmbedCustomPrompt={isEmbedCustomPrompt}
           onMigratePrompt={() => openModal(MODAL_TYPE.MIGRATE_PROMPT_MODAL)}
@@ -441,7 +424,7 @@ const InputConfigComponent = memo(
                 </div>
               ))}
             </div>
-          ) : viewMode === PROMPT_VIEW_MODE.SIMPLE ? (
+          ) : isStructuredPrompt ? (
             <div className="flex flex-col gap-3 pb-2">
               {Object.entries(PROMPT_SECTION_CONFIG).map(([key, fieldConfig]) => (
                 <div key={key} className="form-control">
@@ -500,16 +483,16 @@ const InputConfigComponent = memo(
             /* PLAIN STRING or ADVANCED VIEW: single textarea */
             <PromptTextarea
               textareaRef={textareaRef}
-              initialValue={isStructuredPrompt ? advancedViewValue : reduxPrompt}
+              initialValue={reduxPrompt}
               onChange={handlePromptChange}
               isPromptHelperOpen={uiState.isPromptHelperOpen}
               onKeyDown={handleKeyDown}
-              isPublished={isPublished || (isStructuredPrompt && viewMode === PROMPT_VIEW_MODE.ADVANCED)}
+              isPublished={isPublished}
               isEditor={isEditor}
               onSave={handleSavePrompt}
               onFocus={handleTextareaFocus}
               onTextAreaBlur={handleTextareaBlur}
-              readOnly={isStructuredPrompt && viewMode === PROMPT_VIEW_MODE.ADVANCED}
+              readOnly={false}
               fullscreenButton={
                 !uiState.isPromptHelperOpen ? (
                   <FullscreenEditorButton
@@ -550,7 +533,7 @@ const InputConfigComponent = memo(
           newContent={
             isEmbedCustomPrompt
               ? activeEmbedFieldValues
-              : viewMode === PROMPT_VIEW_MODE.SIMPLE
+              : isStructuredPrompt
                 ? structuredFields
                 : textareaRef.current?.value || reduxPrompt
           }
