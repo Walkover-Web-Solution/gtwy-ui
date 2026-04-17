@@ -312,7 +312,6 @@ function Home({ params, searchParams, isEmbedUser }) {
     isLoading,
     isFirstBridgeCreation,
     descriptions,
-    bridgeStatus,
     showHistory,
     usageMetrics,
     isAdminOrOwner,
@@ -335,7 +334,6 @@ function Home({ params, searchParams, isEmbedUser }) {
       isLoading: state.bridgeReducer.loading,
       isFirstBridgeCreation: user.meta?.onboarding?.bridgeCreation || "",
       descriptions: state.flowDataReducer.flowData.descriptionsData?.descriptions || {},
-      bridgeStatus: state.bridgeReducer.allBridgesMap,
       showHistory: state.appInfoReducer.embedUserDetails?.showHistory || false,
       usageMetrics: state.bridgeReducer.usageMetrics,
       users: state.orgReducer.users,
@@ -976,7 +974,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <AgentMenuItems
             bridge={row}
             bridgeData={row}
-            bridgeStatus={bridgeStatus[row._id]?.bridge_status}
+            bridgeStatus={allBridges.find((bridge) => bridge._id === row._id)?.bridge_status}
             isArchived={row?.status === 0}
             isUpdatingBridge={false}
             isEmbedUser={isEmbedUser}
