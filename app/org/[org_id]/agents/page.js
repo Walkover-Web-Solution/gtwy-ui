@@ -356,11 +356,11 @@ function Home({ params, searchParams, isEmbedUser }) {
       };
     }
     return {
-      title: "API Agents",
+      title: isEmbedUser ? "Agents" : "API Agents",
       description:
         descriptions?.Agents || "Build and manage API-powered AI agents for workflows, automations, and integrations.",
     };
-  }, [bridgeTypeFilter, descriptions]);
+  }, [bridgeTypeFilter, descriptions, isEmbedUser]);
   const deletedSectionTitle = bridgeTypeFilter === "chatbot" ? "Deleted Chatbots" : "Deleted Agents";
   // Initialize with empty array instead of typeFilteredBridges to avoid reference error
   const [filterBridges, setFilterBridges] = useState([]);

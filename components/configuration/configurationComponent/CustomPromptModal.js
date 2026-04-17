@@ -6,6 +6,7 @@ const CustomPromptModal = ({ modalId, title, description, placeholder, prompt, o
   const [value, setValue] = useState(prompt || "");
 
   const handleClose = () => {
+    setValue(prompt || "");
     closeModal(modalId);
     onClose?.();
   };
@@ -42,7 +43,11 @@ const CustomPromptModal = ({ modalId, title, description, placeholder, prompt, o
           <button className="btn btn-ghost btn-sm" onClick={handleClose}>
             Cancel
           </button>
-          <button className="btn btn-primary btn-sm" disabled={!value.trim()} onClick={handleSave}>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={!value.trim() || value.trim() === (prompt || "").trim()}
+            onClick={handleSave}
+          >
             Save
           </button>
         </div>
