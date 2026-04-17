@@ -50,6 +50,7 @@ const ThemePaletteEditor = ({ theme, onColorChange }) => {
           <div key={mode} className=" rounded bg-base-200">
             <button
               id={`theme-palette-toggle-${mode}`}
+              data-testid={`theme-palette-toggle-${mode}`}
               type="button"
               className="w-full flex items-center justify-between px-3 py-2 text-left"
               onClick={() => toggleMode(mode)}
@@ -76,6 +77,7 @@ const ThemePaletteEditor = ({ theme, onColorChange }) => {
                         </div>
                         <input
                           id={`theme-color-${mode}-${token}`}
+                          data-testid={`theme-color-input-${mode}-${token}`}
                           type="color"
                           value={hexValue}
                           onChange={(e) => {

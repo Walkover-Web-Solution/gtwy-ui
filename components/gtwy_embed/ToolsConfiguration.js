@@ -162,11 +162,13 @@ const ToolsConfiguration = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-testid="tools-configuration-header">
           <h5 className="text-sm font-semibold">{title}</h5>
         </div>
         <div className="dropdown dropdown-end flex-shrink-0">
           <button
+            id={`tools-config-add-button`}
+            data-testid="tools-configuration-add-button"
             type="button"
             tabIndex={0}
             className={`btn btn-xs gap-1 ${singleToolMode && selectedToolId ? "btn-primary" : "btn-outline"}`}
@@ -223,7 +225,7 @@ const ToolsConfiguration = ({
           isEditor={true}
         />
       ) : (
-        <div className="bg-base-200 rounded-lg p-4 text-center">
+        <div className="bg-base-200 rounded-lg p-4 text-center" data-testid="no-tools-added-message">
           <p className="text-sm text-base-content/60">No tools added</p>
         </div>
       )}

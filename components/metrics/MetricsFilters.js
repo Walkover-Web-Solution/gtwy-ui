@@ -39,7 +39,11 @@ const MetricsFilters = memo(
                 }
               }}
             >
-              <summary id="metrics-filter-group-by-button" className="btn btn-sm m-1">
+              <summary
+                id="metrics-filter-group-by-button"
+                data-testid="metrics-filter-group-by-button"
+                className="btn btn-sm m-1"
+              >
                 {FACTOR_OPTIONS[factor]}
                 <ChevronDownIcon className="w-3 h-3 ml-2" />
               </summary>
@@ -48,6 +52,7 @@ const MetricsFilters = memo(
                   <li key={index}>
                     <a
                       id={`metrics-filter-group-by-option-${index}`}
+                      data-testid={`metrics-filter-group-by-option-${index}`}
                       className={`${factor === index ? "active" : ""}`}
                       onClick={(e) => {
                         onFactorChange(index);
@@ -84,7 +89,11 @@ const MetricsFilters = memo(
                 }
               }}
             >
-              <summary id="metrics-filter-agent-button" className="btn btn-sm m-1">
+              <summary
+                id="metrics-filter-agent-button"
+                data-testid="metrics-filter-agent-button"
+                className="btn btn-sm m-1"
+              >
                 {bridge?.["bridge_name"]
                   ? bridge?.["bridge_name"].length > 15
                     ? bridge?.["bridge_name"].substring(0, 15) + "..."
@@ -101,6 +110,7 @@ const MetricsFilters = memo(
                 <li>
                   <a
                     id="metrics-filter-agent-all"
+                    data-testid="metrics-filter-agent-all"
                     onClick={(e) => {
                       onBridgeChange(null, null);
                       const details = e.currentTarget.closest("details");
@@ -116,6 +126,7 @@ const MetricsFilters = memo(
                   <li key={index}>
                     <a
                       id={`metrics-filter-agent-${item?._id}`}
+                      data-testid={`metrics-filter-agent-option-${item?._id}`}
                       onClick={(e) => {
                         onBridgeChange(item?._id, item?.name);
                         const details = e.currentTarget.closest("details");
@@ -145,7 +156,11 @@ const MetricsFilters = memo(
                 }
               }}
             >
-              <summary id="metrics-filter-time-range-button" className="btn btn-sm m-1">
+              <summary
+                id="metrics-filter-time-range-button"
+                data-testid="metrics-filter-time-range-button"
+                className="btn btn-sm m-1"
+              >
                 {range === 10 ? getDisplayRangeText() : TIME_RANGE_OPTIONS?.[range]}
                 <ChevronDownIcon className="w-3 h-3 ml-2" />
               </summary>
@@ -154,6 +169,7 @@ const MetricsFilters = memo(
                   <li key={index}>
                     <a
                       id={`metrics-filter-time-range-option-${index}`}
+                      data-testid={`metrics-filter-time-range-option-${index}`}
                       className={`${index === range && range !== 10 ? "active" : ""}`}
                       onClick={(e) => {
                         onTimeRangeChange(index);

@@ -450,7 +450,11 @@ const TemplatesPage = ({ params }) => {
                 <SearchItems data={widgetsData || []} setFilterItems={setFilterWidgets} item="Widget" />
               )}
               <div className={`flex-shrink-0 ${widgetsData?.length > 5 ? "mr-2" : "ml-2"}`}>
-                <button className="btn btn-primary btn-sm" onClick={handleCreateNew}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleCreateNew}
+                  data-testid="create-widget-button-header"
+                >
                   + Create Widget
                 </button>
               </div>
@@ -532,7 +536,7 @@ const TemplatesPage = ({ params }) => {
               <div className="text-6xl mb-4">📄</div>
               <p className="text-gray-500 text-lg mb-2">No widgets found</p>
               <p className="text-gray-400 text-sm mb-6">Create your first widget to get started</p>
-              <button className="btn btn-primary" onClick={handleCreateNew}>
+              <button className="btn btn-primary" onClick={handleCreateNew} data-testid="create-widget-button-empty">
                 + Create Widget
               </button>
             </div>

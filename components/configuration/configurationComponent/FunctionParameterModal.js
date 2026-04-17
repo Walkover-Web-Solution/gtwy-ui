@@ -1481,7 +1481,7 @@ function FunctionParameterModal({
                 />
               </div>
               {isOldFieldViewTrue && (
-                <div className="w-1/2">
+                <div data-testid="function-parameter-old-data-codemirror-wrapper" className="w-1/2">
                   <CodeMirror
                     value={toolData?.old_fields ? JSON.stringify(toolData["old_fields"], undefined, 4) : ""}
                     height="400px"

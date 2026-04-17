@@ -240,6 +240,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
           <span className="label-text text-sm ml-1">Use default prompt</span>
           <input
             type="checkbox"
+            data-testid="use-default-prompt-toggle"
             className="toggle toggle-sm"
             checked={promptConfig.useDefaultPrompt}
             onChange={(e) => handleUseDefaultToggle(e.target.checked)}
@@ -262,6 +263,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                 <span className="label-text text-sm font-medium">Custom Prompt Template</span>
               </label>
               <textarea
+                data-testid="custom-prompt-textarea"
                 className="textarea textarea-bordered w-full h-64 font-mono text-sm"
                 placeholder='e.g., "You are a {{role}} and your context is {{context}}"'
                 value={promptConfig.customPrompt}
@@ -300,6 +302,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                       {!field.hidden ? (
                         <input
                           type="text"
+                          data-testid={`field-display-value-input-${field.name}`}
                           className="input input-sm input-bordered w-full"
                           placeholder={`Display label (default: ${field.name})`}
                           value={field.displayValue || ""}
@@ -310,6 +313,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                       ) : (
                         <input
                           type="text"
+                          data-testid={`field-description-input-${field.name}`}
                           className="input input-sm input-bordered w-full"
                           placeholder="Description"
                           value={field.description || ""}
