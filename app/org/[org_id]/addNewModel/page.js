@@ -101,7 +101,6 @@ const Page = ({ params }) => {
     );
   };
 
-
   return (
     <MainLayout>
       <div className="px-8">
