@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import ConnectedAgentListSuggestion from "./ConnectAgentListSuggestion";
 import { useDispatch } from "react-redux";
 import isEqual, { useCustomSelector } from "@/customHooks/customSelector";
@@ -124,21 +125,17 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
       const agent_variables = bridgeItem?.connected_agent_details?.agent_variables || {};
       const description = bridgeItem?.connected_agent_details?.description || item?.description || "";
       const { fields, required_params } = agent_variables;
-      setCurrentVariable({
+      const agentData = {
         name: item?.bridge_id,
         description: description,
         fields: fields,
         required_params: required_params,
-        thread_id: item?.thread_id || false,
-        version_id: item?.version_id || "",
-      });
-      setAgentTools({
-        name: item?.bridge_id,
-        description: description,
-        fields: fields,
-        required_params: required_params,
-        thread_id: item?.thread_id || false,
-        version_id: item?.version_id || "",
+        thread_id: item?.thread_id ?? false,
+        version_id: item?.version_id ?? "",
+      };
+      flushSync(() => {
+        setCurrentVariable(agentData);
+        setAgentTools(agentData);
       });
       openModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
     },

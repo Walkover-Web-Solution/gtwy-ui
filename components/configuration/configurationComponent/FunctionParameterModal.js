@@ -507,11 +507,12 @@ function FunctionParameterModal({
   const [isTextareaVisible, setIsTextareaVisible] = useState(false);
   const [isOldFieldViewTrue, setIsOldFieldViewTrue] = useState(false);
   const [showNameDescription, setShowNameDescription] = useState(false);
+  const threadIdChecked = Boolean(toolData?.thread_id ?? function_details?.thread_id ?? false);
 
   useEffect(() => {
     if (!isEqual(toolData, function_details)) {
-      const thread_id = function_details?.thread_id ? function_details?.thread_id : toolData?.thread_id;
-      const version_id = function_details?.version_id ? function_details?.version_id : toolData?.version_id;
+      const thread_id = function_details?.thread_id ?? false;
+      const version_id = function_details?.version_id ?? toolData?.version_id;
       setToolData({ ...function_details, thread_id, version_id });
     }
   }, [function_details]);
@@ -1249,12 +1250,12 @@ function FunctionParameterModal({
                       id="function-param-thread-id-toggle"
                       disabled={isReadOnly}
                       type="checkbox"
-                      className="toggle toggle-sm"
+                      className="toggle toggle-sm transition-none"
                       onChange={(e) => {
                         setToolData({ ...toolData, thread_id: e.target.checked });
                         setIsModified(true);
                       }}
-                      checked={!!toolData?.thread_id}
+                      checked={threadIdChecked}
                       title="Toggle to include thread_id while calling function"
                     />
                   </label>
