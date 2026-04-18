@@ -252,6 +252,14 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
         if (CONFIGURATION_KEYS_TO_EXCLUDE.includes(configKey)) return;
       }
 
+      if (
+        diff.oldValue === undefined ||
+        diff.oldValue === null ||
+        (Array.isArray(diff.oldValue) && diff.oldValue.length === 0)
+      ) {
+        return;
+      }
+
       const category = pathParts[0];
       if (!categories[category]) {
         categories[category] = [];
