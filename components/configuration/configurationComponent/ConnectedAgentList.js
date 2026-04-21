@@ -214,7 +214,8 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         );
       }
       closeModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
-      setCurrentVariable(null);
+      setCurrentVariable(agentTools);
+      setAgentTools(agentTools);
       setSelectedBridge(null);
     } catch (error) {
       toast?.error("Failed to save agent");

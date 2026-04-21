@@ -134,8 +134,9 @@ export const DIFFERNCE_DATA_DISPLAY_NAME = (key) => {
       return "Rich Text";
     case "actions":
       return "Actions";
-    case "fall_back":
+    case "is_enable":
       return "Fallback Model";
+
     default:
       return key;
   }
