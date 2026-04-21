@@ -102,6 +102,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     iconUrl: "",
     allowBridgeSwitch: false,
     bridges: [],
+    side: "left",
   });
 
   const { chatBotConfig } = useCustomSelector((state) => ({
@@ -250,6 +251,25 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
         <div>
           <RadioGroup value={formData.type} onChange={handleBlur} name="type" />
         </div>
+
+        {/* Popup Side - only shown when position is popup */}
+        {formData.type === "popup" && (
+          <label className="form-control w-full">
+            <div className="label">
+              <span className="label-text font-medium text-xs">Popup Side</span>
+            </div>
+            <select
+              data-testid="chatbot-config-popup-side-select"
+              className="select select-bordered select-sm w-full"
+              value={formData.side || "right"}
+              name="side"
+              onChange={(e) => handleBlur(e)}
+            >
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+            </select>
+          </label>
+        )}
 
         {/* Theme Color */}
         <label className="form-control">
