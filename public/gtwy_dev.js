@@ -326,7 +326,7 @@
             if (!this.state.hasParentContainer) {
                 const hideHeader = ['true', true].includes(this.config.hideHeader);
                 Object.assign(iframe.style, {
-                    marginTop: hideHeader ? '0vh' : '5vh',
+                    marginTop: hideHeader ? '0vh' : 'calc(5vh + 10px)',
                     maxHeight: hideHeader ? '100vh' : '95vh'
                 });
             }
