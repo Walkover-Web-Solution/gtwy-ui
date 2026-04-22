@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateIntegrationDataAction } from "@/store/action/integrationAction";
+import { createApiAction, integrationAction, deleteFunctionAction } from "@/store/action/bridgeAction";
 import { setEmbedUserDetailsAction } from "@/store/action/appInfoAction";
 import { toast } from "react-toastify";
 import { RefreshCw, Save } from "lucide-react";
@@ -270,8 +271,9 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
   }, [hasUnsavedChanges]);
   const saveTimeoutRef = useRef(null);
 
-  const { embedToken } = useCustomSelector((state) => ({
+  const { embedToken, functionData } = useCustomSelector((state) => ({
     embedToken: state?.integrationReducer?.embedTokens?.[data?.folder_id],
+    functionData: state?.bridgeReducer?.org?.[data?.org_id]?.functionData || {},
   }));
 
   const integrationData = useCustomSelector((state) =>
@@ -387,6 +389,69 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     }));
     handleSave(configuration, resetTheme);
   };
+
+  // Listen for viasocket tool creation/update events — auto-connect tool/pretool to this integration
+  useEffect(() => {
+    const handleMessage = async (e) => {
+      if (e.data?.metadata?.type !== "tool") return;
+      if (!e?.data?.webhookurl) return;
+
+      const dataToSend = { ...e.data, status: e?.data?.action };
+      dispatch(integrationAction(dataToSend, data?.org_id));
+
+      if (e?.data?.action === "deleted") {
+        const deletedScriptId = e?.data?.id;
+        const matchedFn = Object.values(functionData).find((fn) => fn.script_id === deletedScriptId);
+        const matchedId = matchedFn?._id;
+
+        if (matchedId) {
+          const currentTools = configuration.tools_id || [];
+          if (currentTools.includes(matchedId)) {
+            handleConfigChange(
+              "tools_id",
+              currentTools.filter((id) => id !== matchedId)
+            );
+          }
+          if (configuration.pre_tool_id === matchedId) {
+            handleConfigChange("pre_tool_id", null);
+          }
+          dispatch(deleteFunctionAction({ script_id: deletedScriptId, orgId: data?.org_id, functionId: matchedId }));
+        }
+        return;
+      }
+
+      if (
+        e?.data?.action === "published" ||
+        e?.data?.action === "paused" ||
+        e?.data?.action === "created" ||
+        e?.data?.action === "updated"
+      ) {
+        const dataFromEmbed = {
+          url: e?.data?.webhookurl,
+          desc: e?.data?.description || e?.data?.title,
+          id: e?.data?.id,
+          status: e?.data?.action,
+          title: e?.data?.title,
+          openaiToolJson: e?.data?.openaiToolJson,
+        };
+
+        const createdTool = await dispatch(createApiAction(data?.org_id, dataFromEmbed));
+        if (!createdTool?._id) return;
+
+        if (e?.data?.metadata?.createFrom === "preFunction") {
+          handleConfigChange("pre_tool_id", createdTool._id);
+        } else {
+          const currentTools = configuration.tools_id || [];
+          if (!currentTools.includes(createdTool._id)) {
+            handleConfigChange("tools_id", [...currentTools, createdTool._id]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [data?.org_id, configuration.tools_id, configuration.pre_tool_id, functionData, dispatch]);
 
   // Manual reload function
   const handleManualReload = () => {

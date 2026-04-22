@@ -181,7 +181,7 @@ const ToolsConfiguration = ({
             <EmbedListSuggestionDropdownMenu
               params={params}
               searchParams={{}}
-              name="tools"
+              name={singleToolMode ? "preFunction" : "tool"}
               hideCreateFunction={false}
               onSelect={handleSelectFunction}
               onSelectPrebuiltTool={() => {}}
