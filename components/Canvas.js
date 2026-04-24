@@ -3,6 +3,7 @@ import { Lightbulb, MousePointerClick, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import CodeBlock from "./codeBlock/CodeBlock";
+import { mdComponentsLight, mdRemarkPlugins } from "@/utils/markdownComponents";
 
 function Canvas({
   OptimizePrompt,
@@ -218,15 +219,7 @@ function Canvas({
                       <CodeBlock>{formatted}</CodeBlock>
                     </pre>
                   ) : (
-                    <Markdown
-                      className="prose prose-sm max-w-none"
-                      components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        code: ({ children }) => (
-                          <code className="bg-base-200 px-1 py-0.5 rounded text-xs">{children}</code>
-                        ),
-                      }}
-                    >
+                    <Markdown components={mdComponentsLight} remarkPlugins={mdRemarkPlugins}>
                       {message.content}
                     </Markdown>
                   )}

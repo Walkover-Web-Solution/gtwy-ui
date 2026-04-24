@@ -1,34 +1,65 @@
+"use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import js from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
-import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
 import jsx from "react-syntax-highlighter/dist/esm/languages/prism/jsx";
-import typescript from "react-syntax-highlighter/dist/esm/languages/prism/typescript";
+import ts from "react-syntax-highlighter/dist/esm/languages/prism/typescript";
+import tsx from "react-syntax-highlighter/dist/esm/languages/prism/tsx";
 import python from "react-syntax-highlighter/dist/esm/languages/prism/python";
+import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
 import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
 import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
-import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import java from "react-syntax-highlighter/dist/esm/languages/prism/java";
+import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import go from "react-syntax-highlighter/dist/esm/languages/prism/go";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import markdown from "react-syntax-highlighter/dist/esm/languages/prism/markdown";
+import sql from "react-syntax-highlighter/dist/esm/languages/prism/sql";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
+SyntaxHighlighter.registerLanguage("js", js);
 SyntaxHighlighter.registerLanguage("jsx", jsx);
-SyntaxHighlighter.registerLanguage("json", json);
-SyntaxHighlighter.registerLanguage("typescript", typescript);
+SyntaxHighlighter.registerLanguage("typescript", ts);
+SyntaxHighlighter.registerLanguage("ts", ts);
+SyntaxHighlighter.registerLanguage("tsx", tsx);
 SyntaxHighlighter.registerLanguage("python", python);
+SyntaxHighlighter.registerLanguage("py", python);
+SyntaxHighlighter.registerLanguage("json", json);
 SyntaxHighlighter.registerLanguage("css", css);
 SyntaxHighlighter.registerLanguage("bash", bash);
 SyntaxHighlighter.registerLanguage("shell", bash);
-SyntaxHighlighter.registerLanguage("csharp", csharp);
+SyntaxHighlighter.registerLanguage("sh", bash);
 SyntaxHighlighter.registerLanguage("java", java);
+SyntaxHighlighter.registerLanguage("csharp", csharp);
+SyntaxHighlighter.registerLanguage("cs", csharp);
 SyntaxHighlighter.registerLanguage("go", go);
+SyntaxHighlighter.registerLanguage("markdown", markdown);
+SyntaxHighlighter.registerLanguage("md", markdown);
+SyntaxHighlighter.registerLanguage("sql", sql);
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === "undefined") return true;
+    return document.documentElement.getAttribute("data-theme") !== "light";
+  });
+  useEffect(() => {
+    const el = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setIsDark(el.getAttribute("data-theme") !== "light");
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
 
 function CodeBlock({ inline, className, children, ...props }) {
   const match = /language-(\w+)/.exec(className || "");
   const [copyStatus, setCopyStatus] = useState("Copy");
   const resetTimerRef = useRef(null);
   const codeString = String(children).replace(/\n$/, "");
+  const isDark = useIsDark();
+  const hlTheme = isDark ? oneDark : oneLight;
 
   // DaisyUI / Tailwind based container classes
   const blockClasses = `text-sm w-full rounded-lg border border-base-300 bg-base-200 text-base-content overflow-hidden`;
@@ -112,30 +143,29 @@ function CodeBlock({ inline, className, children, ...props }) {
         </button>
       </div>
       <SyntaxHighlighter
-        startingLineNumber
-        style={vscDarkPlus}
         language={match[1]}
-        wrapLongLines={true}
-        customStyle={{
-          margin: 0,
-          padding: "1rem",
+        style={{
+          ...hlTheme,
+          'pre[class*="language-"]': { ...hlTheme['pre[class*="language-"]'], background: "transparent" },
+          'code[class*="language-"]': { ...hlTheme['code[class*="language-"]'], background: "transparent" },
         }}
+        wrapLongLines
+        customStyle={{ margin: 0, padding: "1rem", fontSize: "0.8125rem", background: "transparent" }}
         codeTagProps={{
           style: {
-            whiteSpace: "pre-wrap",
             fontFamily:
               'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            background: "transparent",
           },
         }}
         PreTag="div"
-        {...props}
       >
         {codeString}
       </SyntaxHighlighter>
     </div>
   ) : (
     <code
-      className={`${className || ""} px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono font-normal bg-base-200 text-base-content`}
+      className={`${className || ""} px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono bg-base-200 text-base-content`}
       {...props}
     >
       {children}

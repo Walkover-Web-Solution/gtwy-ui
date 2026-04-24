@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import CodeBlock from "../codeBlock/CodeBlock";
 import ChatTextInput from "./ChatTextInput";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { truncate } from "../historyPageComponents/AssistFile";
@@ -45,14 +44,9 @@ import {
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
 import ReasoningAccordion from "./ReasoningAccordion";
+import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 
-const mdComponents = {
-  code: ({ node, inline, className, children, ...props }) => (
-    <CodeBlock inline={inline} className={className} isDark={true} {...props}>
-      {children}
-    </CodeBlock>
-  ),
-};
+const mdComponents = mdComponentsDark;
 
 const ChatImage = ({ src, alt, onClick }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -75,33 +69,15 @@ const ChatImage = ({ src, alt, onClick }) => {
 };
 
 function StreamingMessage({ content, isStreaming }) {
-  const [chunks, setChunks] = useState([]);
-  const prevLenRef = useRef(0);
-  const chunkIdRef = useRef(0);
-
-  useEffect(() => {
-    if (!content || content.length <= prevLenRef.current) return;
-    const newText = content.slice(prevLenRef.current);
-    prevLenRef.current = content.length;
-    const id = ++chunkIdRef.current;
-    const dur = Math.min(0.25 + newText.length * 0.006, 0.6);
-    setChunks((c) => [...c, { id, text: newText, dur }]);
-  }, [content]);
-
-  // When streaming ends, collapse all chunks into a single ReactMarkdown render
-  // to get proper syntax highlighting, links, etc.
-  if (!isStreaming && content) {
-    return <ReactMarkdown components={mdComponents}>{content}</ReactMarkdown>;
-  }
+  const displayContent = isStreaming ? content + "\u200B" : content;
 
   return (
-    <span style={{ whiteSpace: "pre-wrap" }}>
-      {chunks.map(({ id, text, dur }) => (
-        <span key={id} className="r-chunk" style={{ "--dur": `${dur}s` }}>
-          {text}
-        </span>
-      ))}
-    </span>
+    <div className={mdProseClass.dark}>
+      <ReactMarkdown components={mdComponents} remarkPlugins={mdRemarkPlugins}>
+        {displayContent}
+      </ReactMarkdown>
+      {isStreaming && <span className="inline-block w-[2px] h-[1em] bg-current align-middle ml-0.5 animate-pulse" />}
+    </div>
   );
 }
 
@@ -704,18 +680,20 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                     }`}
                   >
                     <div className="chat-image avatar"></div>
-                    <div className="chat-header">
+                    <div className="chat-header flex items-center gap-1.5 mb-1">
                       {!(message.sender === "assistant" && message.isLoading && !message.content) && (
                         <>
-                          {message.sender === "expected"
-                            ? "Expected Response"
-                            : message.sender === "error"
-                              ? "Error"
-                              : message.testCaseResult
-                                ? "Model Answer"
-                                : message.sender}
-                          {message.isEdited && <span className="text-xs text-warning ml-2 font-medium">(edited)</span>}
-                          <time className="text-xs opacity-50 pl-2">{message.time}</time>
+                          <span className="text-xs font-semibold capitalize tracking-wide opacity-70">
+                            {message.sender === "expected"
+                              ? "Expected Response"
+                              : message.sender === "error"
+                                ? "Error"
+                                : message.testCaseResult
+                                  ? "Model Answer"
+                                  : message.sender}
+                          </span>
+                          {message.isEdited && <span className="text-xs text-warning font-medium">(edited)</span>}
+                          <time className="text-[10px] opacity-40">{message.time}</time>
                         </>
                       )}
                       {message?.sender === "assistant" && message?.fallback && (
@@ -803,7 +781,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                         message?.llm_urls?.length > 0 ||
                         message?.image_urls?.length > 0) && (
                         <div
-                          className={`flex gap-2 show-on-hover ${message.sender === "user" ? "justify-end" : "justify-start"} w-full max-w-[700px] min-w-0 items-center relative ${editingMessage === message.id && message.sender === "assistant" ? "w-[500px]" : ""}`}
+                          className={`flex gap-2 show-on-hover ${message.sender === "user" ? "justify-end" : "justify-start"} w-full max-w-[720px] min-w-0 items-center relative ${editingMessage === message.id && message.sender === "assistant" ? "w-[500px]" : ""}`}
                         >
                           {message?.sender === "user" && message?.content && (
                             <button
@@ -892,11 +870,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                             <div
                               className={`break-words gap-0 justify-start relative min-w-0 ${message.sender === "user" ? "ml-auto" : ""} ${
                                 message.sender === "assistant"
-                                  ? "mr-8 w-full bg-transparent p-0"
+                                  ? `mr-8 w-full rounded-xl ${message.content ? "px-4 py-3 border border-base-content/20" : ""}`
                                   : message.sender === "error"
-                                    ? "chat-bubble w-fit max-w-[75%] overflow-hidden bg-error/10 border border-error/30 text-error"
-                                    : "chat-bubble w-fit max-w-[75%]"
-                              } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0" : ""}`}
+                                    ? "rounded-xl w-fit max-w-[75%] overflow-hidden bg-error/10 border border-error/30 text-error px-4 py-3 text-sm"
+                                    : "chat-bubble w-fit max-w-[75%] text-sm"
+                              } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0 !border-0" : ""}`}
                             >
                               {/* Show loader overlay if this is the message being tested */}
                               {isRunningTestCase && currentRunIndex !== null && index === currentRunIndex + 1 && (
@@ -1002,22 +980,15 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     </div>
                                   ) : (
                                     /* Regular message with markdown */
-                                    <ReactMarkdown
-                                      components={{
-                                        code: ({ node, inline, className, children, ...props }) => (
-                                          <CodeBlock inline={inline} className={className} isDark={true} {...props}>
-                                            {children}
-                                          </CodeBlock>
-                                        ),
-                                      }}
-                                    >
-                                      {/* Show model's actual response if testcase was run, otherwise show original content */}
-                                      {message.type !== "template" &&
-                                        message.type !== "richui_json" &&
-                                        (message.testCaseResult && message.sender === "assistant"
-                                          ? message.testCaseResult.actual_result || message.content
-                                          : message.content)}
-                                    </ReactMarkdown>
+                                    <div className={message.sender === "assistant" ? mdProseClass.dark : undefined}>
+                                      <ReactMarkdown components={mdComponents} remarkPlugins={mdRemarkPlugins}>
+                                        {message.type !== "template" && message.type !== "richui_json"
+                                          ? message.testCaseResult && message.sender === "assistant"
+                                            ? message.testCaseResult.actual_result || message.content
+                                            : message.content
+                                          : null}
+                                      </ReactMarkdown>
+                                    </div>
                                   )}
 
                                   {message?.type === "richui_json" && message?.content && (

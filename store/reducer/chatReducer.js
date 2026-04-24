@@ -365,6 +365,7 @@ export const chatReducer = createSlice({
             ...state.messagesByChannel[channelId][messageIndex],
             content,
             isLoading: !isComplete,
+            isStreaming: !isComplete,
           };
 
           // Update conversation if complete

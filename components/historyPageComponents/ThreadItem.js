@@ -15,7 +15,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import CodeBlock from "../codeBlock/CodeBlock";
+import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -603,18 +603,7 @@ const ThreadItem = ({
             >
               {/* User attachments - shown above message text */}
               {renderAttachments(normalizeImageUrls(item?.user_urls, "user"))}
-
-              <ReactMarkdown
-                components={{
-                  code: ({ node, inline, className, children, ...props }) => (
-                    <CodeBlock className={className} {...props}>
-                      {children}
-                    </CodeBlock>
-                  ),
-                }}
-              >
-                {item.user}
-              </ReactMarkdown>
+              <div>{item.user}</div>
             </div>
           </div>
 
@@ -855,7 +844,7 @@ const ThreadItem = ({
             >
               <div
                 className="bg-base-200 text-base-content pr-10 mb-7 chat-bubble transition-all ease-in-out duration-300 relative group break-words"
-                style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-line" }}
+                style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
               >
                 {/* Assistant attachments */}
                 {renderAttachments(normalizeImageUrls(item?.llm_urls, "llm"))}
@@ -864,17 +853,11 @@ const ThreadItem = ({
                 {isChatbotMessage() && containsHTML(getMessageToDisplay()) ? (
                   <div dangerouslySetInnerHTML={{ __html: getMessageToDisplay() }} />
                 ) : (
-                  <ReactMarkdown
-                    components={{
-                      code: ({ node, inline, className, children, ...props }) => (
-                        <CodeBlock className={className} {...props}>
-                          {children}
-                        </CodeBlock>
-                      ),
-                    }}
-                  >
-                    {getMessageToDisplay()}
-                  </ReactMarkdown>
+                  <div className={mdProseClass.dark}>
+                    <ReactMarkdown components={mdComponentsDark} remarkPlugins={mdRemarkPlugins}>
+                      {getMessageToDisplay()}
+                    </ReactMarkdown>
+                  </div>
                 )}
 
                 {/* Edit button for assistant messages */}
