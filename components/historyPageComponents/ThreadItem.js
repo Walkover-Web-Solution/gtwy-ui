@@ -587,7 +587,7 @@ const ThreadItem = ({
         {/* 1. First: Render User Message if exists */}
         <div className="chat group chat-end mb-4">
           <div className="chat-image avatar flex justify-center items-center">
-            <div className="w-100 p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors">
+            <div className="p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors">
               <div className="relative rounded-full bg-base-300 flex justify-center items-center">
                 <UserIcon size={20} className="text-base-content" />
               </div>
@@ -741,7 +741,7 @@ const ThreadItem = ({
         {!item.error && (
           <div className="chat group chat-start">
             <div className="chat-image avatar flex justify-center items-center">
-              <div className="w-100 p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors mb-7">
+              <div className="p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors mb-7">
                 <div className="relative rounded-full bg-base-300 flex justify-center items-center">
                   <BotIcon
                     data-testid="thread-item-bot-icon"
@@ -933,7 +933,7 @@ const ThreadItem = ({
                   </div>
                   <p className="text-sm">{item?.error}</p>
                 </div>
-                <div className="w-100 p-2 rounded-full bg-error/20 flex justify-center items-center">
+                <div className="p-2 rounded-full bg-error/20 flex justify-center items-center">
                   <BotIcon className="text-base-content" size={18} />
                 </div>
               </div>
