@@ -93,33 +93,44 @@ const RAGEmbedDetailView = ({ data, onClose }) => {
           <div className="w-80 flex-shrink-0 h-full mr-3" data-testid="rag-embed-sidebar">
             <div className="bg-base-100 pt-4 border border-base-300 rounded-lg p-2 h-full flex flex-col overflow-hidden">
               {!isTestingMode ? (
-                // Main Navigation Tabs
-                <nav
+                // Main Navigation Tabs with Back Button
+                <div
                   key="main-nav"
-                  className="space-y-1"
+                  className="flex flex-col space-y-1"
                   style={{ animation: "slideInLeft 0.3s ease-out both" }}
-                  data-testid="rag-embed-main-nav"
                 >
-                  {TABS.map((tab) => {
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        data-testid={`rag-embed-tab-${tab.id}`}
-                        onClick={() => handleTabClick(tab.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                          ${
-                            isActive
-                              ? "bg-base-200 text-base-content"
-                              : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
-                          }`}
-                      >
-                        {tab.icon}
-                        <span>{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </nav>
+                  <div className="mb-4 flex-shrink-0">
+                    <button
+                      data-testid="rag-embed-main-back-button"
+                      onClick={typeof onClose === "function" ? onClose : () => router.back()}
+                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                    >
+                      <ArrowLeft size={16} />
+                      <span className="text-sm truncate">Back</span>
+                    </button>
+                  </div>
+                  <nav className="space-y-1" data-testid="rag-embed-main-nav">
+                    {TABS.map((tab) => {
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          data-testid={`rag-embed-tab-${tab.id}`}
+                          onClick={() => handleTabClick(tab.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                            ${
+                              isActive
+                                ? "bg-base-200 text-base-content"
+                                : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                            }`}
+                        >
+                          {tab.icon}
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
               ) : (
                 // Testing sidebar panel
                 <div

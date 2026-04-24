@@ -88,33 +88,44 @@ const ChatbotConfigDetailView = ({ params, embedToken }) => {
           <div className="w-80 flex-shrink-0 h-full" data-testid="chatbot-config-sidebar">
             <div className="bg-base-100 pt-6 border border-base-300 rounded-lg p-2 h-full flex flex-col overflow-hidden">
               {!isConfigMode && !isTestingMode ? (
-                // Main Navigation Tabs with slide from left animation
-                <nav
+                // Main Navigation Tabs with Back Button
+                <div
                   key="main-nav"
-                  className="space-y-1"
+                  className="flex flex-col space-y-1"
                   style={{ animation: "slideInLeft 0.3s ease-out both" }}
-                  data-testid="chatbot-config-main-nav"
                 >
-                  {tabs.map((tab) => {
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        data-testid={`chatbot-config-tab-${tab.id}`}
-                        onClick={() => handleTabChange(tab.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                          ${
-                            isActive
-                              ? "bg-primary text-primary-content"
-                              : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
-                          }`}
-                      >
-                        {tab.icon}
-                        <span>{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </nav>
+                  <div className="mb-4 flex-shrink-0">
+                    <button
+                      data-testid="chatbot-config-main-back-button"
+                      onClick={typeof onClose === "function" ? onClose : () => router.back()}
+                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                    >
+                      <ChevronLeft size={16} />
+                      <span className="text-sm truncate">Back</span>
+                    </button>
+                  </div>
+                  <nav className="space-y-1" data-testid="chatbot-config-main-nav">
+                    {tabs.map((tab) => {
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          data-testid={`chatbot-config-tab-${tab.id}`}
+                          onClick={() => handleTabChange(tab.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                            ${
+                              isActive
+                                ? "bg-primary text-primary-content"
+                                : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                            }`}
+                        >
+                          {tab.icon}
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
               ) : isConfigMode ? (
                 // Configuration Settings with slide from right animation
                 <div
