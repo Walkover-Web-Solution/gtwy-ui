@@ -487,6 +487,7 @@ export const updateBridgeVersionAction =
         ...dataToSend,
         _id: versionId,
         parent_id: parentBridgeId,
+        is_drafted: true,
       };
 
       // Deep merge configuration if present
@@ -711,7 +712,11 @@ export const updateApiAction = (bridge_id, dataFromEmbed) => async (dispatch) =>
   try {
     markUpdateInitiatedByCurrentTab(dataFromEmbed?.version_id);
     const data = await updateapi(bridge_id, dataFromEmbed);
-    dispatch(updateBridgeVersionReducer({ bridges: data?.data?.agent }));
+    const updatedAgent = data?.data?.agent;
+    if (updatedAgent) {
+      updatedAgent.is_drafted = true;
+    }
+    dispatch(updateBridgeVersionReducer({ bridges: updatedAgent }));
   } catch (error) {
     console.error(error);
   }
