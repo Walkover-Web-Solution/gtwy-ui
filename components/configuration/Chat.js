@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
   CircleQuestionMark,
+  ShieldCheck,
 } from "lucide-react";
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
@@ -77,6 +78,22 @@ function StreamingMessage({ content, isStreaming }) {
         {displayContent}
       </ReactMarkdown>
       {isStreaming && <span className="inline-block w-[2px] h-[1em] bg-current align-middle ml-0.5 animate-pulse" />}
+    </div>
+  );
+}
+
+function ReviewPhaseIndicator({ phase }) {
+  if (!phase) return null;
+  const isReviewing = phase === "reviewer_start";
+  return (
+    <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg border border-base-300 bg-base-200/60 text-xs text-base-content/70">
+      <ShieldCheck
+        size={13}
+        className={isReviewing ? "text-warning" : "text-success"}
+        style={isReviewing ? { animation: "pulse 1.4s ease-in-out infinite" } : {}}
+      />
+      <span className="flex-1">{isReviewing ? "Reviewing response…" : "Review complete"}</span>
+      {isReviewing && <span className="loading loading-dots loading-xs opacity-60" />}
     </div>
   );
 }
@@ -937,6 +954,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                         <Edit2 className="h-4 w-4" />
                                       </button>
                                     )}
+
+                                  {/* Review phase indicator (shown between reviewer_start and reviewer_done) */}
+                                  <ReviewPhaseIndicator phase={message.reviewPhase} />
 
                                   {/* Reasoning accordion (shown when model emits reasoning events) */}
                                   {message.reasoning && (

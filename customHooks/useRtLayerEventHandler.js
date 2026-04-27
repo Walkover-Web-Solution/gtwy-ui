@@ -7,6 +7,7 @@ import {
   setChatTestCaseIdAction,
   addChatErrorMessage,
 } from "@/store/action/chatAction";
+import { setMessageReviewPhase } from "@/store/reducer/chatReducer";
 import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
 
 import { usePathname } from "next/navigation";
@@ -115,6 +116,10 @@ function useRtLayerEventHandler(channelIdentifier = "") {
               return;
             } else if (event === "delta") {
               dispatch(handleRtLayerStreamChunk(channelId, parsedData.message_id, parsedData.content || ""));
+              return;
+            } else if (event === "review_phase") {
+              const phase = parsedData.phase === "reviewer_done" ? null : parsedData.phase;
+              dispatch(setMessageReviewPhase({ channelId, messageId: parsedData.message_id, phase }));
               return;
             } else if (event === "error") {
               const errorMessage =

@@ -21,6 +21,7 @@ import {
   addToolCallToMessage,
   updateToolCallResult,
   appendReasoningChunk,
+  setMessageReviewPhase,
 } from "../reducer/chatReducer";
 import { haveSameItems, buildUserUrls, buildLlmUrls } from "@/utils/attachmentUtils";
 
@@ -452,6 +453,9 @@ export const sendMessageWithApiStreaming =
                   },
                 })
               );
+            } else if (parsed.event === "review_phase") {
+              const phase = parsed.phase === "reviewer_done" ? null : parsed.phase;
+              dispatch(setMessageReviewPhase({ channelId, messageId: streamingState.messageId, phase }));
             } else if (parsed.event === "tool_result") {
               dispatch(
                 updateToolCallResult({

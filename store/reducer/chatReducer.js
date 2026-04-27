@@ -392,6 +392,23 @@ export const chatReducer = createSlice({
       }
     },
 
+    // Set review phase status on a streaming message
+    setMessageReviewPhase: (state, action) => {
+      const { channelId, messageId, phase } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      let idx = messageId ? messages.findIndex((m) => m.id === messageId) : -1;
+      if (idx === -1) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].isLoading && messages[i].sender === "assistant") {
+            idx = i;
+            break;
+          }
+        }
+      }
+      if (idx !== -1) messages[idx].reviewPhase = phase;
+    },
+
     // Append a reasoning chunk to a streaming message
     appendReasoningChunk: (state, action) => {
       const { channelId, messageId, chunk } = action.payload;
@@ -488,6 +505,7 @@ export const {
   addToolCallToMessage,
   updateToolCallResult,
   appendReasoningChunk,
+  setMessageReviewPhase,
 } = chatReducer.actions;
 
 export default chatReducer.reducer;
