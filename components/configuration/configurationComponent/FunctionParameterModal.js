@@ -85,7 +85,7 @@ const ParameterCard = ({
             }}
             placeholder="Parameter name"
           />
-          {name !== "Pre Tool" && (
+          {name !== "Pre Tool" && name !== "Post Tool" && (
             <div className="flex items-center mr-4 gap-2">
               <label className="flex items-center gap-1 text-xs">
                 <input
@@ -263,7 +263,7 @@ const ParameterCard = ({
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          {name !== "Pre Tool" && (
+          {name !== "Pre Tool" && name !== "Post Tool" && (
             <select
               data-testid={`param-type-select-${currentPath}`}
               id={`param-type-select-${currentPath}`}
@@ -279,7 +279,7 @@ const ParameterCard = ({
               ))}
             </select>
           )}
-          {name === "Pre Tool" && (
+          {(name === "Pre Tool" || name === "Post Tool") && (
             <div className="flex flex-row items-center">
               <label className="text-xs mb-0 mr-1 whitespace-nowrap">Value Path:</label>
               <input
@@ -289,7 +289,7 @@ const ParameterCard = ({
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${
-                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                  (name === "Pre Tool" || name === "Post Tool") && !variablesPath[currentPath] ? "border-red-500" : ""
                 }`}
                 value={variablesPath[currentPath] || ""}
                 onChange={(e) => {
@@ -316,7 +316,7 @@ const ParameterCard = ({
       {/* Fill with AI and Value Path Options - Moved to Top */}
 
       {/* Description */}
-      {name !== "Pre Tool" && (
+      {name !== "Pre Tool" && name !== "Post Tool" && (
         <div className="text-xs">
           <textarea
             data-testid={`param-description-textarea-${currentPath}`}
@@ -331,9 +331,9 @@ const ParameterCard = ({
 
       {/* Additional Options */}
       <div
-        className={`flex flex-row ${param.type !== "object" && name !== "Pre Tool" ? "justify-between" : "justify-end"}`}
+        className={`flex flex-row ${param.type !== "object" && name !== "Pre Tool" && name !== "Post Tool" ? "justify-between" : "justify-end"}`}
       >
-        {name !== "Pre Tool" && param.type !== "object" && (
+        {name !== "Pre Tool" && name !== "Post Tool" && param.type !== "object" && (
           <div className="flex items-center gap-1 text-xs mb-1">
             <input
               id={`param-enum-checkbox-${currentPath}`}
@@ -375,27 +375,29 @@ const ParameterCard = ({
             )}
           </div>
         )}
-        {name !== "Pre Tool" && ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
-          <div className="mb-1 flex flex-row ml-1 items-center justify-end">
-            <label className="block text-xs mb-0 mr-1">Value Path:</label>
-            <input
-              data-testid={`param-value-path-input-${currentPath}`}
-              id={`param-value-path-input-${currentPath}`}
-              disabled={isReadOnly}
-              type="text"
-              placeholder="your_path"
-              className={`input input-xs input-bordered text-xs ${
-                name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
-              }`}
-              value={variablesPath[currentPath] || ""}
-              onChange={(e) => {
-                const updatedVariablesPath = { ...variablesPath };
-                updatedVariablesPath[currentPath] = e.target.value;
-                onVariablePathChange(updatedVariablesPath);
-              }}
-            />
-          </div>
-        )}
+        {name !== "Pre Tool" &&
+          name !== "Post Tool" &&
+          ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
+            <div className="mb-1 flex flex-row ml-1 items-center justify-end">
+              <label className="block text-xs mb-0 mr-1">Value Path:</label>
+              <input
+                data-testid={`param-value-path-input-${currentPath}`}
+                id={`param-value-path-input-${currentPath}`}
+                disabled={isReadOnly}
+                type="text"
+                placeholder="your_path"
+                className={`input input-xs input-bordered text-xs ${
+                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                }`}
+                value={variablesPath[currentPath] || ""}
+                onChange={(e) => {
+                  const updatedVariablesPath = { ...variablesPath };
+                  updatedVariablesPath[currentPath] = e.target.value;
+                  onVariablePathChange(updatedVariablesPath);
+                }}
+              />
+            </div>
+          )}
       </div>
 
       {/* Properties Section for Objects */}
@@ -529,7 +531,7 @@ function FunctionParameterModal({
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
     if (prevFunctionNameRef.current !== functionName) {
-      if (name !== "Pre Tool") {
+      if (name !== "Pre Tool" && name !== "Post Tool") {
         const newVariablesPath = variables_path[functionName] || {};
         setVariablesPath(newVariablesPath);
       }
@@ -893,7 +895,7 @@ function FunctionParameterModal({
   const handleSaveData = useCallback(() => {
     if (
       toolData?.description?.trim() != function_details?.description?.trim() ||
-      ((name === "Tool" || name === "Pre Tool") && toolData?.title?.trim() !== toolName?.trim())
+      ((name === "Tool" || name === "Pre Tool" || name === "Post Tool") && toolData?.title?.trim() !== toolName?.trim())
     ) {
       handleUpdateFlow();
     }
@@ -1227,7 +1229,7 @@ function FunctionParameterModal({
             </div>
           </div>
           <div className="flex flex-row items-center gap-2">
-            {(name === "Tool" || name === "Pre Tool") && (
+            {(name === "Tool" || name === "Pre Tool" || name === "Post Tool") && (
               <div className="flex flex-row gap-1">
                 <InfoIcon id="function-param-info-icon" size={14} />
                 <div id="function-param-info-text" className="label-text-alt">

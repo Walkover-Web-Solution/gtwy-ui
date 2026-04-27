@@ -181,7 +181,13 @@ const ToolsConfiguration = ({
             <EmbedListSuggestionDropdownMenu
               params={params}
               searchParams={{}}
-              name={singleToolMode ? "preFunction" : "tool"}
+              name={
+                singleToolMode
+                  ? modalType === MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL
+                    ? "postFunction"
+                    : "preFunction"
+                  : "tool"
+              }
               hideCreateFunction={false}
               onSelect={handleSelectFunction}
               onSelectPrebuiltTool={() => {}}
@@ -234,7 +240,13 @@ const ToolsConfiguration = ({
       <FunctionParameterModal
         isPublished={false}
         isEditor={true}
-        name={modalType === MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL ? "Pre Tool" : "Tool"}
+        name={
+          modalType === MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL
+            ? "Pre Tool"
+            : modalType === MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL
+              ? "Post Tool"
+              : "Tool"
+        }
         functionId={selectedFunctionId}
         Model_Name={modalType}
         embedToken={embedToken}

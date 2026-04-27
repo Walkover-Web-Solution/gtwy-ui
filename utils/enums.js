@@ -27,6 +27,7 @@ export const MODAL_TYPE = {
   FINE_TUNE_MODAL: "fine-tune-modal",
   PRE_FUNCTION_PARAMETER_MODAL: "pre-function-parameter-modal",
   TOOL_FUNCTION_PARAMETER_MODAL: "tool-function-parameter-modal",
+  POST_FUNCTION_PARAMETER_MODAL: "post-function-parameter-modal",
   ACTION_MODAL: "actionModel",
   CHATBOT_MODAL: "chatBot_model",
   CREATE_ORG_MODAL: "create-org-modal",

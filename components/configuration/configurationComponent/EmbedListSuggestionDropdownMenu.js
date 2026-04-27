@@ -165,6 +165,8 @@ function EmbedListSuggestionDropdownMenu({
           <div className="flex flex-col gap-2 w-full">
             {name === "preFunction" ? (
               <li className="text-sm font-semibold disabled">Available Pre Functions</li>
+            ) : name === "postFunction" ? (
+              <li className="text-sm font-semibold disabled">Available Post Functions</li>
             ) : (
               <li className="text-sm font-semibold disabled">Available Tools</li>
             )}
@@ -172,7 +174,7 @@ function EmbedListSuggestionDropdownMenu({
               data-testid="embed-suggestion-search-input"
               id="embed-suggestion-search-input"
               type="text"
-              placeholder={`Search ${name == "preFunction" ? "Pre Function" : "Tool"}`}
+              placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
               value={searchQuery}
               onChange={handleInputChange} // Update search query on input change
               className="input input-bordered w-full input-sm"
@@ -198,7 +200,7 @@ function EmbedListSuggestionDropdownMenu({
                   ))}
               </>
             )}
-            {name != "preFunction" && (
+            {name !== "preFunction" && name !== "postFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Prebuilt Tools</li>
                 {availablePrebuiltTools.length > 0 ? (
