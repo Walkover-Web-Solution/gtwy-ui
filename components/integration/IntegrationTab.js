@@ -42,13 +42,6 @@ window.GtwyEmbed.sendDataToGtwy({
   agent_purpose: "your_agent_purpose" // Create Agent with given purpose
 });`;
 
-  const metaUpdateScript = `window.openGtwy({
-  "agent_id": "your_agent_id",
-  "meta": {
-    "meta_data": "your_meta_data"
-  }
-});`;
-
   const eventListenerScript = `<script>
 window.addEventListener('message', (event) => {
   if (event.data.type === 'gtwy') {
@@ -279,21 +272,40 @@ window.addEventListener('message', (event) => {
       <div className="card bg-base-100 border border-base-300">
         <div className="card-body">
           <h4 className="card-title text-base">Add Meta Data</h4>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Use this script to add meta data to GTWY</span>
-            </label>
-            <div className="relative">
-              <div className="mockup-code">
-                <pre data-prefix=">">
-                  <code className="text-error">
-                    {" "}
-                    window.GtwyEmbed.openGtwy(
-                    {`{"agent_id":"your gtwy agentid" , "meta": {"meta_data": "your_meta_data"}}`})
-                  </code>
-                </pre>
+          <div className="form-control space-y-4">
+            <div>
+              <label className="label">
+                <span className="label-text font-medium">Merge meta (spreads new meta over existing)</span>
+              </label>
+              <div className="relative">
+                <div className="mockup-code">
+                  <pre data-prefix=">">
+                    <code className="text-error">window.openGtwy(</code>
+                    <code className="text-warning">{`{"agent_id":"your_agent_id", "meta": {"key": "value"}}`}</code>
+                    <code className="text-error">)</code>
+                  </pre>
+                </div>
+                <CopyButton
+                  data={`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "meta": {\n    "key": "value"\n  }\n});`}
+                />
               </div>
-              <CopyButton data={metaUpdateScript} />
+            </div>
+            <div>
+              <label className="label">
+                <span className="label-text font-medium">Replace meta (overwrites all existing meta)</span>
+              </label>
+              <div className="relative">
+                <div className="mockup-code">
+                  <pre data-prefix=">">
+                    <code className="text-error">window.openGtwy(</code>
+                    <code className="text-warning">{`{"agent_id":"your_agent_id", "replaceMeta": {"key": "value"}}`}</code>
+                    <code className="text-error">)</code>
+                  </pre>
+                </div>
+                <CopyButton
+                  data={`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "replaceMeta": {\n    "key": "value"\n  }\n});`}
+                />
+              </div>
             </div>
           </div>
         </div>
