@@ -165,7 +165,7 @@
             container.classList.add(`slide-${slideType}`);
             this.addStyles();
         }
-        openGtwy(agent_id = null, meta = {}, agent_name = null, agent_purpose = null, history = null) {
+        openGtwy(agent_id = null, meta = {}, agent_name = null, agent_purpose = null, history = null, replaceMeta = null) {
             if (!this.state.isInitialized) {
                 this.initializeGtwyEmbed().then(() => this.openGtwy());
                 return;
@@ -174,6 +174,7 @@
             const dataToSend = {};
             if (agent_id) dataToSend.agent_id = agent_id;
             if (meta && Object.keys(meta).length > 0) dataToSend.meta = meta;
+            if (replaceMeta) dataToSend.replaceMeta = replaceMeta;
             if (agent_name) dataToSend.agent_name = agent_name;
             if (agent_purpose) dataToSend.agent_purpose = agent_purpose;
             if (history) dataToSend.history = history;
@@ -523,8 +524,8 @@
     };
 
     // Global API
-    window.openGtwy = ({ agent_id = "", meta = {}, agent_name = "", agent_purpose = "", history = null } = {}) => {
-        gtwyEmbedManager.openGtwy(agent_id, meta, agent_name, agent_purpose, history);
+    window.openGtwy = ({ agent_id = "", meta = {}, agent_name = "", agent_purpose = "", history = null, replaceMeta = null } = {}) => {
+        gtwyEmbedManager.openGtwy(agent_id, meta, agent_name, agent_purpose, history, replaceMeta);
     };
     window.closeGtwy = () => gtwyEmbedManager.closeGtwy();
 
