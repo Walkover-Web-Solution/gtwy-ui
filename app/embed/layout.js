@@ -200,9 +200,9 @@ const Layout = ({ children, isEmbedUser }) => {
         if (!bridge) return;
         if (messageData.meta || messageData.replaceMeta) {
           const updatedMeta =
-            messageData.replaceMeta !== null
+            messageData.replaceMeta != null
               ? messageData.replaceMeta
-              : { ...(bridge.meta || {}), ...messageData.meta };
+              : { ...(bridge?.meta || {}), ...messageData.meta };
           dispatch(updateBridgeAction({ dataToSend: { meta: updatedMeta }, bridgeId: messageData.agent_id }));
         }
         setIsLoading(true);
