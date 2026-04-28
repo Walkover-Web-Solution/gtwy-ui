@@ -7,8 +7,6 @@ function ConnectedAgentListSuggestion({
   connect_agents = [],
   bridges,
   bridgeData,
-  isPublished = false,
-  isEditor = true,
 }) {
   // Determine if content is read-only (either published or user is not an editor)
   const [searchQuery, setSearchQuery] = useState("");
