@@ -174,17 +174,10 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
     convertedMessages.push(expectedMessage);
   }
 
-  // Convert to conversation format for the backend
-  const backendConversation = testCaseConversation.map((msg) => ({
-    role: msg.role,
-    content: msg.content,
-  }));
-
   dispatch(
     loadTestCaseMessages({
       channelId,
       messages: convertedMessages,
-      conversation: backendConversation,
       testCaseId,
     })
   );
@@ -329,7 +322,6 @@ export const sendMessageWithRtLayer =
 
       // Make API call (this should trigger RT layer response)
       const response = await apiCall({
-        conversation: [], // Will be populated from Redux state
         user: messageContent,
       });
       return { userMessage, loadingMessage, response };
