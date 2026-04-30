@@ -74,26 +74,19 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
   useEffect(() => {
     if (promptConfig.useDefaultPrompt) return;
 
-    const currentFieldNames = new Set(promptConfig.embedFields.map((f) => f.name));
-    // Add detected variables as fields if they don't exist
-    const newFields = [...promptConfig.embedFields];
-    detectedVariables.forEach((varName) => {
-      if (!currentFieldNames.has(varName)) {
-        // Check if field already exists with a value (preserve existing values)
-        const existingField = promptConfig.embedFields.find((f) => f.name === varName);
-        newFields.push({
+    // Build fields ordered exactly as variables appear in the prompt, preserving existing settings
+    const existingByName = Object.fromEntries(promptConfig.embedFields.map((f) => [f.name, f]));
+    const fieldsToKeep = detectedVariables.map((varName) => {
+      const existing = existingByName[varName];
+      return (
+        existing ?? {
           name: varName,
-          value: existingField?.value || "",
-          type: existingField?.type || "input",
-          hidden: existingField?.hidden !== undefined ? existingField.hidden : false,
-          displayValue: existingField?.displayValue || "",
-        });
-      }
-    });
-
-    // Remove fields that are no longer in the prompt (except default fields)
-    const fieldsToKeep = newFields.filter((field) => {
-      return detectedVariables.includes(field.name);
+          value: "",
+          type: "input",
+          hidden: false,
+          displayValue: "",
+        }
+      );
     });
 
     if (JSON.stringify(fieldsToKeep) !== JSON.stringify(promptConfig.embedFields)) {
@@ -162,21 +155,20 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
     if (onValidate) onValidate(isValid);
   }, [promptConfig, onValidate]);
 
-  // Handle custom prompt change
-  const handleCustomPromptChange = useCallback(
+  const handleCustomPromptChange = useCallback((value) => {
+    setPromptConfig((prev) => ({ ...prev, customPrompt: value }));
+  }, []);
+
+  const handleCustomPromptBlur = useCallback(
     (value) => {
-      const updated = {
-        ...promptConfig,
-        customPrompt: value,
-      };
-      setPromptConfig(updated);
-      handleChange({
-        useDefaultPrompt: false,
-        customPrompt: value,
-        embedFields: updated.embedFields || [],
+      setPromptConfig((prev) => {
+        const updated = { ...prev, customPrompt: value };
+        handleChange(updated);
+        onPromptBlur?.(updated);
+        return updated;
       });
     },
-    [promptConfig, handleChange]
+    [handleChange, onPromptBlur]
   );
 
   const configPromptKey = JSON.stringify(configuration?.prompt ?? null);
@@ -270,13 +262,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                 placeholder='e.g., "You are a {{role}} and your context is {{context}}"'
                 value={promptConfig.customPrompt}
                 onChange={(e) => handleCustomPromptChange(e.target.value)}
-                onBlur={() =>
-                  onPromptBlur?.({
-                    useDefaultPrompt: false,
-                    customPrompt: promptConfig.customPrompt,
-                    embedFields: promptConfig.embedFields || [],
-                  })
-                }
+                onBlur={(e) => handleCustomPromptBlur(e.target.value)}
               />
               <label className="label">
                 <span className="label-text-alt text-base-content/60">

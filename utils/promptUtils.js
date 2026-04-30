@@ -101,9 +101,14 @@ export const extractVariablesFromPrompt = (prompt) => {
   }
 
   const matches = text.matchAll(/\{\{([^}]+)\}\}/g);
+  const seen = new Set();
   const variables = [];
   for (const match of matches) {
-    if (match[1]) variables.push(match[1].trim());
+    const name = match[1]?.trim();
+    if (name && !seen.has(name)) {
+      seen.add(name);
+      variables.push(name);
+    }
   }
-  return [...new Set(variables)];
+  return variables;
 };
