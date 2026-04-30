@@ -787,7 +787,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                             <button
                               data-testid={`chat-run-test-button-${index}`}
                               id={`chat-run-test-button-${index}`}
-                              className="btn btn-sm btn-outline hover:btn-primary see-on-hover flex mt-2"
+                              className="btn btn-sm btn-outline hover:btn-primary see-on-hover flex mt-0"
                               onClick={() => handleRunTestCase(index)}
                               disabled={isRunningTestCase}
                             >
@@ -868,7 +868,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                           ) : (
                             /* Regular Assistant/User/Expected/Error Message - Show model answer if testcase was run */
                             <div
-                              className={`break-words gap-0 justify-start relative min-w-0 ${message.sender === "user" ? "ml-auto" : ""} ${
+                              className={`break-words gap-0 justify-start relative min-w-0 ${
                                 message.sender === "assistant"
                                   ? `mr-8 w-full rounded-xl ${message.content ? "px-4 py-3 border border-base-content/20" : ""}`
                                   : message.sender === "error"

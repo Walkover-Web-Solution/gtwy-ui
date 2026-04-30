@@ -421,12 +421,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         }
       }
 
-      if (
-        e?.data?.action === "published" ||
-        e?.data?.action === "paused" ||
-        e?.data?.action === "created" ||
-        e?.data?.action === "updated"
-      ) {
+      if (e?.data?.action === "published" || e?.data?.action === "updated") {
         const dataFromEmbed = {
           url: e?.data?.webhookurl,
           desc: e?.data?.description || e?.data?.title,

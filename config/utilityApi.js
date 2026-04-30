@@ -218,7 +218,7 @@ export const deleteWebhookAlert = async (id) => {
 };
 
 // Integration and External APIs
-export const updateFlow = async (embed_token, functionId, description, title) => {
+export const updateFlowEmbed = async (embed_token, functionId, payload = {}) => {
   try {
     const response = await fetch(`https://flow-api.viasocket.com/projects/updateflowembed/${functionId}`, {
       method: "PUT",
@@ -226,11 +226,7 @@ export const updateFlow = async (embed_token, functionId, description, title) =>
         Authorization: embed_token,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        description: description,
-        title: title,
-        endpoint_name: title,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -239,6 +235,14 @@ export const updateFlow = async (embed_token, functionId, description, title) =>
     console.error(error);
     return error;
   }
+};
+
+export const updateFlow = async (embed_token, functionId, description, title) => {
+  return updateFlowEmbed(embed_token, functionId, {
+    description: description,
+    title: title,
+    endpoint_name: title,
+  });
 };
 
 export const integration = async (embed_token) => {

@@ -8,6 +8,7 @@ import ResponseStyleDropdown from "../configurationComponent/ResponseStyleDropdo
 import AdvancedConfiguration from "../configurationComponent/AdvancedConfiguration";
 import BridgeTypeToggle from "../configurationComponent/BridgeTypeToggle";
 import ChatbotConfigSection from "../ChatbotConfigSection";
+import ReviewerAgentSelector from "../configurationComponent/ReviewerAgentSelector";
 import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
 import { useDispatch } from "react-redux";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
@@ -106,6 +107,16 @@ const SettingsTab = () => {
                     }}
                   />
                 </label>
+              </div>
+            )}
+            {!isEmbedUser && (
+              <div data-testid="reviewer-agent-section" id="reviewer-agent-section">
+                <ReviewerAgentSelector
+                  params={params}
+                  searchParams={searchParams}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                />
               </div>
             )}
             {!isEmbedUser && (

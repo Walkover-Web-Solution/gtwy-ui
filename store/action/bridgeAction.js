@@ -711,9 +711,13 @@ export const updateApiAction = (bridge_id, dataFromEmbed) => async (dispatch) =>
   try {
     markUpdateInitiatedByCurrentTab(dataFromEmbed?.version_id);
     const data = await updateapi(bridge_id, dataFromEmbed);
-    dispatch(updateBridgeVersionReducer({ bridges: data?.data?.agent }));
+    if (data?.data?.agent) {
+      dispatch(updateBridgeVersionReducer({ bridges: data.data.agent }));
+    }
+    return data;
   } catch (error) {
     console.error(error);
+    return error;
   }
 };
 

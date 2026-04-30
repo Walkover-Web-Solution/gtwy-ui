@@ -146,7 +146,6 @@ const KnowledgeBaseModal = ({
       if (uploadedFile) {
         // Use uploaded file URL
         resourceUrl = uploadedFile.url;
-        content = uploadedFile.url;
       } else {
         // Fallback to local file reading (existing behavior)
         const file = formData.get("file");
@@ -171,7 +170,6 @@ const KnowledgeBaseModal = ({
       // No resourceUrl needed for content input
     } else {
       resourceUrl = (formData.get("url") || "").trim();
-      content = resourceUrl;
     }
 
     const payload = {
@@ -180,10 +178,15 @@ const KnowledgeBaseModal = ({
       settings: settings,
     };
 
-    // Only add content if there's actual content data (not just URL)
-    if (content && content !== resourceUrl && content.trim() !== "") {
+    const chunkingUrl = (formData.get("chunkingUrl") || "").trim();
+
+    if (chunkingUrl) {
+      payload.settings.chunkingUrl = chunkingUrl;
+    }
+    if (content && content.trim() !== "") {
       payload.content = content;
-    } else {
+    }
+    if (resourceUrl && resourceUrl.trim() !== "") {
       payload.url = resourceUrl;
     }
     payload.collection_details = collection_details;
@@ -225,9 +228,9 @@ const KnowledgeBaseModal = ({
       description: (formData.get("description") || "").trim(),
     };
 
-    // Add content if the resource has content and it's being updated
+    // Keep content updates separate from url-based resources.
     const updatedContent = (formData.get("content") || "").trim();
-    if (selectedResource?.content && updatedContent) {
+    if (updatedContent) {
       payload.content = updatedContent;
     }
 

@@ -1,6 +1,9 @@
 "use client";
+import React, { createContext, useContext, useRef } from "react";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
 import remarkGfm from "remark-gfm";
+
+const OrderedListContext = createContext(false);
 
 export const mdRemarkPlugins = [remarkGfm];
 
@@ -18,24 +21,44 @@ export function buildMdComponents({ isDark = false } = {}) {
     // ── Block elements ──────────────────────────────────────────────────────
     p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
 
-    ul: ({ children }) => <ul className="list-none pl-0 mb-2">{children}</ul>,
+    ul: ({ children }) => (
+      <OrderedListContext.Provider value={false}>
+        <ul className="list-none pl-0 mb-2">{children}</ul>
+      </OrderedListContext.Provider>
+    ),
 
-    ol: ({ children }) => <ol className="list-none pl-0 mb-2 [counter-reset:list-counter]">{children}</ol>,
+    ol: ({ children, start }) => {
+      const counterRef = useRef(typeof start === "number" ? start - 1 : 0);
+      counterRef.current = typeof start === "number" ? start - 1 : 0;
+      return (
+        <OrderedListContext.Provider value={{ counterRef }}>
+          <ol className="list-none pl-0 mb-2">{children}</ol>
+        </OrderedListContext.Provider>
+      );
+    },
 
-    li: ({ node, ordered, index, children, ...props }) => {
-      const isOrdered = node?.parent?.type === "element" && node?.parent?.tagName === "ol";
-      return isOrdered ? (
-        <li className="flex gap-2 leading-relaxed [counter-increment:list-counter] my-0" {...props}>
-          <span
-            className="shrink-0 min-w-[1.5rem] text-right opacity-70 select-none font-normal leading-relaxed"
-            aria-hidden
-          >
-            {typeof index === "number" ? index + 1 : ""}
-            {"."}
-          </span>
-          <span className="flex-1 [&>p]:m-0 [&>p]:inline">{children}</span>
-        </li>
-      ) : (
+    li: ({ children, ...props }) => {
+      const olCtx = useContext(OrderedListContext);
+      const isOrdered = Boolean(olCtx);
+
+      if (isOrdered) {
+        olCtx.counterRef.current += 1;
+        const itemNumber = olCtx.counterRef.current;
+        return (
+          <li className="flex gap-2 leading-relaxed my-0" {...props}>
+            <span
+              className="shrink-0 min-w-[1.5rem] text-right opacity-70 select-none font-normal leading-relaxed"
+              aria-hidden
+            >
+              {itemNumber}
+              {"."}
+            </span>
+            <span className="flex-1 [&>p]:m-0 [&>p]:inline">{children}</span>
+          </li>
+        );
+      }
+
+      return (
         <li className="flex items-baseline gap-2 leading-relaxed my-0" {...props}>
           <span className="shrink-0 opacity-70 select-none text-[0.5em] translate-y-[-0.1em]" aria-hidden>
             ●

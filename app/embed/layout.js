@@ -198,8 +198,12 @@ const Layout = ({ children, isEmbedUser }) => {
         const bridges = await getBridges();
         const bridge = bridges.find((b) => b._id === messageData.agent_id);
         if (!bridge) return;
-        if (messageData.meta) {
-          dispatch(updateBridgeAction({ dataToSend: { meta: messageData.meta }, bridgeId: messageData.agent_id }));
+        if (messageData.meta || messageData.replaceMeta) {
+          const updatedMeta =
+            messageData.replaceMeta != null
+              ? messageData.replaceMeta
+              : { ...(bridge?.meta || {}), ...messageData.meta };
+          dispatch(updateBridgeAction({ dataToSend: { meta: updatedMeta }, bridgeId: messageData.agent_id }));
         }
         setIsLoading(true);
         const bridgeData = bridges.find((b) => b._id === messageData.agent_id);

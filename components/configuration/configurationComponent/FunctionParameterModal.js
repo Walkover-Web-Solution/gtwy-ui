@@ -1,4 +1,4 @@
-import { optimizeJsonApi, updateFlow } from "@/config/index";
+import { optimizeJsonApi, updateFlow, updateFlowEmbed } from "@/config/index";
 import { updateFuntionApiAction } from "@/store/action/bridgeAction";
 import { closeModal } from "@/utils/utility";
 import { isEqual } from "lodash";
@@ -14,6 +14,85 @@ import { PARAMETER_TYPES } from "@/utils/enums";
 import CodeMirror from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
+
+const normalizeFieldSchema = (field = {}) => {
+  if (!field || typeof field !== "object") return field;
+
+  const { parameter, properties, items, ...rest } = field;
+  const normalized = { ...rest };
+
+  if (field.type === "object") {
+    normalized.properties = normalizeFieldTree(properties || parameter || {});
+  } else if (properties || parameter) {
+    normalized.properties = normalizeFieldTree(properties || parameter || {});
+  }
+
+  if (items && typeof items === "object") {
+    normalized.items = normalizeFieldSchema(items);
+  }
+
+  return normalized;
+};
+
+const normalizeFieldTree = (fields = {}) =>
+  Object.entries(fields || {}).reduce((normalizedFields, [key, field]) => {
+    normalizedFields[key] = normalizeFieldSchema(field);
+    return normalizedFields;
+  }, {});
+
+const normalizeToolData = (toolData = {}) => ({
+  ...toolData,
+  fields: normalizeFieldTree(toolData.fields || {}),
+});
+
+const buildFlowEmbedFieldSchema = (field = {}) => {
+  const type = field?.type || "string";
+  const schema = {
+    type,
+    description: field?.description || "",
+  };
+
+  if (Array.isArray(field?.enum)) {
+    schema.enum = field.enum;
+  }
+
+  if (type === "object") {
+    schema.properties = buildFlowEmbedProperties(field?.properties || field?.parameter || {});
+    schema.required = field?.required_params || [];
+  }
+
+  if (type === "array") {
+    schema.items = field?.items ? buildFlowEmbedFieldSchema(field.items) : {};
+  }
+
+  return schema;
+};
+
+const buildFlowEmbedProperties = (fields = {}) =>
+  Object.entries(fields || {}).reduce((properties, [key, field]) => {
+    properties[key] = buildFlowEmbedFieldSchema(field);
+    return properties;
+  }, {});
+
+const buildFlowEmbedPayload = (toolData = {}, variablesPath = {}) => {
+  const rootSchema = {
+    type: "object",
+    description: toolData?.description || "",
+    properties: buildFlowEmbedProperties(toolData?.fields || {}),
+    required: toolData?.required_params || [],
+  };
+
+  return {
+    AISchema: {
+      properties: rootSchema.properties,
+      required: rootSchema.required,
+    },
+    staticVariables: Object.keys(variablesPath || {}).reduce((staticVariables, variableName) => {
+      staticVariables[variableName] = true;
+      return staticVariables;
+    }, {}),
+  };
+};
 
 // Parameter Card Component
 const ParameterCard = ({
@@ -52,7 +131,7 @@ const ParameterCard = ({
   }, [param.enum]);
 
   const currentPath = [...path, paramKey].join(".");
-  const hasChildren = param.type === "object" && param.parameter;
+  const hasChildren = param.type === "object" && (param.properties || param.parameter);
   const bgColor = depth % 2 === 0 ? "bg-base-100" : "bg-base-200";
 
   return (
@@ -114,7 +193,7 @@ const ParameterCard = ({
                             currentField = currentField?.[key];
                           } else {
                             // Navigate deeper into nested structure
-                            currentField = currentField?.[key]?.parameter;
+                            currentField = currentField?.[key]?.properties || currentField?.[key]?.parameter;
                           }
                         }
                       }
@@ -153,7 +232,8 @@ const ParameterCard = ({
                               if (j === parentPath.length - 1) {
                                 parentField = parentField?.[parentKey];
                               } else {
-                                parentField = parentField?.[parentKey]?.parameter;
+                                parentField =
+                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
                               }
                             }
                           }
@@ -190,7 +270,8 @@ const ParameterCard = ({
                               if (j === parentPath.length - 1) {
                                 parentField = parentField?.[parentKey];
                               } else {
-                                parentField = parentField?.[parentKey]?.parameter;
+                                parentField =
+                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
                               }
                             }
                           }
@@ -224,7 +305,8 @@ const ParameterCard = ({
                               if (j === parentPath.length - 1) {
                                 parentField = parentField?.[parentKey];
                               } else {
-                                parentField = parentField?.[parentKey]?.parameter;
+                                parentField =
+                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
                               }
                             }
                           }
@@ -429,7 +511,7 @@ const ParameterCard = ({
           {/* Child Properties */}
           {isExpanded && hasChildren && (
             <div className="space-y-1">
-              {Object.entries(param.parameter).map(([childKey, childParam], index) => (
+              {Object.entries(param.properties || param.parameter || {}).map(([childKey, childParam], index) => (
                 <ParameterCard
                   isPublished={isPublished}
                   key={childKey}
@@ -544,7 +626,7 @@ function FunctionParameterModal({
       setIsModified(false);
       return;
     }
-    setIsModified(!isEqual(toolData, function_details));
+    setIsModified(!isEqual(toolData, normalizeToolData(function_details)));
   }, [toolData, function_details]);
 
   useEffect(() => {
@@ -606,7 +688,7 @@ function FunctionParameterModal({
           description: toolName
             ? `Name: ${toolName}, Description: ${toolDescription}`
             : `Description: ${toolDescription}`,
-          parameters: {
+          properties: {
             type: "object",
             properties: properties,
             required_params: function_details?.["required_params"] || [],
@@ -631,7 +713,7 @@ function FunctionParameterModal({
         const [head, ...tail] = remainingKeyParts;
         if (currentFields[head]) {
           const isArray = currentFields[head].type === "array";
-          const nestedKey = isArray ? "items" : "parameter";
+          const nestedKey = isArray ? "items" : "properties";
           currentFields[head][nestedKey] = _updateField(currentFields[head][nestedKey] || {}, tail);
         }
       }
@@ -671,18 +753,18 @@ function FunctionParameterModal({
     (parentPath) => {
       setToolData((prevToolData) => {
         const updatedFields = updateField(prevToolData.fields, parentPath.split("."), (field) => {
-          if (!field.parameter) {
-            field.parameter = {};
+          if (!field.properties) {
+            field.properties = {};
           }
 
           let counter = 0;
           let newKey = `new${counter}`;
-          while (field.parameter[newKey]) {
+          while (field.properties[newKey]) {
             counter++;
             newKey = `new${counter}`;
           }
 
-          field.parameter[newKey] = {
+          field.properties[newKey] = {
             type: "string",
             description: "",
           };
@@ -715,7 +797,7 @@ function FunctionParameterModal({
           if (current[key].type === "array") {
             current = current[key].items;
           } else {
-            current = current[key].parameter;
+            current = current[key].properties || current[key].parameter;
           }
         }
         delete current[keyParts[keyParts.length - 1]];
@@ -835,10 +917,10 @@ function FunctionParameterModal({
 
         // Handle nested parameters
         const updatedFields = updateField(prevToolData.fields, parentPath, (parentField) => {
-          if (!parentField.parameter) return parentField;
+          if (!parentField.properties && !parentField.parameter) return parentField;
 
           // Create new parameter object with renamed key
-          const newParameter = { ...parentField.parameter };
+          const newParameter = { ...(parentField.properties || parentField.parameter || {}) };
           const paramData = newParameter[oldName];
 
           // Remove old key and add new key
@@ -854,7 +936,7 @@ function FunctionParameterModal({
 
           return {
             ...parentField,
-            parameter: newParameter,
+            properties: newParameter,
             required_params: newRequiredParams,
           };
         });
@@ -892,33 +974,8 @@ function FunctionParameterModal({
     }
   }, [toolName, tool_name, dispatch, functionId]);
 
-  const handleSaveData = useCallback(() => {
-    if (
-      toolData?.description?.trim() != function_details?.description?.trim() ||
-      ((name === "Tool" || name === "Pre Tool" || name === "Post Tool") && toolData?.title?.trim() !== toolName?.trim())
-    ) {
-      handleUpdateFlow();
-    }
-
-    if (tool_name?.trim() !== toolName?.trim()) {
-      handleToolNameChange();
-    }
-    handleSave(functionId);
-    resetModalData();
-    closeModal(Model_Name);
-  }, [
-    toolData?.description,
-    function_details?.description,
-    toolName,
-    tool_name,
-    Model_Name,
-    toolData,
-    variablesPath,
-    functionId,
-  ]);
-
   const resetModalData = useCallback(() => {
-    setToolData(function_details);
+    setToolData(normalizeToolData(function_details));
     setObjectFieldValue("");
     setIsTextareaVisible(false);
     setIsDescriptionEditing(false);
@@ -940,16 +997,16 @@ function FunctionParameterModal({
           type: newType,
           items: { type: "string" },
           required_params: [],
-          ...(field?.parameter ? { parameter: undefined } : {}),
+          ...(field?.properties || field?.parameter ? { properties: undefined } : {}),
         }));
       } else {
         updatedField = updateField(toolData?.fields, key.split("."), (field) => {
-          const { items, parameter, ...rest } = field;
-          const isParameterOrItemsPresent = parameter;
+          const { items, properties, parameter, ...rest } = field;
+          const isParameterOrItemsPresent = properties || parameter;
           return {
             ...rest,
             type: newType,
-            parameter:
+            properties:
               newType === "string" ? undefined : newType === "object" ? isParameterOrItemsPresent || {} : undefined,
             ...(newType === "object" ? { enum: [], description: "" } : {}),
           };
@@ -1049,11 +1106,12 @@ function FunctionParameterModal({
 
           // Extract name, description, and fields from the JSON
           const { name, description, fields, ...rest } = updatedData;
+          const normalizedFields = normalizeFieldTree(fields || {});
 
           // Update toolData with fields and description
           setToolData((prevToolData) => ({
             ...prevToolData,
-            ...(fields && { fields }),
+            ...(fields && { fields: normalizedFields }),
             ...(description !== undefined && { description }),
             ...rest, // Include any other properties from JSON
           }));
@@ -1110,7 +1168,7 @@ function FunctionParameterModal({
         // Old structure - treat the entire JSON as fields
         setToolData((prevToolData) => ({
           ...prevToolData,
-          fields: updatedData,
+          fields: normalizeFieldTree(updatedData),
         }));
       }
     } catch (error) {
@@ -1149,14 +1207,27 @@ function FunctionParameterModal({
     }
   }, [objectFieldValue]);
 
+  const syncFlowEmbedVariables = useCallback(async () => {
+    if (name === "Agent" || name === "orchestralAgent" || !embedToken || !toolData?.script_id) {
+      return;
+    }
+
+    await updateFlowEmbed(embedToken, toolData.script_id, {
+      description: toolData?.description || "",
+      title: toolName,
+      endpoint_name: toolName,
+      ...buildFlowEmbedPayload(toolData, variablesPath),
+    });
+  }, [embedToken, name, toolData, toolName, variablesPath]);
+
   const handleUpdateFlow = useCallback(async () => {
     if (isDescriptionEditing && !toolData?.description?.trim()) {
       toast.error("Description cannot be empty");
-      return;
+      return false;
     }
     if (toolName.trim() === "") {
       toast.error("Agent name cannot be empty");
-      return;
+      return false;
     }
     if (name !== "Agent" && name !== "orchestralAgent") {
       try {
@@ -1182,15 +1253,67 @@ function FunctionParameterModal({
           }));
           toast.success("Description updated successfully");
           setIsDescriptionEditing(false);
+          return true;
         } else {
           throw new Error("Failed to get updated description from flow API");
         }
       } catch (error) {
         console.error("Failed to update description:", error);
         toast.error("Failed to update description. Please try again.");
+        return false;
       }
     }
-  }, [toolData, functionId, isDescriptionEditing, toolName]);
+    return true;
+  }, [toolData, functionId, isDescriptionEditing, toolName, name, embedToken, dispatch]);
+
+  const handleSaveData = useCallback(
+    async (event) => {
+      event?.preventDefault();
+
+      if (isLoading) return;
+
+      try {
+        setIsLoading(true);
+        const shouldUpdateFlowDetails =
+          toolData?.description?.trim() != function_details?.description?.trim() ||
+          ((name === "Tool" || name === "Pre Tool" || name === "Post Tool") && toolData?.title?.trim() !== toolName?.trim());
+
+        if (shouldUpdateFlowDetails) {
+          const didUpdateFlow = await handleUpdateFlow();
+          if (!didUpdateFlow) return;
+        }
+
+        await syncFlowEmbedVariables();
+
+        if (tool_name?.trim() !== toolName?.trim()) {
+          handleToolNameChange();
+        }
+        await handleSave(functionId);
+        resetModalData();
+        closeModal(Model_Name);
+      } catch (error) {
+        console.error("Failed to save function parameters:", error);
+        toast.error("Failed to sync variables. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      isLoading,
+      toolData,
+      function_details?.description,
+      name,
+      toolName,
+      handleUpdateFlow,
+      syncFlowEmbedVariables,
+      tool_name,
+      handleToolNameChange,
+      handleSave,
+      functionId,
+      resetModalData,
+      Model_Name,
+    ]
+  );
 
   return (
     <Modal MODAL_ID={Model_Name}>
