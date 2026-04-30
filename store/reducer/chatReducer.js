@@ -434,6 +434,83 @@ export const chatReducer = createSlice({
       }
     },
 
+    // Review phase: handle phase events (reviewer_start, reviewer_done, main_rerun_start)
+    setReviewData: (state, action) => {
+      const { channelId, messageId, phase, round = 1, passed, reason } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messageId
+        ? messages.findIndex((m) => m.id === messageId)
+        : messages.findLastIndex((m) => m.sender === "assistant");
+      if (idx === -1) return;
+      if (!messages[idx].review_phases) messages[idx].review_phases = [];
+
+      if (phase === "reviewer_start") {
+        messages[idx].review_phases.push({ phase, round, isStreaming: true, reviewContent: "" });
+      } else if (phase === "reviewer_done") {
+        const entry = messages[idx].review_phases.findLast((e) => e.round === round);
+        if (entry) {
+          const jsonMatch = entry.reviewContent?.match(/\{[\s\S]*\}$/);
+          if (jsonMatch) entry.reviewContent = entry.reviewContent.slice(0, -jsonMatch[0].length).trimEnd();
+          entry.passed = passed;
+          entry.reason = reason || "";
+          entry.isStreaming = false;
+        }
+      } else if (phase === "main_rerun_start") {
+        const lastEntry = messages[idx].review_phases[messages[idx].review_phases.length - 1];
+        if (lastEntry) lastEntry.snapshotContent = messages[idx].content;
+        messages[idx].review_phases.push({ phase, round, isStreaming: false });
+        messages[idx].content = "";
+      }
+    },
+
+    // Review phase: append streamed chunk to the last streaming review entry
+    appendReviewDelta: (state, action) => {
+      const { channelId, messageId, chunk } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messageId
+        ? messages.findIndex((m) => m.id === messageId)
+        : messages.findLastIndex((m) => m.sender === "assistant");
+      if (idx === -1) return;
+      const phases = messages[idx].review_phases;
+      if (!phases) return;
+      const streamingEntry = phases.findLast((e) => e.isStreaming);
+      if (streamingEntry) streamingEntry.reviewContent = (streamingEntry.reviewContent || "") + chunk;
+    },
+
+    // Review phase: mark active streaming review entry as errored
+    setReviewError: (state, action) => {
+      const { channelId, messageId, round, error } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messageId
+        ? messages.findIndex((m) => m.id === messageId)
+        : messages.findLastIndex((m) => m.sender === "assistant");
+      if (idx === -1) return;
+      if (!messages[idx].review_phases) messages[idx].review_phases = [];
+      // Find the streaming entry for this round, or the last streaming entry
+      const entry =
+        (round != null && messages[idx].review_phases.findLast((e) => e.round === round)) ||
+        messages[idx].review_phases.findLast((e) => e.isStreaming);
+      if (entry) {
+        entry.isStreaming = false;
+        entry.passed = false;
+        entry.error = error || "Reviewer call failed";
+        entry.reason = error || "Reviewer call failed";
+      } else {
+        messages[idx].review_phases.push({
+          phase: "reviewer_done",
+          round: round ?? 1,
+          isStreaming: false,
+          passed: false,
+          error: error || "Reviewer call failed",
+          reason: error || "Reviewer call failed",
+          reviewContent: "",
+        });
+      }
+    },
+
     // Set testcase_id for channel (persisted until manual clear)
     setChatTestCaseId: (state, action) => {
       const { channelId, testCaseId } = action.payload;
@@ -488,6 +565,9 @@ export const {
   addToolCallToMessage,
   updateToolCallResult,
   appendReasoningChunk,
+  setReviewData,
+  appendReviewDelta,
+  setReviewError,
 } = chatReducer.actions;
 
 export default chatReducer.reducer;

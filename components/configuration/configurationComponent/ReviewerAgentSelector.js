@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { getStatusClass } from "@/utils/utility";
@@ -9,6 +10,7 @@ import { AddIcon } from "@/components/Icons";
 
 function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) {
   const dispatch = useDispatch();
+  const router = useRouter();
   const isReadOnly = isPublished || !isEditor;
 
   const { bridges, reviewerAgentId } = useCustomSelector((state) => {
@@ -60,7 +62,16 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
 
       {reviewerAgent ? (
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-2 bg-base-200/60 border border-base-300 rounded-lg px-3 py-1.5">
+          <div
+            className="flex items-center gap-2 bg-base-200/60 border border-base-300 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-base-300/60 transition-colors"
+            title="Open reviewer agent"
+            onClick={() => {
+              const isCmdOrCtrl = window.event && (window.event.ctrlKey || window.event.metaKey);
+              const url = `/org/${params?.org_id}/agents/configure/${reviewerAgent._id}?version=${reviewerAgent?.published_version_id || reviewerAgent?.versions?.[0]}`;
+              if (isCmdOrCtrl) window.open(url, "_blank");
+              else router.push(url);
+            }}
+          >
             <span className="text-sm font-medium truncate max-w-[120px]">{reviewerAgent.name || "Untitled"}</span>
             <span
               className={`rounded-full capitalize px-2 py-0.5 text-[10px] font-semibold text-black ${getStatusClass(

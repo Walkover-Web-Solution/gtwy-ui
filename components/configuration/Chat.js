@@ -44,6 +44,7 @@ import {
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
 import ReasoningAccordion from "./ReasoningAccordion";
+import ReviewPhaseAccordion from "./ReviewPhaseAccordion";
 import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 
 const mdComponents = mdComponentsDark;
@@ -937,6 +938,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                         <Edit2 className="h-4 w-4" />
                                       </button>
                                     )}
+
+                                  {/* Review phase accordion (shown when agent has a reviewer configured) */}
+                                  {message.review_phases?.length > 0 && (
+                                    <ReviewPhaseAccordion reviewPhases={message.review_phases} />
+                                  )}
 
                                   {/* Reasoning accordion (shown when model emits reasoning events) */}
                                   {message.reasoning && (

@@ -1139,7 +1139,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                           <Funnel size={14} />
                           <span>Usage Filter</span>
                           <span className="text-xs text-gray-500">
-                            {isUsageFilterActive ? usageFilterLabel || "" : "All time"}
+                            {isUsageFilterActive ? usageFilterLabel || "Last 24h" : "Last 24h"}
                           </span>
                         </button>
 

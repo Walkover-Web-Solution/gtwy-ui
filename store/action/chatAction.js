@@ -21,6 +21,9 @@ import {
   addToolCallToMessage,
   updateToolCallResult,
   appendReasoningChunk,
+  setReviewData,
+  appendReviewDelta,
+  setReviewError,
 } from "../reducer/chatReducer";
 import { haveSameItems, buildUserUrls, buildLlmUrls } from "@/utils/attachmentUtils";
 
@@ -355,7 +358,7 @@ export const sendMessageWithApiStreaming =
   async (dispatch) => {
     let userMessage = null;
     let loadingMessage = null;
-    const streamingState = { messageId: null, content: "" };
+    const streamingState = { messageId: null, content: "", isReviewStreaming: false };
     let rafId = null;
 
     try {
@@ -428,10 +431,32 @@ export const sendMessageWithApiStreaming =
                   annotations: null,
                 })
               );
+            } else if (parsed.event === "review_phase") {
+              if (parsed.phase) {
+                if (parsed.phase === "reviewer_start") streamingState.isReviewStreaming = true;
+                else if (parsed.phase === "reviewer_done") streamingState.isReviewStreaming = false;
+                else if (parsed.phase === "main_rerun_start") streamingState.isReviewStreaming = false;
+                dispatch(
+                  setReviewData({
+                    channelId,
+                    messageId: streamingState.messageId,
+                    phase: parsed.phase,
+                    round: parsed.round ?? 1,
+                    passed: parsed.passed,
+                    reason: parsed.reason || "",
+                  })
+                );
+              }
             } else if (parsed.event === "delta") {
-              // Accumulate content; flush to Redux once per animation frame
-              streamingState.content += parsed.content || "";
-              scheduleFlush();
+              if (streamingState.isReviewStreaming) {
+                dispatch(
+                  appendReviewDelta({ channelId, messageId: streamingState.messageId, chunk: parsed.content || "" })
+                );
+              } else {
+                // Accumulate content; flush to Redux once per animation frame
+                streamingState.content += parsed.content || "";
+                scheduleFlush();
+              }
             } else if (parsed.event === "reasoning") {
               if (streamingState.messageId) {
                 dispatch(
@@ -467,8 +492,23 @@ export const sendMessageWithApiStreaming =
                 cancelAnimationFrame(rafId);
                 rafId = null;
               }
-              dispatch(addChatErrorMessage(channelId, parsed.error || "Something went wrong. Please try again."));
-              return { userMessage, loadingMessage: null, response: { success: false } };
+              const errMsg = parsed.error || "Something went wrong. Please try again.";
+              // Detect reviewer errors: "Reviewer call failed on round N: ..."
+              const reviewerErrMatch = errMsg.match(/^Reviewer call failed on round (\d+):\s*([\s\S]*)$/);
+              if (reviewerErrMatch) {
+                const round = parseInt(reviewerErrMatch[1], 10);
+                let reason = reviewerErrMatch[2].trim();
+                try {
+                  const parsed2 = JSON.parse(reason);
+                  reason = parsed2?.error?.message || reason;
+                } catch {}
+                dispatch(setReviewError({ channelId, messageId: streamingState.messageId, round, error: reason }));
+                streamingState.isReviewStreaming = false;
+                // Don't return — let the stream continue to the done event
+              } else {
+                dispatch(addChatErrorMessage(channelId, errMsg));
+                return { userMessage, loadingMessage: null, response: { success: false } };
+              }
             } else if (parsed.event === "done") {
               // Cancel any pending RAF flush and do a final complete dispatch
               if (rafId) {
