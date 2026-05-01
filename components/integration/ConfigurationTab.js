@@ -109,6 +109,14 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
+    key: "hidePlayground",
+    type: "toggle",
+    label: "Hide Playground",
+    description: "Hide the playground",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
     key: "slide",
     type: "select",
     label: "Slide Position",
