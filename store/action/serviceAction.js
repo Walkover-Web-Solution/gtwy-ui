@@ -14,6 +14,7 @@ export const getServiceAction = () => async (dispatch) => {
       }));
 
       dispatch(fetchServiceReducer({ services, default_model }));
+      return services;
     }
   } catch (error) {
     console.error(error);
