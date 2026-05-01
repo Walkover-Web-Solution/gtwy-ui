@@ -97,7 +97,7 @@ const InputConfigComponent = memo(
           isEmbedCustomPrompt: false,
           hiddenEmbedFields: [],
           isOldEmbedFormat: false,
-          visibleEmbedFields: embedPromptConfig.embedFields,
+          visibleEmbedFields: Array.isArray(embedPromptConfig.embedFields) ? embedPromptConfig.embedFields : [],
           activeEmbedFieldValues: {},
           isEmbedStringPrompt: true,
         };
@@ -106,14 +106,15 @@ const InputConfigComponent = memo(
       const dbValues =
         typeof reduxPrompt === "object" && reduxPrompt !== null && !Array.isArray(reduxPrompt) ? reduxPrompt : {};
 
-      const hidden = embedPromptConfig.embedFields.filter((f) => f.hidden);
+      const embedFields = Array.isArray(embedPromptConfig.embedFields) ? embedPromptConfig.embedFields : [];
+      const hidden = embedFields.filter((f) => f.hidden);
       const oldFormat =
         typeof reduxPrompt === "object" && reduxPrompt !== null && Array.isArray(reduxPrompt.embedFields);
       const dbKeys = oldFormat ? new Set() : new Set(Object.keys(dbValues));
 
-      const fields = embedPromptConfig.embedFields.filter((f) => !f.hidden).map((f) => ({ ...f, deprecated: false }));
+      const fields = embedFields.filter((f) => !f.hidden).map((f) => ({ ...f, deprecated: false }));
       dbKeys.forEach((key) => {
-        const fieldInConfig = embedPromptConfig.embedFields.find((f) => f.name === key);
+        const fieldInConfig = embedFields.find((f) => f.name === key);
 
         // If field exists AND is hidden → ignore completely
         if (fieldInConfig?.hidden) return;

@@ -50,7 +50,9 @@ const Link = ({ href, children }) => (
 
 function ApiKeyGuideSlider() {
   const { API_PROVIDERS } = useCustomSelector((state) => ({
-    API_PROVIDERS: state.flowDataReducer?.flowData?.apiKeyGuideData || [],
+    API_PROVIDERS: Array.isArray(state.flowDataReducer?.flowData?.apiKeyGuideData)
+      ? state.flowDataReducer.flowData.apiKeyGuideData
+      : [],
   }));
 
   // Memoize the model tabs to prevent unnecessary re-renders
