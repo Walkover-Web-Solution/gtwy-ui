@@ -989,10 +989,18 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     <div className={message.sender === "assistant" ? mdProseClass.dark : undefined}>
                                       <ReactMarkdown components={mdComponents} remarkPlugins={mdRemarkPlugins}>
                                         {message.type !== "template" && message.type !== "richui_json"
-                                          ? message.testCaseResult && message.sender === "assistant"
-                                            ? message.testCaseResult.actual_result || message.content
-                                            : message.content
-                                          : null}
+                                          ? (() => {
+                                              const raw =
+                                                message.testCaseResult && message.sender === "assistant"
+                                                  ? message.testCaseResult.actual_result || message.content
+                                                  : message.content;
+                                              return typeof raw === "string"
+                                                ? raw
+                                                : raw != null
+                                                  ? JSON.stringify(raw)
+                                                  : "";
+                                            })()
+                                          : ""}
                                       </ReactMarkdown>
                                     </div>
                                   )}

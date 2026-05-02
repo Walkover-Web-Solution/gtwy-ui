@@ -441,7 +441,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
           handleConfigChange("pre_tool_id", createdTool._id);
         } else if (e?.data?.metadata?.createFrom === "postFunction") {
           handleConfigChange("post_tool_id", createdTool._id);
-        } else {
+        } else if (e?.data?.metadata?.createFrom === "tool") {
           const currentTools = configuration.tools_id || [];
           if (!currentTools.includes(createdTool._id)) {
             handleConfigChange("tools_id", [...currentTools, createdTool._id]);
@@ -676,6 +676,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
               title="Post-Tool Configuration"
               modalType={MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL}
             />
+            <p className="text-xs text-warning mt-1">⚠️ Post-Tool won't run when streaming is enabled.</p>
 
             {/* Theme Palette Section */}
             <div className="border-t border-base-300 pt-3 mt-3">
