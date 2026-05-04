@@ -367,11 +367,15 @@ const InputConfigComponent = memo(
               )}
               {filteredEmbedFields.map((field) => (
                 <div key={field.name} className="form-control">
-                  <label className="label py-0 flex items-center justify-between">
-                    <span className="label-text text-xs font-medium capitalize text-base-content/70 mb-2">
-                      {field.displayValue || field.name}
-                    </span>
-                    {field.deprecated && <span className="badge badge-warning badge-xs text-xs">deprecated</span>}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="label py-0">
+                      <span className="label-text text-xs font-medium capitalize text-base-content/70">
+                        {field.displayValue || field.name}
+                      </span>
+                      {field.deprecated && (
+                        <span className="badge badge-warning badge-xs text-xs ml-2">deprecated</span>
+                      )}
+                    </label>
                     {focusedField === field.name && (
                       <div className="flex items-center gap-1">
                         {!field.deprecated &&
@@ -410,16 +414,30 @@ const InputConfigComponent = memo(
                                 : "btn-ghost border border-base-300"
                             }`}
                             onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => handleOpenPromptHelperForField(field.name)}
-                            title={`Open Prompt Helper for ${field.displayValue || field.name}`}
+                            onClick={() => {
+                              if (promptState.activeHelperField === field.name && uiState.isPromptHelperOpen) {
+                                updateUiState({ isPromptHelperOpen: false });
+                              } else {
+                                handleOpenPromptHelperForField(field.name);
+                              }
+                            }}
+                            title={
+                              promptState.activeHelperField === field.name && uiState.isPromptHelperOpen
+                                ? `Close Prompt Helper`
+                                : `Open Prompt Helper for ${field.displayValue || field.name}`
+                            }
                           >
                             <BrainIcon size={12} />
-                            <span>Prompt Helper</span>
+                            <span>
+                              {promptState.activeHelperField === field.name && uiState.isPromptHelperOpen
+                                ? "Close Helper"
+                                : "Prompt Helper"}
+                            </span>
                           </button>
                         )}
                       </div>
                     )}
-                  </label>
+                  </div>
                   <div className="relative">
                     {field.type === "textarea" ? (
                       <textarea

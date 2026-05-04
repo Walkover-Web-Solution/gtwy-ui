@@ -30,6 +30,10 @@ const ToolsConfiguration = ({
   const [selectedFunctionData, setSelectedFunctionData] = useState({});
   const [toolData, setToolData] = useState({});
   const [variablesPath, setVariablesPath] = useState({});
+  const variablesPathRef = React.useRef(variablesPath);
+  useEffect(() => {
+    variablesPathRef.current = variablesPath;
+  }, [variablesPath]);
   const [functionName, setFunctionName] = useState("");
 
   const { allFunctions, integrationData, embedToken } = useCustomSelector((state) => {
@@ -121,27 +125,20 @@ const ToolsConfiguration = ({
       }
 
       // Update variables_path if it changed
+      // Use ref to get latest variablesPath and avoid stale closure
+      const latestVariablesPath = variablesPathRef.current;
       const currentVariablesPath = configuration?.variables_path || {};
       const existingVariablesPath = currentVariablesPath[fnName] || {};
 
-      if (!isEqual(variablesPath, existingVariablesPath) && fnName && onConfigChange) {
+      if (!isEqual(latestVariablesPath, existingVariablesPath) && fnName && onConfigChange) {
         const updatedVariablesPath = {
           ...currentVariablesPath,
-          [fnName]: variablesPath,
+          [fnName]: latestVariablesPath,
         };
         onConfigChange("variables_path", updatedVariablesPath);
       }
     },
-    [
-      toolData,
-      selectedFunctionData,
-      selectedFunctionId,
-      functionName,
-      configuration,
-      variablesPath,
-      onConfigChange,
-      dispatch,
-    ]
+    [toolData, selectedFunctionData, selectedFunctionId, functionName, configuration, onConfigChange, dispatch]
   );
 
   const selectedFunctionsData = useMemo(() => {

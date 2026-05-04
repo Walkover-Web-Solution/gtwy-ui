@@ -970,50 +970,56 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
           </div>
 
           {/* Chat Panel */}
-          <div id="parentChatbot" className="min-h-screen">
-            <div id="mobile-chat-container" className="h-full flex flex-col">
-              <AgentSetupGuide
-                id="mobile-agent-setup-guide"
-                promptTextAreaRef={promptTextAreaRef}
-                apiKeySectionRef={apiKeySectionRef}
-                params={resolvedParams}
-                searchParams={resolvedSearchParams}
-                draftPrompt={promptState.newContent}
-                onSwitchToModelTab={handleSwitchToModelTab}
-                onSwitchToPromptTab={handleSwitchToPromptTab}
-                onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
-                setApiKeyError={setApiKeyError}
-              />
+          {(!isEmbedUser || (isEmbedUser && !hidePlayground)) && (
+            <div id="parentChatbot" className="min-h-screen">
+              <div id="mobile-chat-container" className="h-full flex flex-col">
+                <AgentSetupGuide
+                  id="mobile-agent-setup-guide"
+                  promptTextAreaRef={promptTextAreaRef}
+                  apiKeySectionRef={apiKeySectionRef}
+                  params={resolvedParams}
+                  searchParams={resolvedSearchParams}
+                  draftPrompt={promptState.newContent}
+                  onSwitchToModelTab={handleSwitchToModelTab}
+                  onSwitchToPromptTab={handleSwitchToPromptTab}
+                  onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
+                  setApiKeyError={setApiKeyError}
+                />
 
-              {/* Only show experimental Chat for non-chatbot types */}
-              {bridgeType !== "chatbot" && !isGuideVisible && (
-                <>
-                  {!sessionStorage.getItem("orchestralUser") ? (
-                    <div id="mobile-chat-content-container" className="flex-1 min-h-0">
-                      {bridgeType === "batch" && versionService === "openai" ? (
-                        <WebhookForm
-                          id="mobile-webhook-form"
+                {/* Only show experimental Chat for non-chatbot types */}
+                {bridgeType !== "chatbot" && !isGuideVisible && (
+                  <>
+                    {!sessionStorage.getItem("orchestralUser") ? (
+                      <div id="mobile-chat-content-container" className="flex-1 min-h-0">
+                        {bridgeType === "batch" && versionService === "openai" ? (
+                          <WebhookForm
+                            id="mobile-webhook-form"
+                            params={resolvedParams}
+                            searchParams={resolvedSearchParams}
+                          />
+                        ) : (
+                          <Chat
+                            id="mobile-chat-component"
+                            params={resolvedParams}
+                            searchParams={resolvedSearchParams}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div id="mobile-alternative-chat-container" className="flex-1 min-h-0">
+                        <Chat
+                          id="mobile-alternative-chat-component"
                           params={resolvedParams}
                           searchParams={resolvedSearchParams}
                         />
-                      ) : (
-                        <Chat id="mobile-chat-component" params={resolvedParams} searchParams={resolvedSearchParams} />
-                      )}
-                    </div>
-                  ) : (
-                    <div id="mobile-alternative-chat-container" className="flex-1 min-h-0">
-                      <Chat
-                        id="mobile-alternative-chat-component"
-                        params={resolvedParams}
-                        searchParams={resolvedSearchParams}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <Chatbot id="mobile-chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
             </div>
-            <Chatbot id="mobile-chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
-          </div>
+          )}
         </div>
       )}
     </div>

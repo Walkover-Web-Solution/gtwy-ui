@@ -72,8 +72,8 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`inline-flex items-center justify-center border-0 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1 text-xs transition-colors duration-200 flex-shrink-0 min-w-fit ${
-                    isActive ? "text-primary font-medium" : "text-base-content/60 hover:text-base-content"
+                  className={`inline-flex items-center justify-center border-0 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-600/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1 text-xs transition-colors duration-200 flex-shrink-0 min-w-fit ${
+                    isActive ? "text-blue-600 font-medium" : "text-base-content/60 hover:text-base-content"
                   }`}
                 >
                   {Icon && <Icon size={12} className="w-3 h-3 mr-2" aria-hidden="true" />}
