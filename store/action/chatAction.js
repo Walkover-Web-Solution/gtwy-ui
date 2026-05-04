@@ -435,7 +435,10 @@ export const sendMessageWithApiStreaming =
               if (parsed.phase) {
                 if (parsed.phase === "reviewer_start") streamingState.isReviewStreaming = true;
                 else if (parsed.phase === "reviewer_done") streamingState.isReviewStreaming = false;
-                else if (parsed.phase === "main_rerun_start") streamingState.isReviewStreaming = false;
+                else if (parsed.phase === "main_rerun_start") {
+                  streamingState.isReviewStreaming = false;
+                  streamingState.content = "";
+                }
                 dispatch(
                   setReviewData({
                     channelId,
