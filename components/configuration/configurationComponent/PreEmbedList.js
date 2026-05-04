@@ -138,44 +138,34 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     }, 0);
   };
 
-  const disableAllPreTools = async () => {
-    for (const toolItem of bridgePreFunctions) {
-      await dispatch(
-        updateApiAction(params.id, {
-          pre_tools: toolItem._toolEntry,
-          version_id: searchParams?.version,
-          status: "0",
-        })
-      );
-    }
-  };
-
-  const onChangeFunctionSelect = async (id) => {
-    await disableAllPreTools();
+  const onChangeFunctionSelect = (id) => {
     dispatch(
-      updateApiAction(params.id, {
-        pre_tools: {
-          type: PRE_TOOL_TYPES.custom_function,
-          config: {
-            function_id: id,
-            script_id: function_data?.[id]?.script_id,
-            required: function_data?.[id]?.required || [],
-          },
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend: {
+          pre_tools: [
+            {
+              type: PRE_TOOL_TYPES.custom_function,
+              config: {
+                function_id: id,
+                script_id: function_data?.[id]?.script_id,
+                required: function_data?.[id]?.required || [],
+              },
+            },
+          ],
         },
-        version_id: searchParams?.version,
-        status: "1",
       })
     );
     setShowChangePicker(false);
   };
 
-  const onChangeBuiltInPreToolSelect = async (type) => {
-    await disableAllPreTools();
+  const onChangeBuiltInPreToolSelect = (type) => {
     dispatch(
-      updateApiAction(params.id, {
-        pre_tools: { type },
-        version_id: searchParams?.version,
-        status: "1",
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend: { pre_tools: [{ type }] },
       })
     );
     setShowChangePicker(false);
