@@ -160,7 +160,7 @@ function EmbedListSuggestionDropdownMenu({
           data-testid="embed-suggestion-dropdown-menu"
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
-          className={`menu menu-dropdown-toggle dropdown-content ${name === "preFunction" ? "z-[5]" : "z-high"} px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0`}
+          className={`menu menu-dropdown-toggle dropdown-content ${name === "preFunction" ? "z-[15]" : "z-high"} px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0`}
         >
           <div className="flex flex-col gap-2 w-full">
             {name === "preFunction" ? (
