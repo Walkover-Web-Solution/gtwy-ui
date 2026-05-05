@@ -123,8 +123,6 @@ export const DIFFERNCE_DATA_DISPLAY_NAME = (key) => {
       return "Model";
     case "prompt":
       return "Prompt";
-    case "guardrails":
-      return "Guardrails";
     case "gpt_memory_context":
       return "GPT Memory Context";
     case "gpt_memory":

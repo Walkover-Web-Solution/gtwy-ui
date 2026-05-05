@@ -29,7 +29,6 @@ import { useDispatch } from "react-redux";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import {
   getApiKeyGuideAction,
-  getGuardrailsTemplatesAction,
   getTutorialDataAction,
   getDescriptionsAction,
   getFinishReasonsAction,
@@ -106,9 +105,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(userDetails());
     }
     dispatch(getDescriptionsAction());
-    dispatch(getGuardrailsTemplatesAction());
-    dispatch(getDescriptionsAction());
-    dispatch(getGuardrailsTemplatesAction());
     dispatch(getLinksAction());
 
     if (pathName.endsWith("apikeys") && !isEmbedUser) {

@@ -110,7 +110,6 @@ export const CONFIG_HISTORY_FEATURE_OPTIONS = [
   { value: "type", label: "Model Type" },
   { value: "service", label: "Service" },
   { value: "model", label: "Model" },
-  { value: "guardrails", label: "Guardrails" },
   { value: "fall_back", label: "Fallback" },
   { value: "IsstarterQuestionEnable", label: "Starter Questions" },
   { value: "functionData", label: "Functions" },

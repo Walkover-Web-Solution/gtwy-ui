@@ -336,15 +336,6 @@ export const getDescriptions = async () => {
   }
 };
 
-export const getGuardrailsTemplates = async () => {
-  try {
-    const response = await axios.get("https://flow.sokt.io/func/scriKh8LMVKV");
-    return response;
-  } catch (error) {
-    throw new Error(error);
-  }
-};
-
 // Showcase APIs
 export const getAllShowCase = async () => {
   try {

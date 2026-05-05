@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import ResponseFormatSelector from "./ResponseFormatSelector";
 import ToolCallCount from "./ToolCallCount";
-import GuardrailSelector from "./GuardrailSelector";
 
 const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -23,16 +22,6 @@ const AdvancedConfiguration = ({ params, searchParams, bridgeType, modelType, is
 
   const renderContent = () => (
     <div className="flex flex-col gap-6">
-      {modelType !== "image" && (
-        <div className="">
-          <GuardrailSelector
-            params={params}
-            searchParams={searchParams}
-            isPublished={isPublished}
-            isEditor={isEditor}
-          />
-        </div>
-      )}
       <div className="">
         <ResponseFormatSelector
           isPublished={isPublished}
