@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Canvas from "@/components/Canvas";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { optimizePromptApi } from "@/config/index";
+import { PROMPT_SECTION_CONFIG } from "@/utils/enums";
 import Protected from "./Protected";
 
 const PromptHelper = ({
@@ -46,7 +47,56 @@ const PromptHelper = ({
           variables: { variable_key },
         });
 
-        const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
+        // The API wrapper (`optimizePromptApi`) returns `response.data.result` directly,
+        // which may be:
+        //   - a stringified JSON object: `{"role": "..."}`            (shapes C/D)
+        //   - a Python-style dict string: `{'field': 'value'}`        (single embed field)
+        //   - a plain non-JSON string                                  (shape E – single textarea)
+        // Try to parse as JSON, normalizing Python-style quoting first.
+        const tryParseLoose = (s) => {
+          try {
+            return JSON.parse(s);
+          } catch {
+            const trimmed = String(s).trim();
+            if (trimmed.startsWith("{") && trimmed.includes("'")) {
+              try {
+                return JSON.parse(
+                  trimmed
+                    .replace(/'/g, '"')
+                    .replace(/\bNone\b/g, "null")
+                    .replace(/\bTrue\b/g, "true")
+                    .replace(/\bFalse\b/g, "false")
+                );
+              } catch {
+                return undefined;
+              }
+            }
+            return undefined;
+          }
+        };
+
+        let result;
+        if (typeof response === "string") {
+          const parsed = tryParseLoose(response);
+          result = parsed && typeof parsed === "object" ? parsed : { updated: response };
+        } else {
+          result = response?.data ?? response;
+        }
+
+        if (result && typeof result === "object" && result.updated === undefined) {
+          if (variable_key && result[variable_key] !== undefined) {
+            result.updated = result[variable_key];
+          } else {
+            const { reason, description, ...rest } = result;
+            const keys = Object.keys(rest);
+            if (keys.length === 1 && variable_key) {
+              result.updated = rest[keys[0]];
+            } else if (keys.length > 0) {
+              result.updated = rest;
+            }
+          }
+        }
+
         if (result?.updated) {
           setOptimizedPrompt(result.updated);
         }
@@ -64,6 +114,39 @@ const PromptHelper = ({
   const handleApplyOptimizedPrompt = (promptToApply) => {
     const promptContent = promptToApply || optimizedPrompt;
     if (!promptContent) return;
+
+    // Per-field apply: if a variable_key is targeted and we got a plain string
+    // value (from the normalized per-field response), update only that field.
+    if (variable_key && typeof promptContent === "string") {
+      const isEmbedCustomPromptField =
+        isEmbedUser &&
+        typeof embedPromptConfig === "object" &&
+        embedPromptConfig !== null &&
+        embedPromptConfig.useDefaultPrompt === false &&
+        Array.isArray(embedPromptConfig.embedFields) &&
+        embedPromptConfig.embedFields.length > 0;
+
+      if (isEmbedCustomPromptField) {
+        const currentEmbedValues =
+          typeof reduxPrompt === "object" && reduxPrompt !== null && !Array.isArray(reduxPrompt)
+            ? { ...reduxPrompt }
+            : {};
+        const merged = { ...currentEmbedValues, [variable_key]: promptContent };
+        if (savePrompt) savePrompt(merged);
+        if (setNewContent) setNewContent(merged);
+      } else {
+        let toSave;
+        if (reduxPrompt && typeof reduxPrompt === "object" && !Array.isArray(reduxPrompt)) {
+          toSave = { ...reduxPrompt, [variable_key]: promptContent };
+        } else {
+          toSave = { [variable_key]: promptContent };
+        }
+        if (savePrompt) savePrompt(toSave);
+        if (setNewContent) setNewContent(toSave);
+        if (setPrompt) setPrompt(toSave);
+      }
+      return;
+    }
 
     // Try to parse the optimized content as JSON
     let parsedOptimized = null;
@@ -98,17 +181,32 @@ const PromptHelper = ({
       Array.isArray(embedPromptConfig.embedFields) &&
       embedPromptConfig.embedFields.length > 0;
 
+    // Normalize a key for loose matching: lowercase, trimmed, optional trailing `s` removed.
+    // Handles API responses that may return "Instructions" while the local field is "instruction".
+    const normalizeKey = (k) =>
+      String(k || "")
+        .trim()
+        .toLowerCase()
+        .replace(/s$/, "");
+
     if (parsedOptimized && isEmbedCustomPrompt) {
       // Embed user: merge optimized fields into existing embed prompt object
       const currentEmbedValues =
         typeof reduxPrompt === "object" && reduxPrompt !== null && !Array.isArray(reduxPrompt)
           ? { ...reduxPrompt }
           : {};
-      const embedFieldNames = new Set(embedPromptConfig.embedFields.filter((f) => !f.hidden).map((f) => f.name));
+      const visibleFieldNames = embedPromptConfig.embedFields.filter((f) => !f.hidden).map((f) => f.name);
+      // Build a normalized -> canonical name map (handles case + trailing `s` mismatch).
+      const embedFieldLookup = {};
+      visibleFieldNames.forEach((n) => {
+        embedFieldLookup[normalizeKey(n)] = n;
+      });
       const merged = { ...currentEmbedValues };
       Object.keys(parsedOptimized).forEach((key) => {
-        if (embedFieldNames.has(key)) {
-          merged[key] = parsedOptimized[key];
+        if (key === "reason") return;
+        const canonical = embedFieldLookup[normalizeKey(key)] ?? (visibleFieldNames.includes(key) ? key : null);
+        if (canonical) {
+          merged[canonical] = parsedOptimized[key];
         }
       });
       if (savePrompt) savePrompt(merged);
@@ -117,16 +215,34 @@ const PromptHelper = ({
       // Non-embed: merge into existing reduxPrompt if it's an object, else save parsedOptimized directly
       let toSave;
       if (reduxPrompt && typeof reduxPrompt === "object" && !Array.isArray(reduxPrompt)) {
-        // Merge only matching keys from optimized into existing object
+        // Merge matching keys from optimized into existing object. Loose matching
+        // so responses like "Instructions" map to the local "instruction" key.
         toSave = { ...reduxPrompt };
+        const keyLookup = {};
+        Object.keys(toSave).forEach((k) => {
+          keyLookup[normalizeKey(k)] = k;
+        });
         Object.keys(parsedOptimized).forEach((key) => {
-          if (key in toSave) {
-            toSave[key] = parsedOptimized[key];
+          if (key === "reason") return;
+          const canonical = keyLookup[normalizeKey(key)] ?? (key in toSave ? key : null);
+          if (canonical) {
+            toSave[canonical] = parsedOptimized[key];
           }
         });
       } else {
-        // reduxPrompt is a string — save the parsed object directly
-        toSave = parsedOptimized;
+        // reduxPrompt is a string — converting to a structured prompt object.
+        // Normalize keys against PROMPT_SECTION_CONFIG so e.g. "Instructions"
+        // becomes "instruction" and the structured-prompt UI renders the value.
+        const { reason: _r, description: _d, ...rest } = parsedOptimized;
+        const sectionLookup = {};
+        Object.keys(PROMPT_SECTION_CONFIG).forEach((k) => {
+          sectionLookup[normalizeKey(k)] = k;
+        });
+        toSave = {};
+        Object.keys(rest).forEach((key) => {
+          const canonical = sectionLookup[normalizeKey(key)] ?? key;
+          toSave[canonical] = rest[key];
+        });
       }
       if (savePrompt) savePrompt(toSave);
       if (setNewContent) setNewContent(toSave);
