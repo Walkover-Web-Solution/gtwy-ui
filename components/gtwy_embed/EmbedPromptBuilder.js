@@ -379,7 +379,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                       )}
 
                       {/* Row 3: type selector (when visible) + Hide checkbox + Prompt Helper button */}
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         {!field.hidden ? (
                           <select
                             className="select select-sm select-bordered"
@@ -402,7 +402,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                               onChange={(e) => handleFieldVisibilityToggle(field.name, e.target.checked)}
                             />
                           </label>
-                          <label className="label cursor-pointer gap-2 py-0">
+                          <label className="label cursor-pointer gap-2 py-0 items-center">
                             <span className="label-text text-sm">Prompt Helper</span>
                             <input
                               type="checkbox"
