@@ -1524,7 +1524,7 @@ function FunctionParameterModal({
                       {name === "Orchestral Agent" || name === "Agent" ? (
                         <input
                           autoComplete="off"
-                          id="function-param-name-input"
+                          id="function-param-agent-name-input"
                           data-testid="function-parameter-name-input"
                           type="text"
                           className="input input-sm text-xs input-bordered w-full"

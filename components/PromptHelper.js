@@ -138,6 +138,16 @@ const PromptHelper = ({
     }
   };
 
+  // Reset chat when the active field changes
+  const prevVariableKeyRef = React.useRef(variable_key);
+  useEffect(() => {
+    if (prevVariableKeyRef.current !== variable_key) {
+      prevVariableKeyRef.current = variable_key;
+      if (setMessages) setMessages([]);
+      if (onResetThreadId) onResetThreadId();
+    }
+  }, [variable_key]);
+
   const modalRef = React.createRef();
 
   useEffect(() => {

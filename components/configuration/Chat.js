@@ -685,13 +685,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                       {!(message.sender === "assistant" && message.isLoading && !message.content) && (
                         <>
                           <span className="text-xs font-semibold capitalize tracking-wide opacity-70">
-                            {message.sender === "expected"
-                              ? "Expected Response"
-                              : message.sender === "error"
-                                ? "Error"
-                                : message.testCaseResult
-                                  ? "Model Answer"
-                                  : message.sender}
+                            {message.sender === "error"
+                              ? "Error"
+                              : message.testCaseResult
+                                ? "Model Answer"
+                                : message.sender}
                           </span>
                           {message.isEdited && <span className="text-xs text-warning font-medium">(edited)</span>}
                           <time className="text-[10px] opacity-40">{message.time}</time>
@@ -978,9 +976,6 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     </div>
                                   ) : message.isStreaming && message.content ? (
                                     <StreamingMessage content={message.content} isStreaming={message.isStreaming} />
-                                  ) : message.sender === "expected" ? (
-                                    /* Expected Response - Plain text display with label */
-                                    <div className="whitespace-pre-wrap">{message.content}</div>
                                   ) : message.sender === "error" ? (
                                     /* Error Message - Display with error styling and icon */
                                     <div className="flex min-w-0 items-start gap-2">

@@ -151,6 +151,11 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
   const baseTimestamp = Date.now();
 
   testCaseConversation.forEach((msg, index) => {
+    // Skip messages with empty or null content
+    if (!msg.content || msg.content === "" || msg.content === null) {
+      return;
+    }
+
     const chatMessage = {
       id: `testcase_${msg.role}_${baseTimestamp}_${index}`,
       sender: msg.role === "user" ? "user" : "assistant",
@@ -166,7 +171,7 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
   if (expected?.response) {
     const expectedMessage = {
       id: `testcase_expected_${baseTimestamp}`,
-      sender: "expected",
+      sender: "assistant",
       time: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
