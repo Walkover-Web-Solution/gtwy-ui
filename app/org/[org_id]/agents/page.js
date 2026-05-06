@@ -344,7 +344,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       currentUser: state.userDetailsReducer.userDetails,
       currentOrgRole: orgRole || "Viewer",
       modelsConfig: state.appInfoReducer.embedUserDetails?.models || {},
-      showDeleteAgentOption: state.appInfoReducer.embedUserDetails?.showDeleteAgentOption ?? true,
+      showDeleteAgentOption: state.appInfoReducer.embedUserDetails?.showDeleteAgentOption ?? false,
     };
   });
   const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === "chatbot" ? "chatbot" : "api";
