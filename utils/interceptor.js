@@ -20,7 +20,7 @@ axios.interceptors.request.use(
     } else {
       // For other backend APIs, use local_token in Authorization header
       let localToken = getFromCookies("local_token");
-      if (window.location.hostname.includes("embed") || window.location.hostname.includes("localhost:3000")) {
+      if (window.location.hostname.includes("embed") || window.location.hostname.includes("localhost")) {
         localToken = sessionStorage.getItem("local_token") || localToken;
       }
       config.headers["Authorization"] = localToken;

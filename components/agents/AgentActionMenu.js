@@ -27,6 +27,7 @@ export const AgentMenuItems = ({
   onSetSelectedAgent,
   handlePortalOpen,
   handlePortalCloseImmediate,
+  showDeleteAgentOption,
 }) => {
   const dispatch = useDispatch();
 
@@ -116,86 +117,107 @@ export const AgentMenuItems = ({
 
   return (
     <>
-      {!isEmbedUser && isAdminOrOwner && (
-        <button
-          data-testid="agent-action-manage-access"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleManageAccess();
-          }}
-          className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
-        >
-          <Users size={16} />
-          Manage Access
-        </button>
-      )}
+      {isEmbedUser ? (
+        <>
+          {showDeleteAgentOption && (
+            <button
+              data-testid="agent-action-delete"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDeleteAgent();
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
+            >
+              <Trash2 size={14} className="text-red-600" />
+              Delete Agent
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          {isAdminOrOwner && (
+            <button
+              data-testid="agent-action-manage-access"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleManageAccess();
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
+            >
+              <Users size={16} />
+              Manage Access
+            </button>
+          )}
 
-      <button
-        data-testid="agent-action-usage-limits"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleUsageLimits(e);
-        }}
-        className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
-      >
-        <Settings2 size={14} />
-        Usage &​ Limits
-      </button>
+          <button
+            data-testid="agent-action-usage-limits"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleUsageLimits(e);
+            }}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
+          >
+            <Settings2 size={14} />
+            Usage &​ Limits
+          </button>
 
-      <button
-        data-testid="agent-action-pause-resume"
-        onMouseDown={async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          await handlePauseBridge();
-        }}
-        disabled={isUpdatingBridge}
-        className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer ${isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""}`}
-      >
-        {bridgeStatus === BRIDGE_STATUS.PAUSED ? (
-          <>
-            <Play size={14} className="text-green-600" />
-            Resume Agent
-          </>
-        ) : (
-          <>
-            <Pause size={14} className="text-red-600" />
-            Pause Agent
-          </>
-        )}
-      </button>
+          <button
+            data-testid="agent-action-pause-resume"
+            onMouseDown={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              await handlePauseBridge();
+            }}
+            disabled={isUpdatingBridge}
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer ${isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {bridgeStatus === BRIDGE_STATUS.PAUSED ? (
+              <>
+                <Play size={14} className="text-green-600" />
+                Resume Agent
+              </>
+            ) : (
+              <>
+                <Pause size={14} className="text-red-600" />
+                Pause Agent
+              </>
+            )}
+          </button>
 
-      {isAdminOrOwner && (
-        <button
-          data-testid="agent-action-delete"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleDeleteAgent();
-          }}
-          className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
-        >
-          <Trash2 size={14} className="text-red-600" />
-          Delete Agent
-        </button>
-      )}
+          {isAdminOrOwner && (
+            <button
+              data-testid="agent-action-delete"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDeleteAgent();
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
+            >
+              <Trash2 size={14} className="text-red-600" />
+              Delete Agent
+            </button>
+          )}
 
-      {isArchived && (
-        <button
-          data-testid="agent-action-unarchive"
-          onMouseDown={async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            await handleArchive();
-          }}
-          disabled={isUpdatingBridge}
-          className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-1 cursor-pointer ${isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""}`}
-        >
-          <ArchiveRestore size={14} className="text-red-600" />
-          Unarchive Agent
-        </button>
+          {isArchived && (
+            <button
+              data-testid="agent-action-unarchive"
+              onMouseDown={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await handleArchive();
+              }}
+              disabled={isUpdatingBridge}
+              className={`w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-1 cursor-pointer ${isUpdatingBridge ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <ArchiveRestore size={14} className="text-red-600" />
+              Unarchive Agent
+            </button>
+          )}
+        </>
       )}
     </>
   );

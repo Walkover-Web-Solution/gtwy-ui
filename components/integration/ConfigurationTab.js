@@ -182,6 +182,14 @@ const CONFIG_SCHEMA = [
     ],
     section: "Display Settings",
   },
+  {
+    key: "showDeleteAgentOption",
+    type: "toggle",
+    label: "Show Delete Agent Option",
+    description: "Show the delete agent option in the agent action menu",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 // Model Customization Component

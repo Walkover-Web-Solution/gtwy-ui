@@ -321,6 +321,7 @@ function Home({ params, searchParams, isEmbedUser }) {
     linksData,
     users,
     modelsConfig,
+    showDeleteAgentOption,
   } = useCustomSelector((state) => {
     const orgData = state.bridgeReducer.org[resolvedParams.org_id] || {};
     const user = state.userDetailsReducer.userDetails;
@@ -343,6 +344,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       currentUser: state.userDetailsReducer.userDetails,
       currentOrgRole: orgRole || "Viewer",
       modelsConfig: state.appInfoReducer.embedUserDetails?.models || {},
+      showDeleteAgentOption: state.appInfoReducer.embedUserDetails?.showDeleteAgentOption ?? true,
     };
   });
   const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === "chatbot" ? "chatbot" : "api";
@@ -987,6 +989,7 @@ function Home({ params, searchParams, isEmbedUser }) {
             }}
             handlePortalOpen={handlePortalOpen}
             handlePortalCloseImmediate={handlePortalCloseImmediate}
+            showDeleteAgentOption={showDeleteAgentOption}
             onDelete={() => {
               handlePortalCloseImmediate();
               setItemToDelete(row);
@@ -1020,7 +1023,7 @@ function Home({ params, searchParams, isEmbedUser }) {
               </div>
             ) : null}
           </div>
-          {isEditor && (
+          {(isEditor || (isEmbedUser && showDeleteAgentOption)) && showDeleteAgentOption && (
             <div className="bg-transparent">
               <div
                 role="button"
