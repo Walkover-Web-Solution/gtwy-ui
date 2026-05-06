@@ -1,11 +1,21 @@
 import { memo } from "react";
 
 import AdvancedConfiguration from "./configurationComponent/AdvancedConfiguration";
-import { useConfigurationContext } from "./ConfigurationContext";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const AdvancedSection = memo(() => {
-  const { params, searchParams, isEmbedUser, hideAdvancedConfigurations, bridgeType, modelType } =
-    useConfigurationContext();
+const AdvancedSection = memo(({ params, searchParams, isEmbedUser, isPublished }) => {
+  const { hideAdvancedConfigurations, bridgeType, modelType } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+
+    return {
+      hideAdvancedConfigurations: state.appInfoReducer.embedUserDetails.hideAdvancedConfigurations,
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase() || "api",
+      modelType: isPublished
+        ? bridgeDataFromState?.configuration?.type?.toLowerCase()
+        : versionData?.configuration?.type?.toLowerCase(),
+    };
+  });
 
   return (
     <>

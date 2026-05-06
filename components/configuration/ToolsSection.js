@@ -2,11 +2,8 @@ import { memo } from "react";
 import EmbedList from "./configurationComponent/EmbedList";
 import ConnectedAgentList from "./configurationComponent/ConnectedAgentList";
 import KnowledgebaseList from "./configurationComponent/KnowledgebaseList";
-import { useConfigurationContext } from "./ConfigurationContext";
 
-const ToolsSection = memo(({ isPublished }) => {
-  const { params, searchParams, isEditor } = useConfigurationContext();
-
+const ToolsSection = memo(({ isPublished, params, searchParams, isEditor }) => {
   return (
     <div data-testid="tools-section-container" id="tools-section-container" className="flex mt-4 gap-4 flex-col">
       <EmbedList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />

@@ -2,7 +2,6 @@
 
 import React, { useMemo } from "react";
 import TriggersList from "../configurationComponent/TriggersList";
-import { useConfigurationContext } from "../ConfigurationContext";
 import ToneDropdown from "../configurationComponent/ToneDropdown";
 import ResponseStyleDropdown from "../configurationComponent/ResponseStyleDropdown";
 import AdvancedConfiguration from "../configurationComponent/AdvancedConfiguration";
@@ -12,23 +11,25 @@ import ReviewerAgentSelector from "../configurationComponent/ReviewerAgentSelect
 import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
 import { useDispatch } from "react-redux";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const SettingsTab = () => {
+const SettingsTab = ({ isPublished, params, searchParams, isEditor, isEmbedUser, currentView, switchView }) => {
   const dispatch = useDispatch();
-  const {
-    params,
-    searchParams,
-    isEmbedUser,
-    hideAdvancedConfigurations,
-    bridgeType,
-    modelType,
-    currentView,
-    switchView,
-    showConfigType,
-    isPublished,
-    isEditor,
-    cacheOn,
-  } = useConfigurationContext();
+  const { hideAdvancedConfigurations, bridgeType, modelType, showConfigType, cacheOn } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const activeData = isPublished ? bridgeDataFromState : versionData;
+
+    return {
+      hideAdvancedConfigurations: state.appInfoReducer.embedUserDetails.hideAdvancedConfigurations,
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase() || "api",
+      modelType: isPublished
+        ? bridgeDataFromState?.configuration?.type?.toLowerCase()
+        : versionData?.configuration?.type?.toLowerCase(),
+      showConfigType: state.appInfoReducer.embedUserDetails.showConfigType,
+      cacheOn: activeData?.cache_on ?? false,
+    };
+  });
 
   const shouldShowTriggers = useMemo(() => bridgeType === "trigger" && !isEmbedUser, [bridgeType, isEmbedUser]);
 

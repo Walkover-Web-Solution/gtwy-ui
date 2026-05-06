@@ -1,20 +1,65 @@
 import { memo } from "react";
 import NonImageModelConfig from "./NonImageModelConfig";
 import ConnectedAgentFlowPanel from "./ConnectedAgentFlowPanel";
-import { useConfigurationContext } from "./ConfigurationContext";
 
-const SetupView = memo(() => {
-  const { currentView } = useConfigurationContext();
+const SetupView = memo(
+  ({
+    currentView,
+    switchView,
+    params,
+    searchParams,
+    isEmbedUser,
+    isPublished,
+    isEditor,
+    apiKeySectionRef,
+    promptTextAreaRef,
+    uiState,
+    updateUiState,
+    promptState,
+    setPromptState,
+    handleCloseTextAreaFocus,
+    savePrompt,
+    isMobileView,
+    closeHelperButtonLocation,
+    apiKeyError,
+    setApiKeyError,
+  }) => {
+    if (currentView === "agent-flow") {
+      return (
+        <ConnectedAgentFlowPanel
+          params={params}
+          searchParams={searchParams}
+          switchView={switchView}
+          currentView={currentView}
+        />
+      );
+    }
 
-  // Render agent flow panel when view is 'agent-flow'
-  if (currentView === "agent-flow") {
-    return <ConnectedAgentFlowPanel />;
+    return (
+      <NonImageModelConfig
+        params={params}
+        searchParams={searchParams}
+        isEmbedUser={isEmbedUser}
+        isPublished={isPublished}
+        isEditor={isEditor}
+        apiKeySectionRef={apiKeySectionRef}
+        promptTextAreaRef={promptTextAreaRef}
+        uiState={uiState}
+        updateUiState={updateUiState}
+        promptState={promptState}
+        setPromptState={setPromptState}
+        handleCloseTextAreaFocus={handleCloseTextAreaFocus}
+        savePrompt={savePrompt}
+        isMobileView={isMobileView}
+        closeHelperButtonLocation={closeHelperButtonLocation}
+        apiKeyError={apiKeyError}
+        setApiKeyError={setApiKeyError}
+        currentView={currentView}
+        switchView={switchView}
+      />
+    );
   }
-
-  // Use unified configuration for all model types
-  // Individual tabs will handle feature availability based on validationConfig
-  return <NonImageModelConfig />;
-});
+);
 
 SetupView.displayName = "SetupView";
 

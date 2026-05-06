@@ -35,12 +35,12 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
   }, [activeTab, tabs]);
 
   const handleTabChange = (tabId) => {
-    onTabChange(tabId);
     const current = new URLSearchParams(Array.from(searchParams.entries()));
     current.set("tab", tabId);
     const search = current.toString();
     const query = search ? `?${search}` : "";
     window.history.replaceState(null, "", `${window.location.pathname}${query}`);
+    onTabChange(tabId);
   };
 
   return (
@@ -71,6 +71,7 @@ const TabsLayout = ({ tabs, activeTab, onTabChange, hideTabs = false }) => {
                   type="button"
                   role="tab"
                   aria-selected={isActive}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleTabChange(tab.id)}
                   className={`inline-flex items-center justify-center border-0 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-blue-600/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 rounded-lg px-2 py-1 text-xs transition-colors duration-200 flex-shrink-0 min-w-fit ${
                     isActive ? "text-blue-600 font-medium" : "text-base-content/60 hover:text-base-content"

@@ -2,11 +2,24 @@
 
 import React from "react";
 import ToolsSection from "../ToolsSection";
-import { useConfigurationContext } from "../ConfigurationContext";
 import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const ConnectorsTab = ({ isPublished }) => {
-  const { shouldToolsShow } = useConfigurationContext();
+const ConnectorsTab = ({ isPublished, params, searchParams, isEditor }) => {
+  const { shouldToolsShow } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const modelReducer = state?.modelReducer?.serviceModels;
+    const activeData = isPublished ? bridgeDataFromState : versionData;
+    const serviceName = activeData?.service;
+    const modelTypeName = activeData?.configuration?.type?.toLowerCase();
+    const modelName = activeData?.configuration?.model;
+    const validationConfig = modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig || {};
+
+    return {
+      shouldToolsShow: validationConfig?.tools,
+    };
+  });
 
   return (
     <div
@@ -16,7 +29,7 @@ const ConnectorsTab = ({ isPublished }) => {
     >
       {!shouldToolsShow && <UnsupportedFeatureOverlay featureName="Connectors" />}
 
-      <ToolsSection isPublished={isPublished} />
+      <ToolsSection isPublished={isPublished} params={params} searchParams={searchParams} isEditor={isEditor} />
     </div>
   );
 };

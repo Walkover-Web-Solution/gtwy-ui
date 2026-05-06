@@ -2,14 +2,28 @@
 
 import React from "react";
 import GptMemory from "../configurationComponent/Gptmemory";
-import { useConfigurationContext } from "../ConfigurationContext";
 import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const MemoryTab = () => {
-  const { params, searchParams, isPublished, isEditor = true, validationConfig, modelType } = useConfigurationContext();
+const MemoryTab = ({ isPublished, params, searchParams, isEditor = true }) => {
+  const { validationConfig, modelType } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const modelReducer = state?.modelReducer?.serviceModels;
+    const activeData = isPublished ? bridgeDataFromState : versionData;
+    const serviceName = activeData?.service;
+    const modelTypeName = activeData?.configuration?.type?.toLowerCase();
+    const modelName = activeData?.configuration?.model;
+    const validConfig = modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig || {};
 
-  // Memory is not supported for image models or if explicitly disabled in validationConfig
-  // Check if memory key exists in validationConfig, if not, assume it's supported for non-image models
+    return {
+      validationConfig: validConfig,
+      modelType: isPublished
+        ? bridgeDataFromState?.configuration?.type?.toLowerCase()
+        : versionData?.configuration?.type?.toLowerCase(),
+    };
+  });
+
   const isMemorySupported = modelType !== "image" && validationConfig?.memory !== false;
 
   return (

@@ -4,30 +4,56 @@ import React, { useMemo } from "react";
 import ServiceDropdown from "../configurationComponent/ServiceDropdown";
 import ModelDropdown from "../configurationComponent/ModelDropdown";
 import ApiKeyInput from "../configurationComponent/ApiKeyInput";
-import { useConfigurationContext } from "../ConfigurationContext";
 import RecommendedModal from "../configurationComponent/RecommendedModal";
 import AdvancedParameters from "../configurationComponent/AdvancedParamenter";
 import FallbackModel from "../configurationComponent/FallbackModel";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const ModelTab = () => {
+const ModelTab = ({
+  isPublished,
+  params,
+  searchParams,
+  isEditor,
+  apiKeySectionRef,
+  promptTextAreaRef,
+  isEmbedUser,
+  apiKeyError,
+}) => {
   const {
-    params,
-    searchParams,
-    apiKeySectionRef,
-    promptTextAreaRef,
     bridgeApiKey,
     shouldPromptShow,
     service,
     showDefaultApikeys,
-    isEmbedUser,
     hideAdvancedParameters,
     hideAdvancedConfigurations,
     bridgeType,
-    isPublished,
-    isEditor,
-    apiKeyError,
     modelType,
-  } = useConfigurationContext();
+  } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const modelReducer = state?.modelReducer?.serviceModels;
+    const activeData = isPublished ? bridgeDataFromState : versionData;
+    const service = activeData?.service;
+    const serviceName = activeData?.service;
+    const modelTypeName = activeData?.configuration?.type?.toLowerCase();
+    const modelName = activeData?.configuration?.model;
+    const validConfig = modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig || {};
+
+    return {
+      bridgeApiKey: isPublished
+        ? bridgeDataFromState?.apikey_object_id?.[service === "openai_response" ? "openai" : service]
+        : versionData?.apikey_object_id?.[service === "openai_response" ? "openai" : service],
+      shouldPromptShow: validConfig?.system_prompt,
+      service,
+      showDefaultApikeys: state.appInfoReducer.embedUserDetails.addDefaultApiKeys,
+      hideAdvancedParameters: state.appInfoReducer.embedUserDetails.hideAdvancedParameters,
+      hideAdvancedConfigurations: state.appInfoReducer.embedUserDetails.hideAdvancedConfigurations,
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase() || "api",
+      modelType: isPublished
+        ? bridgeDataFromState?.configuration?.type?.toLowerCase()
+        : versionData?.configuration?.type?.toLowerCase(),
+    };
+  });
   const shouldRenderApiKey = useMemo(
     () => (!showDefaultApikeys && isEmbedUser) || !isEmbedUser,
     [isEmbedUser, showDefaultApikeys]

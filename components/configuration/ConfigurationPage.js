@@ -1,7 +1,5 @@
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useConfigurationState } from "@/customHooks/useConfigurationState";
-import { ConfigurationProvider } from "./ConfigurationContext";
 import SetupView from "./SetupView";
 import Protected from "../Protected";
 import { Lock } from "lucide-react";
@@ -29,8 +27,6 @@ const ConfigurationPage = ({
   const router = useRouter();
   const view = searchParams?.view || "config";
   const [currentView, setCurrentView] = useState(viewOverride || view);
-
-  const configState = useConfigurationState(params, searchParams);
 
   // Get user role to determine edit permissions
   const { isAdminOrOwner, currentOrgRole, currentUser } = useCustomSelector((state) => {
@@ -141,53 +137,6 @@ const ConfigurationPage = ({
       return searchParams?.isPublished === "true";
     }
   }, [searchParams]);
-  // Create context value with consolidated state - significantly reduced dependencies
-  const contextValue = useMemo(
-    () => ({
-      ...configState,
-      params,
-      searchParams,
-      isEmbedUser,
-      apiKeySectionRef,
-      promptTextAreaRef,
-      uiState,
-      updateUiState,
-      promptState,
-      setPromptState,
-      handleCloseTextAreaFocus,
-      savePrompt,
-      isMobileView,
-      closeHelperButtonLocation,
-      currentView,
-      switchView: handleNavigation,
-      isPublished,
-      isEditor,
-      apiKeyError,
-      setApiKeyError,
-    }),
-    [
-      configState,
-      params,
-      searchParams,
-      isEmbedUser,
-      apiKeySectionRef,
-      promptTextAreaRef,
-      uiState,
-      updateUiState,
-      promptState,
-      setPromptState,
-      handleCloseTextAreaFocus,
-      savePrompt,
-      isMobileView,
-      closeHelperButtonLocation,
-      isPublished,
-      isEditor,
-      currentView,
-      handleNavigation,
-      apiKeyError,
-    ]
-  );
-
   // Check if viewing published data or non-editor mode
   const [bannerState, setBannerState] = useState({
     showPublished: isPublished,
@@ -235,49 +184,67 @@ const ConfigurationPage = ({
   }, [isEditor]);
 
   return (
-    <ConfigurationProvider value={contextValue}>
-      <div className="flex flex-col gap-2 relative min-h-full">
-        {/* Published Data Banner - Sticky and close to navbar */}
-        {bannerState.showPublished && (
-          <div
-            data-testid="published-data-banner"
-            id="published-banner"
-            className={`sticky top-0 z-40 bg-primary/20 backdrop-blur-lg border-b border-primary/20 py-2 ${
-              bannerState.animatingPublished ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2 text-sm">
-              <Lock className="h-4 w-4 text-info" />
-              <span className="text-base-content/80">
-                This is a <span className="text-base-content font-medium">read-only</span> published data.
-              </span>
-            </div>
+    <div className="flex flex-col gap-2 relative min-h-full">
+      {/* Published Data Banner - Sticky and close to navbar */}
+      {bannerState.showPublished && (
+        <div
+          data-testid="published-data-banner"
+          id="published-banner"
+          className={`sticky top-0 z-40 bg-primary/20 backdrop-blur-lg border-b border-primary/20 py-2 ${
+            bannerState.animatingPublished ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Lock className="h-4 w-4 text-info" />
+            <span className="text-base-content/80">
+              This is a <span className="text-base-content font-medium">read-only</span> published data.
+            </span>
           </div>
-        )}
-
-        {/* Non-Editor Banner - Sticky and close to navbar */}
-        {bannerState.showNonEditor && (
-          <div
-            data-testid="non-editor-banner"
-            id="non-editor-banner"
-            className={`sticky top-0 z-40 bg-primary/20 backdrop-blur-sm border-b border-primary/20 py-2 ${
-              bannerState.animatingNonEditor ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2 text-sm">
-              <Lock className="h-4 w-4 text-primary" />
-              <span className="text-base-content/80">
-                You don't have <span className="text-base-content font-medium">edit access</span> to update this agent.
-              </span>
-            </div>
-          </div>
-        )}
-        <div className="flex-1">
-          <SetupView />
         </div>
-        <div className="mt-auto">{renderHelpSection()}</div>
+      )}
+
+      {/* Non-Editor Banner - Sticky and close to navbar */}
+      {bannerState.showNonEditor && (
+        <div
+          data-testid="non-editor-banner"
+          id="non-editor-banner"
+          className={`sticky top-0 z-40 bg-primary/20 backdrop-blur-sm border-b border-primary/20 py-2 ${
+            bannerState.animatingNonEditor ? "animate-slide-out-to-navbar" : "animate-slide-in-from-navbar"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Lock className="h-4 w-4 text-primary" />
+            <span className="text-base-content/80">
+              You don't have <span className="text-base-content font-medium">edit access</span> to update this agent.
+            </span>
+          </div>
+        </div>
+      )}
+      <div className="flex-1">
+        <SetupView
+          currentView={currentView}
+          switchView={handleNavigation}
+          params={params}
+          searchParams={searchParams}
+          isEmbedUser={isEmbedUser}
+          isPublished={isPublished}
+          isEditor={isEditor}
+          apiKeySectionRef={apiKeySectionRef}
+          promptTextAreaRef={promptTextAreaRef}
+          uiState={uiState}
+          updateUiState={updateUiState}
+          promptState={promptState}
+          setPromptState={setPromptState}
+          handleCloseTextAreaFocus={handleCloseTextAreaFocus}
+          savePrompt={savePrompt}
+          isMobileView={isMobileView}
+          closeHelperButtonLocation={closeHelperButtonLocation}
+          apiKeyError={apiKeyError}
+          setApiKeyError={setApiKeyError}
+        />
       </div>
-    </ConfigurationProvider>
+      <div className="mt-auto">{renderHelpSection()}</div>
+    </div>
   );
 };
 

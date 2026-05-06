@@ -3,7 +3,6 @@ import { useMemo, useCallback, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { createNodesFromAgentDoc } from "@/components/FlowDataManager";
-import { useConfigurationContext } from "./ConfigurationContext";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getConnectedAgentFlowAction } from "@/store/action/orchestralFlowAction";
 import { getFromCookies } from "@/utils/utility";
@@ -111,17 +110,28 @@ const formatAgentsForPersist = (agents = {}) =>
     return acc;
   }, {});
 
-const ConnectedAgentFlowPanel = ({ isEmbedUser }) => {
+const ConnectedAgentFlowPanel = ({ isEmbedUser, params, searchParams, switchView, currentView }) => {
   const dispatch = useDispatch();
-  const { params, searchParams, bridgeType, connectedAgentFlow, bridgeName, switchView, currentView } =
-    useConfigurationContext();
-  const { apiConnectedAgentFlow, bridgeData, allBridges } = useCustomSelector((state) => ({
-    apiConnectedAgentFlow:
-      state.orchestralFlowReducer.connectedAgentFlowByBridge?.[params?.org_id]?.[params?.id]?.[searchParams?.version] ||
-      null,
-    bridgeData: state.bridgeReducer?.org?.[params?.org_id]?.orgs?.find((bridge) => bridge._id === params?.id) || null,
-    allBridges: state.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
-  }));
+  const { bridgeType, connectedAgentFlow, bridgeName, apiConnectedAgentFlow, bridgeData, allBridges } =
+    useCustomSelector((state) => {
+      const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+      const bridgeDataFromState =
+        state?.bridgeReducer?.org?.[params?.org_id]?.orgs?.find((bridge) => bridge._id === params?.id) || null;
+      const activeData = versionData || bridgeDataFromState;
+
+      return {
+        bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase() || "api",
+        connectedAgentFlow: versionData?.connected_agent_flow,
+        bridgeName: activeData?.name || activeData?.slugName,
+        apiConnectedAgentFlow:
+          state.orchestralFlowReducer.connectedAgentFlowByBridge?.[params?.org_id]?.[params?.id]?.[
+            searchParams?.version
+          ] || null,
+        bridgeData:
+          state.bridgeReducer?.org?.[params?.org_id]?.orgs?.find((bridge) => bridge._id === params?.id) || null,
+        allBridges: state.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
+      };
+    });
   useEffect(() => {
     if (currentView === "agent-flow" && searchParams?.version) {
       dispatch(

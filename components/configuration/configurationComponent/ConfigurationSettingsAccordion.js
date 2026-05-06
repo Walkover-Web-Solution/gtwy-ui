@@ -1,27 +1,36 @@
 import React, { useMemo, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
-import { useConfigurationContext } from "../ConfigurationContext";
 import ToneDropdown from "./ToneDropdown";
 import ResponseStyleDropdown from "./ResponseStyleDropdown";
 import AdvancedConfiguration from "./AdvancedConfiguration";
 import Protected from "@/components/Protected";
 import BridgeTypeToggle from "./BridgeTypeToggle";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = true }) => {
-  // Determine if content is read-only (either published or user is not an editor)
-
+const ConfigurationSettingsAccordion = ({
+  isEmbedUser,
+  isPublished,
+  isEditor = true,
+  params,
+  searchParams,
+  currentView,
+  switchView,
+}) => {
   const isReadOnly = isPublished || !isEditor;
   const [isOpen, setIsOpen] = useState(false);
-  const {
-    params,
-    searchParams,
-    hideAdvancedConfigurations,
-    bridgeType,
-    modelType,
-    currentView,
-    switchView,
-    showConfigType,
-  } = useConfigurationContext();
+  const { hideAdvancedConfigurations, bridgeType, modelType, showConfigType } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+
+    return {
+      hideAdvancedConfigurations: state.appInfoReducer.embedUserDetails.hideAdvancedConfigurations,
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase() || "api",
+      modelType: isPublished
+        ? bridgeDataFromState?.configuration?.type?.toLowerCase()
+        : versionData?.configuration?.type?.toLowerCase(),
+      showConfigType: state.appInfoReducer.embedUserDetails.showConfigType,
+    };
+  });
   const shouldShowAgentType = useMemo(
     () => (isEmbedUser && showConfigType) || !isEmbedUser,
     [isEmbedUser, showConfigType]

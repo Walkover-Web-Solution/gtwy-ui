@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useConfigurationContext } from "../ConfigurationContext";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import ApiGuide from "../configurationComponent/ApiGuide";
 import BatchApiGuide from "../configurationComponent/BatchApiGuide";
@@ -10,10 +9,7 @@ import PrivateFormSection from "../../chatbotConfiguration/FirstStep";
 import SlugNameInput from "../configurationComponent/SlugNameInput";
 import { AlertTriangle } from "lucide-react";
 
-const IntegrationGuideTab = ({ isPublished }) => {
-  const { params } = useConfigurationContext();
-
-  // Get bridge data and integration data from Redux store
+const IntegrationGuideTab = ({ isPublished, params }) => {
   const { slugName, prompt, bridgeTypeFromRedux, publishedVersionId } = useCustomSelector((state) => {
     return {
       slugName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.slugName,

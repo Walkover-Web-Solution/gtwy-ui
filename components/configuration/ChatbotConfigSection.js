@@ -4,12 +4,21 @@ import InfoTooltip from "@/components/InfoTooltip";
 import UserRefernceForRichText from "./configurationComponent/UserRefernceForRichText";
 import StarterQuestionToggle from "./configurationComponent/StarterQuestion";
 import ActionList from "./configurationComponent/ActionList";
-import { useConfigurationContext } from "./ConfigurationContext";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
-const ChatbotConfigSection = ({ isPublished, isEditor = true }) => {
-  // Determine if content is read-only (either published or user is not an editor)
+const ChatbotConfigSection = ({ isPublished, isEditor = true, params, searchParams }) => {
   const [isChatbotAccordionOpen, setIsChatbotAccordionOpen] = useState(false);
-  const { params, searchParams, bridgeType, modelType } = useConfigurationContext();
+  const { bridgeType, modelType } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+
+    return {
+      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.trim()?.toLowerCase() || "api",
+      modelType: isPublished
+        ? bridgeDataFromState?.configuration?.type?.toLowerCase()
+        : versionData?.configuration?.type?.toLowerCase(),
+    };
+  });
 
   const toggleChatbotAccordion = () => {
     setIsChatbotAccordionOpen(!isChatbotAccordionOpen);
