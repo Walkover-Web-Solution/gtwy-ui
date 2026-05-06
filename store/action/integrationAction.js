@@ -53,8 +53,8 @@ export const updateIntegrationDataAction = (orgId, dataToSend) => async (dispatc
       return response;
     }
   } catch (error) {
-    toast.error("Something went Wrong");
     console.error(error);
+    throw error;
   }
 };
 

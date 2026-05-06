@@ -226,6 +226,7 @@ const ToolsConfiguration = ({
           halfLength={selectedFunctionsData.length}
           isPublished={false}
           isEditor={true}
+          maxTitleLength={20}
         />
       ) : (
         <div className="bg-base-200 rounded-lg p-4 text-center" data-testid="no-tools-added-message">
