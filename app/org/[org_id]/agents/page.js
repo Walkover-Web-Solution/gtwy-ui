@@ -1023,7 +1023,7 @@ function Home({ params, searchParams, isEmbedUser }) {
               </div>
             ) : null}
           </div>
-          {(isEditor || (isEmbedUser && showDeleteAgentOption)) && showDeleteAgentOption && (
+          {(isEditor || (isEmbedUser && showDeleteAgentOption)) && (
             <div className="bg-transparent">
               <div
                 role="button"
