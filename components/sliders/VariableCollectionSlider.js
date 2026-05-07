@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { initializeVariablesState, updateVariables } from "@/store/reducer/variableReducer";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { sendDataToParent, toggleSidebar } from "@/utils/utility";
 import { CloseIcon } from "@/components/Icons";
 import { Trash2, Upload, Play } from "lucide-react";
@@ -640,6 +641,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       if (!hasVariableStateChanged()) {
         return;
       }
+
+      // Update the version's variables_state in Redux and persist via API
+      dispatch(
+        updateBridgeVersionAction({
+          bridgeId: params?.id,
+          versionId,
+          dataToSend: { variables_state: currentVariableState },
+        })
+      );
 
       if (isEmbedUser) {
         sendDataToParent(
