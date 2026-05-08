@@ -149,7 +149,7 @@ const ServiceDropdown = ({
 
       const dataToSend = { service: newService, configuration: { model: defaultModel } };
       if (!hasApiKeyForNewService) {
-        dataToSend.auto_model_select = false;
+        dataToSend.auto_model_select = null;
       }
 
       dispatch(

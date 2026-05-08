@@ -1,8 +1,15 @@
 import { BookIcon, BotIcon, KeyIcon, SettingsIcon, TestTubeDiagonalIcon, WrenchIcon } from "@/components/Icons";
+import { DollarSign, Star, Gauge } from "lucide-react";
 export const PAUTH_KEY_COLUMNS = ["name", "authkey", "created_at"];
 export const API_KEY_COLUMNS = ["name", "apikey", "apikey_usage", "last_used", "last_used_status"];
 export const WEBHOOKALERT_COLUMNS = ["name", "url", "headers", "alertType", "bridges"];
 export const ALERT_TYPE = ["Error", "Variable"];
+
+export const AUTO_MODEL_TRADEOFF_OPTIONS = [
+  { value: "cost", label: "Cost", icon: DollarSign },
+  { value: "quality", label: "Quality", icon: Star },
+  { value: "speed", label: "Speed", icon: Gauge },
+];
 
 export const AVAILABLE_MODEL_TYPES = {
   API: "api",

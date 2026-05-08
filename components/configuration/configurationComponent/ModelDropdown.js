@@ -1,6 +1,6 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, AUTO_MODEL_TRADEOFF_OPTIONS } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -9,6 +9,7 @@ import Dropdown from "@/components/UI/Dropdown";
 import { CircleQuestionMark, Sparkles, CircleAlert, Plus } from "lucide-react";
 import InfoTooltip from "@/components/InfoTooltip";
 import AddNewModelModal from "@/components/modals/AddNewModal";
+
 // Model Preview component to display model specifications
 const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
   if (!hoveredModel || !modelSpecs || !dropdownRef?.current) return null;
@@ -171,8 +172,8 @@ const ModelDropdown = ({
       modelsConfig: state?.appInfoReducer?.embedUserDetails?.models || {},
       isAutoModelSupported: state?.serviceReducer?.default_model?.[activeData?.service]?.autoRouterSupport || false,
       autoModelSelect: isPublished
-        ? (bridgeDataFromState?.auto_model_select ?? false)
-        : (versionData?.auto_model_select ?? false),
+        ? (bridgeDataFromState?.auto_model_select ?? null)
+        : (versionData?.auto_model_select ?? null),
       fallbackModel: activeData?.settings?.fall_back,
     };
   });
@@ -183,18 +184,36 @@ const ModelDropdown = ({
 
   const [hoveredModel, setHoveredModel] = useState(null);
   const [modelSpecs, setModelSpecs] = useState();
+  const autoModelBasedOnOptions = useMemo(
+    () =>
+      AUTO_MODEL_TRADEOFF_OPTIONS.map((option) => {
+        const Icon = option.icon;
+        return {
+          value: option.value,
+          label: (
+            <span className="flex items-center gap-2">
+              <Icon size={14} />
+              <span>{option.label}</span>
+            </span>
+          ),
+        };
+      }),
+    []
+  );
+  const selectedAutoModelBasedOn = autoModelSelect?.tradeoff || "";
+  const isAutoModelSelected = !!selectedAutoModelBasedOn;
 
   useEffect(() => {
-    if (!isAutoModelSupported && autoModelSelect) {
+    if (!isAutoModelSupported && isAutoModelSelected) {
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { auto_model_select: false },
+          dataToSend: { auto_model_select: null },
         })
       );
     }
-  }, [isAutoModelSupported]);
+  }, [dispatch, isAutoModelSupported, isAutoModelSelected, params.id, searchParams?.version]);
 
   const handleFinetuneModelChange = (e) => {
     const selectedFineTunedModel = e.target.value;
@@ -261,8 +280,8 @@ const ModelDropdown = ({
       const modelName = opt?.meta?.modelName || val;
       const configUpdate = { model: modelName, type: selectedGroup };
       const dataToSend = { configuration: configUpdate };
-      if (selectedGroup !== "chat") {
-        dataToSend.auto_model_select = false;
+      if (selectedGroup !== "chat" && isAutoModelSelected) {
+        dataToSend.auto_model_select = null;
       }
       dispatch(
         updateBridgeVersionAction({
@@ -272,6 +291,20 @@ const ModelDropdown = ({
         })
       );
       setHoveredModel(null);
+    },
+    [dispatch, isAutoModelSelected, params.id, searchParams?.version]
+  );
+
+  const handleAutoSelectModelChange = useCallback(
+    (basedOnValue) => {
+      const autoModelSelectValue = basedOnValue ? { tradeoff: basedOnValue } : null;
+      dispatch(
+        updateBridgeVersionAction({
+          bridgeId: params.id,
+          versionId: searchParams?.version,
+          dataToSend: { auto_model_select: autoModelSelectValue },
+        })
+      );
     },
     [dispatch, params.id, searchParams?.version]
   );
@@ -283,7 +316,7 @@ const ModelDropdown = ({
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { auto_model_select: isEnabled },
+          dataToSend: { auto_model_select: isEnabled ? { tradeoff: "cost" } : null },
         })
       );
     },
@@ -306,7 +339,7 @@ const ModelDropdown = ({
       <div className="flex items-center justify-between gap-2">
         <label className="block text-base-content/70 text-sm font-medium">Model</label>
         {isAutoModelSupported && modelType === "chat" && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-xs">
               <Sparkles size={10} />
               Auto Select Model
@@ -315,7 +348,7 @@ const ModelDropdown = ({
               <CircleQuestionMark
                 size={14}
                 className={
-                  autoModelSelect ? "text-warning cursor-help" : "text-gray-500 hover:text-gray-700 cursor-help"
+                  isAutoModelSelected ? "text-warning cursor-help" : "text-gray-500 hover:text-gray-700 cursor-help"
                 }
               />
             </InfoTooltip>
@@ -326,7 +359,7 @@ const ModelDropdown = ({
               disabled={isReadOnly}
               type="checkbox"
               className="toggle toggle-xs"
-              checked={!!autoModelSelect}
+              checked={isAutoModelSelected}
               onChange={handleAutoSelectModelToggle}
             />
           </div>
@@ -336,32 +369,45 @@ const ModelDropdown = ({
         data-testid="model-dropdown-container"
         id="model-dropdown-container"
         className="flex flex-col items-start gap-4 relative"
-        style={{ opacity: autoModelSelect ? 0.5 : 1, pointerEvents: autoModelSelect ? "none" : "auto" }}
       >
         <div className="flex items-center gap-2 w-full">
           <div className="flex-1" ref={dropdownRef}>
-            <Dropdown
-              testId="model-dropdown"
-              disabled={isReadOnly || autoModelSelect}
-              options={modelOptions}
-              value={model || ""}
-              onChange={handleSelect}
-              onOptionHover={handleOptionHover}
-              showGroupHeaders
-              isEmbedUser={isEmbedUser}
-              bottomOption={{
-                label: "Add Model",
-                icon: Plus,
-                onClick: handleAddModelClick,
-                testId: "model-dropdown-add-model",
-              }}
-              placeholder="Select model"
-              size="sm"
-              className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
-              style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
-              menuClassName="w-full sm:w-[260px] max-h-[500px] min-w-[200px]"
-              maxLabelLength={20}
-            />
+            {isAutoModelSelected ? (
+              <Dropdown
+                testId="auto-select-model-based-on-dropdown"
+                id="auto-select-model-based-on-dropdown"
+                disabled={isReadOnly}
+                options={autoModelBasedOnOptions}
+                value={selectedAutoModelBasedOn}
+                onChange={handleAutoSelectModelChange}
+                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
+                placeholder="Select basis"
+                size="sm"
+              />
+            ) : (
+              <Dropdown
+                testId="model-dropdown"
+                disabled={isReadOnly || autoModelSelect}
+                options={modelOptions}
+                value={model || ""}
+                onChange={handleSelect}
+                onOptionHover={handleOptionHover}
+                showGroupHeaders
+                isEmbedUser={isEmbedUser}
+                bottomOption={{
+                  label: "Add Model",
+                  icon: Plus,
+                  onClick: handleAddModelClick,
+                  testId: "model-dropdown-add-model",
+                }}
+                placeholder="Select model"
+                size="sm"
+                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
+                style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
+                menuClassName="w-full sm:w-[260px] max-h-[500px] min-w-[200px]"
+                maxLabelLength={20}
+              />
+            )}
           </div>
           {showFallbackModelHint && (
             <InfoTooltip
