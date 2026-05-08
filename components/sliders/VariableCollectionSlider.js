@@ -218,14 +218,16 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkEditText, setBulkEditText] = useState("");
   const [missingVariables, setMissingVariables] = useState([]);
-  const [blockedDeleteKey, setBlockedDeleteKey] = useState("");
-  const [blockedDeleteMessage, setBlockedDeleteMessage] = useState("");
+  const [deleteWarningKey, setDeleteWarningKey] = useState(null);
 
   const activeGroupId = activeGroup?.id;
 
-  const variablesPathKeySet = useMemo(() => {
-    const keys = new Set();
+  const preToolKeySet = useMemo(() => {
+    return collectPreToolVariableKeys(bridge_pre_tools);
+  }, [bridge_pre_tools]);
 
+  const functionPathKeySet = useMemo(() => {
+    const keys = new Set();
     Object.values(variablesPath || {}).forEach((functionVars = {}) => {
       Object.values(functionVars || {}).forEach((key) => {
         const trimmedKey = typeof key === "string" ? key.trim() : "";
@@ -234,13 +236,13 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         }
       });
     });
-
-    collectPreToolVariableKeys(bridge_pre_tools).forEach((key) => {
-      keys.add(key);
-    });
-
     return keys;
-  }, [variablesPath, bridge_pre_tools]);
+  }, [variablesPath]);
+
+  const variablesPathKeySet = useMemo(() => {
+    const keys = new Set([...preToolKeySet, ...functionPathKeySet]);
+    return keys;
+  }, [preToolKeySet, functionPathKeySet]);
 
   const visibleEmbedFieldNameSet = useMemo(() => {
     if (!isEmbedUser || typeof prompt !== "object" || !Array.isArray(prompt?.embedFields)) {
@@ -530,8 +532,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       setBulkEditMode(false);
       setBulkEditText("");
       setMissingVariables([]); // Clear missing variables state
-      setBlockedDeleteKey("");
-      setBlockedDeleteMessage("");
+      setDeleteWarningKey(null);
 
       // Force a fresh sync with the latest store data
       syncDraftWithStore(sourceList);
@@ -756,19 +757,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     window.dispatchEvent(clearValidationEvent);
   }, []);
 
-  const handleFieldChange = useCallback(
-    (index, field, value) => {
-      if (field === "key" && blockedDeleteKey && value.trim() !== blockedDeleteKey) {
-        setBlockedDeleteKey("");
-        setBlockedDeleteMessage("");
-      }
-      setDraftVariables((prev) =>
-        prev.map((variable, idx) => (idx === index ? { ...variable, [field]: value } : variable))
-      );
-      setError("");
-    },
-    [blockedDeleteKey]
-  );
+  const handleFieldChange = useCallback((index, field, value) => {
+    setDraftVariables((prev) =>
+      prev.map((variable, idx) => (idx === index ? { ...variable, [field]: value } : variable))
+    );
+    setError("");
+  }, []);
 
   const applyDraftUpdate = useCallback(
     (updater, options) => {
@@ -866,6 +860,16 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     };
   }, []);
 
+  // Clear delete warning after 5 seconds
+  useEffect(() => {
+    if (deleteWarningKey) {
+      const timer = setTimeout(() => {
+        setDeleteWarningKey(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteWarningKey]);
+
   const handleRequiredToggle = useCallback(
     (index) => {
       applyDraftUpdate(
@@ -879,26 +883,24 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
   const handleDeleteVariable = useCallback(
     (index) => {
-      applyDraftUpdate(
-        (prev) => {
-          const target = prev[index];
-          const key = typeof target?.key === "string" ? target.key.trim() : "";
+      const target = draftVariables[index];
+      const key = typeof target?.key === "string" ? target.key.trim() : "";
 
-          if (key && promptKeySet.has(key)) {
-            setError("");
-            setBlockedDeleteKey(key);
-            setBlockedDeleteMessage(`Variable "${key}" is referenced in the prompt and can't be removed.`);
-            return prev;
-          }
+      if (!key) return;
 
-          setBlockedDeleteKey("");
-          setBlockedDeleteMessage("");
-          return prev.filter((_, idx) => idx !== index);
-        },
-        { suppressErrors: true }
-      );
+      const isReferencedInPrompt = promptKeySet.has(key);
+      const isReferencedInPreTool = preToolKeySet.has(key);
+      const isReferencedInFunction = functionPathKeySet.has(key);
+      const isReferenced = isReferencedInPrompt || isReferencedInPreTool || isReferencedInFunction;
+
+      if (isReferenced) {
+        setDeleteWarningKey(key);
+        return;
+      }
+
+      applyDraftUpdate((prev) => prev.filter((_, idx) => idx !== index), { suppressErrors: true });
     },
-    [applyDraftUpdate, promptKeySet]
+    [draftVariables, promptKeySet, preToolKeySet, functionPathKeySet, applyDraftUpdate]
   );
 
   const parseJsonToKeyValue = useCallback((jsonText) => {
@@ -1185,13 +1187,18 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                 {variableCount ? (
                   draftVariables.map((variable, index) => {
                     const trimmedKey = typeof variable.key === "string" ? variable.key.trim() : "";
-                    const showBlockedWarning = Boolean(blockedDeleteKey) && trimmedKey === blockedDeleteKey;
+                    const isReferencedInPrompt = trimmedKey && promptKeySet.has(trimmedKey);
+                    const isReferencedInPreTool = trimmedKey && preToolKeySet.has(trimmedKey);
+                    const isReferencedInFunction = trimmedKey && functionPathKeySet.has(trimmedKey);
                     // Check if previous variable has a key to enable current row
                     const isPreviousRowFilled = index === 0 || draftVariables[index - 1]?.key?.trim();
                     const isCurrentRowEnabled = isPreviousRowFilled;
 
                     return (
-                      <div key={variable.id || `${variable.key}-${index}`} className="px-3 py-2 text-sm">
+                      <div
+                        key={variable.id || `${variable.key}-${index}`}
+                        className="px-3 py-3 text-sm border-b border-base-200 hover:bg-base-200/30 transition-colors"
+                      >
                         <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 items-center">
                           <input
                             autoComplete="off"
@@ -1379,26 +1386,25 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             <button
                               id={`variable-delete-button-${index}`}
                               type="button"
-                              className="btn btn-ghost btn-xs text-error"
-                              disabled={
-                                !isCurrentRowEnabled ||
-                                !variable.key.trim() ||
-                                promptKeySet.has(trimmedKey) ||
-                                variablesPathKeySet.has(trimmedKey)
-                              }
+                              className="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                              disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               onClick={() => handleDeleteVariable(index)}
-                              title="Delete variable"
+                              title={
+                                isReferencedInPrompt || isReferencedInPreTool || isReferencedInFunction
+                                  ? "Delete variable (will show confirmation if referenced)"
+                                  : "Delete variable"
+                              }
                             >
                               <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
-                        {showBlockedWarning && (
-                          <p className="text-[11px] text-warning mt-1">
-                            {blockedDeleteMessage ||
-                              `Variable "${trimmedKey}" is referenced in the prompt and can't be removed.`}
-                          </p>
-                        )}
+                        {(isReferencedInPrompt || isReferencedInPreTool || isReferencedInFunction) &&
+                          deleteWarningKey === trimmedKey && (
+                            <div className="mt-2 p-2 bg-error/10 border border-error/30 rounded text-error text-xs">
+                              ⚠️ This variable is in use. Deleting it may cause errors in your configuration.
+                            </div>
+                          )}
                       </div>
                     );
                   })
