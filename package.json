@@ -10,7 +10,7 @@
     "lint:fix": "next lint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky",
+    "prepare": "husky install",
     "build:pages": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
@@ -69,11 +69,5 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
-  },
-  "packageManager": "pnpm@10.32.1",
-  "engines": {
-    "npm": "please-use-pnpm",
-    "yarn": "please-use-pnpm",
-    "pnpm": ">=10"
   }
 }
