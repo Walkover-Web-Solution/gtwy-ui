@@ -4,7 +4,7 @@ import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { generateRandomID, getToolName, openModal, trimPropertyNames } from "@/utils/utility";
-import { getDefaultJsonSchema, generateCombinedSchema } from "@/utils/defaultJsonSchemas";
+import { generateCombinedSchema } from "@/utils/defaultJsonSchemas";
 import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
@@ -636,13 +636,13 @@ const AdvancedParameters = ({
                     const selectedValue = e.target.value;
                     if (key === "response_type") {
                       if (selectedValue === "widget") {
-                        // Remove existing JSON schema and set default schema with anyOf field
-                        const defaultSchema = getDefaultJsonSchema("greeting", true); // true = include anyOf
+                        // Use generateCombinedSchema with empty array to get normal schema without anyOf
+                        const defaultSchema = generateCombinedSchema([], richUiWidgets);
                         const updatedDataToSend = {
                           configuration: {
                             response_type: {
                               type: "json_schema",
-                              json_schema: defaultSchema, // Use default schema with anyOf field
+                              json_schema: defaultSchema, // Use normal schema without anyOf when no widgets selected
                               is_template: true,
                               template_id: [], // Clear existing template IDs
                             },

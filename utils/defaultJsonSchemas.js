@@ -125,6 +125,7 @@ export const getWidgetJsonSchema = (fields = {}) => {
 };
 
 export const generateCombinedSchema = (selectedWidgetIds, richUiWidgets) => {
+  // If no widgets are selected, return normal schema without anyOf
   if (!selectedWidgetIds || selectedWidgetIds.length === 0) {
     return {
       name: "event_schema",
@@ -133,19 +134,13 @@ export const generateCombinedSchema = (selectedWidgetIds, richUiWidgets) => {
         properties: {
           item: {
             type: "object",
-            anyOf: [
-              {
-                type: "object",
-                properties: {
-                  response: {
-                    type: "string",
-                    description: "A friendly greeting or response message",
-                  },
-                },
-                required: ["response"],
-                additionalProperties: false,
+            properties: {
+              response: {
+                type: "string",
+                description: "A friendly greeting or response message",
               },
-            ],
+            },
+            required: ["response"],
             additionalProperties: false,
           },
         },
@@ -158,7 +153,7 @@ export const generateCombinedSchema = (selectedWidgetIds, richUiWidgets) => {
 
   const anyOfSchemas = [];
 
-  // Always include plain greeting as first option
+  // Include plain greeting as first option when widgets are selected
   anyOfSchemas.push({
     type: "object",
     properties: {
