@@ -13,7 +13,7 @@ import {
 } from "@/components/Icons";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 import { truncate } from "./AssistFile";
@@ -22,7 +22,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { formatRelativeTime, getToolName, openModal } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
-import { AlertTriangle, CheckCircle2, Clock3, ExternalLink } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, ChevronRight } from "lucide-react";
 import { GenericSlider, useSlider } from "@/utils/sliderUtility";
 
 // Resolve any possible url shape (string, object with permanent_url, etc.)
@@ -280,6 +280,74 @@ const ThreadItem = ({
     },
     [allBridgesMap, orgBridges, integrationData]
   );
+
+  const flattenTools = useCallback((toolsData) => {
+    const flattened = [];
+    (toolsData || []).forEach((entry) => {
+      if (!entry || typeof entry !== "object") return;
+
+      // If entry has a type property, it's a flat tool
+      if (entry.type) {
+        flattened.push(entry);
+      } else {
+        // Entry is an object with nested tools, extract all values
+        Object.values(entry).forEach((tool) => {
+          if (tool && typeof tool === "object" && (tool.type || tool.name)) {
+            flattened.push(tool);
+          }
+        });
+      }
+    });
+    return flattened;
+  }, []);
+
+  const preFunctionEntry = useMemo(() => {
+    const allTools = flattenTools(item?.tools_call_data);
+    const found = allTools.find((tool) => tool?.type === "pre_function");
+    return found || null;
+  }, [item?.tools_call_data, flattenTools]);
+
+  const { preTools, postTools, otherTools } = useMemo(() => {
+    const allTools = flattenTools(item?.tools_call_data);
+    const pre = [];
+    const post = [];
+    const other = [];
+
+    allTools.forEach((tool) => {
+      if (!tool) return;
+      const type = tool.type;
+      if (type === "pre_tool") {
+        pre.push(tool);
+      } else if (type === "post_tool") {
+        post.push(tool);
+      } else {
+        // All other types (pre_function, post_function, etc.) go to otherTools
+        other.push(tool);
+      }
+    });
+    return { preTools: pre, postTools: post, otherTools: other };
+  }, [item?.tools_call_data, flattenTools]);
+
+  const preFunctionStripText = useMemo(() => {
+    if (!preFunctionEntry) return "";
+
+    if (preFunctionEntry.id) {
+      const resolvedName = getToolName(preFunctionEntry.id, allBridgesMap, orgBridges, integrationData);
+      if (resolvedName && resolvedName !== preFunctionEntry.id) return resolvedName;
+    }
+
+    return preFunctionEntry.name || preFunctionEntry.id || "Pre Function";
+  }, [preFunctionEntry, allBridgesMap, orgBridges, integrationData]);
+
+  const handlePreFunctionClick = useCallback(() => {
+    if (!preFunctionEntry?.id || !preFunctionEntry?.metadata?.flowHitId) return;
+
+    openViasocket(preFunctionEntry.id, {
+      flowHitId: preFunctionEntry.metadata.flowHitId,
+      embedToken,
+      meta: { type: "pre_function" },
+    });
+  }, [preFunctionEntry, openViasocket, embedToken]);
 
   // Helper function to detect if content contains HTML
   const containsHTML = (str) => {
@@ -663,65 +731,66 @@ const ThreadItem = ({
           </div>
         </div>
 
-        {/* 2. Second: Show Tools Call section if exists */}
-        {(item?.tools_call_data?.length > 0 || item?.function) && (
-          <div className="mb-2 text-sm flex flex-col justify-center items-center">
-            <h1 className="p-1">
-              <span className="flex justify-center items-center gap-2">
-                <ParenthesesIcon size={16} />
-                Functions Executed Successfully
-              </span>
-            </h1>
-            <div className="flex h-full gap-2 justify-center items-center flex-wrap">
-              {item?.tools_call_data
-                ? item.tools_call_data
-                    // tools_call_data can be an array of objects, each with multiple toolu_* keys
-                    .flatMap((toolObj) => Object.entries(toolObj || {}))
-                    .map(([toolKey, tool], index) => (
-                      <div
-                        data-testid={`thread-item-tool-${toolKey || index}`}
-                        id={`thread-item-tool-${toolKey || index}`}
-                        key={toolKey || index}
-                        onClick={(event) => handleToolPrimaryClick(event, tool)}
-                        className="bg-base-200 rounded-lg flex gap-4 duration-200 items-center justify-between hover:bg-base-300 p-1 see"
-                      >
-                        <div className="cursor-pointer flex items-center justify-center py-4 pl-2">
-                          <div className="text-center">
-                            <div className="font-medium text-sm">{getToolNameHelper(tool)}</div>
-                          </div>
-                        </div>
-                        <div className="flex gap-3">
-                          <div
-                            data-testid={`thread-item-tool-logs-${toolKey || index}`}
-                            id={`thread-item-tool-logs-${toolKey || index}`}
-                            className="tooltip tooltip-top relative text-base-content"
-                            data-tip="function logs"
-                          >
-                            <SquareFunctionIcon
-                              size={22}
-                              onClick={(event) => handleToolPrimaryClick(event, tool)}
-                              className="opacity-80 cursor-pointer"
-                            />
-                          </div>
-                          <div className="tooltip tooltip-top pr-2 relative text-base-content" data-tip="function data">
-                            <FileClockIcon
-                              data-testid={`thread-item-tool-data-${toolKey || index}`}
-                              id={`thread-item-tool-data-${toolKey || index}`}
-                              size={22}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setToolsData(tool);
-                                toolsDataModalRef.current?.showModal();
-                              }}
-                              className="opacity-80 bg-inherit cursor-pointer"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                : item?.function
-                  ? Object.keys(item.function).map(renderToolData)
-                  : []}
+        {/* 2a. Pre-tools (executed before LLM call) - badges shown right below the user bubble (right-aligned) */}
+        {preTools.length > 0 && (
+          <div className="-mt-2 mb-4 flex flex-wrap gap-2 justify-end items-center pr-12">
+            {preTools.map((tool, index) => (
+              <button
+                type="button"
+                data-testid={`thread-item-pre-tool-${tool?.id || tool?.name || index}`}
+                id={`thread-item-pre-tool-${tool?.id || tool?.name || index}`}
+                key={`pre-${tool?.id || tool?.name || index}`}
+                onClick={(event) => handleToolPrimaryClick(event, tool)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setToolsData(tool);
+                  toolsDataModalRef.current?.showModal();
+                }}
+                title={`Pre-tool: ${getToolNameHelper(tool)} (right-click for data)`}
+                className="inline-flex items-center gap-2 rounded-lg border border-base-content/15 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm transition-all duration-200 hover:border-base-content/30 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+              >
+                <SquareFunctionIcon size={13} className="shrink-0 opacity-80" />
+                <span className="truncate max-w-[160px]">Pre: {getToolNameHelper(tool)}</span>
+                <ChevronRight size={11} className="shrink-0 opacity-70" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 2b. Post-tools chips shown above the assistant bubble (only for post_tool type) */}
+        {postTools.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2 justify-start items-center pl-12">
+            {postTools.map((tool, index) => (
+              <button
+                type="button"
+                data-testid={`thread-item-post-tool-${tool?.id || tool?.name || index}`}
+                id={`thread-item-post-tool-${tool?.id || tool?.name || index}`}
+                key={`post-${tool?.id || tool?.name || index}`}
+                onClick={(event) => handleToolPrimaryClick(event, tool)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setToolsData(tool);
+                  toolsDataModalRef.current?.showModal();
+                }}
+                title={`Post-tool: ${getToolNameHelper(tool)} (right-click for data)`}
+                className="inline-flex items-center gap-2 rounded-lg border border-base-content/15 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm transition-all duration-200 hover:border-base-content/30 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+              >
+                <SquareFunctionIcon size={13} className="shrink-0 opacity-80" />
+                <span className="truncate max-w-[160px]">Post Tool: {getToolNameHelper(tool)}</span>
+                <ChevronRight size={11} className="shrink-0 opacity-70" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Other tools (pre_function, post_function, etc.) rendered using renderToolData */}
+        {otherTools.length > 0 && (
+          <div className="mb-6 mt-4 flex flex-col items-center w-full justify-center">
+            <h3 className="text-sm font-medium text-base-content/70 mb-4">() Functions Executed Successfully</h3>
+            <div
+              className={`grid ${otherTools.length === 1 ? "grid-cols-1" : otherTools.length === 2 ? "grid-cols-2" : "grid-cols-3"} gap-2 justify-center`}
+            >
+              {otherTools.map((tool, index) => renderToolData(tool, index))}
             </div>
           </div>
         )}
@@ -843,9 +912,25 @@ const ThreadItem = ({
               style={{ width: "-webkit-fill-available" }}
             >
               <div
-                className="bg-base-200 text-base-content pr-10 mb-7 chat-bubble transition-all ease-in-out duration-300 relative group break-words"
+                className={`bg-base-200 text-base-content pr-10 pt-6 mb-7 chat-bubble transition-all ease-in-out duration-300 relative group break-words overflow-visible border border-base-300 ${
+                  preFunctionEntry ? "min-w-[16rem]" : ""
+                }`}
                 style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
               >
+                {preFunctionEntry && (
+                  <button
+                    type="button"
+                    onClick={handlePreFunctionClick}
+                    className="absolute -top-3 left-3 z-20 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-full border border-base-content/30 ring-1 ring-base-content/10 bg-base-100 px-3 py-1 text-xs font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-base-content/50 hover:ring-base-content/20 hover:bg-base-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-base-content/35"
+                    title="Open pre-function logs"
+                    aria-label="Open pre-function logs"
+                  >
+                    <SquareFunctionIcon size={14} className="shrink-0 opacity-80" />
+                    <span className="block truncate">Pre-Function Logs: {preFunctionStripText}</span>
+                    <ChevronRight size={12} className="shrink-0 opacity-70" />
+                  </button>
+                )}
+
                 {/* Assistant attachments */}
                 {renderAttachments(normalizeImageUrls(item?.llm_urls, "llm"))}
 
