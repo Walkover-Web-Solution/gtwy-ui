@@ -15,15 +15,17 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { formatRelativeTime, getToolName, openModal } from "@/utils/utility";
+import { formatRelativeTime, getIconOfService, getToolName, openModal } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
-import { AlertTriangle, CheckCircle2, Clock3, ExternalLink, ChevronRight } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, ExternalLink, RotateCcw, ChevronRight } from "lucide-react";
+import { rerunApi } from "@/config/modelApi";
+import { toast } from "react-toastify";
 import { GenericSlider, useSlider } from "@/utils/sliderUtility";
+import CodeBlock from "../codeBlock/CodeBlock";
 
 // Resolve any possible url shape (string, object with permanent_url, etc.)
 const resolveAttachmentUrl = (rawUrl) => {
@@ -141,6 +143,7 @@ const ThreadItem = ({
   index,
   item,
   thread,
+  isSingleQuery = false,
   threadHandler,
   formatDateAndTime,
   integrationData,
@@ -151,6 +154,7 @@ const ThreadItem = ({
   handleAddTestCase,
   setModalInput,
 }) => {
+  console.log(item, "hello");
   // Determine message type based on new data structure
   const getInitialMessageType = () => {
     if (item?.user === "user") {
@@ -175,6 +179,28 @@ const ThreadItem = ({
     allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
   }));
   const [isDropupOpen, setIsDropupOpen] = useState(false);
+  const [isRerunning, setIsRerunning] = useState(false);
+  const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
+  const handleRerun = async () => {
+    if (!item?.message_id) return;
+    setIsRerunning(true);
+    try {
+      await rerunApi({
+        agent_id: item.bridge_id,
+        thread_id: item?.thread_id,
+        sub_thread_id: item?.sub_thread_id,
+        message_ids: [item.message_id],
+      });
+      toast.success("Rerun triggered successfully");
+    } catch {
+    } finally {
+      setIsRerunning(false);
+    }
+  };
+
+  const [debugQuery, setDebugQuery] = useState("");
+  const [isUserQueryExpanded, setIsUserQueryExpanded] = useState(false);
+  const [isAiResponseExpanded, setIsAiResponseExpanded] = useState(false);
   const { sliderState, openSlider, closeSlider } = useSlider();
   const dropupRef = useRef(null);
   const router = useRouter();
@@ -506,42 +532,6 @@ const ThreadItem = ({
     [knowledgeBaseData, openSlider, embedToken, params?.id, params?.org_id, orgBridges, allBridgesMap]
   );
 
-  const renderToolData = useCallback(
-    (tool, index) => (
-      <div
-        key={index}
-        className="bg-base-200 rounded-lg flex gap-4 duration-200 items-center justify-between hover:bg-base-300 p-1"
-      >
-        <div
-          onClick={(event) => handleToolPrimaryClick(event, tool)}
-          className="cursor-pointer flex items-center justify-center py-4 pl-2"
-        >
-          <div className="text-center">{truncate(getToolNameHelper(tool), 20)}</div>
-        </div>
-        <div className="flex gap-3">
-          <div className="tooltip tooltip-top relative text-base-content" data-tip="function logs">
-            <SquareFunctionIcon
-              size={22}
-              onClick={(event) => handleToolPrimaryClick(event, tool)}
-              className="opacity-80 cursor-pointer"
-            />
-          </div>
-          <div className="tooltip tooltip-top pr-2 relative text-base-content" data-tip="function data">
-            <FileClockIcon
-              size={22}
-              onClick={() => {
-                setToolsData(tool);
-                toolsDataModalRef.current?.showModal();
-              }}
-              className="opacity-80 bg-inherit cursor-pointer"
-            />
-          </div>
-        </div>
-      </div>
-    ),
-    [handleToolPrimaryClick, integrationData, setToolsData]
-  );
-
   const handleUserButtonClick = (value) => {
     threadHandler(item.thread_id, item, value);
   };
@@ -555,15 +545,26 @@ const ThreadItem = ({
     } catch (error) {
       console.error("Failed to fetch single message:", error);
     }
-    window.SendDataToChatbot({
-      parentId: "",
-      bridgeName: "history_page_chabot",
-      threadId: String(item?.id),
-      variables,
-      version_id: "null",
-      hideCloseButton: "false",
-    });
-    setTimeout(() => window.openChatbot(), 100);
+    if (typeof window.SendDataToChatbot === "function") {
+      window.SendDataToChatbot({
+        parentId: "",
+        bridgeName: "history_page_chabot",
+        threadId: String(item?.id),
+        variables,
+        version_id: "null",
+        hideCloseButton: "false",
+      });
+      setTimeout(() => {
+        if (typeof window.openChatbot === "function") window.openChatbot();
+        setTimeout(() => {
+          if (item?.user && typeof window.Chatbot?.askAi === "function") {
+            window.Chatbot.askAi({ message: debugQuery });
+          }
+        }, 300);
+      }, 100);
+    } else {
+      console.warn("Chatbot embed script not loaded. SendDataToChatbot is unavailable.");
+    }
   };
 
   // Render attachments (images / pdf) for a message bubble with simple UI
@@ -643,349 +644,1129 @@ const ThreadItem = ({
     );
   };
 
+  const renderHighlightedSystemPrompt = (content) => {
+    const variables = item?.variables || {};
+    // Build list of {key, value} sorted by value length desc to match longest first
+    // Skip values that are too long to be safe for regex (>200 chars)
+    const entries = Object.entries(variables)
+      .map(([key, val]) => ({ key, value: typeof val === "object" ? JSON.stringify(val) : String(val ?? "") }))
+      .filter((e) => e.value.length > 0 && e.value.length <= 200)
+      .sort((a, b) => b.value.length - a.value.length);
+
+    if (entries.length === 0) return <span>{content}</span>;
+
+    let parts;
+    try {
+      const pattern = entries.map((e) => e.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+      const regex = new RegExp(`(${pattern})`, "g");
+      parts = content.split(regex);
+    } catch {
+      return <span>{content}</span>;
+    }
+
+    return parts.map((part, i) => {
+      const matched = entries.find((e) => e.value === part);
+      if (matched) {
+        return (
+          <span
+            key={i}
+            className="inline rounded px-1 py-0.5 font-mono bg-primary/15 text-primary border border-primary/30"
+            title={`Variable: ${matched.key}`}
+          >
+            {part}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   return (
     <div
       data-testid={`message-${messageId}`}
       key={`item-id-${item?.id}`}
       id={`message-${messageId}`}
       ref={(el) => (threadRefs.current[messageId] = el)}
-      className="text-sm"
+      className="text-sm overflow-x-hidden"
     >
-      <div className="show-on-hover">
-        {/* 1. First: Render User Message if exists */}
-        <div className="chat group chat-end mb-4">
-          <div className="chat-image avatar flex justify-center items-center">
-            <div className="p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors">
-              <div className="relative rounded-full bg-base-300 flex justify-center items-center">
-                <UserIcon size={20} className="text-base-content" />
-              </div>
-            </div>
-          </div>
-          <div
-            className="flex justify-start flex-row-reverse items-center gap-1"
-            style={{ width: "-webkit-fill-available" }}
-          >
-            <div
-              className="chat-bubble-primary chat-bubble transition-all ease-in-out duration-300 relative group break-words"
-              style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-line" }}
-            >
-              {/* User attachments - shown above message text */}
-              {renderAttachments(normalizeImageUrls(item?.user_urls, "user"))}
-              <div>{item.user}</div>
-            </div>
-          </div>
-
-          {/* User message footer with timestamp and actions */}
-          <div className="flex flex-row-reverse gap-2 m-1 items-center justify-between">
-            <time className="text-xs opacity-50 chat-end relative w-[140px] inline-block text-right">
-              <span className="group-hover:hidden">{formatRelativeTime(item.created_at)}</span>
-              <span className="hidden group-hover:inline absolute right-0 top-0">
-                {formatDateAndTime(item.created_at)}
+      {/* Sticky header */}
+      {isSingleQuery && (
+        <div className="sticky top-0 z-20 bg-base-100 px-4 py-1 mb-3 flex items-center justify-between gap-2 border-b border-base-300 overflow-x-auto">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {item?.service && (
+              <span className="flex items-center" title={item.service}>
+                {getIconOfService(item.service, 14, 14)}
               </span>
-            </time>
-            <div className="flex gap-1 opacity-70 hover:opacity-100 transition-opacity see-on-hover">
+            )}
+            {item?.model && <span className="text-xs font-medium text-base-content/60">{item.model}</span>}
+            {(item?.tokens?.input_tokens != null || item?.tokens?.output_tokens != null) && (
+              <span className="text-xs text-base-content/40 flex items-center gap-1">
+                <span className="text-base-content/20">·</span>
+                <span>Tokens:</span>
+                <span className="font-medium text-base-content/60">{item.tokens.input_tokens ?? 0} input</span>
+                <span className="text-base-content/20">/</span>
+                <span className="font-medium text-base-content/60">{item.tokens.output_tokens ?? 0} output</span>
+              </span>
+            )}
+            {item?.tokens?.expected_cost && (
+              <span className="text-xs text-base-content/40 flex items-center gap-1">
+                <span className="text-base-content/20">·</span>
+                <span>Cost:</span>
+                <span className="font-medium text-base-content/60">
+                  ${parseFloat(item.tokens.expected_cost).toFixed(4)}
+                </span>
+              </span>
+            )}
+            {item?.version_id && (
+              <span className="text-xs text-base-content/40 flex items-center gap-1">
+                <span className="text-base-content/20">·</span>
+                <span>Version:</span>
+                <span className="font-medium text-base-content/60">{item.version_id}</span>
+              </span>
+            )}
+            {item?.message_id && (
+              <span className="text-xs text-base-content/40 flex items-center gap-1">
+                <span className="text-base-content/20">·</span>
+                <span>Message ID:</span>
+                <span className="font-medium text-base-content/60">{item.message_id}</span>
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="btn btn-ghost btn-xs rounded-md gap-1.5"
+              onClick={handleRerun}
+              disabled={isRerunning}
+              title="Rerun this message"
+            >
+              <RotateCcw className={`h-3 w-3 ${isRerunning ? "animate-spin" : ""}`} />
+              <span>{isRerunning ? "Running..." : "Rerun"}</span>
+            </button>
+            <div className="flex items-center gap-0.5 bg-base-200 rounded-lg p-1">
               <button
-                className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
-                onClick={handleVisualizeClick}
-              >
-                <ExternalLink className="h-3 w-3" />
-                <span>Visualize</span>
-              </button>
-              <button
-                data-testid="thread-item-user-aiconfig-button"
-                id="thread-item-user-aiconfig-button"
-                className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
+                data-testid="thread-item-user-aiconfig-button-sticky"
+                className="btn btn-ghost btn-xs rounded-md gap-1.5"
                 onClick={() => handleUserButtonClick("AiConfig")}
               >
                 <SquareFunctionIcon className="h-3 w-3" />
                 <span>AI Config</span>
               </button>
+              <div className="w-px h-4 bg-base-300 mx-0.5" />
               <button
-                data-testid="thread-item-user-variables-button"
-                id="thread-item-user-variables-button"
-                className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
-                onClick={() => handleUserButtonClick("variables")}
-              >
-                <ParenthesesIcon className="h-3 w-3" />
-                <span>Variables</span>
-              </button>
-              <button
-                data-testid="thread-item-user-system-prompt-button"
-                id="thread-item-user-system-prompt-button"
-                className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
-                onClick={() => handleUserButtonClick("system Prompt")}
-              >
-                <FileClockIcon className="h-3 w-3" />
-                <span>System Prompt</span>
-              </button>
-              <button
-                data-testid="thread-item-user-more-button"
-                id="thread-item-user-more-button"
-                className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
-                onClick={() => handleUserButtonClick("more")}
+                id="thread-item-add-test-case-button-sticky"
+                className="btn btn-ghost btn-xs rounded-md gap-1.5"
+                onClick={() => handleAddTestCase(item, index)}
               >
                 <AddIcon className="h-3 w-3" />
-                <span>More...</span>
+                <span>Test Case</span>
               </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* 2a. Pre-tools (executed before LLM call) - badges shown right below the user bubble (right-aligned) */}
-        {preTools.length > 0 && (
-          <div className="-mt-2 mb-4 flex flex-wrap gap-2 justify-end items-center pr-12">
-            {preTools.map((tool, index) => (
-              <button
-                type="button"
-                data-testid={`thread-item-pre-tool-${tool?.id || tool?.name || index}`}
-                id={`thread-item-pre-tool-${tool?.id || tool?.name || index}`}
-                key={`pre-${tool?.id || tool?.name || index}`}
-                onClick={(event) => handleToolPrimaryClick(event, tool)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setToolsData(tool);
-                  toolsDataModalRef.current?.showModal();
-                }}
-                title={`Pre-tool: ${getToolNameHelper(tool)} (right-click for data)`}
-                className="inline-flex items-center gap-2 rounded-lg border border-base-content/15 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm transition-all duration-200 hover:border-base-content/30 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
-              >
-                <SquareFunctionIcon size={13} className="shrink-0 opacity-80" />
-                <span className="truncate max-w-[160px]">Pre: {getToolNameHelper(tool)}</span>
-                <ChevronRight size={11} className="shrink-0 opacity-70" />
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Pre Tool Banner - Above System Prompt */}
+      {isSingleQuery &&
+        item?.tools_call_data?.length > 0 &&
+        (() => {
+          // Find the pre_tool from tools_call_data
+          const preFunction = item.tools_call_data
+            .flatMap((tools) => Object.values(tools || {}))
+            .find((tool) => tool?.type === "pre_tool");
 
-        {/* 2b. Post-tools chips shown above the assistant bubble (only for post_tool type) */}
-        {postTools.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2 justify-start items-center pl-12">
-            {postTools.map((tool, index) => (
-              <button
-                type="button"
-                data-testid={`thread-item-post-tool-${tool?.id || tool?.name || index}`}
-                id={`thread-item-post-tool-${tool?.id || tool?.name || index}`}
-                key={`post-${tool?.id || tool?.name || index}`}
-                onClick={(event) => handleToolPrimaryClick(event, tool)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setToolsData(tool);
-                  toolsDataModalRef.current?.showModal();
-                }}
-                title={`Post-tool: ${getToolNameHelper(tool)} (right-click for data)`}
-                className="inline-flex items-center gap-2 rounded-lg border border-base-content/15 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm transition-all duration-200 hover:border-base-content/30 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
-              >
-                <SquareFunctionIcon size={13} className="shrink-0 opacity-80" />
-                <span className="truncate max-w-[160px]">Post Tool: {getToolNameHelper(tool)}</span>
-                <ChevronRight size={11} className="shrink-0 opacity-70" />
-              </button>
-            ))}
-          </div>
-        )}
+          if (!preFunction) return null;
+          return (
+            <div className="mb-2 px-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-base-content/70 shrink-0">Pre Function:</span>
+                <div
+                  onClick={(e) => handleToolPrimaryClick(e, preFunction)}
+                  className="inline-flex items-center justify-between gap-3 bg-base-200 border border-base-300 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-base-300 transition-colors"
+                >
+                  <span className="font-medium truncate max-w-[120px]" title={getToolNameHelper(preFunction)}>
+                    {truncate(getToolNameHelper(preFunction), 20)}
+                  </span>
+                  <div className="flex gap-3">
+                    <div className="tooltip tooltip-top" data-tip="function logs">
+                      <SquareFunctionIcon
+                        size={22}
+                        onClick={(e) => handleToolPrimaryClick(e, preFunction)}
+                        className="opacity-80 cursor-pointer"
+                      />
+                    </div>
+                    <div className="tooltip tooltip-top pr-2" data-tip="function data">
+                      <FileClockIcon
+                        size={22}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setToolsData(preFunction);
+                          toolsDataModalRef.current?.showModal();
+                        }}
+                        className="opacity-80 bg-inherit cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
-        {/* Other tools (pre_function, post_function, etc.) rendered using renderToolData */}
-        {otherTools.length > 0 && (
-          <div className="mb-6 mt-4 flex flex-col items-center w-full justify-center">
-            <h3 className="text-sm font-medium text-base-content/70 mb-4">() Functions Executed Successfully</h3>
+      {/* System Prompt Banner - Below Header */}
+      {isSingleQuery && item?.AiConfig?.input?.[0]?.content && (
+        <div className="mb-3 px-4">
+          <div className="bg-base-200 border border-base-300 rounded-lg hover:border-base-content/20 hover:shadow-sm">
             <div
-              className={`grid ${otherTools.length === 1 ? "grid-cols-1" : otherTools.length === 2 ? "grid-cols-2" : "grid-cols-3"} gap-2 justify-center`}
+              className="px-3 py-2 flex items-center justify-between gap-2 cursor-pointer hover:bg-base-200/80 rounded-lg"
+              onClick={() => setIsSystemPromptExpanded(!isSystemPromptExpanded)}
             >
-              {otherTools.map((tool, index) => renderToolData(tool, index))}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FileTextIcon size={14} className="text-base-content/60 shrink-0" />
+                <span className="text-xs font-medium text-base-content/70">System Prompt:</span>
+                {!isSystemPromptExpanded && (
+                  <span className="text-xs text-base-content/50 truncate flex-1">{item.AiConfig.input[0].content}</span>
+                )}
+              </div>
+              <ChevronDown
+                size={16}
+                className={`text-base-content/60 shrink-0 transition-transform duration-0 ${isSystemPromptExpanded ? "rotate-180" : ""}`}
+              />
+            </div>
+            <div
+              className={`overflow-hidden transition-[max-height] duration-200 ease-in-out ${
+                isSystemPromptExpanded ? "max-h-[500px]" : "max-h-0"
+              }`}
+            >
+              <div className="px-3 pb-3 pt-2 border-t border-base-300">
+                <div className="text-xs text-base-content whitespace-pre-wrap max-h-64 overflow-y-auto bg-base-100 rounded p-2.5 border border-base-300 leading-relaxed">
+                  {renderHighlightedSystemPrompt(item.AiConfig.input[0].content)}
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 3. Third: Render Assistant Message if exists */}
-        {!item.error && (
-          <div className="chat group chat-start">
-            <div className="chat-image avatar flex justify-center items-center">
-              <div className="p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors mb-7">
-                <div className="relative rounded-full bg-base-300 flex justify-center items-center">
-                  <BotIcon
-                    data-testid="thread-item-bot-icon"
-                    id="thread-item-bot-icon"
-                    className="cursor-pointer bot-icon text-base-content"
-                    size={20}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsDropupOpen(!isDropupOpen);
-                    }}
+      <div className={isSingleQuery ? "" : "show-on-hover"}>
+        {isSingleQuery ? (
+          /* ── Single-query vertical flow ── */
+          <div className="flex flex-col items-center py-2">
+            {/* User Query card */}
+            <div className="w-full bg-primary rounded-xl px-4 py-3 text-base-200" style={{ wordBreak: "break-word" }}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center shrink-0">
+                  <UserIcon size={13} className="text-base-content" />
+                </div>
+                <span className="text-xs font-semibold text-base-200 uppercase tracking-wide">User Query</span>
+              </div>
+              {renderAttachments(normalizeImageUrls(item?.user_urls, "user"))}
+              <div className={!isUserQueryExpanded ? "line-clamp-5 overflow-hidden" : "whitespace-pre-line"}>
+                <ReactMarkdown
+                  components={{
+                    code: ({ node, inline, className, children, ...props }) => (
+                      <CodeBlock className={className} {...props}>
+                        {children}
+                      </CodeBlock>
+                    ),
+                  }}
+                >
+                  {item.user}
+                </ReactMarkdown>
+              </div>
+              {item.user?.split("\n").length > 7 || item.user?.length > 400 ? (
+                <button
+                  className="mt-1 text-xs text-base-200/70 hover:text-base-200 flex items-center gap-1"
+                  onClick={() => setIsUserQueryExpanded(!isUserQueryExpanded)}
+                >
+                  <ChevronDown
+                    size={12}
+                    className={`transition-transform duration-150 ${isUserQueryExpanded ? "rotate-180" : ""}`}
                   />
-                  {isDropupOpen && (
+                  {isUserQueryExpanded ? "Show less" : "Show more"}
+                </button>
+              ) : null}
+            </div>
+
+            {/* Tools — sequential steps from function_time_logs, parallel within each step */}
+            {(item?.tools_call_data?.length > 0 || item?.function) &&
+              (() => {
+                // Get all tools from tools_call_data
+                const allTools = item?.tools_call_data
+                  ? item.tools_call_data.flatMap((toolObj) => Object.entries(toolObj || {}))
+                  : [];
+
+                // Filter based on mode
+                const allToolEntries = allTools.filter(([, tool]) => {
+                  // In stateful mode: include ALL tools (including pre_tool)
+                  if (!isSingleQuery) return true;
+                  // In stateless mode: exclude pre_tool (it's shown separately)
+                  return tool?.type !== "pre_tool";
+                });
+
+                // Handle function_time_logs as both object and array
+                let functionTimeLogsArr = [];
+                if (Array.isArray(item?.latency?.function_time_logs)) {
+                  functionTimeLogsArr = item.latency.function_time_logs;
+                } else if (item?.latency?.function_time_logs && typeof item.latency.function_time_logs === "object") {
+                  // If it's an object, convert to array
+                  functionTimeLogsArr = Object.values(item.latency.function_time_logs);
+                }
+
+                // Extract execution_time_logs from latency object and filter out retry times
+                const executionTimeLogs = (() => {
+                  const executionLogs = item?.latency?.execution_time_logs;
+
+                  if (!Array.isArray(executionLogs)) return [];
+
+                  // Filter out retry entries (where step contains "Retry")
+                  return executionLogs.filter((log) => log?.step && !log.step.toLowerCase().includes("retry"));
+                })();
+
+                const renderToolChip = ([toolKey, tool], chipIndex) => {
+                  const isPreTool = tool?.type === "pre_tool";
+                  const toolLabel = isPreTool ? `Pre Tool: ${getToolNameHelper(tool)}` : getToolNameHelper(tool);
+                  return (
                     <div
-                      ref={dropupRef}
-                      className="absolute bg-red-500 text-white rounded-md shadow-lg border-2 border-black min-w-[150px] min-h-[100px]"
-                      style={{
-                        zIndex: 9999,
-                        top: "-120px",
-                        left: "-75px",
-                        backgroundColor: "red",
-                        border: "2px solid black",
-                        padding: "10px",
-                      }}
-                      onClick={(e) => e.stopPropagation()}
+                      key={toolKey || chipIndex}
+                      data-testid={`thread-item-tool-${toolKey || chipIndex}`}
+                      id={`thread-item-tool-${toolKey || chipIndex}`}
+                      onClick={(event) => handleToolPrimaryClick(event, tool)}
+                      className={`flex items-center gap-1.5 border rounded-lg px-3 py-1.5 cursor-pointer transition-colors text-sm ${
+                        isPreTool
+                          ? "bg-warning/10 border-warning/30 hover:bg-warning/20"
+                          : "bg-base-100 border-base-300 hover:bg-base-300"
+                      }`}
                     >
-                      <div style={{ color: "white", fontSize: "14px" }}>TEST DROPDOWN VISIBLE</div>
-                      <ul className="flex justify-center flex-col items-center gap-2 p-2">
-                        {item.chatbot_message && (
-                          <li>
-                            <button
-                              data-testid="thread-item-select-chatbot-message"
-                              id="thread-item-select-chatbot-message"
-                              className={`px-2 py-1 rounded-md ${
-                                messageType === "chatbot_message" || messageType === 0
-                                  ? "bg-primary text-white"
-                                  : "hover:bg-base-200"
-                              }`}
-                              onClick={() => selectMessageType("chatbot_message")}
-                            >
-                              <div className="tooltip tooltip-right" data-tip="Chatbot Response">
-                                <BotIcon
-                                  className={`${messageType !== "chatbot_message" && messageType !== 0 ? "text-base-content" : "text-white"}`}
-                                  size={16}
-                                />
-                              </div>
-                            </button>
-                          </li>
+                      <span className="font-medium truncate max-w-[120px]" title={toolLabel}>
+                        {truncate(toolLabel, 20)}
+                      </span>
+                      <div className="flex items-center gap-1 ml-0.5">
+                        <div className="tooltip tooltip-top" data-tip="function logs">
+                          <SquareFunctionIcon
+                            size={14}
+                            onClick={(event) => handleToolPrimaryClick(event, tool)}
+                            className="opacity-50 hover:opacity-100 cursor-pointer"
+                          />
+                        </div>
+                        <div className="tooltip tooltip-top" data-tip="function data">
+                          <FileClockIcon
+                            data-testid={`thread-item-tool-data-${toolKey || chipIndex}`}
+                            id={`thread-item-tool-data-${toolKey || chipIndex}`}
+                            size={14}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setToolsData(tool);
+                              toolsDataModalRef.current?.showModal();
+                            }}
+                            className="opacity-50 hover:opacity-100 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                };
+
+                if (!item?.tools_call_data) return null;
+                // Show tools section if there are tools to display or if there's a function
+                if (allToolEntries.length === 0 && !item?.function) return null;
+
+                if (functionTimeLogsArr.length > 0) {
+                  /* All steps side by side in one row */
+                  // First execution time goes on arrow from User Query to Tools (index 0)
+                  const firstExecutionTime = executionTimeLogs[0]?.time_taken;
+
+                  return (
+                    <>
+                      {/* Arrow above the row of steps with first execution time */}
+                      <div className="flex flex-row items-center justify-center my-2 w-full max-w-xl gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-px h-4 bg-base-content/20" />
+                          <ChevronDown size={12} className="text-base-content/30" />
+                        </div>
+                        {firstExecutionTime > 0 && (
+                          <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
+                            <Clock3 size={12} /> {firstExecutionTime.toFixed(2)}s
+                          </span>
                         )}
-                        {item.llm_message && (
-                          <li>
-                            <button
-                              data-testid="thread-item-select-llm-message"
-                              id="thread-item-select-llm-message"
-                              className={`px-2 py-1 rounded-md ${
-                                messageType === "llm_message" || messageType === 1
-                                  ? "bg-primary text-white"
-                                  : "hover:bg-base-200"
-                              }`}
-                              onClick={() => selectMessageType("llm_message")}
-                            >
-                              <div className="tooltip tooltip-right" data-tip="LLM Response">
-                                <CodeMessageIcon
-                                  className={`${messageType !== "llm_message" && messageType !== 1 ? "text-base-content" : "text-white"}`}
-                                  size={16}
-                                />
+                      </div>
+
+                      {/* Parent container with border around all tools */}
+                      <div className="w-full max-w-xl border border-base-300 rounded-xl px-4 py-4 bg-base-200/30">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-semibold text-base-content/40 uppercase tracking-wide">
+                            Functions Executed
+                          </span>
+                        </div>
+                        {/* Step boxes side by side with arrows */}
+                        <div className="flex flex-row items-center gap-2">
+                          {functionTimeLogsArr.map((logEntry, stepIndex) => {
+                            const stepNames = (logEntry.step || "")
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean);
+                            const isParallel = stepNames.length > 1;
+                            const stepTime = parseFloat(logEntry.time_taken) || 0;
+                            const stepToolEntries = allToolEntries.filter(([, tool]) =>
+                              stepNames.some((n) => n === tool?.name)
+                            );
+                            const displayEntries =
+                              stepToolEntries.length > 0 ? stepToolEntries : stepNames.map((n) => [n, { name: n }]);
+
+                            const toolChips = displayEntries.map(([toolKey, tool], i) => (
+                              <div
+                                key={toolKey || i}
+                                data-testid={`thread-item-tool-${toolKey || i}`}
+                                id={`thread-item-tool-${toolKey || i}`}
+                                onClick={(event) => handleToolPrimaryClick(event, tool)}
+                                className="flex items-center gap-1.5 bg-base-100 border border-base-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-base-300 transition-colors text-sm"
+                              >
+                                <span className="font-medium truncate max-w-[120px]" title={getToolNameHelper(tool)}>
+                                  {truncate(getToolNameHelper(tool), 20)}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <div className="tooltip tooltip-top" data-tip="function logs">
+                                    <SquareFunctionIcon
+                                      size={13}
+                                      onClick={(event) => handleToolPrimaryClick(event, tool)}
+                                      className="opacity-50 hover:opacity-100 cursor-pointer"
+                                    />
+                                  </div>
+                                  <div className="tooltip tooltip-top" data-tip="function data">
+                                    <FileClockIcon
+                                      data-testid={`thread-item-tool-data-${toolKey || i}`}
+                                      id={`thread-item-tool-data-${toolKey || i}`}
+                                      size={13}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setToolsData(tool);
+                                        toolsDataModalRef.current?.showModal();
+                                      }}
+                                      className="opacity-50 hover:opacity-100 cursor-pointer"
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                            </button>
-                          </li>
-                        )}
-                        {item.updated_llm_message && (
-                          <li>
-                            <button
-                              data-testid="thread-item-select-updated-message"
-                              id="thread-item-select-updated-message"
-                              className={`px-2 py-1 rounded-md ${
-                                messageType === "updated_llm_message" || messageType === 2
-                                  ? "bg-primary text-white"
-                                  : "hover:bg-base-200"
-                              }`}
-                              onClick={() => selectMessageType("updated_llm_message")}
-                            >
-                              <div className="tooltip tooltip-right" data-tip="Updated Message">
-                                <PencilIcon
-                                  className={`${messageType !== "updated_llm_message" && messageType !== 2 ? "text-base-content" : "text-white"}`}
-                                  size={16}
-                                />
+                            ));
+
+                            const toolBox = isParallel ? (
+                              /* Parallel: bordered box with absolute time badge top-right */
+                              <div
+                                key={stepIndex}
+                                className="flex-1 relative border border-base-300 rounded-xl px-3 py-2.5 bg-base-200 min-w-0"
+                              >
+                                {stepTime > 0 && (
+                                  <span className="absolute -top-2 -right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
+                                    <Clock3 size={10} /> {stepTime.toFixed(2)}s
+                                  </span>
+                                )}
+                                <p className="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-2">
+                                  Parallel
+                                </p>
+                                <div className="flex flex-row flex-wrap gap-1.5">{toolChips}</div>
                               </div>
-                            </button>
-                          </li>
-                        )}
-                      </ul>
+                            ) : (
+                              /* Single: bordered box with time badge absolute top-right */
+                              <div
+                                key={stepIndex}
+                                className="flex-1 relative border border-base-300 rounded-xl px-3 py-2.5 bg-base-200 min-w-0"
+                              >
+                                {stepTime > 0 && (
+                                  <span className="absolute -top-2 -right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
+                                    <Clock3 size={10} /> {stepTime.toFixed(2)}s
+                                  </span>
+                                )}
+                                <div className="flex flex-row flex-wrap gap-1.5">{toolChips}</div>
+                              </div>
+                            );
+
+                            // Execution time for arrow between tools (stepIndex + 1 because index 0 is used for User Query arrow)
+                            const arrowExecutionTime = executionTimeLogs[stepIndex + 1]?.time_taken;
+
+                            return (
+                              <React.Fragment key={stepIndex}>
+                                {toolBox}
+                                {/* Arrow between tools with execution time */}
+                                {stepIndex < functionTimeLogsArr.length - 1 && (
+                                  <div className="shrink-0 flex flex-col items-center gap-1">
+                                    {arrowExecutionTime > 0 && (
+                                      <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
+                                        <Clock3 size={12} /> {arrowExecutionTime.toFixed(2)}s
+                                      </span>
+                                    )}
+                                    <ChevronRight size={16} className="text-base-content/30" />
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {/* Show pre_tools separately if they exist and not in function_time_logs */}
+                      {(() => {
+                        const preToolsNotInLogs = allToolEntries.filter(
+                          ([, tool]) =>
+                            tool?.type === "pre_tool" &&
+                            !functionTimeLogsArr.some((log) =>
+                              (log.step || "")
+                                .split(",")
+                                .map((s) => s.trim())
+                                .includes(tool?.name)
+                            )
+                        );
+                        if (preToolsNotInLogs.length === 0) return null;
+                        return (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {preToolsNotInLogs.map((entry, i) => renderToolChip(entry, i))}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  );
+                }
+
+                /* Fallback: no function_time_logs — show all tools in one group */
+                const firstExecutionTime = executionTimeLogs[0]?.time_taken;
+
+                return (
+                  <>
+                    <div className="flex flex-row items-center justify-center my-2 w-full max-w-xl gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-px h-4 bg-base-content/20" />
+                        <ChevronDown size={12} className="text-base-content/30" />
+                      </div>
+                      {firstExecutionTime > 0 && (
+                        <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
+                          <Clock3 size={12} /> {firstExecutionTime.toFixed(2)}s
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-full max-w-xl border border-base-300 rounded-xl px-4 py-3 bg-base-200">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="text-xs font-semibold text-base-content/40 uppercase tracking-wide">
+                          Functions Executed
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {allToolEntries.map((entry, i) => renderToolChip(entry, i))}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+
+            {/* Arrow connector to AI response with final execution time */}
+            {!item.error &&
+              (() => {
+                // Extract execution_time_logs for the final arrow
+                const executionTimeLogs = (() => {
+                  const executionLogs = item?.latency?.execution_time_logs;
+                  if (!Array.isArray(executionLogs)) return [];
+
+                  return executionLogs.filter((log) => log?.step && !log.step.toLowerCase().includes("retry"));
+                })();
+
+                // Last execution time goes on arrow from Tools to AI Response
+                const lastExecutionTime = executionTimeLogs[executionTimeLogs.length - 1]?.time_taken;
+
+                return (
+                  <div className="flex flex-row items-center justify-center my-2 w-full max-w-xl gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-px h-4 bg-base-content/20" />
+                      <ChevronDown size={12} className="text-base-content/30" />
+                    </div>
+                    {lastExecutionTime > 0 && (
+                      <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
+                        <Clock3 size={12} /> {lastExecutionTime.toFixed(2)}s
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+            {/* AI Response card */}
+            {!item.error && (
+              <div className="w-full relative">
+                {/* Total time badge — top right outside card */}
+                {item?.latency?.over_all_time && (
+                  <span className="absolute -top-2 right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
+                    <Clock3 size={10} /> {parseFloat(item.latency.over_all_time).toFixed(2)}s total
+                  </span>
+                )}
+                <div
+                  className="bg-base-200 rounded-xl px-4 py-3 text-sm text-base-content relative group"
+                  style={{ wordBreak: "break-word" }}
+                >
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className="w-6 h-6 rounded-full bg-base-300 flex items-center justify-center cursor-pointer relative shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDropupOpen(!isDropupOpen);
+                      }}
+                    >
+                      <BotIcon
+                        data-testid="thread-item-bot-icon"
+                        id="thread-item-bot-icon"
+                        size={13}
+                        className="text-base-content"
+                      />
+                      {isDropupOpen && (
+                        <div
+                          ref={dropupRef}
+                          className="absolute bg-base-100 border border-base-300 rounded-lg shadow-lg min-w-[130px] p-1"
+                          style={{ zIndex: 9999, top: "28px", left: "0" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <p className="text-xs font-medium text-base-content/50 px-2 pt-1 pb-1">View as</p>
+                          <ul className="flex flex-col gap-0.5">
+                            {item.chatbot_message && (
+                              <li>
+                                <button
+                                  data-testid="thread-item-select-chatbot-message"
+                                  id="thread-item-select-chatbot-message"
+                                  className={`w-full text-left px-2 py-1 rounded-md text-xs ${messageType === "chatbot_message" || messageType === 0 ? "bg-primary text-white" : "hover:bg-base-200"}`}
+                                  onClick={() => selectMessageType("chatbot_message")}
+                                >
+                                  Chatbot
+                                </button>
+                              </li>
+                            )}
+                            {item.llm_message && (
+                              <li>
+                                <button
+                                  data-testid="thread-item-select-llm-message"
+                                  id="thread-item-select-llm-message"
+                                  className={`w-full text-left px-2 py-1 rounded-md text-xs ${messageType === "llm_message" || messageType === 1 ? "bg-primary text-white" : "hover:bg-base-200"}`}
+                                  onClick={() => selectMessageType("llm_message")}
+                                >
+                                  LLM
+                                </button>
+                              </li>
+                            )}
+                            {item.updated_llm_message && (
+                              <li>
+                                <button
+                                  data-testid="thread-item-select-updated-message"
+                                  id="thread-item-select-updated-message"
+                                  className={`w-full text-left px-2 py-1 rounded-md text-xs ${messageType === "updated_llm_message" || messageType === 2 ? "bg-primary text-white" : "hover:bg-base-200"}`}
+                                  onClick={() => selectMessageType("updated_llm_message")}
+                                >
+                                  Updated
+                                </button>
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-base-content/40 uppercase tracking-wide">
+                      AI Response
+                    </span>
+                    {messageType === "updated_llm_message" && (
+                      <span className="badge badge-xs badge-outline">Edited</span>
+                    )}
+                    {isBatchResponse && (
+                      <span className={`badge badge-xs gap-1 text-white ${batchStatusMeta.className}`}>
+                        <BatchStatusIcon size={10} />
+                        {batchStatusMeta.label}
+                      </span>
+                    )}
+                  </div>
+                  {renderAttachments(normalizeImageUrls(item?.llm_urls, "llm"))}
+                  <div className={!isAiResponseExpanded ? "line-clamp-5 overflow-hidden" : "whitespace-pre-line"}>
+                    {isChatbotMessage() && containsHTML(getMessageToDisplay()) ? (
+                      <div dangerouslySetInnerHTML={{ __html: getMessageToDisplay() }} />
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          code: ({ node, inline, className, children, ...props }) => (
+                            <CodeBlock className={className} {...props}>
+                              {children}
+                            </CodeBlock>
+                          ),
+                        }}
+                      >
+                        {getMessageToDisplay()}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+                  {(() => {
+                    const msg = getMessageToDisplay();
+                    return msg?.split("\n").length > 7 || msg?.length > 400;
+                  })() && (
+                    <button
+                      className="mt-1 text-xs text-primary/70 hover:text-primary flex items-center gap-1"
+                      onClick={() => setIsAiResponseExpanded(!isAiResponseExpanded)}
+                    >
+                      <ChevronDown
+                        size={12}
+                        className={`transition-transform duration-150 ${isAiResponseExpanded ? "rotate-180" : ""}`}
+                      />
+                      {isAiResponseExpanded ? "Show less" : "Show more"}
+                    </button>
+                  )}
+                  {!item?.llm_urls?.length && !item?.fromRTLayer && (
+                    <div
+                      className="tooltip absolute"
+                      style={{ top: "-0.5rem", right: "7.5rem" }}
+                      data-tip="Edit message"
+                    >
+                      <button
+                        id="thread-item-edit-message-button"
+                        className="btn btn-xs btn-circle btn-ghost opacity-0 group-hover:opacity-100"
+                        onClick={handleEdit}
+                      >
+                        <PencilIcon size={13} />
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-            <div className="chat-header flex gap-4 items-center mb-1">
-              {messageType === "updated_llm_message" && (
-                <p className="text-xs opacity-50 badge badge-sm badge-outline">Edited</p>
-              )}
-              {isBatchResponse && (
-                <span className={`badge badge-sm gap-1 text-white ${batchStatusMeta.className}`}>
-                  <BatchStatusIcon size={12} />
-                  Batch: {batchStatusMeta.label}
-                </span>
-              )}
-            </div>
-            <div
-              className="flex justify-start items-center gap-1 show-on-hover"
-              style={{ width: "-webkit-fill-available" }}
-            >
+            )}
+          </div>
+        ) : (
+          /* ── Multi-query chat bubble layout ── */
+          <div>
+            {/* User message */}
+            <div className="chat group chat-end mb-4">
+              <div className="chat-image avatar flex justify-center items-center">
+                <div className="w-100 p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors">
+                  <div className="relative rounded-full bg-base-300 flex justify-center items-center">
+                    <UserIcon size={20} className="text-base-content" />
+                  </div>
+                </div>
+              </div>
               <div
-                className={`bg-base-200 text-base-content pr-10 pt-6 mb-7 chat-bubble transition-all ease-in-out duration-300 relative group break-words overflow-visible border border-base-300 ${
-                  preFunctionEntry ? "min-w-[16rem]" : ""
-                }`}
-                style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
+                className="flex justify-start flex-row-reverse items-center gap-1"
+                style={{ width: "-webkit-fill-available" }}
               >
-                {preFunctionEntry && (
-                  <button
-                    type="button"
-                    onClick={handlePreFunctionClick}
-                    className="absolute -top-3 left-3 z-20 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-full border border-base-content/30 ring-1 ring-base-content/10 bg-base-100 px-3 py-1 text-xs font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-base-content/50 hover:ring-base-content/20 hover:bg-base-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-base-content/35"
-                    title="Open pre-function logs"
-                    aria-label="Open pre-function logs"
-                  >
-                    <SquareFunctionIcon size={14} className="shrink-0 opacity-80" />
-                    <span className="block truncate">Pre-Function Logs: {preFunctionStripText}</span>
-                    <ChevronRight size={12} className="shrink-0 opacity-70" />
-                  </button>
-                )}
-
-                {/* Assistant attachments */}
-                {renderAttachments(normalizeImageUrls(item?.llm_urls, "llm"))}
-
-                {/* Message content */}
-                {isChatbotMessage() && containsHTML(getMessageToDisplay()) ? (
-                  <div dangerouslySetInnerHTML={{ __html: getMessageToDisplay() }} />
-                ) : (
-                  <div className={mdProseClass.dark}>
-                    <ReactMarkdown components={mdComponentsDark} remarkPlugins={mdRemarkPlugins}>
-                      {getMessageToDisplay()}
-                    </ReactMarkdown>
-                  </div>
-                )}
-
-                {/* Edit button for assistant messages */}
-                {!item?.llm_urls?.length && !item?.fromRTLayer && (
-                  <div
-                    className={`tooltip absolute top-2 right-2 text-sm cursor-pointer transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                    data-tip="Edit message"
-                  >
-                    <button
-                      id="thread-item-edit-message-button"
-                      className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
-                      onClick={handleEdit}
-                    >
-                      <PencilIcon size={14} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Action buttons for assistant messages */}
                 <div
-                  className={`absolute bottom-[-40px] see-on-hover left-0 flex gap-2 mt-2transition-opacity z-10 ${
-                    isLastMessage() ? "opacity-70" : "opacity-0 group-hover:opacity-70"
-                  }`}
+                  className="chat-bubble-primary chat-bubble transition-all ease-in-out duration-300 relative group break-words"
+                  style={{ wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-line" }}
                 >
+                  {renderAttachments(normalizeImageUrls(item?.user_urls, "user"))}
+                  <ReactMarkdown
+                    components={{
+                      code: ({ node, inline, className, children, ...props }) => (
+                        <CodeBlock className={className} {...props}>
+                          {children}
+                        </CodeBlock>
+                      ),
+                    }}
+                  >
+                    {item.user}
+                  </ReactMarkdown>
+                </div>
+              </div>
+              <div className="flex flex-row-reverse gap-2 m-1 items-center justify-between">
+                <time className="text-xs opacity-50 chat-end relative w-[140px] inline-block text-right">
+                  <span className="group-hover:hidden">{formatRelativeTime(item.created_at)}</span>
+                  <span className="hidden group-hover:inline absolute right-0 top-0">
+                    {formatDateAndTime(item.created_at)}
+                  </span>
+                </time>
+                <div className="flex gap-1 opacity-70 hover:opacity-100 transition-opacity see-on-hover">
                   <button
-                    id="thread-item-add-test-case-button"
-                    className="btn text-xs font-normal btn-sm hover:btn-primary"
-                    onClick={() => handleAddTestCase(item, index)}
+                    className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
+                    onClick={handleVisualizeClick}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span>Visualize</span>
+                  </button>
+                  <button
+                    data-testid="thread-item-user-aiconfig-button"
+                    id="thread-item-user-aiconfig-button"
+                    className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
+                    onClick={() => handleUserButtonClick("AiConfig")}
+                  >
+                    <SquareFunctionIcon className="h-3 w-3" />
+                    <span>AI Config</span>
+                  </button>
+                  <button
+                    data-testid="thread-item-user-variables-button"
+                    id="thread-item-user-variables-button"
+                    className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
+                    onClick={() => handleUserButtonClick("variables")}
+                  >
+                    <ParenthesesIcon className="h-3 w-3" />
+                    <span>Variables</span>
+                  </button>
+                  <button
+                    data-testid="thread-item-user-system-prompt-button"
+                    id="thread-item-user-system-prompt-button"
+                    className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
+                    onClick={() => handleUserButtonClick("system Prompt")}
+                  >
+                    <FileClockIcon className="h-3 w-3" />
+                    <span>System Prompt</span>
+                  </button>
+                  <button
+                    data-testid="thread-item-user-more-button"
+                    id="thread-item-user-more-button"
+                    className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
+                    onClick={() => handleUserButtonClick("more")}
                   >
                     <AddIcon className="h-3 w-3" />
-                    <span>Test Case</span>
-                  </button>
-                  <button
-                    id="thread-item-debug-agent-button"
-                    className="btn text-xs font-normal btn-sm hover:btn-primary"
-                    onClick={() => handleAskAi(item)}
-                  >
-                    <BotMessageIcon className="h-3 w-3" />
-                    <span>Debug Agent</span>
+                    <span>More...</span>
                   </button>
                 </div>
               </div>
             </div>
+
+            {/* Tools section for stateful mode */}
+            {!isSingleQuery &&
+              (item?.tools_call_data?.length > 0 || item?.function) &&
+              (() => {
+                // Get all tools from tools_call_data
+                const allTools = item?.tools_call_data
+                  ? item.tools_call_data.flatMap((toolObj) => Object.entries(toolObj || {}))
+                  : [];
+
+                // Filter based on mode
+                const allToolEntries = allTools.filter(([, tool]) => {
+                  // In stateful mode: include ALL tools (including pre_tool)
+                  if (!isSingleQuery) return true;
+                  // In stateless mode: exclude pre_tool (it's shown separately)
+                  return tool?.type !== "pre_tool";
+                });
+                // Handle function_time_logs as both object and array
+                let functionTimeLogsArr = [];
+                if (Array.isArray(item?.latency?.function_time_logs)) {
+                  functionTimeLogsArr = item.latency.function_time_logs;
+                } else if (item?.latency?.function_time_logs && typeof item.latency.function_time_logs === "object") {
+                  // If it's an object, convert to array
+                  functionTimeLogsArr = Object.values(item.latency.function_time_logs);
+                }
+
+                const renderToolChip = ([toolKey, tool], chipIndex) => {
+                  const isPreTool = tool?.type === "pre_tool";
+                  const toolLabel = isPreTool ? `Pre Tool: ${getToolNameHelper(tool)}` : getToolNameHelper(tool);
+                  return (
+                    <div
+                      key={toolKey || chipIndex}
+                      data-testid={`thread-item-tool-${toolKey || chipIndex}`}
+                      id={`thread-item-tool-${toolKey || chipIndex}`}
+                      onClick={(event) => handleToolPrimaryClick(event, tool)}
+                      className={`flex items-center gap-1.5 border rounded-lg px-3 py-1.5 cursor-pointer transition-colors text-sm ${
+                        isPreTool
+                          ? "bg-warning/10 border-warning/30 hover:bg-warning/20"
+                          : "bg-base-100 border-base-300 hover:bg-base-300"
+                      }`}
+                    >
+                      <span className="font-medium truncate max-w-[120px]" title={toolLabel}>
+                        {truncate(toolLabel, 20)}
+                      </span>
+                      <div className="flex items-center gap-1 ml-0.5">
+                        <div className="tooltip tooltip-top" data-tip="function logs">
+                          <SquareFunctionIcon
+                            size={14}
+                            onClick={(event) => handleToolPrimaryClick(event, tool)}
+                            className="opacity-50 hover:opacity-100 cursor-pointer"
+                          />
+                        </div>
+                        <div className="tooltip tooltip-top" data-tip="function data">
+                          <FileClockIcon
+                            data-testid={`thread-item-tool-data-${toolKey || chipIndex}`}
+                            id={`thread-item-tool-data-${toolKey || chipIndex}`}
+                            size={14}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setToolsData(tool);
+                              toolsDataModalRef.current?.showModal();
+                            }}
+                            className="opacity-50 hover:opacity-100 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                };
+
+                if (!item?.tools_call_data) return null;
+                // Show tools section if there are tools to display or if there's a function
+                if (allToolEntries.length === 0 && !item?.function) return null;
+
+                if (functionTimeLogsArr.length > 0) {
+                  return (
+                    <div className="mb-4 flex flex-col items-center justify-center w-full gap-2">
+                      <h3 className="text-sm font-medium text-base-content/70">Functions Executed</h3>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {allToolEntries.map((entry, i) => renderToolChip(entry, i))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                /* Fallback: no function_time_logs — show all tools in one group */
+                return (
+                  <div className="mb-4 flex flex-col items-center justify-center w-full gap-2">
+                    <h3 className="text-sm font-medium text-base-content/70">Functions Executed</h3>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {allToolEntries.map((entry, i) => renderToolChip(entry, i))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+            {/* 2a. Pre-tools (executed before LLM call) - only show in stateless mode */}
+            {isSingleQuery && preTools.length > 0 && (
+              <div className="-mt-2 mb-4 flex flex-wrap gap-2 justify-end items-center pr-12">
+                {preTools.map((tool, index) => (
+                  <button
+                    type="button"
+                    data-testid={`thread-item-pre-tool-${tool?.id || tool?.name || index}`}
+                    id={`thread-item-pre-tool-${tool?.id || tool?.name || index}`}
+                    key={`pre-${tool?.id || tool?.name || index}`}
+                    onClick={(event) => handleToolPrimaryClick(event, tool)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setToolsData(tool);
+                      toolsDataModalRef.current?.showModal();
+                    }}
+                    title={`Pre-tool: ${getToolNameHelper(tool)} (right-click for data)`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-base-content/15 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm transition-all duration-200 hover:border-base-content/30 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+                  >
+                    <SquareFunctionIcon size={13} className="shrink-0 opacity-80" />
+                    <span className="truncate max-w-[160px]">Pre: {getToolNameHelper(tool)}</span>
+                    <ChevronRight size={11} className="shrink-0 opacity-70" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 2b. Post-tools chips shown above the assistant bubble (only for post_tool type) - only show in stateless mode */}
+            {isSingleQuery && postTools.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2 justify-start items-center pl-12">
+                {postTools.map((tool, index) => (
+                  <button
+                    type="button"
+                    data-testid={`thread-item-post-tool-${tool?.id || tool?.name || index}`}
+                    id={`thread-item-post-tool-${tool?.id || tool?.name || index}`}
+                    key={`post-${tool?.id || tool?.name || index}`}
+                    onClick={(event) => handleToolPrimaryClick(event, tool)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setToolsData(tool);
+                      toolsDataModalRef.current?.showModal();
+                    }}
+                    title={`Post-tool: ${getToolNameHelper(tool)} (right-click for data)`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-base-content/15 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm transition-all duration-200 hover:border-base-content/30 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95"
+                  >
+                    <SquareFunctionIcon size={13} className="shrink-0 opacity-80" />
+                    <span className="truncate max-w-[160px]">Post Tool: {getToolNameHelper(tool)}</span>
+                    <ChevronRight size={11} className="shrink-0 opacity-70" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Other tools (pre_function, post_function, etc.) rendered using renderToolData */}
+            {otherTools.length > 0 && (
+              <div className="mb-6 mt-4 flex flex-col items-center w-full justify-center">
+                <h3 className="text-sm font-medium text-base-content/70 mb-4">() Functions Executed Successfully</h3>
+                <div
+                  className={`grid ${otherTools.length === 1 ? "grid-cols-1" : otherTools.length === 2 ? "grid-cols-2" : "grid-cols-3"} gap-2 justify-center`}
+                >
+                  {otherTools.map((tool, index) => renderToolData(tool, index))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Third: Render Assistant Message if exists */}
+            {!item.error && (
+              <div className="chat group chat-start">
+                <div className="chat-image avatar flex justify-center items-center">
+                  <div className="p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors mb-7">
+                    <div className="relative rounded-full bg-base-300 flex justify-center items-center">
+                      <BotIcon
+                        data-testid="thread-item-bot-icon"
+                        id="thread-item-bot-icon"
+                        className="cursor-pointer bot-icon text-base-content"
+                        size={20}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsDropupOpen(!isDropupOpen);
+                        }}
+                      />
+                      {isDropupOpen && (
+                        <div
+                          ref={dropupRef}
+                          className="absolute bg-base-100 border border-base-300 rounded-lg shadow-lg min-w-[140px] p-1"
+                          style={{ zIndex: 9999, top: "-130px", left: "-50px" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <p className="text-xs font-medium text-base-content/50 px-2 pt-1 pb-1">View as</p>
+                          <ul className="flex flex-col gap-0.5">
+                            {item.chatbot_message && (
+                              <li>
+                                <button
+                                  data-testid="thread-item-select-chatbot-message"
+                                  id="thread-item-select-chatbot-message"
+                                  className={`px-2 py-1 rounded-md ${
+                                    messageType === "chatbot_message" || messageType === 0
+                                      ? "bg-primary text-white"
+                                      : "hover:bg-base-200"
+                                  }`}
+                                  onClick={() => selectMessageType("chatbot_message")}
+                                >
+                                  <div className="tooltip tooltip-right" data-tip="Chatbot Response">
+                                    <BotIcon
+                                      className={`${messageType !== "chatbot_message" && messageType !== 0 ? "text-base-content" : "text-white"}`}
+                                      size={16}
+                                    />
+                                  </div>
+                                </button>
+                              </li>
+                            )}
+                            {item.llm_message && (
+                              <li>
+                                <button
+                                  data-testid="thread-item-select-llm-message"
+                                  id="thread-item-select-llm-message"
+                                  className={`px-2 py-1 rounded-md ${
+                                    messageType === "llm_message" || messageType === 1
+                                      ? "bg-primary text-white"
+                                      : "hover:bg-base-200"
+                                  }`}
+                                  onClick={() => selectMessageType("llm_message")}
+                                >
+                                  <div className="tooltip tooltip-right" data-tip="LLM Response">
+                                    <CodeMessageIcon
+                                      className={`${messageType !== "llm_message" && messageType !== 1 ? "text-base-content" : "text-white"}`}
+                                      size={16}
+                                    />
+                                  </div>
+                                </button>
+                              </li>
+                            )}
+                            {item.updated_llm_message && (
+                              <li>
+                                <button
+                                  data-testid="thread-item-select-updated-message"
+                                  id="thread-item-select-updated-message"
+                                  className={`px-2 py-1 rounded-md ${
+                                    messageType === "updated_llm_message" || messageType === 2
+                                      ? "bg-primary text-white"
+                                      : "hover:bg-base-200"
+                                  }`}
+                                  onClick={() => selectMessageType("updated_llm_message")}
+                                >
+                                  <div className="tooltip tooltip-right" data-tip="Updated Message">
+                                    <PencilIcon
+                                      className={`${messageType !== "updated_llm_message" && messageType !== 2 ? "text-base-content" : "text-white"}`}
+                                      size={16}
+                                    />
+                                  </div>
+                                </button>
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="chat-header flex gap-4 items-center mb-1">
+                  {messageType === "updated_llm_message" && (
+                    <p className="text-xs opacity-50 badge badge-sm badge-outline">Edited</p>
+                  )}
+                  {isBatchResponse && (
+                    <span className={`badge badge-sm gap-1 text-white ${batchStatusMeta.className}`}>
+                      <BatchStatusIcon size={12} />
+                      Batch: {batchStatusMeta.label}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="flex justify-start items-center gap-1 show-on-hover"
+                  style={{ width: "-webkit-fill-available" }}
+                >
+                  <div
+                    className={`bg-base-200 text-base-content pr-10 pt-6 mb-7 chat-bubble transition-all ease-in-out duration-300 relative group break-words overflow-visible border border-base-300 ${
+                      preFunctionEntry ? "min-w-[16rem]" : ""
+                    }`}
+                    style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
+                  >
+                    {preFunctionEntry && (
+                      <button
+                        type="button"
+                        onClick={handlePreFunctionClick}
+                        className="absolute -top-3 left-3 z-20 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-full border border-base-content/30 ring-1 ring-base-content/10 bg-base-100 px-3 py-1 text-xs font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-base-content/50 hover:ring-base-content/20 hover:bg-base-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-base-content/35"
+                        title="Open pre-function logs"
+                        aria-label="Open pre-function logs"
+                      >
+                        <SquareFunctionIcon size={14} className="shrink-0 opacity-80" />
+                        <span className="block truncate">Pre-Function Logs: {preFunctionStripText}</span>
+                        <ChevronRight size={12} className="shrink-0 opacity-70" />
+                      </button>
+                    )}
+
+                    {/* Assistant attachments */}
+                    {renderAttachments(normalizeImageUrls(item?.llm_urls, "llm"))}
+
+                    {/* Message content */}
+                    {isChatbotMessage() && containsHTML(getMessageToDisplay()) ? (
+                      <div dangerouslySetInnerHTML={{ __html: getMessageToDisplay() }} />
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          code: ({ node, inline, className, children, ...props }) => (
+                            <CodeBlock className={className} {...props}>
+                              {children}
+                            </CodeBlock>
+                          ),
+                        }}
+                      >
+                        {getMessageToDisplay()}
+                      </ReactMarkdown>
+                    )}
+
+                    {/* Edit button for assistant messages */}
+                    {!item?.llm_urls?.length && !item?.fromRTLayer && (
+                      <div
+                        className={`tooltip absolute top-2 right-2 text-sm cursor-pointer transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                        data-tip="Edit message"
+                      >
+                        <button
+                          id="thread-item-edit-message-button"
+                          className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
+                          onClick={handleEdit}
+                        >
+                          <PencilIcon size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Debug Agent footer — multi-query */}
+            {!item.error && (
+              <div
+                className={`see-on-hover flex gap-2 ml-14 mb-2 transition-opacity z-10 ${
+                  isLastMessage() ? "opacity-70" : "opacity-0 group-hover:opacity-70"
+                }`}
+              >
+                <button
+                  id="thread-item-add-test-case-button"
+                  className="btn text-xs font-normal btn-sm hover:btn-primary"
+                  onClick={() => handleAddTestCase(item, index)}
+                >
+                  <AddIcon className="h-3 w-3" />
+                  <span>Test Case</span>
+                </button>
+                <button
+                  id="thread-item-debug-agent-button"
+                  className="btn text-xs font-normal btn-sm hover:btn-primary"
+                  onClick={() => handleAskAi(item)}
+                >
+                  <BotMessageIcon className="h-3 w-3" />
+                  <span>Debug Agent</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1005,6 +1786,39 @@ const ThreadItem = ({
                   <BotIcon className="text-base-content" size={18} />
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Agent footer — single-query */}
+        {isSingleQuery && (
+          <div className="mt-4 mb-2">
+            <div className="flex items-center gap-2 border border-base-200 rounded-lg px-3 py-2 bg-base-100 focus-within:border-primary/50 transition-colors">
+              <BotMessageIcon className="h-3.5 w-3.5 text-base-content/40 shrink-0" />
+              <input
+                type="text"
+                value={debugQuery}
+                onChange={(e) => setDebugQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && debugQuery.trim()) {
+                    handleAskAi({ ...item, user: debugQuery.trim() });
+                    setDebugQuery("");
+                  }
+                }}
+                placeholder="Debug with me..."
+                className="flex-1 bg-transparent text-sm outline-none text-base-content placeholder:text-base-content/30"
+              />
+              <button
+                id="thread-item-debug-agent-button"
+                disabled={!debugQuery.trim()}
+                onClick={() => {
+                  handleAskAi({ ...item, user: debugQuery.trim() });
+                  setDebugQuery("");
+                }}
+                className="btn btn-primary btn-xs rounded-md"
+              >
+                Send
+              </button>
             </div>
           </div>
         )}

@@ -3,14 +3,7 @@ import { getHistoryAction, getSubThreadsAction } from "@/store/action/historyAct
 import { clearSubThreadData, clearThreadData, setSelectedVersion } from "@/store/reducer/historyReducer.js";
 import { USER_FEEDBACK_FILTER_OPTIONS, HISTORY_FILTER_BY_FIELDS } from "@/utils/enums.js";
 import { formatDate, formatRelativeTime } from "@/utils/utility.js";
-import {
-  ThumbsDownIcon,
-  ThumbsUpIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  UserIcon,
-  MessageCircleIcon,
-} from "@/components/Icons";
+import { ThumbsDownIcon, ThumbsUpIcon, UserIcon, MessageCircleIcon } from "@/components/Icons";
 import { useEffect, useState, memo, useCallback } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useDispatch } from "react-redux";
@@ -41,22 +34,39 @@ const Sidebar = memo(
     isErrorTrue,
     activeFilterByRef,
   }) => {
-    const { subThreads, userFeedbackCount, bridgeVersionsArray } = useCustomSelector((state) => ({
-      subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
-      userFeedbackCount: state?.historyReducer?.userFeedbackCount,
-      bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
-        ? state.bridgeReducer.allBridgesMap[params.id].versions
-        : [],
-    }));
+    const { subThreads, userFeedbackCount, bridgeVersionsArray, allBridgesMap, bridgeVersionMapping } =
+      useCustomSelector((state) => ({
+        subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
+        userFeedbackCount: state?.historyReducer?.userFeedbackCount,
+        bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
+          ? state.bridgeReducer.allBridgesMap[params.id].versions
+          : [],
+        allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
+        bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping || {},
+      }));
 
     const [selectedThreadIds, _setSelectedThreadIds] = useState([]);
     const [expandedThreads, setExpandedThreads] = useState([]);
-    const [loadingSubThreads, setLoadingSubThreads] = useState(true);
     const [searchLoading, setSearchLoading] = useState(false);
     const [filterByFields, setFilterByFields] = useState({ ...HISTORY_FILTER_BY_FIELDS, variables: {} });
     const [variableKey, setVariableKey] = useState("");
     const [variableValue, setVariableValue] = useState("");
+    const isBridgeStateless = (bridgeId) => {
+      const bridgeInfo = allBridgesMap?.[bridgeId];
+      const versions = bridgeInfo?.versions || [];
+      const vMapping = bridgeVersionMapping?.[bridgeId] || {};
+      return versions.some((vId) => vMapping?.[vId]?.settings?.stateless_conversation === true);
+    };
 
+    const isThreadSingleQuery = (item) => {
+      if (!isBridgeStateless(params?.id)) return false;
+      // For the currently expanded thread, check actual subthread count from reducer
+      if (decodeURIComponent(searchParams?.thread_id) === item?.thread_id) {
+        return subThreads.length <= 1;
+      }
+      // For other threads, assume single query since we don't have their subthread count
+      return true;
+    };
     const searchQuery = (searchRef?.current && searchRef.current.value) || searchParams?.message_id || "";
     const dispatch = useDispatch();
     const pathName = usePathname();
@@ -97,7 +107,6 @@ const Sidebar = memo(
       if (searchParams?.thread_id) {
         setExpandedThreads([searchParams?.thread_id]);
         dispatch(clearSubThreadData());
-        setLoadingSubThreads(true);
         dispatch(
           getSubThreadsAction({
             thread_id: searchParams?.thread_id,
@@ -115,7 +124,6 @@ const Sidebar = memo(
       const liveThreadId = p.get("thread_id");
       const versionMismatch = selectedVersion !== "all" && liveVersion !== selectedVersion;
       if (!liveThreadId || !liveVersion || versionMismatch) {
-        setTimeout(() => setLoadingSubThreads(false), 1000);
         return;
       }
       if (subThreads?.length > 0) {
@@ -125,7 +133,6 @@ const Sidebar = memo(
           router.push(url, undefined, { shallow: true });
         }
       }
-      setTimeout(() => setLoadingSubThreads(false), 1000);
     }, [subThreads, selectedVersion]);
     const debounce = (func, delay) => {
       let timeoutId;
@@ -302,7 +309,6 @@ const Sidebar = memo(
         setExpandedThreads((prev) => prev.filter((id) => id !== threadId));
       } else {
         setExpandedThreads([threadId]);
-        setLoadingSubThreads(true);
         await dispatch(
           getSubThreadsAction({
             thread_id: threadId,
@@ -311,7 +317,6 @@ const Sidebar = memo(
             version_id: selectedVersion,
           })
         );
-        setLoadingSubThreads(false);
       }
     };
 
@@ -338,16 +343,6 @@ const Sidebar = memo(
       setFilterOption(user_feedback);
       setThreadPage(1);
     };
-
-    const Skeleton = ({ count = 3 }) => (
-      <div className="pl-4 p-2">
-        {[...Array(count)].map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="h-6 bg-base-300 rounded-md mb-2"></div>
-          </div>
-        ))}
-      </div>
-    );
 
     const NoDataFound = () => (
       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -640,111 +635,19 @@ const Sidebar = memo(
                           }}
                         >
                           <a className="w-full h-full flex items-center justify-between relative">
-                            <span className="truncate flex-1 mr-1.5 text-xs">{truncate(item?.thread_id, 30)}</span>
+                            {!isThreadSingleQuery(item) && (
+                              <span className="truncate flex-1 mr-1.5 text-xs">{truncate(item?.thread_id, 30)}</span>
+                            )}
                             <span className="group-hover:hidden">{formatRelativeTime(item?.updated_at)}</span>
                             <span className="hidden group-hover:inline">{formatDate(item?.updated_at)}</span>
                             {/* Tooltip for full thread ID on hover */}
-                            {item?.thread_id?.length > 35 && (
+                            {!isThreadSingleQuery(item) && item?.thread_id?.length > 35 && (
                               <div className="absolute left-0 top-full mt-1 bg-gray-800 text-white text-xs rounded px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-low max-w-[260px] break-words shadow-lg pointer-events-none">
                                 {item?.thread_id}
                               </div>
                             )}
-                            {/* Show chevron button only when no search query */}
-                            {!searchQuery && decodeURIComponent(searchParams?.thread_id) === item?.thread_id && (
-                              <div
-                                data-testid={`history-sidebar-thread-toggle-${item?.thread_id}`}
-                                id={`history-sidebar-thread-toggle-${item?.thread_id}`}
-                                onClick={(e) => {
-                                  e?.stopPropagation();
-                                  handleToggleThread(item?.thread_id);
-                                }}
-                                className="absolute right-2 cursor-pointer"
-                              >
-                                {expandedThreads?.includes(item?.thread_id) ? (
-                                  <ChevronUpIcon size={14} />
-                                ) : (
-                                  <ChevronDownIcon size={14} />
-                                )}
-                              </div>
-                            )}
                           </a>
                         </li>
-                        {decodeURIComponent(searchParams?.thread_id) === searchParams?.thread_id &&
-                          !searchQuery &&
-                          expandedThreads?.includes(item?.thread_id) && (
-                            <>
-                              {loadingSubThreads ? (
-                                <Skeleton />
-                              ) : (
-                                <div className="pl-4 p-1.5 text-base-content text-xs rounded-x-lg rounded-b-lg shadow-sm  overflow-hidden">
-                                  <ul>
-                                    {subThreads?.length === 0 ? (
-                                      <li className="text-xs p-1">No sub thread available</li>
-                                    ) : (
-                                      [...subThreads]
-                                        .sort((a, b) => {
-                                          const aDate = new Date(
-                                            a?.created_at || a?.createdAt || a?.updated_at || a?.updatedAt || 0
-                                          ).getTime();
-                                          const bDate = new Date(
-                                            b?.created_at || b?.createdAt || b?.updated_at || b?.updatedAt || 0
-                                          ).getTime();
-                                          return bDate - aDate; // newest first
-                                        })
-                                        .map((subThreadId, index) => {
-                                          return (
-                                            <li
-                                              data-testid={`history-sidebar-subthread-${subThreadId?.sub_thread_id}`}
-                                              id={`history-sidebar-subthread-${subThreadId?.sub_thread_id}`}
-                                              key={index}
-                                              className={`cursor-pointer group ${
-                                                searchParams?.subThread_id === subThreadId?.sub_thread_id
-                                                  ? "hover:bg-base-primary hover:text-base-100"
-                                                  : "hover:bg-base-300 hover:text-base-content"
-                                              } rounded-md transition-all duration-200 text-xs ${
-                                                searchParams?.subThread_id === subThreadId?.sub_thread_id
-                                                  ? "bg-primary text-base-100"
-                                                  : ""
-                                              }`}
-                                              onClick={() =>
-                                                handleSelectSubThread(
-                                                  subThreadId?.sub_thread_id,
-                                                  searchParams?.thread_id
-                                                )
-                                              }
-                                            >
-                                              <div className="flex items-center justify-between">
-                                                <span className="truncate flex-1 mr-1.5">
-                                                  {truncate(
-                                                    subThreadId?.display_name || subThreadId?.sub_thread_id,
-                                                    20
-                                                  )}
-                                                </span>
-                                                {(subThreadId?.updatedAt ||
-                                                  subThreadId?.created_at ||
-                                                  subThreadId?.createdAt ||
-                                                  subThreadId?.updated_at) && (
-                                                  <div>
-                                                    <span className="group-hover:hidden">
-                                                      {formatRelativeTime(
-                                                        subThreadId?.updated_at || subThreadId?.created_at
-                                                      )}
-                                                    </span>
-                                                    <span className="hidden group-hover:inline">
-                                                      {formatDate(subThreadId?.updated_at || subThreadId?.created_at)}
-                                                    </span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </li>
-                                          );
-                                        })
-                                    )}
-                                  </ul>
-                                </div>
-                              )}
-                            </>
-                          )}
                         {decodeURIComponent(searchParams?.thread_id) === item?.thread_id && (
                           <div className="space-y-3">
                             <div

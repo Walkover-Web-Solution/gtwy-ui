@@ -1,0 +1,88 @@
+"use client";
+import { CheckCircle2, Clock3, AlertTriangle } from "lucide-react";
+import { BATCH_PROCESSING_STATUSES } from "@/utils/enums";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { formatRelativeTime } from "@/utils/utility";
+
+const getBatchStatusMeta = (status) => {
+  const statusLower = (status || "").toLowerCase();
+  if (statusLower === "completed") return { icon: CheckCircle2, className: "text-success" };
+  if (BATCH_PROCESSING_STATUSES.includes(statusLower)) return { icon: Clock3, className: "text-warning" };
+  return { icon: AlertTriangle, className: "text-error" };
+};
+
+const BatchSubthreadPanel = ({
+  thread,
+  subThreadIdFromURL,
+  selectedBatchMessageId,
+  onSelectBatch,
+  onSelectSubThread,
+}) => {
+  const subThreads = useCustomSelector((state) =>
+    Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : []
+  );
+
+  const batchMessages = Array.isArray(thread) ? thread.filter((msg) => msg?.batch_data?.batch_id) : [];
+  const hasMultipleSubThreads = subThreads.length > 1;
+  const isVisible = batchMessages.length > 0 || hasMultipleSubThreads;
+  const showBatches = batchMessages.length > 0;
+
+  return (
+    <div
+      className="shrink-0 border-r border-base-300 bg-base-200 flex flex-col overflow-y-auto h-screen transition-all duration-200"
+      style={{ width: isVisible ? "192px" : "0px", minWidth: isVisible ? "192px" : "0px", overflow: "hidden" }}
+    >
+      <div className="w-48">
+        <div className="px-3 py-2 border-b border-base-300 text-xs font-semibold text-base-content/60 uppercase tracking-wider sticky top-0 bg-base-200 z-10 whitespace-nowrap">
+          {showBatches ? "Batches" : "Sub Threads"}
+        </div>
+        <ul className="flex flex-col gap-1 p-2">
+          {showBatches
+            ? batchMessages.map((msg, index) => {
+                const meta = getBatchStatusMeta(msg.batch_data.status);
+                const Icon = meta.icon;
+                const isActive = selectedBatchMessageId === msg.message_id;
+                return (
+                  <li
+                    key={msg.message_id || index}
+                    onClick={() => onSelectBatch(msg.message_id)}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs transition-colors duration-150 ${
+                      isActive ? "bg-primary text-primary-content" : "hover:bg-base-300 text-base-content"
+                    }`}
+                  >
+                    <span className="font-medium truncate flex-1">Batch {index + 1}</span>
+                    <Icon size={13} className={isActive ? "text-primary-content" : meta.className} />
+                  </li>
+                );
+              })
+            : [...subThreads]
+                .sort(
+                  (a, b) =>
+                    new Date(b?.created_at || b?.updated_at || 0) - new Date(a?.created_at || a?.updated_at || 0)
+                )
+                .map((st) => {
+                  const isActive = subThreadIdFromURL === st.sub_thread_id;
+                  return (
+                    <li
+                      key={st.sub_thread_id}
+                      onClick={() => onSelectSubThread(st.sub_thread_id)}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs transition-colors duration-150 ${
+                        isActive ? "bg-primary text-primary-content" : "hover:bg-base-300 text-base-content"
+                      }`}
+                    >
+                      <span className="truncate flex-1">{st.display_name || st.sub_thread_id}</span>
+                      {(st.updated_at || st.created_at) && (
+                        <span className={`shrink-0 ${isActive ? "text-primary-content/70" : "text-base-content/40"}`}>
+                          {formatRelativeTime(st.updated_at || st.created_at)}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default BatchSubthreadPanel;

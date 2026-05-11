@@ -145,6 +145,20 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
   }
 };
 
+export const rerunApi = async ({ agent_id, thread_id, sub_thread_id, message_ids }) => {
+  try {
+    const response = await axios.post(`${PYTHON_URL}/api/v2/model/rerun`, {
+      agent_id,
+      message_ids,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error in rerun API:", error);
+    toast.error(error?.response?.data?.detail?.error || error?.response?.data?.error || "Rerun failed");
+    throw error;
+  }
+};
+
 export const batchApi = async ({ payload }) => {
   try {
     const response = await axios.post(`${PYTHON_URL}/api/v2/model/batch/chat/completion`, payload);

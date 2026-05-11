@@ -41,6 +41,21 @@ body {
   background: oklch(var(--b2));
 }
 
+/* Batch/subthread panel slide-in */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s ease-out forwards;
+}
+
 /* Chat streaming animations */
 @keyframes chunk-fade-in {
   from {

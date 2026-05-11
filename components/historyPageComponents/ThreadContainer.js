@@ -59,9 +59,18 @@ const ThreadContainer = ({
 
   const dispatch = useDispatch();
   const integrationData = useCustomSelector((state) => state?.bridgeReducer?.org?.[orgId]?.integrationData) || {};
-  const { searchResults, isSearchActive } = useCustomSelector((state) => ({
+  const { searchResults, isSearchActive, isSingleQuery } = useCustomSelector((state) => ({
     searchResults: Array.isArray(state?.historyReducer?.search?.results) ? state.historyReducer.search.results : [],
     isSearchActive: state?.historyReducer?.search?.isActive || false,
+    isSingleQuery: (() => {
+      const bridgeInfo = state?.bridgeReducer?.allBridgesMap?.[bridgeId];
+      const versions = bridgeInfo?.versions || [];
+      const vMapping = state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {};
+      const isStateless = versions.some((vId) => vMapping?.[vId]?.settings?.stateless_conversation === true);
+      if (!isStateless) return false;
+      const userMessageCount = Array.isArray(thread) ? thread.filter((msg) => msg?.user).length : 0;
+      return userMessageCount <= 1;
+    })(),
   }));
 
   const historyRef = useRef(null);
@@ -433,21 +442,18 @@ const ThreadContainer = ({
   }, [searchMessageId, scrollToSearchedMessage]);
 
   return (
-    <div
-      data-testid="thread-container"
-      id="thread-container"
-      className="drawer-content flex flex-col items-center overflow-hidden justify-center"
-    >
+    <div data-testid="thread-container" id="thread-container" className="flex-1 flex flex-col overflow-hidden">
       <div className="w-full min-h-screen">
         <div
           data-testid="thread-container-scrollable-div"
           id="scrollableDiv"
           ref={historyRef}
           onScroll={onScroll}
-          className="w-full text-start flex flex-col h-screen overflow-y-auto relative"
+          className="w-full text-start flex flex-col h-screen overflow-y-auto overflow-x-hidden relative"
           style={{
-            height: "90vh",
+            height: "95vh",
             overflowY: "auto",
+            overflowX: "hidden",
             display: "flex",
             flexDirection,
           }}
@@ -482,6 +488,7 @@ const ThreadContainer = ({
                       index={index}
                       item={item}
                       thread={thread}
+                      isSingleQuery={isSingleQuery}
                       threadHandler={threadHandler}
                       formatDateAndTime={formatDateAndTime}
                       integrationData={integrationData}

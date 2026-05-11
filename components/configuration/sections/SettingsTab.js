@@ -28,6 +28,7 @@ const SettingsTab = () => {
     isPublished,
     isEditor,
     cacheOn,
+    statelessConversation,
   } = useConfigurationContext();
 
   const shouldShowTriggers = useMemo(() => bridgeType === "trigger" && !isEmbedUser, [bridgeType, isEmbedUser]);
@@ -45,6 +46,16 @@ const SettingsTab = () => {
         bridgeId: params?.id,
         versionId: searchParams?.version,
         dataToSend: { cache_on: !cacheOn },
+      })
+    );
+  };
+
+  const handleStatelessConversationToggle = () => {
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { settings: { stateless_conversation: !statelessConversation } },
       })
     );
   };
@@ -118,6 +129,32 @@ const SettingsTab = () => {
                   isPublished={isPublished}
                   isEditor={isEditor}
                 />
+              </div>
+            )}
+            {!isEmbedUser && bridgeType !== "chatbot" && (
+              <div
+                data-testid="stateless-conversation-section"
+                id="stateless-conversation-section"
+                className="border border-base-200 p-3 flex items-center justify-between gap-4"
+              >
+                <div>
+                  <p className="text-sm font-medium text-base-content">Stateless Conversation</p>
+                  <p className="text-xs text-base-content/60">
+                    When enabled, each request is treated independently without retaining previous conversation history.
+                  </p>
+                </div>
+                <label className="label cursor-pointer gap-2">
+                  <span className="text-xs font-semibold">{statelessConversation ? "On" : "Off"}</span>
+                  <input
+                    data-testid="stateless-conversation-toggle"
+                    id="stateless-conversation-toggle"
+                    type="checkbox"
+                    disabled={isReadOnly}
+                    className="toggle toggle-sm"
+                    checked={statelessConversation}
+                    onChange={handleStatelessConversationToggle}
+                  />
+                </label>
               </div>
             )}
             {!isEmbedUser && (
