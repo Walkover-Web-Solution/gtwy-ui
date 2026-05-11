@@ -121,16 +121,18 @@ function BridgeVersionDropdown({
     (version) => {
       // Find the index in the original array (this maintains consistent numbering)
       const originalIndex = bridgeVersionsArray.indexOf(version);
+      const versionNumber = `V${originalIndex + 1}`;
+      const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
 
-      if (version === publishedVersion) {
-        // For published version, show "V{number} Published"
-        return `V${originalIndex + 1} `;
+      if (version === publishedVersion && isDrafted) {
+        // For published version with changes, show "V{number} (draft)"
+        return `${versionNumber} (draft)`;
       } else {
-        // For non-published versions, show "V{number}"
-        return `V${originalIndex + 1}`;
+        // For all other versions, show just "V{number}"
+        return versionNumber;
       }
     },
-    [bridgeVersionsArray, publishedVersion]
+    [bridgeVersionsArray, publishedVersion, bridgeVersionMapping]
   );
 
   // Memoize current version and isPublished to prevent unnecessary re-renders
@@ -435,6 +437,7 @@ function BridgeVersionDropdown({
         {versionsToShow.map((version, index) => {
           const isActive = searchParams.get?.("version") === version;
           const isPublished = version === publishedVersion;
+          const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
           const versionDisplayName = getVersionDisplayName(version);
           const versionDesc = getVersionDescription(version);
           const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
@@ -451,10 +454,14 @@ function BridgeVersionDropdown({
                                     ${
                                       isActive
                                         ? isPublished
-                                          ? "bg-green-100 text-green-800 border border-green-300"
+                                          ? isDrafted
+                                            ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                            : "bg-green-100 text-green-800 border border-green-300"
                                           : "bg-primary hover:bg-primary text-primary-content"
                                         : isPublished
-                                          ? "bg-base-100 text-base-content hover:bg-green-50 hover:text-green-700 border border-base-300"
+                                          ? isDrafted
+                                            ? "bg-base-100 text-base-content hover:bg-yellow-50 hover:text-yellow-700 border border-base-300"
+                                            : "bg-base-100 text-base-content hover:bg-green-50 hover:text-green-700 border border-base-300"
                                           : "text-base-content/70 hover:text-base-content"
                                     }
                                 `}
@@ -463,8 +470,10 @@ function BridgeVersionDropdown({
                   <span>{versionDisplayName}</span>
                   {isPublished && (
                     <span
-                      className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"
-                      title="Published Version"
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        isDrafted ? "bg-yellow-400" : "bg-green-500"
+                      }`}
+                      title={isDrafted ? "Published Version with Changes" : "Published Version"}
                     ></span>
                   )}
                 </button>
@@ -519,6 +528,7 @@ function BridgeVersionDropdown({
                   {bridgeVersionsArray.map((version, index) => {
                     const isActive = searchParams?.get?.("version") === version;
                     const isPublished = version === publishedVersion;
+                    const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
                     const versionDisplayName = getVersionDisplayName(version);
                     const versionDesc = getVersionDescription(version);
                     const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
@@ -537,10 +547,14 @@ function BridgeVersionDropdown({
                                                         ${
                                                           isActive
                                                             ? isPublished
-                                                              ? "bg-green-100 text-green-800"
+                                                              ? isDrafted
+                                                                ? "bg-yellow-100 text-yellow-800"
+                                                                : "bg-green-100 text-green-800"
                                                               : "bg-base-300 text-base-content"
                                                             : isPublished
-                                                              ? "bg-base-100 hover:bg-green-50 text-base-content"
+                                                              ? isDrafted
+                                                                ? "bg-base-100 hover:bg-yellow-50 text-base-content"
+                                                                : "bg-base-100 hover:bg-green-50 text-base-content"
                                                               : "bg-base-100 hover:bg-base-200 text-base-content"
                                                         }
                                                     `}
@@ -548,7 +562,10 @@ function BridgeVersionDropdown({
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{versionDisplayName}</span>
                             {isPublished && (
-                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Published Version"></span>
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${isDrafted ? "bg-yellow-400" : "bg-green-500"}`}
+                                title={isDrafted ? "Published Version with Changes" : "Published Version"}
+                              ></span>
                             )}
                             {isActive && (
                               <span className="text-xs text-base-content/60 truncate max-w-24" title={versionDesc}>
