@@ -77,6 +77,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     doctstar_embed_token,
     currrentOrgDetail,
     themeMode,
+    functionData,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -93,6 +94,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     doctstar_embed_token: state?.bridgeReducer?.org?.[resolvedParams.org_id]?.doctstar_embed_token || "",
     currrentOrgDetail: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id],
     themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
+    functionData: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.functionData || {},
   }));
   useEffect(() => {
     if (!isEmbedUser) {
@@ -219,7 +221,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   }, []);
 
   useEmbedScriptLoader(
-    pathName.includes("agents") || pathName.includes("integration")
+    pathName.includes("agents") || pathName.includes("integration") || pathName.includes("tools")
       ? embedToken
       : pathName.includes("alerts") && !isEmbedUser
         ? alertingEmbedToken
@@ -366,7 +368,16 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         window.removeEventListener("message", handleMessage);
       };
     }
-  }, [isValidOrg, resolvedParams.id, versionData, resolvedSearchParams.get("version"), path, variablesPath]);
+  }, [
+    isValidOrg,
+    resolvedParams.id,
+    versionData,
+    resolvedSearchParams.get("version"),
+    path,
+    variablesPath,
+    functionData,
+    pathName,
+  ]);
   async function handleMessage(e) {
     if (e.data?.metadata?.type !== "tool") return;
     // todo: need to make api call to update the name & description
@@ -376,7 +387,18 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         status: e?.data?.action,
       };
       dispatch(integrationAction(dataToSend, resolvedParams?.org_id));
-      if (e?.data?.action === "deleted" && pathName.includes("agents")) {
+      if (e?.data?.action === "deleted" && (pathName.includes("agents") || pathName.includes("tools"))) {
+        // Tools page has no bridge/version context; look up function id directly
+        // from the org's functionData by script_id and remove it.
+        if (pathName.includes("tools") && !pathName.includes("agents")) {
+          const fn = Object.values(functionData || {}).find((f) => f?.script_id === e?.data?.id);
+          if (fn?._id) {
+            dispatch(
+              deleteFunctionAction({ script_id: e?.data?.id, orgId: resolvedParams?.org_id, functionId: fn._id })
+            );
+          }
+          return;
+        }
         if (versionData && typeof versionData === "object" && !Array.isArray(versionData)) {
           const selectedVersionData = Object.values(versionData).find((fn) => fn.script_id === e?.data?.id);
           if (selectedVersionData) {
@@ -418,6 +440,13 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       }
 
       if (e?.data?.action === "published" || e?.data?.action === "updated") {
+        // For "updated" events, ensure the tool still exists in this org's
+        // functionData (it may have been deleted just before the embed fired
+        // a stale update). If it doesn't exist, skip to avoid re-creating it.
+        if (e?.data?.action === "updated") {
+          const toolExists = Object.values(functionData || {}).some((f) => f?.script_id === e?.data?.id);
+          if (!toolExists) return;
+        }
         const dataFromEmbed = {
           url: e?.data?.webhookurl,
           desc: e?.data?.description || e?.data?.title,
