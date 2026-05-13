@@ -211,12 +211,23 @@ function BridgeVersionDropdown({
   const handleVersionChange = useCallback(
     (version) => {
       if (currentVersion === version) return;
-      // Close ConfigHistorySlider when version changes (only if it's open)
       closeSidebar("default-config-history-slider", "right");
       router.push(`/org/${params.org_id}/agents/configure/${params.id}?version=${version}`);
       fetchVersionData(version);
+
+      const versionData = bridgeVersionMapping?.[version];
+      if (isEmbedUser) {
+        sendDataToParent(
+          "version_changed",
+          {
+            version_id: version,
+            variables: versionData?.variables || [],
+          },
+          "Version changed successfully"
+        );
+      }
     },
-    [currentVersion, params.org_id, params.id, router, fetchVersionData]
+    [currentVersion, params.org_id, params.id, router, fetchVersionData, bridgeVersionMapping, isEmbedUser]
   );
 
   const handleCreateNewVersion = () => {
