@@ -326,8 +326,9 @@ function ChatTextInput({
               user: data.content,
               user_urls: userUrls,
               variables,
+              is_playground: true,
               orchestrator_flag: isOrchestralModel,
-              flag:
+              is_stream:
                 bridge?.configuration?.stream !== true ||
                 bridge?.configuration?.response_type?.is_template === true ||
                 bridge?.configuration?.type === "image"
@@ -371,8 +372,14 @@ function ChatTextInput({
               },
               thread_id: threadId,
               text: newMessage,
-              flag: bridge?.configuration?.stream !== true ? false : true,
+              is_playground: true,
               orchestrator_flag: isOrchestralModel,
+              is_stream:
+                bridge?.configuration?.stream !== true ||
+                bridge?.configuration?.response_type?.is_template === true ||
+                bridge?.configuration?.type === "image"
+                  ? false
+                  : true,
             },
             bridge_id: params?.id,
           });
@@ -406,8 +413,14 @@ function ChatTextInput({
                 ...localDataToSend.configuration,
               },
               input: bridge?.inputConfig?.input?.input,
-              flag: bridge?.configuration?.stream !== true ? false : true,
+              is_playground: true,
               orchestrator_flag: isOrchestralModel,
+              is_stream:
+                bridge?.configuration?.stream !== true ||
+                bridge?.configuration?.response_type?.is_template === true ||
+                bridge?.configuration?.type === "image"
+                  ? false
+                  : true,
             },
             bridge_id: params?.id,
           });

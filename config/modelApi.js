@@ -95,7 +95,7 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
   try {
     const modelType = localDataToSend.configuration.type;
     const isChat = modelType !== "completion" && modelType !== "embedding";
-    const isStream = !!localDataToSend.flag;
+    const isStream = !!localDataToSend.is_stream;
     if (!localDataToSend?.version_id) {
       localDataToSend.agent_id = bridge_id;
     }
