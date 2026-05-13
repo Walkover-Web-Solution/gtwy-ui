@@ -5,13 +5,14 @@ import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
 import RenderEmbed from "./RenderEmbed";
 import InfoTooltip from "@/components/InfoTooltip";
 import { isEqual } from "lodash";
 import { AddIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import PrebuiltPreToolConfigModal from "@/components/modals/PrebuiltPreToolConfigModal";
 
 const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEmbedUser = false }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -21,6 +22,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [preFunctionName, setPreFunctionName] = useState(null);
   const [preToolData, setPreToolData] = useState(null);
   const [variablesPath, setVariablesPath] = useState({});
+  const [showChangePicker, setShowChangePicker] = useState(false);
+  const [selectedPreTool, setSelectedPreTool] = useState(null); // for built-in modal
   const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path } = useCustomSelector(
     (state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
@@ -51,44 +54,146 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   // Delete operation hook
   const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE.DELETE_PRE_TOOL_MODAL);
 
-  const bridgePreFunctions = useMemo(
-    () => bridge_pre_tools.map((id) => function_data?.[id]),
-    [bridge_pre_tools, function_data, params]
-  );
-  const handleOpenModal = (functionId) => {
-    setPreFunctionId(functionId);
-    setPreFunctionName(function_data?.[functionId]?.script_id || function_data?.[functionId]?.title || "");
-    setPreToolData(function_data?.[functionId]);
-    setPreFunctionData(function_data?.[functionId]);
-    setVariablesPath(variables_path[preFunctionName] || {});
-    openModal(MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL);
+  const bridgePreFunctions = useMemo(() => {
+    return bridge_pre_tools.map((tool) => {
+      if (tool.type === PRE_TOOL_TYPES.custom_function) {
+        const fn = function_data?.[tool.config?.function_id];
+        return {
+          _id: tool.config?.function_id,
+          _type: tool.type,
+          _toolEntry: tool,
+          ...(fn || {}),
+          title: fn?.title || PRE_TOOL_LABELS[tool.type],
+        };
+      }
+      // built-in types
+      return {
+        _id: tool.type,
+        _type: tool.type,
+        _toolEntry: tool,
+        title: PRE_TOOL_LABELS[tool.type] || tool.type,
+        description: "pre-built",
+      };
+    });
+  }, [bridge_pre_tools, function_data]);
+
+  const handleOpenModal = (itemId) => {
+    // Find the full tool item from bridgePreFunctions by _id
+    const toolItem = bridgePreFunctions.find((t) => t._id === itemId);
+    if (!toolItem) return;
+
+    const toolType = toolItem._type;
+
+    if (toolType === PRE_TOOL_TYPES.custom_function) {
+      setPreFunctionId(toolItem._id);
+      setPreFunctionName(toolItem.script_id || toolItem.title || "");
+      setPreToolData(function_data?.[toolItem._id]);
+      setPreFunctionData(function_data?.[toolItem._id]);
+      setVariablesPath(toolItem._toolEntry?.args || {});
+      openModal(MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL);
+    } else {
+      setSelectedPreTool(toolItem._toolEntry);
+      openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+    }
   };
-  const handleOpenDeleteModal = (functionId, functionName) => {
-    setPreFunctionId(functionId);
-    setPreFunctionName(functionName);
+
+  const handleOpenDeleteModal = (itemId, itemScriptId) => {
+    const toolItem = bridgePreFunctions.find((t) => t._id === itemId);
+    if (!toolItem) return;
+
+    setPreFunctionId(itemId);
+    setPreFunctionName(toolItem._type !== PRE_TOOL_TYPES.custom_function ? toolItem._type : itemScriptId || itemId);
     openModal(MODAL_TYPE.DELETE_PRE_TOOL_MODAL);
   };
+
   const onFunctionSelect = (id) => {
     dispatch(
       updateApiAction(params.id, {
-        pre_tools: id,
+        pre_tools: {
+          type: PRE_TOOL_TYPES.custom_function,
+          config: {
+            function_id: id,
+            script_id: function_data?.[id]?.script_id,
+            required: function_data?.[id]?.required || [],
+          },
+        },
         version_id: searchParams?.version,
         status: "1",
       })
     );
-    // Close dropdown after selection
+  };
+
+  const onBuiltInPreToolSelect = (type) => {
+    dispatch(
+      updateApiAction(params.id, {
+        pre_tools: { type },
+        version_id: searchParams?.version,
+        status: "1",
+      })
+    );
+    setSelectedPreTool({ type, config: {}, args: {} });
+    openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
     setTimeout(() => {
-      if (typeof document !== "undefined") {
-        document.activeElement?.blur?.();
-      }
+      if (typeof document !== "undefined") document.activeElement?.blur?.();
     }, 0);
+  };
+
+  const disableAllPreTools = async () => {
+    for (const toolItem of bridgePreFunctions) {
+      await dispatch(
+        updateApiAction(params.id, {
+          pre_tools: toolItem._toolEntry,
+          version_id: searchParams?.version,
+          status: "0",
+        })
+      );
+    }
+  };
+
+  const onChangeFunctionSelect = async (id) => {
+    await disableAllPreTools();
+    dispatch(
+      updateApiAction(params.id, {
+        pre_tools: {
+          type: PRE_TOOL_TYPES.custom_function,
+          config: {
+            function_id: id,
+            script_id: function_data?.[id]?.script_id,
+            required: function_data?.[id]?.required || [],
+          },
+        },
+        version_id: searchParams?.version,
+        status: "1",
+      })
+    );
+    setShowChangePicker(false);
+  };
+
+  const onChangeBuiltInPreToolSelect = async (type) => {
+    await disableAllPreTools();
+    dispatch(
+      updateApiAction(params.id, {
+        pre_tools: { type },
+        version_id: searchParams?.version,
+        status: "1",
+      })
+    );
+    setShowChangePicker(false);
+    setSelectedPreTool({ type, config: {}, args: {} });
+    openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
   };
 
   const removePreFunction = async () => {
     await executeDelete(async () => {
+      const toolItem = bridgePreFunctions.find((t) => t._id === preFunctionId);
+      const toolEntry =
+        toolItem?._toolEntry ||
+        (typeof preFunctionId === "string"
+          ? { type: "custom_function", config: { function_id: preFunctionId } }
+          : null);
       return dispatch(
         updateApiAction(params.id, {
-          pre_tools: preFunctionId,
+          pre_tools: toolEntry,
           version_id: searchParams?.version,
           status: "0",
         })
@@ -97,82 +202,52 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   };
 
   const handleChangePreTool = () => {
-    // Focus on the pre-tool dropdown to allow user to select a different pre-tool
-    setTimeout(() => {
-      // Look for the EmbedListSuggestionDropdownMenu dropdown - updated selector
-      const dropdown = document.querySelector(".dropdown-right");
-      if (dropdown) {
-        // Find the dropdown content with tabIndex
-        const dropdownContent = dropdown.querySelector('ul[tabindex="0"]');
-        if (dropdownContent) {
-          dropdownContent.focus();
-          // Trigger the dropdown to open by adding the 'dropdown-open' class
-          dropdown.classList.add("dropdown-open");
-
-          // Function to close dropdown and cleanup
-          const closeDropdown = () => {
-            dropdown.classList.remove("dropdown-open");
-            document.removeEventListener("click", handleClickOutside);
-            document.removeEventListener("click", handleDropdownItemClick);
-          };
-
-          // Add click outside handler to close dropdown
-          const handleClickOutside = (event) => {
-            if (!dropdown.contains(event.target)) {
-              closeDropdown();
-            }
-          };
-
-          // Add click handler for dropdown items (selection)
-          const handleDropdownItemClick = (event) => {
-            // Check if clicked element is a dropdown item (li or button inside dropdown)
-            const clickedItem = event.target.closest("li");
-            if (clickedItem && dropdown.contains(clickedItem)) {
-              // Close dropdown after selection
-              setTimeout(() => closeDropdown(), 100);
-            }
-          };
-
-          // Add the event listeners after a small delay to avoid immediate closure
-          setTimeout(() => {
-            document.addEventListener("click", handleClickOutside);
-            document.addEventListener("click", handleDropdownItemClick);
-          }, 50);
-
-          // Also focus on the search input for better UX
-          const searchInput = dropdownContent.querySelector("input");
-          if (searchInput) {
-            setTimeout(() => searchInput.focus(), 100);
-          }
-        }
-      }
-    }, 100);
+    setShowChangePicker(true);
   };
+
   const handleSavePreFunctionData = () => {
+    // Save function schema changes
     if (!isEqual(preToolData, preFunctionData)) {
       const { _id, ...dataToSend } = preToolData;
-      dispatch(
-        updateFuntionApiAction({
-          function_id: preFunctionId,
-          dataToSend: dataToSend,
-        })
-      );
+      dispatch(updateFuntionApiAction({ function_id: preFunctionId, dataToSend }));
       setPreToolData("");
     }
-    if (!isEqual(variablesPath, variables_path[preFunctionName])) {
-      dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params.id,
-          versionId: searchParams?.version,
-          dataToSend: { variables_path: { [preFunctionName]: variablesPath } },
-        })
-      );
-    }
+    // Save args inline in the pre_tools array entry
+    const updatedPreTools = bridge_pre_tools.map((t) => {
+      if (t.type === PRE_TOOL_TYPES.custom_function && t.config?.function_id === preFunctionId) {
+        return { ...t, args: variablesPath };
+      }
+      return t;
+    });
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend: { pre_tools: updatedPreTools },
+      })
+    );
+  };
+
+  const handleSaveBuiltInPreTool = (updatedToolEntry) => {
+    const updatedPreTools = bridge_pre_tools.map((t) => {
+      if (t.type === updatedToolEntry.type) {
+        return updatedToolEntry;
+      }
+      return t;
+    });
+    setSelectedPreTool(updatedToolEntry);
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend: { pre_tools: updatedPreTools },
+      })
+    );
   };
 
   return (
     <>
-      <div id="pre-embed-list-container">
+      <div data-testid="pre-embed-list-container" id="pre-embed-list-container">
         <FunctionParameterModal
           isPublished={isReadOnly}
           name="Pre Tool"
@@ -200,10 +275,20 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
           isAsync={true}
         />
 
+        <PrebuiltPreToolConfigModal
+          toolEntry={selectedPreTool}
+          onSave={handleSaveBuiltInPreTool}
+          orgId={params?.org_id}
+        />
+
         <div id="pre-embed-list-content" className="w-full mt-4 gap-2 flex flex-col px-2 py-2 cursor-default">
           {bridgePreFunctions.length > 0 && (
             <div className="flex items-center gap-2 mb-2">
-              <div id="pre-embed-header-wrapper" className="flex items-center gap-2 group">
+              <div
+                data-testid="pre-embed-header-wrapper"
+                id="pre-embed-header-wrapper"
+                className="flex items-center gap-2 group"
+              >
                 <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
                   <div className="flex items-center gap-1 cursor-help">
                     <p className="text-sm whitespace-nowrap">Pre Functions</p>
@@ -213,36 +298,51 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
             </div>
           )}
           {bridgePreFunctions.length === 0 && (
-            <div id="pre-embed-empty-dropdown" className="dropdown dropdown-end w-full max-w-md">
-              <div className="border-2 border-base-200 border-dashed text-center">
-                <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
-                  <button
-                    id="pre-embed-add-button"
-                    tabIndex={0}
-                    className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                    disabled={isReadOnly}
-                  >
-                    <AddIcon className="w-3 h-3" />
-                    Add Pre Functions
-                  </button>
-                </InfoTooltip>
+            <>
+              <div
+                data-testid="pre-embed-empty-dropdown"
+                id="pre-embed-empty-dropdown"
+                className={`dropdown dropdown-end w-full max-w-md`}
+              >
+                <div className="border-2 border-base-200 border-dashed text-center">
+                  <InfoTooltip tooltipContent="A prefunction prepares data before passing it to the main function for the GPT call.">
+                    <button
+                      data-testid="pre-embed-add-button"
+                      id="pre-embed-add-button"
+                      tabIndex={0}
+                      className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                      disabled={isReadOnly}
+                    >
+                      <AddIcon className="w-3 h-3" />
+                      Add Pre Functions
+                    </button>
+                  </InfoTooltip>
+                </div>
+                <EmbedListSuggestionDropdownMenu
+                  params={params}
+                  searchParams={searchParams}
+                  name={"preFunction"}
+                  hideCreateFunction={false}
+                  onSelect={onFunctionSelect}
+                  connectedFunctions={bridge_pre_tools}
+                  shouldToolsShow={true}
+                  modelName={model}
+                  onSelectBuiltInPreTool={onBuiltInPreToolSelect}
+                  connectedPreToolTypes={bridge_pre_tools
+                    .filter((t) => typeof t === "object" && t.type !== PRE_TOOL_TYPES.custom_function)
+                    .map((t) => t.type)}
+                />
               </div>
-              <EmbedListSuggestionDropdownMenu
-                params={params}
-                searchParams={searchParams}
-                name={"preFunction"}
-                hideCreateFunction={false}
-                onSelect={onFunctionSelect}
-                connectedFunctions={bridge_pre_tools}
-                shouldToolsShow={true}
-                modelName={model}
-              />
-            </div>
+            </>
           )}
           <div className="flex flex-col gap-2 w-full">
             {/* Render pre-tool cards */}
             {bridgePreFunctions.length > 0 && (
-              <div id="pre-embed-functions-container" className="w-full max-w-md">
+              <div
+                data-testid="pre-embed-functions-container"
+                id="pre-embed-functions-container"
+                className="w-full max-w-md"
+              >
                 <RenderEmbed
                   isPublished={isPublished}
                   isEditor={isEditor}
@@ -252,6 +352,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                   handleOpenModal={handleOpenModal}
                   embedToken={embedToken}
                   params={params}
+                  versionId={searchParams?.version}
                   name="preFunction"
                   handleRemoveEmbed={removePreFunction}
                   handleOpenDeleteModal={handleOpenDeleteModal}
@@ -259,18 +360,31 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                   halfLength={1}
                 />
                 {bridgePreFunctions.length > 0 && (
-                  <div id="pre-embed-add-more-dropdown" className="dropdown dropdown-right">
-                    <EmbedListSuggestionDropdownMenu
-                      params={params}
-                      searchParams={searchParams}
-                      name={"preFunction"}
-                      hideCreateFunction={false}
-                      onSelect={onFunctionSelect}
-                      connectedFunctions={bridge_pre_tools}
-                      shouldToolsShow={true}
-                      modelName={model}
-                    />
-                  </div>
+                  <>
+                    {showChangePicker && (
+                      <div className="fixed inset-0 z-10" onClick={() => setShowChangePicker(false)} />
+                    )}
+                    <div
+                      data-testid="pre-embed-add-more-dropdown"
+                      id="pre-embed-add-more-dropdown"
+                      className={`dropdown dropdown-right ${showChangePicker ? "dropdown-open" : ""}`}
+                    >
+                      <EmbedListSuggestionDropdownMenu
+                        params={params}
+                        searchParams={searchParams}
+                        name={"preFunction"}
+                        hideCreateFunction={false}
+                        onSelect={onChangeFunctionSelect}
+                        connectedFunctions={bridge_pre_tools}
+                        shouldToolsShow={true}
+                        modelName={model}
+                        onSelectBuiltInPreTool={onChangeBuiltInPreToolSelect}
+                        connectedPreToolTypes={bridge_pre_tools
+                          .filter((t) => typeof t === "object" && t.type !== PRE_TOOL_TYPES.custom_function)
+                          .map((t) => t.type)}
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             )}

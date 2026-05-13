@@ -146,7 +146,6 @@ const KnowledgeBaseModal = ({
       if (uploadedFile) {
         // Use uploaded file URL
         resourceUrl = uploadedFile.url;
-        content = uploadedFile.url;
       } else {
         // Fallback to local file reading (existing behavior)
         const file = formData.get("file");
@@ -171,7 +170,6 @@ const KnowledgeBaseModal = ({
       // No resourceUrl needed for content input
     } else {
       resourceUrl = (formData.get("url") || "").trim();
-      content = resourceUrl;
     }
 
     const payload = {
@@ -180,10 +178,15 @@ const KnowledgeBaseModal = ({
       settings: settings,
     };
 
-    // Only add content if there's actual content data (not just URL)
-    if (content && content !== resourceUrl && content.trim() !== "") {
+    const chunkingUrl = (formData.get("chunkingUrl") || "").trim();
+
+    if (chunkingUrl) {
+      payload.settings.chunkingUrl = chunkingUrl;
+    }
+    if (content && content.trim() !== "") {
       payload.content = content;
-    } else {
+    }
+    if (resourceUrl && resourceUrl.trim() !== "") {
       payload.url = resourceUrl;
     }
     payload.collection_details = collection_details;
@@ -225,9 +228,9 @@ const KnowledgeBaseModal = ({
       description: (formData.get("description") || "").trim(),
     };
 
-    // Add content if the resource has content and it's being updated
+    // Keep content updates separate from url-based resources.
     const updatedContent = (formData.get("content") || "").trim();
-    if (selectedResource?.content && updatedContent) {
+    if (updatedContent) {
       payload.content = updatedContent;
     }
 
@@ -261,6 +264,7 @@ const KnowledgeBaseModal = ({
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-base-300">
           <h3 className="font-bold text-lg">{selectedResource ? "Edit" : "Create"} Knowledge Base</h3>
           <button
+            data-testid="knowledgebase-modal-close-button"
             id="knowledgebase-modal-close-button"
             onClick={handleClose}
             className="btn btn-circle btn-ghost btn-sm"
@@ -279,6 +283,8 @@ const KnowledgeBaseModal = ({
               </span>
             </label>
             <input
+              autoComplete="off"
+              data-testid="knowledgebase-name-input"
               id="knowledgebase-name-input"
               type="text"
               name="title"
@@ -299,6 +305,7 @@ const KnowledgeBaseModal = ({
               </span>
             </label>
             <textarea
+              data-testid="knowledgebase-description-textarea"
               id="knowledgebase-description-textarea"
               name="description"
               className="textarea textarea-bordered textarea-sm"
@@ -314,6 +321,7 @@ const KnowledgeBaseModal = ({
             <div className="flex gap-4 mb-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
+                  autoComplete="off"
                   id="knowledgebase-input-type-url"
                   type="radio"
                   name="inputType"
@@ -325,6 +333,7 @@ const KnowledgeBaseModal = ({
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
+                  autoComplete="off"
                   id="knowledgebase-input-type-file"
                   type="radio"
                   name="inputType"
@@ -336,6 +345,7 @@ const KnowledgeBaseModal = ({
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
+                  autoComplete="off"
                   id="knowledgebase-input-type-content"
                   type="radio"
                   name="inputType"
@@ -360,6 +370,7 @@ const KnowledgeBaseModal = ({
               {!uploadedFile && (
                 <>
                   <input
+                    autoComplete="off"
                     id="knowledgebase-file-upload"
                     type="file"
                     onChange={handleFileUpload}
@@ -386,6 +397,7 @@ const KnowledgeBaseModal = ({
                       <span className="text-xs text-gray-500">({formatFileSize(uploadedFile.size)})</span>
                     </div>
                     <button
+                      data-testid="knowledgebase-remove-file-button"
                       id="knowledgebase-remove-file-button"
                       type="button"
                       onClick={removeUploadedFile}
@@ -407,6 +419,7 @@ const KnowledgeBaseModal = ({
                 </span>
               </label>
               <textarea
+                data-testid="knowledgebase-content-textarea-create"
                 id="knowledgebase-content-textarea-create"
                 name="content"
                 className="textarea textarea-bordered textarea-sm w-full h-32"
@@ -426,6 +439,7 @@ const KnowledgeBaseModal = ({
                   </span>
                 </label>
                 <textarea
+                  data-testid="knowledgebase-content-textarea-edit"
                   id="knowledgebase-content-textarea-edit"
                   name="content"
                   className="textarea textarea-bordered textarea-sm w-full h-32"
@@ -442,6 +456,7 @@ const KnowledgeBaseModal = ({
                   <span className="label-text text-sm font-medium">URL</span>
                 </label>
                 <input
+                  autoComplete="off"
                   id="knowledgebase-url-input-edit"
                   type="url"
                   name="url"
@@ -464,6 +479,8 @@ const KnowledgeBaseModal = ({
                 </span>
               </label>
               <input
+                autoComplete="off"
+                data-testid="knowledgebase-url-input-create"
                 id="knowledgebase-url-input-create"
                 type="url"
                 name="url"
@@ -483,6 +500,7 @@ const KnowledgeBaseModal = ({
                   <span className="label-text text-sm font-medium">Chunking Type</span>
                 </label>
                 <select
+                  data-testid="knowledgebase-chunking-type-select"
                   id="knowledgebase-chunking-type-select"
                   name="chunkingType"
                   className="select select-bordered select-sm"
@@ -503,6 +521,7 @@ const KnowledgeBaseModal = ({
                     <span className="label-text text-sm font-medium">Chunking URL</span>
                   </label>
                   <input
+                    autoComplete="off"
                     id="knowledgebase-chunking-url-input"
                     type="url"
                     name="chunkingUrl"
@@ -519,6 +538,7 @@ const KnowledgeBaseModal = ({
                       <span className="label-text text-sm font-medium">Chunk Size</span>
                     </label>
                     <input
+                      autoComplete="off"
                       id="knowledgebase-chunk-size-input"
                       type="number"
                       name="chunkSize"
@@ -542,6 +562,7 @@ const KnowledgeBaseModal = ({
                         <span className="label-text text-sm font-medium">Chunk Overlap</span>
                       </label>
                       <input
+                        autoComplete="off"
                         id="knowledgebase-chunk-overlap-input"
                         type="number"
                         name="chunkingOverlap"
@@ -567,6 +588,7 @@ const KnowledgeBaseModal = ({
           {!selectedResource && (
             <div className="collapse collapse-arrow border border-base-300 bg-base-100">
               <input
+                autoComplete="off"
                 id="knowledgebase-advanced-settings-toggle"
                 type="checkbox"
                 checked={showQuerySettings}
@@ -583,6 +605,7 @@ const KnowledgeBaseModal = ({
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
+                          autoComplete="off"
                           id="knowledgebase-query-type-fastest"
                           type="radio"
                           name="queryAccessType"
@@ -595,6 +618,7 @@ const KnowledgeBaseModal = ({
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
+                          autoComplete="off"
                           id="knowledgebase-query-type-moderate"
                           type="radio"
                           name="queryAccessType"
@@ -606,6 +630,7 @@ const KnowledgeBaseModal = ({
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
+                          autoComplete="off"
                           id="knowledgebase-query-type-high-accuracy"
                           type="radio"
                           name="queryAccessType"
@@ -623,6 +648,7 @@ const KnowledgeBaseModal = ({
           )}
           <div className="flex justify-end gap-2">
             <button
+              data-testid="knowledgebase-cancel-button"
               id="knowledgebase-cancel-button"
               type="button"
               className="btn btn-ghost btn-sm"
@@ -632,6 +658,7 @@ const KnowledgeBaseModal = ({
               Cancel
             </button>
             <button
+              data-testid="knowledgebase-submit-button"
               id="knowledgebase-submit-button"
               type="submit"
               className="btn btn-primary btn-sm"

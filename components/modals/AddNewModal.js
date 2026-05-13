@@ -3,13 +3,14 @@
 import { CloseIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import { addNewModelAction, getModelAction } from "@/store/action/modelAction";
 import { useDispatch } from "react-redux";
+import { useParams, useSearchParams } from "next/navigation";
 
 // --- Placeholder Examples for UI ---
 const PLACEHOLDERS = {
@@ -31,6 +32,25 @@ const PLACEHOLDERS = {
     knowledge_cutoff: "e.g., Apr 2024",
     usecase: "One per line, e.g., Enterprise-grade conversational AI",
   },
+  gemini: {
+    display_name: "e.g., Gemini 1.5 Pro",
+    model_name: "e.g., gemini-1.5-pro",
+    input_cost: "e.g., 3.5",
+    output_cost: "e.g., 10.5",
+    description:
+      "Google's most capable multimodal model for a wide range of tasks including text, code, and image understanding.",
+    knowledge_cutoff: "e.g., Nov 2023",
+    usecase: "One per line, e.g., Multimodal document analysis",
+  },
+  grok: {
+    display_name: "e.g., Grok 3",
+    model_name: "e.g., grok-3",
+    input_cost: "e.g., 3",
+    output_cost: "e.g., 15",
+    description: "xAI's flagship model with real-time web access and strong reasoning capabilities.",
+    knowledge_cutoff: "e.g., Nov 2024",
+    usecase: "One per line, e.g., Real-time information retrieval",
+  },
   groq: {
     display_name: "e.g., Llama 3 on Groq",
     model_name: "e.g., llama-3.1-8b-instant",
@@ -48,6 +68,15 @@ const PLACEHOLDERS = {
     description: "A balanced and performant model for a wide variety of tasks.",
     knowledge_cutoff: "e.g., May 2025",
     usecase: "One per line, e.g., Code generation",
+  },
+  deepgram: {
+    display_name: "e.g., Deepgram Nova",
+    model_name: "e.g., nova-3",
+    input_cost: "e.g., 0.40",
+    output_cost: "e.g., 0.40",
+    description: "Speech-to-text and audio intelligence model with low latency and strong transcription quality.",
+    knowledge_cutoff: "e.g., Jan 2026",
+    usecase: "One per line, e.g., Real-time call transcription",
   },
   open_router: {
     display_name: "e.g., Deepseek Chat",
@@ -133,13 +162,25 @@ const DEFAULT_PARAMETER = {
   },
 };
 
-export default function AddNewModelModal() {
+export default function AddNewModelModal({ disableServiceChange = false }) {
   const dispatch = useDispatch();
-  const { modelInfo, SERVICES, DEFAULT_MODEL } = useCustomSelector((state) => ({
-    modelInfo: state?.modelReducer?.serviceModels,
-    SERVICES: state?.serviceReducer?.services,
-    DEFAULT_MODEL: state?.serviceReducer?.default_model,
-  }));
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const versionId = searchParams?.get("version");
+  const isPublished = searchParams?.get("isPublished") === "true";
+
+  const { modelInfo, SERVICES, DEFAULT_MODEL, selectedService } = useCustomSelector((state) => {
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId];
+    const activeData = isPublished ? bridgeDataFromState : versionData;
+
+    return {
+      modelInfo: state?.modelReducer?.serviceModels,
+      SERVICES: state?.serviceReducer?.services,
+      DEFAULT_MODEL: state?.serviceReducer?.default_model,
+      selectedService: activeData?.service || bridgeDataFromState?.service,
+    };
+  });
   const SERVICE_CONFIGS = (Array.isArray(SERVICES) ? SERVICES : []).reduce((acc, service) => {
     const model = DEFAULT_MODEL?.[service?.value]?.model;
     const chatModel = modelInfo?.[service?.value]?.["chat"]?.[model];
@@ -167,7 +208,11 @@ export default function AddNewModelModal() {
     return acc;
   }, {});
   const [error, setError] = useState({});
-  const initialService = SERVICE_CONFIGS.openai ? "openai" : Object.keys(SERVICE_CONFIGS)[0];
+  const initialService = SERVICE_CONFIGS[selectedService]
+    ? selectedService
+    : SERVICE_CONFIGS.openai
+      ? "openai"
+      : Object.keys(SERVICE_CONFIGS)[0];
   const [config, setConfig] = useState(SERVICE_CONFIGS[initialService] || {});
   const [selectedKeys, setSelectedKeys] = useState(
     Object.keys(SERVICE_CONFIGS[initialService]?.configuration?.additional_parameters || {})
@@ -175,6 +220,16 @@ export default function AddNewModelModal() {
   const [expandedKeys, setExpandedKeys] = useState(new Set());
   const [showNewParamForm, setShowNewParamForm] = useState(false);
   const [newParamData, setNewParamData] = useState({ name: "", type: "slider" });
+
+  useEffect(() => {
+    if (!selectedService || !SERVICE_CONFIGS[selectedService]) return;
+    if (config?.service === selectedService) return;
+
+    const nextConfig = JSON.parse(JSON.stringify(SERVICE_CONFIGS[selectedService]));
+    setConfig(nextConfig);
+    setSelectedKeys(Object.keys(nextConfig.configuration?.additional_parameters || {}));
+    setExpandedKeys(new Set());
+  }, [selectedService, SERVICE_CONFIGS]);
 
   const resetFormToDefault = () => {
     const defaultConfig = SERVICE_CONFIGS[config.service];
@@ -186,6 +241,8 @@ export default function AddNewModelModal() {
     setConfig(initialConfig);
     setSelectedKeys(Object.keys(initialConfig.configuration.additional_parameters || {}));
     setExpandedKeys(new Set());
+    setError({});
+    closeModal(MODAL_TYPE?.ADD_NEW_MODEL_MODAL);
   };
 
   /**
@@ -390,6 +447,7 @@ export default function AddNewModelModal() {
               <span className="label-text">Min</span>
             </label>
             <input
+              autoComplete="off"
               type="number"
               value={fieldConfig.min}
               onChange={(e) => handleConfigChange(key, "min", parseFloat(e.target.value))}
@@ -403,6 +461,7 @@ export default function AddNewModelModal() {
               <span className="label-text">Max</span>
             </label>
             <input
+              autoComplete="off"
               type="number"
               value={fieldConfig.max}
               onChange={(e) => handleConfigChange(key, "max", parseFloat(e.target.value))}
@@ -446,6 +505,7 @@ export default function AddNewModelModal() {
             </select>
           ) : (
             <input
+              autoComplete="off"
               type={fieldConfig.field === "number" ? "number" : "text"}
               value={key === "model" ? config.model_name : fieldConfig.default}
               onChange={(e) => {
@@ -469,6 +529,7 @@ export default function AddNewModelModal() {
             {fieldConfig.options?.map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
+                  autoComplete="off"
                   type="text"
                   value={typeof opt === "object" ? opt.type : opt}
                   onChange={(e) => updateOption(key, i, e.target.value)}
@@ -503,6 +564,7 @@ export default function AddNewModelModal() {
               <div className="flex items-center gap-4">
                 {!isProtected && (
                   <input
+                    autoComplete="off"
                     type="checkbox"
                     checked={selectedKeys.includes(key)}
                     onChange={() => handleSelectKey(key)}
@@ -594,12 +656,13 @@ export default function AddNewModelModal() {
           <div className="w-full mx-auto">
             <div className="relative text-center">
               <button
-                id="add-model-reset-button"
+                data-testid="add-model-header-close-button"
+                id="add-model-header-close-button"
                 onClick={resetFormToDefault}
-                className="btn btn-ghost absolute right-0 top-1/3 tooltip tooltip-left"
-                data-tip="Reset form to default values"
+                className="btn btn-ghost btn-circle btn-sm absolute right-0 top-0"
+                aria-label="Close add model modal"
               >
-                <RefreshCw size={20} />
+                <CloseIcon size={18} />
               </button>
               <div>
                 <h1 className="text-2xl font-bold">Add a New Model</h1>
@@ -618,10 +681,12 @@ export default function AddNewModelModal() {
                         <span className="label-text">Service</span>
                       </label>
                       <select
+                        data-testid="add-model-service-select"
                         id="add-model-service-select"
                         value={config.service}
                         onChange={(e) => handleTopLevelChange("service", e.target.value)}
                         className="select select-bordered w-full"
+                        disabled={disableServiceChange}
                       >
                         {Array.isArray(SERVICES)
                           ? SERVICES.map(({ value, displayName }) => (
@@ -639,6 +704,8 @@ export default function AddNewModelModal() {
                         </span>
                       </label>
                       <input
+                        autoComplete="off"
+                        data-testid="add-model-name-input"
                         id="add-model-name-input"
                         type="text"
                         value={config.model_name}
@@ -669,6 +736,8 @@ export default function AddNewModelModal() {
                         </span>
                       </label>
                       <input
+                        autoComplete="off"
+                        data-testid="add-model-display-name-input"
                         id="add-model-display-name-input"
                         type="text"
                         value={config.display_name}
@@ -687,6 +756,8 @@ export default function AddNewModelModal() {
                       <div className="form-control p-4 rounded-lg border border-base-300">
                         <label className="label cursor-pointer justify-start gap-4">
                           <input
+                            autoComplete="off"
+                            data-testid="add-model-vision-checkbox"
                             id="add-model-vision-checkbox"
                             type="checkbox"
                             checked={!!config?.validationConfig?.vision}
@@ -699,6 +770,8 @@ export default function AddNewModelModal() {
                       <div className="form-control p-4 rounded-lg border border-base-300">
                         <label className="label cursor-pointer justify-start gap-4">
                           <input
+                            autoComplete="off"
+                            data-testid="add-model-tools-checkbox"
                             id="add-model-tools-checkbox"
                             type="checkbox"
                             checked={!!config.validationConfig?.tools}
@@ -711,6 +784,8 @@ export default function AddNewModelModal() {
                       <div className="form-control p-4 rounded-lg border border-base-300">
                         <label className="label cursor-pointer justify-start gap-4">
                           <input
+                            autoComplete="off"
+                            data-testid="add-model-system-prompt-checkbox"
                             id="add-model-system-prompt-checkbox"
                             type="checkbox"
                             checked={!!config.validationConfig?.system_prompt}
@@ -725,6 +800,7 @@ export default function AddNewModelModal() {
                           <span className="label-text font-medium">Model Type</span>
                         </label>
                         <select
+                          data-testid="add-model-type-select"
                           id="add-model-type-select"
                           value={config.validationConfig?.type}
                           onChange={(e) => handleValidationChange("type", e.target.value)}
@@ -750,6 +826,8 @@ export default function AddNewModelModal() {
                               </span>
                             </label>
                             <input
+                              autoComplete="off"
+                              data-testid="add-model-input-cost-input"
                               id="add-model-input-cost-input"
                               type="number"
                               value={config.validationConfig.specification.input_cost}
@@ -772,6 +850,8 @@ export default function AddNewModelModal() {
                               </span>
                             </label>
                             <input
+                              autoComplete="off"
+                              data-testid="add-model-output-cost-input"
                               id="add-model-output-cost-input"
                               type="number"
                               value={config.validationConfig.specification.output_cost}
@@ -801,7 +881,7 @@ export default function AddNewModelModal() {
                             value={config.validationConfig.specification.description}
                             onChange={(e) => handleSpecificationChange("description", e.target.value)}
                             onBlur={(e) => handleSpecificationChange("description", e.target.value.trim())}
-                            className="textarea bg-white dark:bg-black/15 textarea-bordered w-full"
+                            className="textarea bg-base-100 textarea-bordered w-full"
                             rows={3}
                             placeholder={PLACEHOLDERS[config.service]?.description}
                           ></textarea>
@@ -813,6 +893,7 @@ export default function AddNewModelModal() {
                             </span>
                           </label>
                           <input
+                            autoComplete="off"
                             id="add-model-knowledge-cutoff-input"
                             type="text"
                             value={config.validationConfig.specification.knowledge_cutoff}
@@ -833,7 +914,7 @@ export default function AddNewModelModal() {
                               handleSpecificationChange("usecase", e.target.value.split("\n").filter(Boolean))
                             }
                             onBlur={(e) => handleSpecificationChange("usecase", e.target.value.trim().split("\n"))}
-                            className="textarea bg-white dark:bg-black/15 textarea-bordered w-full"
+                            className="textarea bg-base-100 textarea-bordered w-full"
                             rows={3}
                             placeholder={PLACEHOLDERS[config.service]?.usecase}
                           />
@@ -874,6 +955,7 @@ export default function AddNewModelModal() {
                                 <span className="label-text">Parameter Name</span>
                               </label>
                               <input
+                                autoComplete="off"
                                 id="add-model-param-name-input"
                                 type="text"
                                 autoFocus
@@ -921,31 +1003,36 @@ export default function AddNewModelModal() {
                     <div className="space-y-2">{renderSelectableKeys()}</div>
                   </div>
                 </div>
-                <div className="card-actions justify-end border-t border-base-200 pt-6 mt-8">
+                <div className="border-t border-base-200 pt-6 mt-8">
                   {error?.message && (
                     <div className="w-full mb-4">
-                      <div className="error-container p-4 bg-red-50 border-l-4 border-red-500 rounded-md shadow-sm">
+                      <div className="error-container p-4 bg-error/10 border-l-4 border-error rounded-md shadow-sm text-error">
                         {error?.message}
                       </div>
                     </div>
                   )}
-                  <button
-                    id="add-model-close-button"
-                    type="button"
-                    onClick={() => closeModal(MODAL_TYPE?.ADD_NEW_MODEL_MODAL)}
-                    className="btn btn-sm"
-                  >
-                    Close
-                  </button>
-                  <button
-                    id="add-model-save-button"
-                    type="button"
-                    onClick={handleAddModel}
-                    className="btn btn-sm btn-primary"
-                    disabled={isFormInvalid}
-                  >
-                    Save Model
-                  </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      data-testid="add-model-reset-button"
+                      id="add-model-reset-button"
+                      type="button"
+                      onClick={resetFormToDefault}
+                      className="btn btn-sm btn-ghost"
+                      title="Reset form to default values"
+                    >
+                      <RefreshCw size={16} />
+                      Reset to defaults
+                    </button>
+                    <button
+                      id="add-model-save-button"
+                      type="button"
+                      onClick={handleAddModel}
+                      className="btn btn-sm btn-primary"
+                      disabled={isFormInvalid}
+                    >
+                      Save Model
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

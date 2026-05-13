@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal } from "@/utils/utility";
+import { closeModal, getIconOfService } from "@/utils/utility";
 import { toast } from "react-toastify";
 import { getInvitedUsers, inviteUser } from "@/config";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
@@ -36,9 +36,9 @@ const AccessManagementModal = ({ agent }) => {
 
   // Load initial data and extract agent members when agent prop changes
   useEffect(() => {
-    if (agent && agent.users && users.length > 0) {
+    if (agent && agent?.settings?.editAccess && users.length > 0) {
       // Map agent user IDs to full user information
-      const enrichedMembers = agent.users.map((userId) => {
+      const enrichedMembers = agent?.settings?.editAccess.map((userId) => {
         // Find the corresponding user in the users array
         const userDetails = users.find((user) => user.user_id === userId);
 
@@ -58,12 +58,17 @@ const AccessManagementModal = ({ agent }) => {
             };
       });
 
-      setAgentMembers(enrichedMembers);
+      // Only update if the content actually changed (prevent infinite loop)
+      setAgentMembers((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(enrichedMembers)) {
+          return prev;
+        }
+        return enrichedMembers;
+      });
     } else {
-      // Use empty array if no agent users
-      setAgentMembers([]);
+      setAgentMembers((prev) => (prev.length === 0 ? prev : []));
     }
-  }, [agent, users]);
+  }, [agent?.users, users]);
 
   const handleClose = () => {
     setEmailInput("");
@@ -137,8 +142,9 @@ const AccessManagementModal = ({ agent }) => {
     try {
       // Create payload with user ID and add_user_id:false to remove
       const dataToSend = {
-        user_id: userId,
-        add_user_id: false,
+        settings: {
+          editAccess: agentMembers.filter((member) => member.id !== userId),
+        },
       };
 
       const res = await dispatch(
@@ -184,8 +190,9 @@ const AccessManagementModal = ({ agent }) => {
     try {
       // Create payload with user ID and add_user_id:true to add
       const dataToSend = {
-        user_id: userId,
-        add_user_id: true,
+        settings: {
+          editAccess: [...agentMembers, userId],
+        },
       };
 
       const res = await dispatch(
@@ -208,8 +215,8 @@ const AccessManagementModal = ({ agent }) => {
           name: userInfo.name || foundUser?.name || "Unknown User",
           email: userInfo.email || foundUser?.email || `ID: ${userId}`,
         };
-        setAgentMembers((prev) => [...prev, newMember]);
 
+        setAgentMembers((prev) => [...prev, newMember]);
         setEmailInput("");
         setFoundUser(null);
       } else {
@@ -379,8 +386,12 @@ const AccessManagementModal = ({ agent }) => {
     <Modal MODAL_ID={MODAL_TYPE.ACCESS_MANAGEMENT_MODAL} onClose={handleClose}>
       <div id="access-management-modal-container" className="modal-box max-w-3xl">
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Manage Access for {agent?.name || "Agent"}</h2>
+          <div className="flex flex-col items-start gap-3">
+            <h2 className="text-lg font-semibold">Manage Access for {agent?.actualName || "Agent"}</h2>
+            <div className="flex flex-row items-center justify-start gap-2">
+              {agent?.service ? <div className="shrink-0">{getIconOfService(agent.service, 24, 24)}</div> : null}
+              {agent?.model ? <span className="text-xs text-base-content/70">Model: {agent.model}</span> : null}
+            </div>
           </div>
         </div>
 
@@ -390,6 +401,8 @@ const AccessManagementModal = ({ agent }) => {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
+                  autoComplete="off"
+                  data-testid="access-management-email-input"
                   id="access-management-email-input"
                   type="email"
                   value={emailInput}
@@ -413,6 +426,7 @@ const AccessManagementModal = ({ agent }) => {
                     </button>
                   ) : searchResults.length > 0 ? (
                     <button
+                      data-testid="access-management-add-user-button"
                       id="access-management-add-user-button"
                       className="btn btn-primary btn-sm"
                       onClick={() => {
@@ -432,6 +446,7 @@ const AccessManagementModal = ({ agent }) => {
                     </button>
                   ) : (
                     <button
+                      data-testid="access-management-invite-button"
                       id="access-management-invite-button"
                       className="btn btn-outline btn-sm btn-primary"
                       onClick={handleInviteUser}
@@ -454,6 +469,7 @@ const AccessManagementModal = ({ agent }) => {
                   {searchResults.map((user) => (
                     <li key={user.user_id || user.id}>
                       <button
+                        data-testid={`access-management-user-result-${user.user_id || user.id}`}
                         id={`access-management-user-result-${user.user_id || user.id}`}
                         className={`flex items-start py-2 px-3 hover:bg-base-200 w-full text-left ${(foundUser?.user_id || foundUser?.id) === (user.user_id || user.id) ? "bg-primary/10" : ""}`}
                         onClick={() => selectUser(user)}
@@ -524,6 +540,7 @@ const AccessManagementModal = ({ agent }) => {
                       </div>
                       {/* Don't show remove button for admin/owner */}
                       <button
+                        data-testid={`access-management-remove-button-${agentMember.id}`}
                         id={`access-management-remove-button-${agentMember.id}`}
                         className="btn btn-ghost btn-xs btn-circle text-error ml-1"
                         onClick={() => removeUserFromAgent(agentMember.id || agentMember.user_id)}

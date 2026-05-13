@@ -3,7 +3,10 @@ import { createDiff } from "@/utils/utility";
 
 const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
   const diffData = createDiff(oldContent || "", newContent || "");
-  const isNewContentEmpty = !newContent || newContent.trim() === "";
+  const isNewContentEmpty =
+    !newContent ||
+    (typeof newContent === "string" && newContent.trim() === "") ||
+    (typeof newContent === "object" && Object.keys(newContent).length === 0);
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
   const syncingRef = useRef(false);
@@ -27,7 +30,7 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
         </div>
       ) : (
         <>
-          <div className="flex gap-2 h-[70vh] w-full mt-3">
+          <div className="flex gap-2 min-h-[200px] max-h-[500px] h-auto w-full mt-3">
             <div className="w-1/2 flex flex-col">
               <div className="label">
                 <span className="label-text font-medium text-red-600">Published Prompt</span>
@@ -42,14 +45,19 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
                     <div
                       key={index}
                       className={`px-3 py-1 text-sm font-mono leading-relaxed border-b border-base-300/50 ${
-                        line.type === "deleted"
-                          ? "bg-red-200 text-base-content"
-                          : line.type === "modified"
-                            ? "bg-red-100 text-black"
-                            : line.type === "equal"
-                              ? "bg-base-200 text-base-content"
-                              : "bg-base-100 opacity-30 text-base-content"
+                        line.type === "equal"
+                          ? "bg-base-200 text-base-content"
+                          : line.type === "added"
+                            ? "bg-base-100 opacity-30 text-base-content"
+                            : ""
                       }`}
+                      style={
+                        line.type === "deleted"
+                          ? { backgroundColor: "#f8d7da", color: "#721c24" }
+                          : line.type === "modified"
+                            ? { backgroundColor: "#f5c6cb", color: "#721c24" }
+                            : {}
+                      }
                     >
                       <span className="text-base-content/50 mr-3 select-none">{line.lineNumber}</span>
                       <span className={line.type === "deleted" || line.type === "modified" ? "line-through" : ""}>
@@ -78,14 +86,19 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
                     <div
                       key={index}
                       className={`px-3 py-1 text-sm font-mono leading-relaxed border-b border-base-300/50 ${
-                        line.type === "added"
-                          ? "bg-green-200 text-base-content"
-                          : line.type === "modified"
-                            ? "bg-green-100 text-black"
-                            : line.type === "equal"
-                              ? "bg-base-200 text-base-content"
-                              : "bg-base-100 opacity-30 text-base-content"
+                        line.type === "equal"
+                          ? "bg-base-200 text-base-content"
+                          : line.type === "deleted"
+                            ? "bg-base-100 opacity-30 text-base-content"
+                            : ""
                       }`}
+                      style={
+                        line.type === "added"
+                          ? { backgroundColor: "#d4edda", color: "#155724" }
+                          : line.type === "modified"
+                            ? { backgroundColor: "#d1ecf1", color: "#0c5460" }
+                            : {}
+                      }
                     >
                       <span className="text-base-content/50 mr-3 select-none">{line.lineNumber}</span>
                       <span className={line.type === "added" || line.type === "modified" ? "font-semibold" : ""}>
@@ -108,6 +121,10 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: "#0c8d39ff" }}></span>Added
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: "#419cacff" }}></span>
+                  Modified
                 </div>
               </div>
             </div>

@@ -126,8 +126,8 @@ export const updateKnowledgeBaseAction = (data, orgId) => async (dispatch) => {
 export const createResourceAction = (data, orgId) => async (dispatch) => {
   try {
     const response = await createResource(data);
-    if (response.data) {
-      toast.success(response?.data?.message);
+    if (response?.success) {
+      toast.success(response?.message || "Knowledge base added successfully");
       dispatch(
         addKnowbaseDataReducer({
           orgId,
@@ -136,7 +136,8 @@ export const createResourceAction = (data, orgId) => async (dispatch) => {
         })
       );
     }
-    return response?.data;
+
+    return response?.data || response;
   } catch (error) {
     console.error(error);
   }
@@ -146,6 +147,7 @@ export const updateResourceAction = (resourceId, payload, orgId) => async (dispa
   try {
     const response = await updateResource(resourceId, payload);
     if (response?.success) {
+      toast.success(response?.message || "Resource updated successfully");
       dispatch(
         updateKnowledgeBaseReducer({
           orgId,
@@ -168,6 +170,7 @@ export const deleteResourceAction =
     try {
       const response = await deleteResource(data?.id);
       if (response?.success) {
+        toast.success(response?.message || "Resource deleted successfully");
         dispatch(
           deleteKnowledgeBaseReducer({
             orgId: data?.orgId,

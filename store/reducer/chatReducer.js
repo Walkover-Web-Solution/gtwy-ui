@@ -3,8 +3,8 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   // Messages by channel identifier (bridgeId + version)
   messagesByChannel: {},
-  // Conversation arrays by channel identifier
-  conversationsByChannel: {},
+  // Thread IDs by channel (sent to backend instead of conversation)
+  threadIdByChannel: {},
   // Loading states by channel
   loadingByChannel: {},
   // Error states by channel
@@ -28,13 +28,13 @@ export const chatReducer = createSlice({
       const { channelId } = action.payload;
       if (!state.messagesByChannel[channelId]) {
         state.messagesByChannel[channelId] = [];
-        state.conversationsByChannel[channelId] = [];
         state.loadingByChannel[channelId] = false;
         state.errorsByChannel[channelId] = "";
         state.testCasesByChannel[channelId] = {};
         state.uploadedFilesByChannel[channelId] = [];
         state.uploadedImagesByChannel[channelId] = [];
         state.testCaseIdByChannel[channelId] = null;
+        state.threadIdByChannel[channelId] = crypto.randomUUID();
       }
     },
 
@@ -43,16 +43,6 @@ export const chatReducer = createSlice({
       const { channelId, message } = action.payload;
       if (state.messagesByChannel[channelId]) {
         state.messagesByChannel[channelId].push(message);
-
-        // Add to conversation for backend
-        const conversationMessage = {
-          role: "user",
-          content: message.content,
-          user_urls: message.user_urls || [],
-          video_data: message.video_data || null,
-          youtube_url: message.youtube_url || null,
-        };
-        state.conversationsByChannel[channelId].push(conversationMessage);
       }
     },
 
@@ -61,18 +51,6 @@ export const chatReducer = createSlice({
       const { channelId, message } = action.payload;
       if (state.messagesByChannel[channelId]) {
         state.messagesByChannel[channelId].push(message);
-
-        // Add to conversation for backend
-        const conversationMessage = {
-          role: message.role || "assistant",
-          content: message.content,
-          fallback: message.fallback,
-          firstAttemptError: message.firstAttemptError,
-          llm_urls: message.llm_urls || [],
-          model: message.model,
-          finish_reason: message.finish_reason,
-        };
-        state.conversationsByChannel[channelId].push(conversationMessage);
       }
     },
 
@@ -88,21 +66,6 @@ export const chatReducer = createSlice({
             isLoading: false,
             ...additionalData,
           };
-
-          // Update conversation as well
-          const conversationIndex = state.conversationsByChannel[channelId].findIndex(
-            (msg, index) =>
-              index ===
-              messageIndex -
-                state.messagesByChannel[channelId].filter((m, i) => i < messageIndex && m.sender === "user").length
-          );
-          if (conversationIndex !== -1) {
-            state.conversationsByChannel[channelId][conversationIndex] = {
-              ...state.conversationsByChannel[channelId][conversationIndex],
-              content,
-              ...additionalData,
-            };
-          }
         }
       }
     },
@@ -113,23 +76,11 @@ export const chatReducer = createSlice({
       if (state.messagesByChannel[channelId]) {
         const messageIndex = state.messagesByChannel[channelId].findIndex((msg) => msg.id === messageId);
         if (messageIndex !== -1) {
+          const isObjectUpdate = newContent && typeof newContent === "object" && !Array.isArray(newContent);
           state.messagesByChannel[channelId][messageIndex] = {
             ...state.messagesByChannel[channelId][messageIndex],
-            content: newContent,
-            isEdited: true,
+            ...(isObjectUpdate ? newContent : { content: newContent, isEdited: true }),
           };
-
-          // Update conversation array - rebuild from all user/assistant messages
-          const updatedConversation = [];
-          state.messagesByChannel[channelId].forEach((msg) => {
-            if (msg.sender === "user" || msg.sender === "assistant") {
-              updatedConversation.push({
-                role: msg.sender === "user" ? "user" : "assistant",
-                content: msg.content,
-              });
-            }
-          });
-          state.conversationsByChannel[channelId] = updatedConversation;
         }
       }
     },
@@ -138,20 +89,7 @@ export const chatReducer = createSlice({
     removeMessage: (state, action) => {
       const { channelId, messageId } = action.payload;
       if (state.messagesByChannel[channelId]) {
-        // Remove message from messages array
         state.messagesByChannel[channelId] = state.messagesByChannel[channelId].filter((msg) => msg.id !== messageId);
-
-        // Rebuild conversation array from remaining user/assistant messages
-        const updatedConversation = [];
-        state.messagesByChannel[channelId].forEach((msg) => {
-          if (msg.sender === "user" || msg.sender === "assistant") {
-            updatedConversation.push({
-              role: msg.sender === "user" ? "user" : "assistant",
-              content: msg.content,
-            });
-          }
-        });
-        state.conversationsByChannel[channelId] = updatedConversation;
       }
     },
 
@@ -172,18 +110,17 @@ export const chatReducer = createSlice({
       const { channelId } = action.payload;
       if (state.messagesByChannel[channelId]) {
         state.messagesByChannel[channelId] = [];
-        state.conversationsByChannel[channelId] = [];
         state.errorsByChannel[channelId] = "";
         state.testCasesByChannel[channelId] = {};
+        state.threadIdByChannel[channelId] = crypto.randomUUID();
       }
     },
 
     // Load test case messages
     loadTestCaseMessages: (state, action) => {
-      const { channelId, messages, conversation, testCaseId } = action.payload;
+      const { channelId, messages, testCaseId } = action.payload;
       if (state.messagesByChannel[channelId]) {
         state.messagesByChannel[channelId] = messages;
-        state.conversationsByChannel[channelId] = conversation;
         state.testCasesByChannel[channelId] = { testCaseId };
       }
     },
@@ -202,12 +139,11 @@ export const chatReducer = createSlice({
 
     // RT Layer: Add message from socket
     addRtLayerMessage: (state, action) => {
-      const { channelId, message, messageType } = action.payload;
+      const { channelId, message } = action.payload;
 
       if (!state.messagesByChannel[channelId]) {
         // Initialize channel if it doesn't exist
         state.messagesByChannel[channelId] = [];
-        state.conversationsByChannel[channelId] = [];
         state.loadingByChannel[channelId] = false;
         state.errorsByChannel[channelId] = "";
         state.testCasesByChannel[channelId] = {};
@@ -226,22 +162,6 @@ export const chatReducer = createSlice({
         // Add new message if no loading message found
         messages.push(message);
       }
-
-      // Add to conversation if it's user or assistant message
-      if (messageType === "user" || messageType === "assistant") {
-        const conversationMessage = {
-          role: messageType,
-          content: message.content,
-          ...(messageType === "assistant" && {
-            fallback: message.fallback,
-            firstAttemptError: message.firstAttemptError,
-            llm_urls: message.llm_urls || [],
-            model: message.model,
-            finish_reason: message.finish_reason,
-          }),
-        };
-        state.conversationsByChannel[channelId].push(conversationMessage);
-      }
     },
 
     // Add error message as chat message (for RT layer errors only)
@@ -252,7 +172,6 @@ export const chatReducer = createSlice({
       if (!state.messagesByChannel[channelId]) {
         // Initialize channel if it doesn't exist
         state.messagesByChannel[channelId] = [];
-        state.conversationsByChannel[channelId] = [];
         state.loadingByChannel[channelId] = false;
         state.errorsByChannel[channelId] = "";
         state.testCasesByChannel[channelId] = {};
@@ -288,6 +207,33 @@ export const chatReducer = createSlice({
       state.errorsByChannel[channelId] = error;
     },
 
+    // RT Layer: Append chunk to streaming message
+    appendRtLayerMessageChunk: (state, action) => {
+      const { channelId, messageId, chunk } = action.payload;
+      if (state.messagesByChannel[channelId]) {
+        let messageIndex = -1;
+        if (messageId) {
+          messageIndex = state.messagesByChannel[channelId].findIndex((msg) => msg.id === messageId);
+        }
+
+        // If no messageId or not found, fallback to the last loading assistant message
+        if (messageIndex === -1) {
+          const messages = state.messagesByChannel[channelId];
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].isLoading && messages[i].sender === "assistant") {
+              messageIndex = i;
+              break;
+            }
+          }
+        }
+
+        if (messageIndex !== -1) {
+          // Append chunk to the content
+          state.messagesByChannel[channelId][messageIndex].content += chunk;
+        }
+      }
+    },
+
     // RT Layer: Update streaming message
     updateRtLayerMessage: (state, action) => {
       const { channelId, messageId, content, isComplete } = action.payload;
@@ -299,19 +245,128 @@ export const chatReducer = createSlice({
             ...state.messagesByChannel[channelId][messageIndex],
             content,
             isLoading: !isComplete,
+            isStreaming: !isComplete,
           };
-
-          // Update conversation if complete
-          if (isComplete) {
-            const conversationIndex = state.conversationsByChannel[channelId].length - 1;
-            if (
-              conversationIndex >= 0 &&
-              state.conversationsByChannel[channelId][conversationIndex].role === "assistant"
-            ) {
-              state.conversationsByChannel[channelId][conversationIndex].content = content;
-            }
-          }
         }
+      }
+    },
+
+    // Append a reasoning chunk to a streaming message
+    appendReasoningChunk: (state, action) => {
+      const { channelId, messageId, chunk } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      if (!messages[idx].reasoning) messages[idx].reasoning = "";
+      messages[idx].reasoning += chunk;
+    },
+
+    // Add a tool_call entry to a streaming message
+    addToolCallToMessage: (state, action) => {
+      const { channelId, messageId, toolCall } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messages.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      if (!messages[idx].toolCalls) messages[idx].toolCalls = [];
+      messages[idx].toolCalls.push(toolCall);
+    },
+
+    // Update a tool_call entry with its result
+    updateToolCallResult: (state, action) => {
+      const { channelId, messageId, callId, name, result } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const msgIdx = messages.findIndex((m) => m.id === messageId);
+      if (msgIdx === -1) return;
+      const toolCalls = messages[msgIdx].toolCalls;
+      if (!toolCalls) return;
+      // Try matching by call_id first; fall back to matching by name with status "calling"
+      let tcIdx = toolCalls.findIndex((tc) => tc.call_id === callId);
+      if (tcIdx === -1 && name) {
+        tcIdx = toolCalls.findIndex((tc) => tc.name === name && tc.status === "calling");
+      }
+      if (tcIdx !== -1) {
+        toolCalls[tcIdx].status = "done";
+        toolCalls[tcIdx].result = result;
+      }
+    },
+
+    // Review phase: handle phase events (reviewer_start, reviewer_done, main_rerun_start)
+    setReviewData: (state, action) => {
+      const { channelId, messageId, phase, round = 1, passed, reason } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messageId
+        ? messages.findIndex((m) => m.id === messageId)
+        : messages.findLastIndex((m) => m.sender === "assistant");
+      if (idx === -1) return;
+      if (!messages[idx].review_phases) messages[idx].review_phases = [];
+
+      if (phase === "reviewer_start") {
+        messages[idx].review_phases.push({ phase, round, isStreaming: true, reviewContent: "" });
+      } else if (phase === "reviewer_done") {
+        const entry = messages[idx].review_phases.findLast((e) => e.round === round);
+        if (entry) {
+          const jsonMatch = entry.reviewContent?.match(/\{[\s\S]*\}$/);
+          if (jsonMatch) entry.reviewContent = entry.reviewContent.slice(0, -jsonMatch[0].length).trimEnd();
+          entry.passed = passed;
+          entry.reason = reason || "";
+          entry.isStreaming = false;
+        }
+      } else if (phase === "main_rerun_start") {
+        const lastEntry = messages[idx].review_phases[messages[idx].review_phases.length - 1];
+        if (lastEntry) lastEntry.snapshotContent = messages[idx].content;
+        messages[idx].review_phases.push({ phase, round, isStreaming: false });
+        messages[idx].content = "";
+      }
+    },
+
+    // Review phase: append streamed chunk to the last streaming review entry
+    appendReviewDelta: (state, action) => {
+      const { channelId, messageId, chunk } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messageId
+        ? messages.findIndex((m) => m.id === messageId)
+        : messages.findLastIndex((m) => m.sender === "assistant");
+      if (idx === -1) return;
+      const phases = messages[idx].review_phases;
+      if (!phases) return;
+      const streamingEntry = phases.findLast((e) => e.isStreaming);
+      if (streamingEntry) streamingEntry.reviewContent = (streamingEntry.reviewContent || "") + chunk;
+    },
+
+    // Review phase: mark active streaming review entry as errored
+    setReviewError: (state, action) => {
+      const { channelId, messageId, round, error } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const idx = messageId
+        ? messages.findIndex((m) => m.id === messageId)
+        : messages.findLastIndex((m) => m.sender === "assistant");
+      if (idx === -1) return;
+      if (!messages[idx].review_phases) messages[idx].review_phases = [];
+      // Find the streaming entry for this round, or the last streaming entry
+      const entry =
+        (round != null && messages[idx].review_phases.findLast((e) => e.round === round)) ||
+        messages[idx].review_phases.findLast((e) => e.isStreaming);
+      if (entry) {
+        entry.isStreaming = false;
+        entry.passed = false;
+        entry.error = error || "Reviewer call failed";
+        entry.reason = error || "Reviewer call failed";
+      } else {
+        messages[idx].review_phases.push({
+          phase: "reviewer_done",
+          round: round ?? 1,
+          isStreaming: false,
+          passed: false,
+          error: error || "Reviewer call failed",
+          reason: error || "Reviewer call failed",
+          reviewContent: "",
+        });
       }
     },
 
@@ -335,13 +390,13 @@ export const chatReducer = createSlice({
     clearChannelData: (state, action) => {
       const { channelId } = action.payload;
       delete state.messagesByChannel[channelId];
-      delete state.conversationsByChannel[channelId];
       delete state.loadingByChannel[channelId];
       delete state.errorsByChannel[channelId];
       delete state.testCasesByChannel[channelId];
       delete state.uploadedFilesByChannel[channelId];
       delete state.uploadedImagesByChannel[channelId];
       delete state.testCaseIdByChannel[channelId];
+      delete state.threadIdByChannel[channelId];
     },
   },
 });
@@ -361,10 +416,17 @@ export const {
   setUploadedImages,
   addRtLayerMessage,
   addErrorMessage,
+  appendRtLayerMessageChunk,
   updateRtLayerMessage,
   setChatTestCaseId,
   clearChatTestCaseId,
   clearChannelData,
+  addToolCallToMessage,
+  updateToolCallResult,
+  appendReasoningChunk,
+  setReviewData,
+  appendReviewDelta,
+  setReviewError,
 } = chatReducer.actions;
 
 export default chatReducer.reducer;

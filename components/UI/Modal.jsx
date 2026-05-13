@@ -23,7 +23,7 @@ const Modal = ({ MODAL_ID, children, onClose }) => {
   }, [MODAL_ID, onClose]);
 
   return (
-    <dialog id={MODAL_ID} className="modal">
+    <dialog data-testid={MODAL_ID} id={MODAL_ID} className="modal">
       {children}
     </dialog>
   );

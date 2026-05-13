@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Input and Textarea Styles - Pure White/Black Backgrounds */
+/* Global Input and Textarea Styles - Theme Aware */
 @layer components {
   .input,
   input[type="text"],
@@ -13,7 +13,7 @@
   input[type="url"],
   input[type="tel"],
   textarea {
-    @apply bg-white dark:bg-black/15;
+    @apply bg-base-100;
   }
 
   /* Override DaisyUI input classes specifically */
@@ -21,20 +21,114 @@
   .input-sm,
   .textarea,
   .textarea-bordered {
-    @apply bg-white dark:bg-black/15;
+    @apply bg-base-100;
   }
 }
+
 body {
   @apply font-sans;
 }
 
-/* global.css or index.css */
-.info {
-  @apply font-medium text-gray-500 cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400 hover:decoration-gray-600;
+/* CodeMirror editor contrast in light theme */
+[data-theme="light"] .cm-editor {
+  border: 1px solid oklch(var(--b3));
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: oklch(var(--b2));
 }
-.promptSummary-info {
-  @apply cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400 hover:decoration-gray-600;
+
+[data-theme="light"] .cm-editor .cm-gutters {
+  background: oklch(var(--b2));
 }
+
+/* Batch/subthread panel slide-in */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s ease-out forwards;
+}
+
+/* Chat streaming animations */
+@keyframes chunk-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes r-entry {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.r-entry {
+  animation: r-entry 0.3s ease forwards;
+}
+
+.r-chunk {
+  animation: chunk-fade-in var(--dur, 1.2s) cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  animation-delay: 0.12s;
+  opacity: 0;
+}
+
+.sm-chunk {
+  animation: chunk-fade-in 1.2s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  animation-delay: 0.12s;
+  opacity: 0;
+}
+
+.r-body {
+  transition:
+    max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease;
+}
+
+.r-body.open {
+  max-height: 16rem;
+  overflow-y: auto;
+  opacity: 1;
+}
+
+.r-body.closed {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#config-sidebar-content,
+#chatbot-testing-sidebar-content,
+#testing-sidebar-content,
+#rag-testing-sidebar-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#config-sidebar-content::-webkit-scrollbar,
+#chatbot-testing-sidebar-content::-webkit-scrollbar,
+#testing-sidebar-content::-webkit-scrollbar,
+#rag-testing-sidebar-content::-webkit-scrollbar {
+  display: none;
+}
+
 :root {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -53,70 +147,8 @@ body {
   /* Firefox */
 }
 
-/* Show the button container when the row is hovered */
-.hover-row:hover {
-  visibility: visible;
-}
-
-.line-clamp-5 {
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 html {
   scroll-behavior: smooth;
-}
-
-@layer utilities {
-  .bg-zoom {
-    background: linear-gradient(to left, #002eae, #3c30b9, #942ed4);
-  }
-}
-
-@keyframes scroll {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-scroll {
-  animation: scroll 20s linear infinite;
-  animation-fill-mode: forwards; /* Ensures smooth start */
-  white-space: nowrap; /* Keeps content in a single line */
-  display: flex; /* Aligns content horizontally */
-}
-
-@layer utilities {
-  .hero-bg {
-    background-color: hsl(0, 0%, 0%);
-    background-image: radial-gradient(circle farthest-side at center top, hsl(276, 100%, 50%) 0%, hsl(0, 0%, 0%) 70%);
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center top;
-  }
-}
-@layer utilities {
-  .hero-bg-center {
-    background-color: hsl(0, 0%, 0%);
-    background-image: radial-gradient(circle farthest-corner at center, hsl(263, 100%, 70%) 0%, hsl(0, 0%, 0%) 100%);
-
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center;
-  }
-}
-
-.show-on-hover:hover .see-on-hover {
-  opacity: 1 !important;
-}
-.see-on-hover {
-  opacity: 0;
 }
 
 #iframe-viasocket-embed-parent-container {
@@ -127,42 +159,27 @@ html {
   z-index: 1;
 }
 
-.z-very-low {
-  z-index: 0;
-}
-.z-low {
-  z-index: 1;
-}
-.z-low-medium {
-  z-index: 50;
-}
-.z-medium {
-  z-index: 999;
-}
-.z-high {
-  z-index: 9999;
-}
-.z-very-high {
-  z-index: 999999;
-}
-
 /* Responsive font sizing for mobile screens */
 @media (max-width: 640px) {
   html,
   body {
-    font-size: 87.5%; /* Reduces to 14px if base is 16px */
+    font-size: 87.5%;
+    /* Reduces to 14px if base is 16px */
   }
 
   h1 {
-    font-size: 1.5rem; /* 24px if base is 16px */
+    font-size: 1.5rem;
+    /* 24px if base is 16px */
   }
 
   h2 {
-    font-size: 1.25rem; /* 20px if base is 16px */
+    font-size: 1.25rem;
+    /* 20px if base is 16px */
   }
 
   h3 {
-    font-size: 1.125rem; /* 18px if base is 16px */
+    font-size: 1.125rem;
+    /* 18px if base is 16px */
   }
 
   p,
@@ -171,7 +188,8 @@ html {
   input,
   select,
   textarea {
-    font-size: 0.875rem; /* 14px if base is 16px */
+    font-size: 0.875rem;
+    /* 14px if base is 16px */
   }
 }
 
@@ -179,31 +197,7 @@ html {
 @media (max-width: 375px) {
   html,
   body {
-    font-size: 81.25%; /* Reduces to 13px if base is 16px */
-  }
-}
-/* Slide In Animation */
-@keyframes slideIn {
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.animate-slideIn {
-  animation: slideIn 0.3s ease-out forwards;
-}
-
-/* Custom spin animation for logo box */
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
+    font-size: 81.25%;
+    /* Reduces to 13px if base is 16px */
   }
 }

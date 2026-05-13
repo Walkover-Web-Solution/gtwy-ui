@@ -17,11 +17,13 @@ const SlugNameInput = ({ params }) => {
   };
 
   return (
-    <label id="slug-name-input-container" className="form-control max-w-xs">
+    <label data-testid="slug-name-input-container" id="slug-name-input-container" className="form-control max-w-xs">
       <div className="label">
         <span className="label-text font-medium">Enter Slugname</span>
       </div>
       <input
+        autoComplete="off"
+        data-testid="slug-name-input"
         id="slug-name-input"
         type="text"
         key={slugName}

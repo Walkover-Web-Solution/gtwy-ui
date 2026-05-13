@@ -37,6 +37,7 @@ const CodeBlock = ({ children }) => (
 
 const Link = ({ href, children }) => (
   <a
+    data-testid="api-key-guide-provider-link"
     id="api-key-guide-provider-link"
     href={href}
     className="text-blue-600 hover:underline font-medium"
@@ -49,7 +50,9 @@ const Link = ({ href, children }) => (
 
 function ApiKeyGuideSlider() {
   const { API_PROVIDERS } = useCustomSelector((state) => ({
-    API_PROVIDERS: state.flowDataReducer?.flowData?.apiKeyGuideData || [],
+    API_PROVIDERS: Array.isArray(state.flowDataReducer?.flowData?.apiKeyGuideData)
+      ? state.flowDataReducer.flowData.apiKeyGuideData
+      : [],
   }));
 
   // Memoize the model tabs to prevent unnecessary re-renders
@@ -122,6 +125,7 @@ function ApiKeyGuideSlider() {
 
   return (
     <aside
+      data-testid="api-key-guide-slider"
       id="Api-Keys-guide-slider"
       className="fixed inset-y-0 right-0 border-l-2 bg-base-100 shadow-2xl rounded-md w-full md:w-1/2 lg:w-1/2 
                overflow-y-auto bg-gradient-to-br from-base-200 to-base-100 transition-all duration-300 ease-in-out z-medium
@@ -130,6 +134,7 @@ function ApiKeyGuideSlider() {
     >
       <div>
         <button
+          data-testid="api-key-guide-close-button"
           id="api-key-guide-close-button"
           onClick={() => toggleSidebar("Api-Keys-guide-slider", "right")}
           className="absolute top-4 right-4 p-2 rounded-full hover:text-error transition-colors z-10"
@@ -143,15 +148,16 @@ function ApiKeyGuideSlider() {
           <h2 className="text-xl font-bold mb-4">API Key Setup Guide</h2>
 
           {/* Model Selection Tabs */}
-          <div id="api-key-guide-tabs" className="flex flex-wrap gap-2">
+          <div data-testid="api-key-guide-tabs" id="api-key-guide-tabs" className="flex flex-wrap gap-2">
             {modelTabs.map((model) => (
               <button
+                data-testid={`api-key-guide-tab-${model.id}`}
                 id={`api-key-guide-tab-${model.id}`}
                 key={model.id}
                 onClick={() => setSelectedModel(model.id)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   selectedModel === model.id
-                    ? `${model.color} text-white shadow-lg`
+                    ? `${model.color} text-base-100 shadow-lg`
                     : "bg-base-200 text-base-content hover:bg-base-300"
                 }`}
                 aria-pressed={selectedModel === model.id}

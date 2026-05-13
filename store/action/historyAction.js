@@ -1,5 +1,4 @@
 import {
-  getHistory,
   getSingleThreadData,
   getSubThreadIds,
   getThreads,
@@ -18,10 +17,20 @@ import {
 } from "../reducer/historyReducer";
 
 export const getHistoryAction =
-  (id, page = 1, user_feedback, isErrorTrue, selectedVersion, keyword, startDate, endDate) =>
+  (id, page = 1, user_feedback, isErrorTrue, selectedVersion, keyword, startDate, endDate, filterBy) =>
   async (dispatch) => {
     try {
-      const data = await getThreads(id, page, user_feedback, isErrorTrue, selectedVersion, keyword, startDate, endDate);
+      const data = await getThreads(
+        id,
+        page,
+        user_feedback,
+        isErrorTrue,
+        selectedVersion,
+        keyword,
+        startDate,
+        endDate,
+        filterBy
+      );
       if (data && data.data) {
         dispatch(fetchAllHistoryReducer({ data: data.data, page }));
       }
@@ -70,7 +79,7 @@ export const userFeedbackCountAction =
   ({ bridge_id, user_feedback }) =>
   async (dispatch) => {
     try {
-      const data = await userFeedbackCount({ bridge_id, user_feedback });
+      const _data = await userFeedbackCount({ bridge_id, user_feedback });
     } catch (error) {
       console.error(error);
     }

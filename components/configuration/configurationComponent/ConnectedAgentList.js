@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import ConnectedAgentListSuggestion from "./ConnectAgentListSuggestion";
 import { useDispatch } from "react-redux";
 import isEqual, { useCustomSelector } from "@/customHooks/customSelector";
@@ -68,7 +69,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           dataToSend: {
             agents: {
               connected_agents: {
-                [sb?.name]: {
+                [sb?._id || sb?.bridge_id]: {
                   bridge_id: sb?._id || sb?.bridge_id,
                 },
               },
@@ -111,7 +112,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   };
   const handleOpenDeleteModal = (name, item) => {
     setSelectedBridge({ name: name, ...item });
-    openModal(MODAL_TYPE?.DELETE_AGENT_MODAL);
+    openModal(MODAL_TYPE?.REMOVE_AGENT_MODAL);
   };
   const handleOpenAgentVariable = useCallback(
     (name, item) => {
@@ -123,22 +124,18 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
       setSelectedBridge({ name: name, ...item });
       const agent_variables = bridgeItem?.connected_agent_details?.agent_variables || {};
       const description = bridgeItem?.connected_agent_details?.description || item?.description || "";
-      const { fields, required_params } = agent_variables;
-      setCurrentVariable({
+      const { fields, required } = agent_variables;
+      const agentData = {
         name: item?.bridge_id,
         description: description,
         fields: fields,
-        required_params: required_params,
-        thread_id: item?.thread_id || false,
-        version_id: item?.version_id || "",
-      });
-      setAgentTools({
-        name: item?.bridge_id,
-        description: description,
-        fields: fields,
-        required_params: required_params,
-        thread_id: item?.thread_id || false,
-        version_id: item?.version_id || "",
+        required: required,
+        thread_id: item?.thread_id ?? false,
+        version_id: item?.version_id ?? "",
+      };
+      flushSync(() => {
+        setCurrentVariable(agentData);
+        setAgentTools(agentData);
       });
       openModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
     },
@@ -165,6 +162,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
       setCurrentVariable(null);
       setSelectedBridge(null);
       toast.success("Agent removed successfully");
+      closeModal(MODAL_TYPE?.REMOVE_AGENT_MODAL);
     });
   };
 
@@ -199,7 +197,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
             connected_agent_details: {
               agent_variables: {
                 fields: agentTools?.fields,
-                required_params: agentTools?.required_params,
+                required: agentTools?.required,
               },
               description: agentTools?.description,
             },
@@ -216,7 +214,8 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         );
       }
       closeModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
-      setCurrentVariable(null);
+      setCurrentVariable(agentTools);
+      setAgentTools(agentTools);
       setSelectedBridge(null);
     } catch (error) {
       toast?.error("Failed to save agent");
@@ -254,32 +253,37 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   const renderEmbed = useMemo(() => {
     const agentItems = displayItems.map(([name, item]) => {
       const bridge = bridgeData?.find((bd) => bd?._id === item?.bridge_id);
+      const displayName = bridge?.name || name;
       return (
         <div
+          data-testid={`connected-agent-item-${item?.bridge_id}`}
           key={item?.bridge_id}
           id={item?.bridge_id}
-          className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full overflow-hidden ${!bridge?.connected_agent_details?.description && !item.description ? "border-red-600" : ""} transition-colors duration-200`}
+          className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full overflow-hidden ${!bridge?.connected_agent_details?.description && !item.description ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
         >
           <div className="p-2 flex-1 flex items-center" onClick={() => handleAgentClicked(item)}>
             <div className="flex items-center gap-2 w-full">
               <BotIcon size={16} className="shrink-0" />
-              {name?.length > 24 ? (
-                <div className="tooltip tooltip-top min-w-0" data-tip={name}>
+              {displayName?.length > 24 ? (
+                <div className="tooltip tooltip-top min-w-0" data-tip={displayName}>
                   <span className="min-w-0 text-sm truncate text-left">
-                    <span className="truncate text-sm font-normal block w-[300px]">{name}</span>
+                    <span className="truncate text-sm font-normal block w-[300px]">{displayName}</span>
                   </span>
                 </div>
               ) : (
                 <span className="min-w-0 text-sm truncate text-left">
-                  <span className="truncate text-sm font-normal block w-[300px]">{name}</span>
+                  <span className="truncate text-sm font-normal block w-[300px]">{displayName}</span>
                 </span>
               )}
             </div>
           </div>
 
           {/* Action buttons that appear on hover */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+          <div
+            className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
+          >
             <button
+              data-testid={`connected-agent-config-button-${item?.bridge_id}`}
               id={`connected-agent-config-button-${item?.bridge_id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -292,6 +296,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
               <SettingsIcon size={16} />
             </button>
             <button
+              data-testid={`connected-agent-delete-button-${item?.bridge_id}`}
               id={`connected-agent-delete-button-${item?.bridge_id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -309,7 +314,11 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
     });
 
     return (
-      <div id="connected-agent-list-agents-container" className="w-full max-w-md">
+      <div
+        data-testid="connected-agent-list-agents-container"
+        id="connected-agent-list-agents-container"
+        className="w-full max-w-md"
+      >
         <div className={`grid gap-2 w-full`}>{agentItems}</div>
       </div>
     );
@@ -323,11 +332,16 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
     handleAgentClicked,
     handleOpenAgentVariable,
     handleOpenDeleteModal,
+    isReadOnly,
   ]);
 
   return (
-    <div id="connected-agent-list-container">
-      <div id="connected-agent-list-content" className="w-full gap-2 flex flex-col px-2 py-2 cursor-default">
+    <div data-testid="connected-agent-list-container" id="connected-agent-list-container">
+      <div
+        data-testid="connected-agent-list-content"
+        id="connected-agent-list-content"
+        className="w-full gap-2 flex flex-col px-2 py-2 cursor-default"
+      >
         <>
           <div className="flex items-center gap-2 mb-2">
             <div className="flex items-center gap-2">
@@ -343,10 +357,16 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
                 <div className="border-2 border-base-200 border-dashed p-4 text-center">
                   <p className="text-sm text-base-content/70">No agents found.</p>
                   <button
+                    data-testid="connected-agent-list-add-agent-button-empty"
                     id="connected-agent-list-add-agent-button"
                     tabIndex={0}
                     className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
                     disabled={!shouldToolsShow || isReadOnly}
+                    onClick={() => {
+                      setTimeout(() => {
+                        document.getElementById("connect-agent-suggestion-search-input")?.focus();
+                      }, 50);
+                    }}
                   >
                     <AddIcon className="w-3 h-3" />
                     Add
@@ -368,13 +388,23 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
               <>
                 {renderEmbed}
                 {hasAgents && (
-                  <div id="connected-agent-list-add-agent-dropdown" className="dropdown dropdown-end w-full max-w-md">
+                  <div
+                    data-testid="connected-agent-list-add-agent-dropdown"
+                    id="connected-agent-list-add-agent-dropdown"
+                    className="dropdown dropdown-end w-full max-w-md"
+                  >
                     <div className="border-2 border-base-200 border-dashed text-center">
                       <button
+                        data-testid="connected-agent-list-add-agent-button"
                         id="connected-agent-list-add-agent-button"
                         tabIndex={0}
                         className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
                         disabled={isReadOnly}
+                        onClick={() => {
+                          setTimeout(() => {
+                            document.getElementById("connect-agent-suggestion-search-input")?.focus();
+                          }, 50);
+                        }}
                       >
                         <AddIcon className="w-3 h-3" />
                         Add Agent
@@ -411,7 +441,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         title="Are you sure?"
         description={"This action Remove the selected Agent from the Agent."}
         buttonTitle="Remove Agent"
-        modalType={`${MODAL_TYPE.DELETE_AGENT_MODAL}`}
+        modalType={`${MODAL_TYPE.REMOVE_AGENT_MODAL}`}
         loading={isDeleting}
         isAsync={true}
       />

@@ -4,7 +4,6 @@ const initialState = {
   flowData: {
     tutorialData: [],
     apiKeyGuideData: [],
-    guardrailsTemplatesData: [],
     descriptionsData: [],
     finishReasonsData: [],
     linksData: [],
@@ -20,9 +19,6 @@ const flowDataReducer = createSlice({
     getApiKeyGuideData: (state, action) => {
       state.flowData.apiKeyGuideData = action.payload;
     },
-    getGuardrailsTemplatesData: (state, action) => {
-      state.flowData.guardrailsTemplatesData = action.payload;
-    },
     getDescriptionsData: (state, action) => {
       state.flowData.descriptionsData = action.payload;
     },
@@ -34,12 +30,6 @@ const flowDataReducer = createSlice({
     },
   },
 });
-export const {
-  getTutorialData,
-  getApiKeyGuideData,
-  getGuardrailsTemplatesData,
-  getDescriptionsData,
-  getFinishReasonsData,
-  getLinksData,
-} = flowDataReducer.actions;
+export const { getTutorialData, getApiKeyGuideData, getDescriptionsData, getFinishReasonsData, getLinksData } =
+  flowDataReducer.actions;
 export default flowDataReducer.reducer;

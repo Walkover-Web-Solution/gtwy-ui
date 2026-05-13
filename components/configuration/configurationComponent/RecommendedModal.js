@@ -45,7 +45,20 @@ const RecommendedModal = ({
     setIsLoadingRecommendations(true);
 
     try {
-      const currentPrompt = promptTextAreaRef.current?.querySelector("textarea")?.value?.trim() || prompt.trim();
+      // Convert prompt to string safely (handles both string and object formats)
+      const promptText =
+        typeof prompt === "string"
+          ? prompt
+          : prompt?.customPrompt ||
+            [
+              prompt?.role ? `Role: ${prompt.role}` : null,
+              prompt?.goal ? `Goal: ${prompt.goal}` : null,
+              prompt?.instruction ? `Instructions: ${prompt.instruction}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n\n") ||
+            "";
+      const currentPrompt = promptTextAreaRef.current?.querySelector("textarea")?.value?.trim() || promptText.trim();
       if (((bridgeApiKey || deafultApiKeys) && currentPrompt !== "") || service === "ai_ml") {
         const response = await modelSuggestionApi({ versionId: searchParams?.version });
         if (response?.success) {
@@ -84,6 +97,7 @@ const RecommendedModal = ({
         {shouldPromptShow && (
           <div className="flex flex-col items-start gap-2">
             <button
+              data-testid="get-recommended-model-button"
               id="get-recommended-model-button"
               className="flex items-center gap-2  rounded-md bg-gradient-to-r from-blue-800 to-orange-600 text-sm text-transparent bg-clip-text hover:opacity-80 transition-opacity"
               onClick={handleGetRecommendations}

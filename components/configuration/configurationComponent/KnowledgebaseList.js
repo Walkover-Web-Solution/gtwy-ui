@@ -14,7 +14,7 @@ import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
-import { CircleQuestionMark } from "lucide-react";
+import { CircleQuestionMark, SquarePenIcon } from "lucide-react";
 
 const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -41,9 +41,11 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   });
 
   const [selectedKnowledgebase, setSelectedKnowledgebase] = useState(null);
+  const [selectedResource, setSelectedResource] = useState(null);
   const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE?.DELETE_KNOWLEDGE_BASE_MODAL);
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
     showSuggestion: false,
@@ -67,6 +69,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
       collection_id: knowledgeBaseItem.collectionId,
       resource_id: id,
       description: knowledgeBaseItem.description,
+      name: knowledgeBaseItem.title,
     };
 
     dispatch(
@@ -106,6 +109,11 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     openModal(MODAL_TYPE?.DELETE_KNOWLEDGE_BASE_MODAL);
   };
 
+  const handleEditKnowledgebase = (item) => {
+    setSelectedResource(item);
+    openModal(MODAL_TYPE?.KNOWLEDGE_BASE_MODAL);
+  };
+
   useEffect(() => {
     const handleMessage = (e) => {
       if (e.data?.type === "rag") {
@@ -124,6 +132,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   const hasKnowledgebases = (Array.isArray(knowbaseVersionData) ? knowbaseVersionData : []).length > 0;
   const knowledgebaseDropdownContent = !tutorialState?.showTutorial && (
     <ul
+      data-testid="knowledgebase-dropdown"
       id="knowledgebase-dropdown"
       tabIndex={0}
       className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-1"
@@ -131,6 +140,8 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
       <div className="flex flex-col gap-2 w-full">
         <li className="text-sm font-semibold disabled">Available Knowledge Bases</li>
         <input
+          autoComplete="off"
+          data-testid="knowledgebase-search-input"
           id="knowledgebase-search-input"
           type="text"
           placeholder="Search Knowledge Base"
@@ -140,7 +151,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         />
         {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
           .filter((item) => {
-            const matchesSearch = item?.title?.toLowerCase()?.includes(searchQuery?.toLowerCase());
+            const matchesSearch = item?.title?.toLowerCase()?.includes(normalizedSearchQuery);
             // Check if item already exists in knowbaseVersionData (handle both old and new format)
             const alreadyExists = knowbaseVersionData?.some((docItem) => {
               if (typeof docItem === "string") {
@@ -153,6 +164,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
           })
           .map((item) => (
             <li
+              data-testid={`knowledgebase-dropdown-item-${item?._id}`}
               id={`knowledgebase-dropdown-item-${item?._id}`}
               key={item?._id}
               onClick={() => handleAddKnowledgebase(item?._id)}
@@ -172,6 +184,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             </li>
           ))}
         <li
+          data-testid="knowledgebase-add-new-button"
           id="knowledgebase-add-new-button"
           className="py-2 border-t border-base-300 w-full sticky bottom-0 bg-base-100"
           onClick={() => {
@@ -210,9 +223,10 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         const item = knowledgeBaseData?.find((kb) => kb._id === resourceId);
         return item ? (
           <div
+            data-testid={`knowledgebase-card-${item._id}`}
             id={`knowledgebase-card-${item._id}`}
             key={resourceId || index}
-            className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full ${item?.description?.trim() === "" ? "border-red-600" : ""}transition-colors duration-200`}
+            className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full ${item?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
           >
             <div className="flex items-center gap-2 w-full ml-2">
               {GetFileTypeIcon(item?.url?.includes(".pdf") ? "pdf" : "document", 16, 16)}
@@ -232,8 +246,24 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             </div>
 
             {/* Remove button that appears on hover */}
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+            <div
+              className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
+            >
               <button
+                data-testid={`knowledgebase-edit-button-${item._id}`}
+                id={`knowledgebase-edit-button-${item._id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditKnowledgebase(item);
+                }}
+                className="btn btn-ghost btn-sm p-1 hover:bg-blue-100 hover:text-primary"
+                title="Edit"
+                disabled={isReadOnly}
+              >
+                <SquarePenIcon size={16} />
+              </button>
+              <button
+                data-testid={`knowledgebase-delete-button-${item._id}`}
                 id={`knowledgebase-delete-button-${item._id}`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -252,7 +282,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
       .filter(Boolean);
 
     return <div className={`grid gap-2 w-full max-w-md`}>{knowledgebaseItems}</div>;
-  }, [knowbaseVersionData, knowledgeBaseData]);
+  }, [knowbaseVersionData, knowledgeBaseData, isReadOnly]);
   return (
     <div className="w-full gap-2 flex flex-col px-2 py-2 cursor-default">
       <div className="flex items-center gap-2 mb-2">
@@ -283,6 +313,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             <div className="border-2 border-base-200 border-dashed p-4 text-center">
               <p className="text-sm text-base-content/70">No knowledge base found.</p>
               <button
+                data-testid="knowledgebase-add-button"
                 id="knowledgebase-add-button"
                 tabIndex={0}
                 className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -301,6 +332,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
               <div className="dropdown dropdown-end w-full max-w-md">
                 <div className="border-2 border-base-200 border-dashed text-center">
                   <button
+                    data-testid="knowledgebase-add-button"
                     id="knowledgebase-add-button"
                     tabIndex={0}
                     className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -332,6 +364,8 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         searchParams={searchParams}
         knowbaseVersionData={knowbaseVersionData}
         addToVersion={true}
+        selectedResource={selectedResource}
+        setSelectedResource={setSelectedResource}
       />
     </div>
   );

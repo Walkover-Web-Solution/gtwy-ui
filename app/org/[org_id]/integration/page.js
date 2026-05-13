@@ -3,15 +3,15 @@ import CustomTable from "@/components/customTable/CustomTable";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { MODAL_TYPE } from "@/utils/enums";
-import React, { useCallback, useEffect, useState, use } from "react";
+import React, { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
 import MainLayout from "@/components/layoutComponents/MainLayout";
-import { openModal, toggleSidebar, closeModal, formatRelativeTime, formatDate } from "@/utils/utility";
+import { openModal, closeModal, formatRelativeTime, formatDate } from "@/utils/utility";
 import IntegrationModal from "@/components/modals/IntegrationModal";
-import GtwyIntegrationGuideSlider from "@/components/sliders/GtwyIntegrationGuideSlider";
 import SearchItems from "@/components/UI/SearchItems";
 import { EllipsisIcon, RefreshIcon } from "@/components/Icons";
-import { ClockFading } from "lucide-react";
+import { ClockFading, Pencil } from "lucide-react";
 import UsageLimitModal from "@/components/modals/UsageLimitModal";
 import { updateIntegrationDataAction } from "@/store/action/integrationAction";
 import { toast } from "react-toastify";
@@ -21,6 +21,7 @@ export const runtime = "edge";
 
 const Page = ({ params }) => {
   const resolvedParams = use(params);
+  const router = useRouter();
 
   const dispatch = useDispatch();
   const { integrationData, descriptions, linksData } = useCustomSelector((state) => ({
@@ -29,11 +30,11 @@ const Page = ({ params }) => {
     linksData: state.flowDataReducer.flowData.linksData || [],
   }));
 
-  const [selectedIntegration, setSelectedIntegration] = useState(null);
   const [embedIntegrations, setEmbedIntegrations] = useState([]); // Type-filtered integrations
   const [filterIntegration, setFilterIntegration] = useState([]); // Search-filtered integrations
-  const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [selectedIntegrationForLimit, setSelectedIntegrationForLimit] = useState(null);
+  const [renameIntegration, setRenameIntegration] = useState(null);
+  const renameInputRef = React.useRef("");
 
   // Use portal dropdown hook
   const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown();
@@ -72,35 +73,46 @@ const Page = ({ params }) => {
     originalItem: item,
   }));
 
-  const toggleGtwyIntegraionSlider = useCallback(() => {
-    setIsSliderOpen(!isSliderOpen);
-    toggleSidebar("gtwy-integration-slider", "right");
-  }, [isSliderOpen]);
-
   const handleClickIntegration = (item) => {
-    setSelectedIntegration(item);
-    toggleGtwyIntegraionSlider();
+    // Navigate to integration detail page using path params
+    router.push(`/org/${resolvedParams.org_id}/integration/${item.embed_id}`);
   };
 
   const handleSetIntegrationLimit = (item) => {
     // Transform the data to match what UsageLimitModal expects
     const transformedData = {
       ...item,
-      item_limit: item.embed_limit, // Map integration_limit to bridge_limit
-      actualName: item.actualName || item.originalName, // Ensure actualName is available
+      item_limit: item.embed_limit,
+      item_limit_reset_period: item.originalItem?.folder_limit_reset_period || "",
+      actualName: item.actualName || item.originalName,
     };
     setSelectedIntegrationForLimit(transformedData);
     openModal(MODAL_TYPE.API_KEY_LIMIT_MODAL);
   };
 
-  const handleUpdateIntegrationLimit = async (integration, limit) => {
+  const handleUpdateIntegrationLimit = async (integration, limit, resetPeriod) => {
     closeModal(MODAL_TYPE?.API_KEY_LIMIT_MODAL);
     const dataToSend = {
       ...integration.originalItem,
       folder_limit: limit,
+      folder_limit_reset_period: resetPeriod,
     };
     const res = await dispatch(updateIntegrationDataAction(resolvedParams.org_id, dataToSend));
     if (res?.data) toast.success("Integration Usage Limit Updated Successfully");
+  };
+
+  const handleRenameIntegration = async () => {
+    const newName = renameInputRef.current?.value?.trim();
+    if (!newName) {
+      toast.error("Name cannot be empty");
+      return;
+    }
+    const dataToSend = { ...renameIntegration.originalItem, name: newName };
+    const res = await dispatch(updateIntegrationDataAction(resolvedParams.org_id, dataToSend));
+    if (res?.data) {
+      toast.success("Embed renamed successfully");
+    }
+    setRenameIntegration(null);
   };
 
   const resetUsage = async (integration) => {
@@ -130,6 +142,19 @@ const Page = ({ params }) => {
             >
               <ClockFading className="" size={16} />
               Usage Limit
+            </a>
+          </li>
+          <li>
+            <a
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handlePortalCloseImmediate();
+                setRenameIntegration(row);
+              }}
+            >
+              <Pencil size={16} />
+              Rename
             </a>
           </li>
           {Number(row?.embed_usage) > 0 ? (
@@ -165,7 +190,7 @@ const Page = ({ params }) => {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-screen flex flex-col">
       {/* Header Section */}
       <div className="px-2 pt-4">
         <MainLayout>
@@ -183,22 +208,18 @@ const Page = ({ params }) => {
             />
           </div>
         </MainLayout>
+      </div>
 
-        {/* Controls Section */}
-
-        {/* Content Section */}
-        <div className="w-full">
-          <div className="flex flex-row gap-4">
-            {embedIntegrations?.length > 5 && (
-              <SearchItems data={embedIntegrations} setFilterItems={setFilterIntegration} item="Integration" />
-            )}
-            <div className={`flex-shrink-0 ${embedIntegrations?.length > 5 ? "mr-2" : "ml-2"}`}>
-              <button className="btn btn-primary btn-sm mr-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
-                + Create New Embed
-              </button>
-            </div>
-          </div>
+      {/* Controls Section */}
+      <div className="px-4 py-3 flex items-center">
+        <div>
+          {embedIntegrations?.length > 5 && (
+            <SearchItems data={embedIntegrations} setFilterItems={setFilterIntegration} item="Integration" />
+          )}
         </div>
+        <button className="btn btn-primary btn-sm ml-2 mb-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
+          + Create New Embed
+        </button>
       </div>
       {filterIntegration.length > 0 ? (
         <div className="w-full overflow-visible">
@@ -220,8 +241,35 @@ const Page = ({ params }) => {
       )}
 
       <IntegrationModal params={resolvedParams} type="embed" />
-      <GtwyIntegrationGuideSlider data={selectedIntegration} handleCloseSlider={toggleGtwyIntegraionSlider} />
       <UsageLimitModal data={selectedIntegrationForLimit} onConfirm={handleUpdateIntegrationLimit} item="Embed Name" />
+
+      {renameIntegration && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-sm">
+            <h3 className="font-bold text-lg mb-4">Rename Embed</h3>
+            <input
+              type="text"
+              className="input input-bordered input-sm w-full mb-2"
+              defaultValue={renameIntegration.originalName}
+              maxLength={50}
+              ref={renameInputRef}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRenameIntegration();
+              }}
+            />
+            <div className="modal-action">
+              <button className="btn btn-sm" onClick={() => setRenameIntegration(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-sm btn-primary" onClick={handleRenameIntegration}>
+                Rename
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={() => setRenameIntegration(null)} />
+        </div>
+      )}
 
       {/* Portal components from hook */}
       <PortalStyles />

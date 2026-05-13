@@ -26,12 +26,12 @@ const useTutorialVideos = () => {
       const title = tutorial?.title?.toLowerCase() || "";
       const type = tutorial?.type?.toLowerCase() || "";
       switch (tutorialType) {
-        case "bridge_creation":
+        case "api_agent_creation":
         case "agent_creation":
           return (
+            title.includes("api") ||
             title.includes("agent") ||
-            title.includes("bridge") ||
-            type === "bridge_creation" ||
+            type === "api_agent_creation" ||
             type === "agent_creation"
           );
 
@@ -82,6 +82,12 @@ const useTutorialVideos = () => {
         case "testing":
           return title.includes("test") || title.includes("case") || type === "test_cases" || type === "testing";
 
+        case "chatbot_agent_creation":
+          return title.includes("chatbot") || title.includes("embed") || type === "chatbot_agent_creation";
+
+        case "onboarding":
+          return title.includes("onboarding") || type === "onboarding";
+
         default:
           return type === tutorialType || title.includes(tutorialType);
       }
@@ -92,22 +98,25 @@ const useTutorialVideos = () => {
 
   // Specific video getter functions for different tutorial types
   const getVideos = () => ({
-    bridgeCreation: getTutorialVideo("bridge_creation"),
+    apiAgentCreation: getTutorialVideo("api_agent_creation"),
     FunctionCreation: getTutorialVideo("function_creation"),
     knowledgeBase: getTutorialVideo("knowledge_base"),
     AdvanceParameter: getTutorialVideo("advanced_parameter"),
     Addvariables: getTutorialVideo("variable_management"),
     PauthKey: getTutorialVideo("pauth_key"),
     TestCases: getTutorialVideo("test_cases"),
+    chatbotAgentCreation: getTutorialVideo("chatbot_agent_creation"),
 
     // Individual getter functions for direct use
-    getBridgeCreationVideo: () => getTutorialVideo("bridge_creation"),
+    getApiAgentCreationVideo: () => getTutorialVideo("api_agent_creation"),
+    getOnBoardingVideo: () => getTutorialVideo("onboarding"),
     getFunctionCreationVideo: () => getTutorialVideo("function_creation"),
     getKnowledgeBaseVideo: () => getTutorialVideo("knowledge_base"),
     getAdvanceParameterVideo: () => getTutorialVideo("advanced_parameter"),
     getAddVariablesVideo: () => getTutorialVideo("variable_management"),
     getPauthKeyVideo: () => getTutorialVideo("pauth_key"),
     getTestCasesVideo: () => getTutorialVideo("test_cases"),
+    getChatbotAgentCreationVideo: () => getTutorialVideo("chatbot_agent_creation"),
   });
 
   return {

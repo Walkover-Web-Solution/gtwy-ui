@@ -11,7 +11,7 @@ import {
   getBridgeVersionAction,
 } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
-import { openModal, sendDataToParent } from "@/utils/utility";
+import { openModal, sendDataToParent, closeSidebar } from "@/utils/utility";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
 
@@ -25,7 +25,14 @@ import { TrashIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
-function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions = 2, shouldFetch = true }) {
+function BridgeVersionDropdown({
+  params,
+  searchParams,
+  isEmbedUser,
+  maxVersions = 2,
+  shouldFetch = true,
+  showDropdownOnly = false,
+}) {
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -75,7 +82,8 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   const debounceTimers = useRef(new Map());
   const fetchVersionData = useCallback(
     (versionId) => {
-      if (!versionId || !params?.id || !shouldFetch) return;
+      // Don't fetch if versionId is null, "null" string, or empty
+      if (!versionId || versionId === "null" || !params?.id || !shouldFetch) return;
       if (globalFetchTracker.inProgress.has(versionId)) {
         return;
       }
@@ -113,16 +121,18 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
     (version) => {
       // Find the index in the original array (this maintains consistent numbering)
       const originalIndex = bridgeVersionsArray.indexOf(version);
+      const versionNumber = `V${originalIndex + 1}`;
+      const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
 
-      if (version === publishedVersion) {
-        // For published version, show "V{number} Published"
-        return `V${originalIndex + 1} `;
+      if (version === publishedVersion && isDrafted) {
+        // For published version with changes, show "V{number} (draft)"
+        return `${versionNumber} (draft)`;
       } else {
-        // For non-published versions, show "V{number}"
-        return `V${originalIndex + 1}`;
+        // For all other versions, show just "V{number}"
+        return versionNumber;
       }
     },
-    [bridgeVersionsArray, publishedVersion]
+    [bridgeVersionsArray, publishedVersion, bridgeVersionMapping]
   );
 
   // Memoize current version and isPublished to prevent unnecessary re-renders
@@ -131,17 +141,22 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
 
   // SendDataToChatbot effect - only runs when version changes
   useEffect(() => {
-    if (!currentVersion) return;
-
     const timer = setInterval(() => {
       if (typeof SendDataToChatbot !== "undefined") {
-        SendDataToChatbot(currentIsPublished ? { version_id: "null" } : { version_id: currentVersion });
+        // If currentVersion is null or "null" or isPublished, use versions[0]
+        let versionToSend = currentVersion;
+
+        if (!currentVersion || currentVersion === "null" || currentIsPublished) {
+          versionToSend = bridgeVersionsArray.length > 0 ? bridgeVersionsArray[0] : "null";
+        }
+
+        SendDataToChatbot({ version_id: versionToSend });
         clearInterval(timer);
       }
     }, 300);
 
     return () => clearInterval(timer);
-  }, [currentVersion, currentIsPublished]);
+  }, [currentVersion, currentIsPublished, bridgeVersionsArray]);
 
   // Initialize version only once on mount or when versions become available
   useEffect(() => {
@@ -152,6 +167,17 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
     // If isPublished=true, don't push version ID - just return
     if (currentIsPublished) {
       hasInitialized.current = true;
+      return;
+    }
+
+    // If version is null or "null" string, use versions[0]
+    if ((currentVersion === null || currentVersion === "null") && bridgeVersionsArray.length > 0) {
+      const firstVersion = bridgeVersionsArray[0];
+      if (firstVersion) {
+        hasInitialized.current = true;
+        router.push(`/org/${params.org_id}/agents/configure/${params.id}?version=${firstVersion}`);
+        fetchVersionData(firstVersion);
+      }
       return;
     }
 
@@ -185,6 +211,8 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   const handleVersionChange = useCallback(
     (version) => {
       if (currentVersion === version) return;
+      // Close ConfigHistorySlider when version changes (only if it's open)
+      closeSidebar("default-config-history-slider", "right");
       router.push(`/org/${params.org_id}/agents/configure/${params.id}?version=${version}`);
       fetchVersionData(version);
     },
@@ -194,12 +222,6 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   const handleCreateNewVersion = () => {
     // create new version
     const version_description_input = versionDescriptionRef?.current?.value;
-
-    // Validate inputs
-    if (!version_description_input || version_description_input.trim() === "") {
-      alert("Please enter a version description");
-      return;
-    }
 
     if (!params.id || !params.org_id) {
       console.error("Missing required parameters:", { bridgeId: params.id, orgId: params.org_id });
@@ -383,13 +405,19 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
 
   if (!bridgeVersionsArray.length) {
     return (
-      <div id="bridge-version-dropdown-empty" className="flex items-center gap-2">
-        <PublishBridgeVersionModal
-          params={params}
-          searchParams={searchParams}
-          agent_name={bridgeName}
-          agent_description={versionDescription}
-        />
+      <div
+        data-testid="bridge-version-dropdown-empty"
+        id="bridge-version-dropdown-empty"
+        className="flex items-center gap-2"
+      >
+        {!showDropdownOnly && (
+          <PublishBridgeVersionModal
+            params={params}
+            searchParams={searchParams}
+            agent_name={bridgeName}
+            agent_description={versionDescription}
+          />
+        )}
         <VersionDescriptionModal
           versionDescriptionRef={versionDescriptionRef}
           handleCreateNewVersion={handleCreateNewVersion}
@@ -399,12 +427,17 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
   }
 
   return (
-    <div id="bridge-version-dropdown-container" className="flex items-center gap-1">
+    <div
+      data-testid="bridge-version-dropdown-container"
+      id="bridge-version-dropdown-container"
+      className="flex items-center gap-1"
+    >
       {/* Version Tabs Container */}
-      <div id="bridge-version-tabs" className="flex items-center gap-1">
+      <div data-testid="bridge-version-tabs" id="bridge-version-tabs" className="flex items-center gap-1">
         {versionsToShow.map((version, index) => {
           const isActive = searchParams.get?.("version") === version;
           const isPublished = version === publishedVersion;
+          const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
           const versionDisplayName = getVersionDisplayName(version);
           const versionDesc = getVersionDescription(version);
           const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
@@ -412,6 +445,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
             <div key={version} className="relative group">
               <div className={versionDesc ? "tooltip tooltip-bottom" : ""} data-tip={versionDesc}>
                 <button
+                  data-testid={`version-button-${version}`}
                   id={`version-button-${version}`}
                   onClick={() => handleVersionChange(version)}
                   className={`
@@ -420,10 +454,14 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                                     ${
                                       isActive
                                         ? isPublished
-                                          ? "bg-green-100 text-green-800 border border-green-300"
+                                          ? isDrafted
+                                            ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                            : "bg-green-100 text-green-800 border border-green-300"
                                           : "bg-primary hover:bg-primary text-primary-content"
                                         : isPublished
-                                          ? "bg-base-100 text-base-content hover:bg-green-50 hover:text-green-700 border border-base-300"
+                                          ? isDrafted
+                                            ? "bg-base-100 text-base-content hover:bg-yellow-50 hover:text-yellow-700 border border-base-300"
+                                            : "bg-base-100 text-base-content hover:bg-green-50 hover:text-green-700 border border-base-300"
                                           : "text-base-content/70 hover:text-base-content"
                                     }
                                 `}
@@ -432,8 +470,10 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                   <span>{versionDisplayName}</span>
                   {isPublished && (
                     <span
-                      className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"
-                      title="Published Version"
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        isDrafted ? "bg-yellow-400" : "bg-green-500"
+                      }`}
+                      title={isDrafted ? "Published Version with Changes" : "Published Version"}
                     ></span>
                   )}
                 </button>
@@ -442,6 +482,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
               {/* Delete Button - appears on hover, positioned outside button */}
               {canDelete && (
                 <span
+                  data-testid={`version-delete-button-${version}`}
                   id={`version-delete-button-${version}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -463,6 +504,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
         {hasMoreVersions && (
           <div id="version-dropdown-wrapper" className="relative" ref={dropdownRef}>
             <button
+              data-testid="version-dropdown-toggle"
               id="version-dropdown-toggle"
               onClick={() => setShowVersionDropdown(!showVersionDropdown)}
               className="flex items-center gap-1 px-2 py-1 text-xs bg-base-100 text-base-content hover:bg-base-200 rounded-md transition-all duration-200"
@@ -476,12 +518,17 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
             {showVersionDropdown && (
               <div className="absolute top-full left-0 mt-1 w-48 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 <div className="p-2">
-                  <div id="version-dropdown-menu" className="text-xs font-medium text-base-content/70 mb-2 px-2">
+                  <div
+                    data-testid="version-dropdown-menu"
+                    id="version-dropdown-menu"
+                    className="text-xs font-medium text-base-content/70 mb-2 px-2"
+                  >
                     All Versions
                   </div>
                   {bridgeVersionsArray.map((version, index) => {
                     const isActive = searchParams?.get?.("version") === version;
                     const isPublished = version === publishedVersion;
+                    const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
                     const versionDisplayName = getVersionDisplayName(version);
                     const versionDesc = getVersionDescription(version);
                     const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
@@ -489,6 +536,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                     return (
                       <div key={version} className="relative group">
                         <button
+                          data-testid={`version-dropdown-button-${version}`}
                           id={`version-dropdown-button-${version}`}
                           onClick={() => {
                             handleVersionChange(version);
@@ -499,10 +547,14 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                                                         ${
                                                           isActive
                                                             ? isPublished
-                                                              ? "bg-green-100 text-green-800"
+                                                              ? isDrafted
+                                                                ? "bg-yellow-100 text-yellow-800"
+                                                                : "bg-green-100 text-green-800"
                                                               : "bg-base-300 text-base-content"
                                                             : isPublished
-                                                              ? "bg-base-100 hover:bg-green-50 text-base-content"
+                                                              ? isDrafted
+                                                                ? "bg-base-100 hover:bg-yellow-50 text-base-content"
+                                                                : "bg-base-100 hover:bg-green-50 text-base-content"
                                                               : "bg-base-100 hover:bg-base-200 text-base-content"
                                                         }
                                                     `}
@@ -510,7 +562,10 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{versionDisplayName}</span>
                             {isPublished && (
-                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Published Version"></span>
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${isDrafted ? "bg-yellow-400" : "bg-green-500"}`}
+                                title={isDrafted ? "Published Version with Changes" : "Published Version"}
+                              ></span>
                             )}
                             {isActive && (
                               <span className="text-xs text-base-content/60 truncate max-w-24" title={versionDesc}>
@@ -522,6 +577,7 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
                           {/* Delete Button */}
                           {canDelete && (
                             <span
+                              data-testid={`version-dropdown-delete-${version}`}
                               id={`version-dropdown-delete-${version}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -545,24 +601,29 @@ function BridgeVersionDropdown({ params, searchParams, isEmbedUser, maxVersions 
           </div>
         )}
 
-        {/* Create New Version Button */}
-        <button
-          id="create-new-version-button"
-          onClick={() => openModal(MODAL_TYPE.VERSION_DESCRIPTION_MODAL)}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-base-100 text-base-content  hover:bg-base-200 rounded-md transition-all duration-200"
-          title="Create New Version"
-        >
-          <Plus className="w-3 h-3" />
-          <span className="hidden sm:inline">New</span>
-        </button>
+        {/* Create New Version Button (available only after first publish) */}
+        {publishedVersion && (
+          <button
+            data-testid="create-new-version-button"
+            id="create-new-version-button"
+            onClick={() => openModal(MODAL_TYPE.VERSION_DESCRIPTION_MODAL)}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-base-100 text-base-content  hover:bg-base-200 rounded-md transition-all duration-200"
+            title="Create New Version"
+          >
+            <Plus className="w-3 h-3" />
+            <span className="hidden sm:inline">New</span>
+          </button>
+        )}
       </div>
 
-      <PublishBridgeVersionModal
-        params={params}
-        searchParams={searchParams}
-        agent_name={bridgeName}
-        agent_description={versionDescription}
-      />
+      {!showDropdownOnly && (
+        <PublishBridgeVersionModal
+          params={params}
+          searchParams={searchParams}
+          agent_name={bridgeName}
+          agent_description={versionDescription}
+        />
+      )}
       <VersionDescriptionModal
         versionDescriptionRef={versionDescriptionRef}
         handleCreateNewVersion={handleCreateNewVersion}

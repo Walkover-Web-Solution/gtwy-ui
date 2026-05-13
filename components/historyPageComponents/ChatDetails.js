@@ -2,25 +2,41 @@
 import { MODAL_TYPE } from "@/utils/enums";
 import { allowedAttributes, generateKeyValuePairs, openModal } from "@/utils/utility";
 import { CloseCircleIcon, CopyIcon } from "@/components/Icons";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { toast } from "react-toastify";
 import { Check, ChevronDown } from "lucide-react";
 import ChatAiConfigDeatilViewModal from "../modals/ChatAiConfigDeatilViewModal";
 import { truncate, useCloseSliderOnEsc } from "./AssistFile";
 
 const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) => {
-  if (selectedItem) {
-    selectedItem["system Prompt"] =
-      selectedItem["AiConfig"]?.messages?.[0].role === "developer"
-        ? selectedItem["AiConfig"]?.messages?.[0].content
-        : selectedItem["AiConfig"]?.input?.[0].role === "developer"
-          ? selectedItem["AiConfig"]?.input?.[0].content
-          : selectedItem["AiConfig"]?.system;
-  }
+  if (!selectedItem) return null;
+
   const variablesKeyValue = selectedItem && selectedItem["variables"] ? selectedItem["variables"] : {};
+  const batchData =
+    selectedItem && typeof selectedItem["batch_data"] === "object" && selectedItem["batch_data"] !== null
+      ? selectedItem["batch_data"]
+      : null;
   const [modalContent, setModalContent] = useState(null);
+  const [modalTitle, setModalTitle] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const sidebarRef = useRef(null);
+
+  const attributeDisplayMap = useMemo(() => {
+    const allAttributes = [...allowedAttributes.important, ...allowedAttributes.optional];
+    return new Map(allAttributes);
+  }, []);
+
+  const getDisplayTitle = useCallback(
+    (key) => {
+      if (attributeDisplayMap.has(key)) return attributeDisplayMap.get(key);
+
+      return String(key || "Details")
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    },
+    [attributeDisplayMap]
+  );
 
   useEffect(() => {
     const closeSliderOnEsc = (event) => {
@@ -63,7 +79,9 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
   };
 
   const replaceVariablesInPrompt = (prompt) => {
-    return prompt.replace(/{{(.*?)}}/g, (_, variableName) => {
+    const promptStr =
+      typeof prompt === "object" && prompt !== null ? Object.values(prompt).join(" ") : String(prompt || "");
+    return promptStr.replace(/{{(.*?)}}/g, (_, variableName) => {
       const value = variablesKeyValue[variableName];
       if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
         return value;
@@ -72,24 +90,34 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
     });
   };
 
-  const handleObjectClick = useCallback((key, displayValue) => {
-    setModalContent(displayValue);
-    openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
+  const handleObjectClick = useCallback(
+    (key, displayValue) => {
+      setModalTitle(getDisplayTitle(key));
+      setModalContent(displayValue);
+      openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
+    },
+    [getDisplayTitle]
+  );
+
+  const resolveSelectedValueKey = useCallback((key) => {
+    if (key === "system Prompt") return "prompt";
+    return key;
   }, []);
 
   // Open modal if selectedItem.value matches a key
   useEffect(() => {
-    if (selectedItem?.value && selectedItem?.value !== "system Prompt") {
-      const key = selectedItem.value;
-      const value = selectedItem[key];
+    if (selectedItem?.value) {
+      const key = resolveSelectedValueKey(selectedItem.value);
+      const value = key === "prompt" ? (selectedItem.prompt ?? selectedItem["system Prompt"]) : selectedItem[key];
       if (value) {
         handleObjectClick(key, value);
       }
     }
-  }, [selectedItem, handleObjectClick]);
+  }, [selectedItem, handleObjectClick, resolveSelectedValueKey]);
 
   return (
     <div
+      data-testid="chat-details-slider"
       id="chat-details-slider"
       ref={sidebarRef}
       className={`fixed inset-y-0 right-0 border-l-2 bg-base-100 shadow-2xl rounded-md ${
@@ -102,6 +130,7 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-base-content tracking-tight">Chat Details</h2>
               <button
+                data-testid="chat-details-close-button"
                 id="chat-details-close-button"
                 onClick={() => setIsSliderOpen(false)}
                 className="btn btn-ghost btn-circle hover:bg-base-100 transition-colors duration-200"
@@ -116,14 +145,17 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                   {allowedAttributes.important
                     .sort((a, b) => a[1].localeCompare(b[1]))
                     .map(([key, displayKey]) => {
-                      const value = selectedItem[key];
+                      if (key === "latency" && batchData) return null;
+
+                      const value =
+                        key === "prompt" ? (selectedItem.prompt ?? selectedItem["system Prompt"]) : selectedItem[key];
                       if (value === undefined) return null;
 
                       let displayValue = value;
                       let rawSystemPrompt;
-                      if (key === "system Prompt" && typeof value === "string") {
+                      if (key === "prompt" && typeof value === "string") {
                         rawSystemPrompt = replaceVariablesInPrompt(value);
-                        displayValue = rawSystemPrompt.replace(/\n/g, "<br />");
+                        displayValue = rawSystemPrompt;
                       }
 
                       return (
@@ -147,6 +179,7 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                                   <div className="absolute top-2 right-2">
                                     <div className="dropdown dropdown-end">
                                       <div
+                                        data-testid="chat-details-variables-copy-dropdown"
                                         id="chat-details-variables-copy-dropdown"
                                         tabIndex={0}
                                         role="button"
@@ -162,6 +195,7 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                                       >
                                         <li>
                                           <a
+                                            data-testid="chat-details-copy-current-values"
                                             id="chat-details-copy-current-values"
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -182,6 +216,7 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                                         </li>
                                         <li>
                                           <a
+                                            data-testid="chat-details-copy-key-value-pairs"
                                             id="chat-details-copy-key-value-pairs"
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -207,21 +242,33 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                                 )}
                               </div>
                             ) : (
-                              <div className="relative bg-base-200 p-4 rounded-lg text-sm overflow-auto whitespace-pre-wrap border border-base-200">
-                                <div
-                                  className="text-base-content break-words"
-                                  dangerouslySetInnerHTML={{ __html: displayValue?.toString() }}
-                                ></div>
-                                {key === "system Prompt" && (
+                              <div
+                                className={`relative bg-base-200 p-4 rounded-lg text-sm overflow-auto whitespace-pre-wrap border border-base-200 ${
+                                  key === "prompt"
+                                    ? "cursor-pointer hover:border-primary transition-colors duration-200"
+                                    : ""
+                                }`}
+                                onClick={() => {
+                                  if (key === "prompt") {
+                                    handleObjectClick(key, rawSystemPrompt || value);
+                                  }
+                                }}
+                              >
+                                <div className="text-base-content break-words whitespace-pre-wrap">
+                                  {displayValue?.toString()}
+                                </div>
+                                {key === "prompt" && (
                                   <button
+                                    data-testid="chat-details-copy-system-prompt"
                                     id="chat-details-copy-system-prompt"
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       copyToClipboard(
                                         rawSystemPrompt,
                                         "System prompt copied to clipboard",
                                         "system-prompt"
-                                      )
-                                    }
+                                      );
+                                    }}
                                     className="absolute top-2 right-2 btn btn-ghost btn-sm p-1.5 rounded-md hover:bg-base-300 transition-colors duration-200"
                                     title="Copy system prompt"
                                   >
@@ -238,6 +285,45 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                         </div>
                       );
                     })}
+
+                  {batchData && (
+                    <div className="border-b border-base-300 bg-base-100 transition-colors duration-150">
+                      <div className="pt-4 px-4 text-sm font-semibold capitalize">Batch Details</div>
+                      <div className="py-4 px-4">
+                        <div className="relative">
+                          <pre
+                            id="chat-details-batch-data-value"
+                            className={`bg-base-200 p-4 rounded-lg text-sm overflow-auto whitespace-pre-wrap border border-base-200 ${
+                              JSON.stringify(batchData).length > 200
+                                ? "cursor-pointer hover:border-primary transition-colors duration-200"
+                                : ""
+                            }`}
+                            onClick={() => handleObjectClick("batch_data", batchData)}
+                          >
+                            {truncate(JSON.stringify(batchData, null, 2), 210)}
+                          </pre>
+                          <div className="absolute top-2 right-2">
+                            <button
+                              data-testid="chat-details-copy-batch-data"
+                              id="chat-details-copy-batch-data"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(batchData, "Batch data copied to clipboard", "batch-data");
+                              }}
+                              className="btn btn-ghost btn-sm p-1.5 rounded-md hover:bg-base-300"
+                              title="Copy batch data"
+                            >
+                              {copiedId === "batch-data" ? (
+                                <Check size={16} className="text-success" />
+                              ) : (
+                                <CopyIcon size={16} className="text-base-content" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-base-200">
                     <div className="py-2 px-6 text-sm font-semibold text-base-content border-b border-base-300">
@@ -283,7 +369,7 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
           </div>
         </aside>
       )}
-      <ChatAiConfigDeatilViewModal modalContent={modalContent} />
+      <ChatAiConfigDeatilViewModal modalContent={modalContent} modalTitle={modalTitle} />
     </div>
   );
 };

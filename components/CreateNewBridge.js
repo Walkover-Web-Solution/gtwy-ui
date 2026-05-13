@@ -109,7 +109,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
             sendDataToParent(
               "drafted",
               {
-                name: data?.name,
+                name: data?.agent?.name,
                 agent_id: data?.agent?._id,
               },
               "Agent created Successfully"
@@ -122,16 +122,12 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
         })
         .catch((error) => {
           updateState({ isAiLoading: false });
-          const name = generateUniqueName();
-          const slugname = generateUniqueName();
 
-          if (name.length > 0 && state.selectedModel) {
+          if (state.selectedModel) {
             updateState({ isLoading: true });
             const fallbackDataToSend = {
               service: state.selectedService,
               model: state.selectedModel,
-              name,
-              slugName: slugname,
               bridgeType: resolvedBridgeType,
               type: state.selectedType,
             };
@@ -166,17 +162,12 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
           }
         });
     } else {
-      const name = generateUniqueName();
-      const slugname = generateUniqueName();
-
-      if (name.length > 0 && state.selectedModel) {
+      if (state.selectedModel) {
         updateState({ isLoading: true });
 
         const dataToSend = {
           service: state.selectedService,
           model: state.selectedModel,
-          name,
-          slugName: slugname,
           bridgeType: resolvedBridgeType,
           type: state.selectedType,
         };
@@ -218,14 +209,19 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
   ]);
 
   const handleCloseModal = useCallback(() => {
-    closeModal(MODAL_TYPE.CREATE_BRIDGE_MODAL);
-  }, []);
+    cleanState();
+  }, [cleanState]);
 
   return (
     <div>
       {state.isLoading && <LoadingSpinner />}
-      <dialog id={MODAL_TYPE.CREATE_BRIDGE_MODAL} className="modal backdrop-blur-sm">
+      <dialog
+        data-testid={MODAL_TYPE.CREATE_BRIDGE_MODAL}
+        id={MODAL_TYPE.CREATE_BRIDGE_MODAL}
+        className="modal backdrop-blur-sm"
+      >
         <div
+          data-testid="create-new-bridge-modal-container"
           id="create-new-bridge-modal-container"
           className="modal-box max-w-2xl w-full mx-4 bg-gradient-to-br from-base-100 to-base-200 shadow-2xl border border-base-300"
         >
@@ -240,6 +236,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
               </div>
             </div>
             <button
+              data-testid="create-new-bridge-close-button"
               id="create-new-bridge-close-button"
               className="btn btn-sm btn-circle btn-ghost hover:bg-base-300"
               onClick={handleCloseModal}
@@ -250,7 +247,11 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
 
           {/* Global Error Message */}
           {state.globalError && (
-            <div id="create-new-bridge-error-alert" className="alert alert-error mb-6 shadow-lg">
+            <div
+              data-testid="create-new-bridge-error-alert"
+              id="create-new-bridge-error-alert"
+              className="alert alert-error mb-6 shadow-lg"
+            >
               <Plus size={20} className="text-primary" />
               <span className="font-medium">{state.globalError}</span>
             </div>
@@ -267,11 +268,13 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
               <div className="form-control">
                 <div className="relative">
                   <textarea
+                    data-testid="agent-purpose"
                     id="agent-purpose"
                     placeholder="e.g., A customer support agent that helps users with product inquiries and troubleshooting..."
                     ref={textAreaPurposeRef}
                     autoFocus
                     onChange={handlePurposeInput}
+                    disabled={state.isAiLoading || state.isLoading}
                     className={`textarea textarea-bordered w-full min-h-[150px] max-h-[150px] bg-base-100 transition-all duration-300 text-base resize-none placeholder:text-base-content/40 ${
                       state.validationErrors.purpose
                         ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
@@ -323,11 +326,17 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
 
           {/* Modal Actions */}
           <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-base-300">
-            <button id="create-new-bridge-cancel-button" className="btn btn-sm" onClick={handleCloseModal}>
+            <button
+              data-testid="create-new-bridge-cancel-button"
+              id="create-new-bridge-cancel-button"
+              className="btn btn-sm"
+              onClick={handleCloseModal}
+            >
               Cancel
             </button>
 
             <button
+              data-testid="create-new-bridge-submit-button"
               id="create-new-bridge-submit-button"
               className="btn btn-sm btn-primary"
               onClick={handleCreateAgent}

@@ -7,7 +7,8 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
   const searchParams = useSearchParams();
   const router = useRouter();
   const filterParam = searchParams.get("filter");
-  const isWorkspaceItem = item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser);
+  const isWorkspaceItem =
+    item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser) || item === "metrics";
   const itemLabel = item === "Organizations" ? "Workspaces" : item;
   const userClearedSearch = useRef(false);
   const searchInputRef = useRef(null);
@@ -21,7 +22,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
 
   const shortcutText = isMac ? "⌘K" : "Ctrl+K";
   useEffect(() => {
-    searchInputRef.current?.focus();
+    searchInputRef.current?.focus({ preventScroll: true });
   }, []);
   // Function to open command palette (disabled for workspace search to allow typing)
   const openCommandPalette = () => {
@@ -54,8 +55,9 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
       );
 
       if (matchedItem) {
-        // Set the search term to the matched item's name or ID
-        const displayName = matchedItem.name || matchedItem.slugName || matchedItem._id || matchedItem.id;
+        // Prefer human-readable labels (like Knowledge Base title) over IDs.
+        const displayName =
+          matchedItem.title || matchedItem.name || matchedItem.slugName || matchedItem._id || matchedItem.id;
         setSearchTerm(displayName);
       }
     } else if (!filterParam) {
@@ -82,6 +84,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
       data?.filter(
         (item) =>
           (item?.name && item?.name?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
+          (item?.title && item?.title?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?.slugName && item?.slugName?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?.service && item?.service?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?._id && item?._id?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
@@ -97,14 +100,14 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
   }, [filterData, setFilterItems]);
 
   const containerClasses = isWorkspaceItem ? `${item === "org" ? "w-full mt-2" : "max-w-xs ml-2"}` : "max-w-xs ml-2";
-  const inputClasses = style
-    ? style
-    : "input input-sm w-full border bg-white dark:bg-base-200 border-base-content/50 pr-16";
+  const inputClasses = style ? style : "input input-sm w-full border bg-base-200 border-base-content/50 pr-16";
 
   return (
     <div className={containerClasses}>
-      <div className="relative">
+      <div className="relative mb-2">
         <input
+          autoComplete="off"
+          data-testid="search-items-input"
           id="search-items-input"
           type="text"
           ref={searchInputRef}
@@ -125,15 +128,16 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
           readOnly={!filterParam && !isWorkspaceItem}
         />
         {!isWorkspaceItem && (
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute inset-y-0 right-2 flex items-center gap-1">
             {filterParam && (
               <button
+                data-testid="search-items-clear-filter-button"
                 id="search-items-clear-filter-button"
                 onClick={clearFilter}
-                className="btn btn-xs btn-ghost p-1 hover:bg-error hover:text-error-content"
+                className="btn btn-xs btn-ghost btn-square h-6 min-h-0 w-6 p-0 hover:bg-error hover:text-error-content"
                 title="Clear filter"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
             {!filterParam && (

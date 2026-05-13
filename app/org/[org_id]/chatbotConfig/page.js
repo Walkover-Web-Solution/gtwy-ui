@@ -1,37 +1,49 @@
 "use client";
-import FormSection from "@/components/chatbotConfiguration/FormSection";
-import MainLayout from "@/components/layoutComponents/MainLayout";
-import PageHeader from "@/components/Pageheader";
+import ChatbotConfigDetailView from "@/components/chatbotConfiguration/ChatbotConfigDetailView";
 import Protected from "@/components/Protected";
+import React, { use, useEffect } from "react";
+import { collapseMainSlider } from "@/utils/utility";
+import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import React, { use } from "react";
+import { generateChatbotTokenAction } from "@/store/action/integrationAction";
+import { clearEmbedToken } from "@/store/reducer/integrationReducer";
 
 const Page = ({ params }) => {
   const resolvedParams = use(params);
-  const { descriptions, linksData } = useCustomSelector((state) => ({
-    descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
-    linksData: state.flowDataReducer.flowData.linksData || [],
-  }));
-  return (
-    <div className="h-auto">
-      <MainLayout>
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between w-full px-2 pt-4">
-          <PageHeader
-            title="Chatbot Configuration"
-            description={
-              descriptions?.["Chatbot Setup"] ||
-              "Customize your chatbot's appearance, behavior, and agent switching capabilities."
-            }
-            docLink={linksData?.find((link) => link.title === "Chatbot Configuration")?.blog_link}
-          />
-        </div>
+  const dispatch = useDispatch();
 
-        <div className="px-2">
-          <FormSection params={resolvedParams} />
-        </div>
-      </MainLayout>
-    </div>
-  );
+  const { chatbots, currentUser, embedTokens } = useCustomSelector((state) => ({
+    chatbots: state?.ChatBot?.org?.[resolvedParams?.org_id] || [],
+    currentUser: state.userDetailsReducer.userDetails,
+    embedTokens: state?.integrationReducer?.embedTokens,
+  }));
+
+  const chatBotId = chatbots?.[0]?._id;
+
+  const embedToken = embedTokens?.[chatBotId];
+
+  // Collapse MainSlider when chatbot config page loads
+  useEffect(() => {
+    collapseMainSlider();
+  }, []);
+
+  // Generate embed token for chatbot preview
+  useEffect(() => {
+    if (!embedToken && chatBotId && currentUser?.id) {
+      dispatch(generateChatbotTokenAction(chatBotId, currentUser.id));
+    }
+  }, [chatBotId, currentUser?.id, embedToken]);
+
+  // Cleanup embedToken on unmount
+  useEffect(() => {
+    return () => {
+      if (chatBotId) {
+        dispatch(clearEmbedToken({ folderId: chatBotId }));
+      }
+    };
+  }, [chatBotId]);
+
+  return <ChatbotConfigDetailView params={resolvedParams} embedToken={embedToken} />;
 };
 
 export default Protected(Page);

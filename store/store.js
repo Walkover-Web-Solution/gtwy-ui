@@ -24,6 +24,7 @@ import apiKeysSliceReducer from "./reducer/apiKeysReducer";
 import variableSliceReducer from "./reducer/variableReducer";
 import chatSliceReducer from "./reducer/chatReducer";
 import appInfoSliceReducer from "./reducer/appInfoReducer";
+import richUiTemplateSliceReducer from "./reducer/richUiTemplateReducer";
 const createNoopStorage = () => {
   return {
     getItem(_key) {
@@ -86,6 +87,7 @@ const rootReducer = combineReducers({
   variableReducer: variableSliceReducer,
   chatReducer: chatSliceReducer,
   appInfoReducer: appInfoSliceReducer,
+  richUiTemplateReducer: richUiTemplateSliceReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -98,6 +100,7 @@ export const store = configureStore({
         ignoredActions: ["persist/PERSIST", "persist/REHYDRATE", "persist/REGISTER"],
         ignoredPaths: ["register"], // Adjust the paths as necessary
       },
+      immutableCheck: false,
     }),
 });
 

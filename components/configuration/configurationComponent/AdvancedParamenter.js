@@ -1,26 +1,33 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { ADVANCED_BRIDGE_PARAMETERS, KEYS_NOT_TO_DISPLAY } from "@/jsonFiles/bridgeParameter";
+import { ADVANCED_BRIDGE_PARAMETERS } from "@/jsonFiles/bridgeParameter";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
-import { generateRandomID, openModal } from "@/utils/utility";
-import { ChevronDownIcon, ChevronUpIcon } from "@/components/Icons";
+import { generateRandomID, getToolName, openModal, trimPropertyNames } from "@/utils/utility";
+import { generateCombinedSchema } from "@/utils/defaultJsonSchemas";
+import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 import OnBoarding from "@/components/OnBoarding";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import InfoTooltip from "@/components/InfoTooltip";
 import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
-import { CircleQuestionMark } from "lucide-react";
+import { Check, CircleQuestionMark, ExternalLink } from "lucide-react";
+import RenderNode from "@/components/richUI/RenderNode";
+import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
+import CodeMirror from "@uiw/react-codemirror";
+import { json } from "@codemirror/lang-json";
+import { useThemeManager } from "@/customHooks/useThemeManager";
 
 const AdvancedParameters = ({
   params,
   searchParams,
   isEmbedUser,
-  hideAdvancedParameters,
+  showAdvancedParameters,
   className = "",
   level = 1,
   compact = false,
@@ -40,10 +47,13 @@ const AdvancedParameters = ({
     showSuggestion: false,
   });
   const [messages, setMessages] = useState([]);
+  const [activeWidgetButtons, setActiveWidgetButtons] = useState([]);
+  const [jsonSchemaFullscreen, setJsonSchemaFullscreen] = useState(false);
   const dropdownContainerRef = useRef(null);
   const dispatch = useDispatch();
+  const router = useRouter();
+  const { actualTheme } = useThemeManager();
 
-  // Handle outside click to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownContainerRef.current && !dropdownContainerRef.current.contains(event.target)) {
@@ -68,11 +78,16 @@ const AdvancedParameters = ({
     connected_agents,
     modelInfoData,
     bridge,
+    richUiWidgets,
     showResponseType,
+    orgBridges,
+    allBridgesMap,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
     const integrationData = state?.bridgeReducer?.org?.[params?.org_id]?.integrationData || {};
+    const orgBridges = state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [];
+    const allBridgesMap = state?.bridgeReducer?.allBridgesMap || {};
 
     // Use bridgeData when isPublished=true, otherwise use versionData
     const activeData = isPublished ? bridgeDataFromState : versionData;
@@ -91,7 +106,10 @@ const AdvancedParameters = ({
       connected_agents: isPublished ? bridgeDataFromState?.connected_agents : versionData?.connected_agents,
       modelInfoData,
       bridge: activeData,
+      richUiWidgets: state?.richUiTemplateReducer?.templates || [],
       showResponseType: state.appInfoReducer.embedUserDetails.showResponseType,
+      orgBridges,
+      allBridgesMap,
     };
   });
   const [inputConfiguration, setInputConfiguration] = useState(configuration);
@@ -120,9 +138,6 @@ const AdvancedParameters = ({
     if (!modelInfoData) return [];
 
     return Object.entries(modelInfoData || {}).filter(([key, paramConfig]) => {
-      // Skip keys that shouldn't be displayed
-      if (KEYS_NOT_TO_DISPLAY?.includes(key)) return false;
-
       // Get level from ADVANCED_BRIDGE_PARAMETERS or default to 1
       const paramLevel = paramConfig?.level ?? 1;
       return paramLevel === level;
@@ -163,7 +178,7 @@ const AdvancedParameters = ({
               return toolChoice === value?._id;
             })
             .map((value) => ({
-              name: value?.script_id || value?.title,
+              name: integrationData?.[value?.script_id]?.title || value?.title,
               id: value?._id,
             }))
         : [];
@@ -174,8 +189,8 @@ const AdvancedParameters = ({
               const toolChoice = typeof tool_choice_data === "string" ? tool_choice_data : "";
               return toolChoice === item.bridge_id;
             })
-            .map(([name, item]) => ({
-              name,
+            .map(([id, item]) => ({
+              name: getToolName(item.bridge_id, allBridgesMap, orgBridges, integrationData),
               id: item.bridge_id,
             }))
         : [];
@@ -238,10 +253,14 @@ const AdvancedParameters = ({
       toast.error("Invalid JSON provided");
       return;
     }
+    const existingValue =
+      typeof configuration?.[key] === "object" && configuration?.[key] !== null ? configuration?.[key] : {};
+
     let updatedDataToSend = isDeafaultObject
       ? {
           configuration: {
             [key]: {
+              ...existingValue,
               [defaultValue?.key]: e.target.value,
             },
           },
@@ -251,11 +270,12 @@ const AdvancedParameters = ({
             [key]: e.target.value,
           },
         };
-    if (Object.entries(newValue).length > 0) {
+    if (Object.entries(newValue).length > 0 || e.target.value === "json_schema") {
       updatedDataToSend = {
         configuration: {
           [key]: {
-            [defaultValue?.key]: e.target.value,
+            ...existingValue,
+            [defaultValue?.key || "type"]: e.target.value,
             [e.target.value]: typeof newValue === "string" ? JSON.parse(newValue) : newValue,
           },
         },
@@ -327,17 +347,123 @@ const AdvancedParameters = ({
     [dispatch, params?.id, searchParams?.version]
   );
 
+  // State for selected widgets (indices)
+  const [selectedWidgets, setSelectedWidgets] = useState([]);
+
+  useEffect(() => {
+    if (configuration?.response_type?.template_id && Array.isArray(configuration.response_type.template_id)) {
+      setSelectedWidgets(configuration.response_type.template_id);
+    } else {
+      setSelectedWidgets([]);
+    }
+  }, [configuration?.response_type?.template_id]);
+
+  const widgetHasButton = useCallback((widgetObj) => {
+    const template = widgetObj?.ui || widgetObj?.template_format;
+    if (!template) return false;
+    const search = (node) => {
+      if (!node || typeof node !== "object") return false;
+      if (Array.isArray(node)) return node.some(search);
+      if (node.type === "Button") return true;
+      if (Array.isArray(node.children)) return node.children.some(search);
+      return false;
+    };
+    return search(template);
+  }, []);
+
+  // filterWidgetId: when provided, only returns actionData nodes from the anyOf entry
+  // whose widget_id.enum[0] matches this id (i.e. only this widget's nodes).
+  const extractActionDataNodesFromSchema = useCallback((schemaNode, filterWidgetId = null) => {
+    const nodes = [];
+
+    const search = (node, path = []) => {
+      if (!node || typeof node !== "object") return;
+
+      // Traverse anyOf / oneOf / allOf so combined schemas are handled
+      for (const combinator of ["anyOf", "oneOf", "allOf"]) {
+        if (Array.isArray(node[combinator])) {
+          node[combinator].forEach((subNode, index) => {
+            // If filtering by widget, skip anyOf entries that belong to a different widget
+            if (
+              filterWidgetId &&
+              subNode?.properties?.widget_id?.enum?.[0] !== undefined &&
+              subNode.properties.widget_id.enum[0] !== filterWidgetId
+            ) {
+              return;
+            }
+            search(subNode, [...path, combinator, index]);
+          });
+        }
+      }
+
+      if (node.type === "object" && node.properties) {
+        const actionKey = node.properties.actionData
+          ? "actionData"
+          : node.properties.action_data
+            ? "action_data"
+            : null;
+
+        if (actionKey && node.properties[actionKey].properties?.data) {
+          let label = "action";
+          for (let i = path.length - 1; i >= 0; i--) {
+            const seg = path[i];
+            if (typeof seg === "string" && !["properties", "items", "anyOf", "oneOf", "allOf"].includes(seg)) {
+              label = seg;
+              break;
+            }
+          }
+          nodes.push({ key: path.join("."), label, actionDataKey: actionKey, path });
+        }
+
+        // Also detect inline action-type pattern: a property that is an object with
+        // { type (string enum of action types), value, data } — e.g. applyActionType, cancelActionType
+        Object.entries(node.properties).forEach(([k, v]) => {
+          if (
+            v?.type === "object" &&
+            v?.properties?.type?.enum?.length > 0 &&
+            v?.properties?.data &&
+            v?.properties?.value !== undefined
+          ) {
+            nodes.push({
+              key: [...path, "properties", k].join("."),
+              label: k,
+              actionDataKey: k,
+              path: [...path, "properties", k],
+              isInlineActionType: true,
+            });
+          }
+        });
+
+        Object.entries(node.properties).forEach(([k, v]) => {
+          search(v, [...path, "properties", k]);
+        });
+      } else if (node.type === "array" && node.items) {
+        search(node.items, [...path, "items"]);
+      }
+    };
+
+    const rootSchema = schemaNode?.schema || schemaNode;
+    if (rootSchema) search(rootSchema);
+
+    const seen = new Set();
+    return nodes.filter((n) => {
+      if (seen.has(n.key)) return false;
+      seen.add(n.key);
+      return true;
+    });
+  }, []);
   // Helper function to render parameter fields
   const renderParameterField = (key, { field, min = 0, max, step, default: defaultValue, options }) => {
     const isDeafaultObject = typeof modelInfoData?.[key]?.default === "object";
-    if (KEYS_NOT_TO_DISPLAY?.includes(key)) return null;
     if (key === "response_type" && isEmbedUser && !showResponseType) {
       return null;
     }
 
     const name = ADVANCED_BRIDGE_PARAMETERS?.[key]?.name || key;
     const description = ADVANCED_BRIDGE_PARAMETERS?.[key]?.description || "";
-    const isDefaultValue = configuration?.[key] === "default";
+    const isDefaultValue = configuration?.[key] === "default" || configuration?.[key] === undefined;
+    // Check if this parameter has a default value defined in model info
+    const hasDefaultValue = modelInfoData?.[key]?.default !== undefined;
     const inputSizeClass = "input-sm h-8";
     const selectSizeClass = "select-sm h-8";
     const buttonSizeClass = "btn-sm h-8";
@@ -382,37 +508,43 @@ const AdvancedParameters = ({
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             )}
-            {field === "boolean" && (
-              <input
-                id={`advanced-param-checkbox-${key}`}
-                name={key}
-                type="checkbox"
-                className="checkbox checkbox-xs"
-                checked={isDefaultValue ? true : inputConfiguration?.[key] || false}
-                onChange={(e) => {
-                  if (isDefaultValue) {
-                    setSliderValue(e.target.checked, key, isDeafaultObject);
-                  }
-                  handleInputChange(e, key);
-                }}
-                disabled={isReadOnly}
-              />
-            )}
+            {field === "boolean" &&
+              (() => {
+                const modelDefault = modelInfoData?.[key]?.default;
+                const checkedValue = isDefaultValue ? !!modelDefault : inputConfiguration?.[key] || false;
+                return (
+                  <input
+                    autoComplete="off"
+                    data-testid={`advanced-param-checkbox-${key}`}
+                    id={`advanced-param-checkbox-${key}`}
+                    name={key}
+                    type="checkbox"
+                    className="checkbox checkbox-xs"
+                    checked={checkedValue}
+                    onChange={(e) => {
+                      if (isDefaultValue) {
+                        setSliderValue(e.target.checked, key, isDeafaultObject);
+                      }
+                      handleInputChange(e, key);
+                    }}
+                    disabled={isReadOnly}
+                  />
+                );
+              })()}
           </div>
-          <div className="w-[110px] flex justify-end flex-shrink-0 min-h-[32px]">
-            {!isDefaultValue && (
-              <button
-                id={`advanced-param-reset-${key}`}
-                type="button"
-                className="text-xs text-base-content/60 hover:text-base-content cursor-pointer px-3 py-1 rounded hover:bg-base-200 transition-colors whitespace-nowrap inline-block"
-                onClick={() => setSliderValue("default", key, isDeafaultObject)}
-                disabled={isReadOnly}
-                title="Reset to default value"
-              >
-                Set Default
-              </button>
-            )}
-          </div>
+          {/* Set Default button - shows when parameter has default value and is not currently default */}
+          {hasDefaultValue && !isDefaultValue && !isReadOnly && (
+            <button
+              data-testid={`advanced-param-reset-${key}`}
+              id={`advanced-param-set-default-btn-${key}`}
+              type="button"
+              className="btn btn-xs btn-ghost text-primary hover:bg-primary/10"
+              onClick={() => setSliderValue("default", key, isDeafaultObject)}
+              title="Reset to default value"
+            >
+              Set Default
+            </button>
+          )}
         </div>
 
         {field !== "boolean" && (
@@ -420,14 +552,11 @@ const AdvancedParameters = ({
             {/* Text input */}
             {field === "text" && (
               <input
+                autoComplete="off"
+                data-testid={`advanced-param-text-${key}`}
                 id={`advanced-param-text-${key}`}
                 type="text"
-                value={isDefaultValue ? "default" : inputConfiguration?.[key] || ""}
-                onFocus={(e) => {
-                  if (isDefaultValue) {
-                    setSliderValue("", key, isDeafaultObject);
-                  }
-                }}
+                value={inputConfiguration?.[key] === "default" ? "" : inputConfiguration?.[key] || ""}
                 onChange={(e) => {
                   setInputConfiguration((prev) => ({
                     ...prev,
@@ -435,24 +564,30 @@ const AdvancedParameters = ({
                   }));
                 }}
                 onBlur={(e) => {
-                  handleInputChange(e, key);
+                  if (e.target.value === "") {
+                    setSliderValue("default", key, isDeafaultObject);
+                  } else {
+                    handleInputChange(e, key);
+                  }
                 }}
                 className={`input border-base-200 ${inputSizeClass} w-full bg-base-300 text-base-content/70 text-sm`}
                 name={key}
                 disabled={isReadOnly}
-                placeholder=""
+                placeholder="default"
               />
             )}
 
             {/* Number input */}
             {field === "number" && (
               <input
+                autoComplete="off"
+                data-testid={`advanced-param-number-${key}`}
                 id={`advanced-param-number-${key}`}
                 type="number"
                 min={min}
                 max={max}
                 step={step}
-                value={isDefaultValue ? "default" : inputConfiguration?.[key] || 0}
+                value={isDefaultValue ? "" : inputConfiguration?.[key] || 0}
                 onChange={(e) => {
                   setInputConfiguration((prev) => ({
                     ...prev,
@@ -460,39 +595,423 @@ const AdvancedParameters = ({
                   }));
                 }}
                 onBlur={(e) => {
-                  handleInputChange(e, key);
+                  if (e.target.value === "") {
+                    setSliderValue("default", key, isDeafaultObject);
+                  } else {
+                    handleInputChange(e, key);
+                  }
                 }}
                 className={`input border-base-200 ${inputSizeClass} w-full bg-base-300 text-base-content/70 text-sm`}
                 name={key}
                 disabled={isReadOnly}
+                placeholder="default"
               />
             )}
 
             {/* Select input */}
             {field === "select" && (
-              <select
-                id={`advanced-param-select-${key}`}
-                value={isDefaultValue ? "default" : configuration?.[key]?.[defaultValue?.key] || configuration?.[key]}
-                onChange={(e) => handleSelectChange(e, key, defaultValue, "{}", isDeafaultObject)}
-                className={`select ${selectSizeClass} w-full bg-base-300 border-base-200 text-base-content/70 text-sm`}
-                name={key}
-                disabled={isReadOnly}
-              >
-                {isDefaultValue && <option value="default">default</option>}
-                {options?.map((option) => (
-                  <option
-                    key={typeof option === "object" ? option?.value || option?.type : option}
-                    value={typeof option === "object" ? option?.value || option?.type : option}
-                  >
-                    {typeof option === "object" ? option?.displayName || option?.type || option?.value : option}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full">
+                <select
+                  data-testid={`advanced-param-select-${key}`}
+                  id={`advanced-param-select-${key}`}
+                  value={(() => {
+                    if (key === "response_type") {
+                      // Handle response_type specifically
+                      if (configuration?.[key]?.is_template) {
+                        return "widget";
+                      } else if (configuration?.[key]?.type) {
+                        return configuration?.[key]?.type;
+                      } else if (configuration?.[key] === "default") {
+                        return "default";
+                      } else {
+                        return configuration?.[key] || "default";
+                      }
+                    }
+                    // For other keys, use the original logic
+                    return isDefaultValue
+                      ? "default"
+                      : configuration?.[key]?.[defaultValue?.key] || configuration?.[key];
+                  })()}
+                  onChange={(e) => {
+                    const selectedValue = e.target.value;
+                    if (key === "response_type") {
+                      if (selectedValue === "widget") {
+                        // Use generateCombinedSchema with empty array to get normal schema without anyOf
+                        const defaultSchema = generateCombinedSchema([], richUiWidgets);
+                        const updatedDataToSend = {
+                          configuration: {
+                            response_type: {
+                              type: "json_schema",
+                              json_schema: defaultSchema, // Use normal schema without anyOf when no widgets selected
+                              is_template: true,
+                              template_id: [], // Clear existing template IDs
+                            },
+                          },
+                        };
+                        dispatch(
+                          updateBridgeVersionAction({
+                            bridgeId: params?.id,
+                            versionId: searchParams?.version,
+                            dataToSend: updatedDataToSend,
+                          })
+                        );
+                        return;
+                      } else if (selectedValue === "json_schema") {
+                        // Set type to json_schema AND is_template to false
+                        const updatedDataToSend = {
+                          configuration: {
+                            [key]: {
+                              type: "json_schema",
+                              is_template: false,
+                              json_schema: {},
+                            },
+                          },
+                        };
+                        dispatch(
+                          updateBridgeVersionAction({
+                            bridgeId: params?.id,
+                            versionId: searchParams?.version,
+                            dataToSend: updatedDataToSend,
+                          })
+                        );
+                        return;
+                      } else if (selectedValue === "default") {
+                        // Handle default case
+                        setSliderValue("default", key, isDeafaultObject);
+                        return;
+                      } else {
+                        dispatch(
+                          updateBridgeVersionAction({
+                            bridgeId: params?.id,
+                            versionId: searchParams?.version,
+                            dataToSend: {
+                              configuration: {
+                                [key]: { type: selectedValue },
+                              },
+                            },
+                          })
+                        );
+                        return;
+                      }
+                    }
+                    // Fallback for other keys or normal types
+                    handleSelectChange(e, key, defaultValue, "{}", isDeafaultObject);
+                  }}
+                  className={`select select-bordered ${selectSizeClass} w-full`}
+                  name={key}
+                  disabled={isReadOnly}
+                >
+                  {hasDefaultValue && <option value="default">default</option>}
+                  {options?.map((option) => (
+                    <option
+                      key={typeof option === "object" ? option?.value || option?.type : option}
+                      value={typeof option === "object" ? option?.value || option?.type : option}
+                    >
+                      {typeof option === "object" ? option?.displayName || option?.type || option?.value : option}
+                    </option>
+                  ))}
+                  {key === "response_type" &&
+                    !isEmbedUser &&
+                    options?.some((opt) => {
+                      const optType = typeof opt === "object" ? opt?.type || opt?.value : opt;
+                      return optType === "json_schema";
+                    }) && <option value="widget">Widget</option>}
+                </select>
+
+                {/* Widget UI - Only show if response_type is widget (is_template = true) */}
+                {key === "response_type" && configuration?.[key]?.is_template && (
+                  <div className="mb-3 p-3 bg-base-200 rounded-lg mt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">Available Widgets:</div>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-ghost gap-1 text-primary"
+                          onClick={() => router.push(`/org/${params?.org_id}/widgets`)}
+                          title="Manage Widgets"
+                        >
+                          <ExternalLink size={12} />
+                          Manage
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {richUiWidgets.map((widgetObj) => {
+                        const widgetName = widgetObj.name || `Widget`;
+                        const isSelected = selectedWidgets.includes(widgetObj._id);
+
+                        return (
+                          <div
+                            key={widgetObj._id}
+                            className={`flex flex-col gap-2 p-3 rounded-lg border cursor-pointer transition-colors min-w-[280px] flex-shrink-0 ${isSelected ? "bg-primary/10 border-primary" : "bg-base-100 border-base-200 hover:bg-base-200"}`}
+                            onClick={() => {
+                              if (isReadOnly) return;
+
+                              // Update selected widgets
+                              const newSelectedWidgets = selectedWidgets.includes(widgetObj._id)
+                                ? selectedWidgets.filter((id) => id !== widgetObj._id)
+                                : [...selectedWidgets, widgetObj._id];
+
+                              setSelectedWidgets(newSelectedWidgets);
+
+                              // Apply changes immediately
+                              const combinedSchema = generateCombinedSchema(newSelectedWidgets, richUiWidgets);
+
+                              if (combinedSchema) {
+                                const updatedDataToSend = {
+                                  configuration: {
+                                    response_type: {
+                                      type: "json_schema",
+                                      json_schema: combinedSchema,
+                                      is_template: true,
+                                      template_id: newSelectedWidgets,
+                                    },
+                                  },
+                                };
+
+                                dispatch(
+                                  updateBridgeVersionAction({
+                                    bridgeId: params?.id,
+                                    versionId: searchParams?.version,
+                                    dataToSend: updatedDataToSend,
+                                  })
+                                );
+
+                                toast.success(`Updated widgets (${newSelectedWidgets.length} selected)`);
+                              }
+                            }}
+                          >
+                            {/* Content Preview */}
+                            <div className="relative w-full h-40 bg-base-100 rounded border border-base-300 overflow-hidden pointer-events-none mb-2">
+                              {widgetObj.ui || widgetObj.template_format ? (
+                                <div className="absolute inset-0 w-full h-full overflow-hidden p-2">
+                                  <div className="transform scale-[0.5] origin-top-left w-[200%]">
+                                    <RenderNode node={widgetObj.ui || widgetObj.template_format} />
+                                  </div>
+                                </div>
+                              ) : widgetObj.html ? (
+                                <div className="absolute inset-0 w-full h-full overflow-hidden">
+                                  <div
+                                    className="transform scale-[0.5] origin-top-left w-[200%]"
+                                    dangerouslySetInnerHTML={{ __html: widgetObj.html }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center h-full text-base-content/40 text-xs">
+                                  No Preview
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between w-full mt-1">
+                              <span className="text-sm font-medium capitalize truncate">{widgetName}</span>
+                              <div className="flex items-center gap-2">
+                                {isSelected && widgetHasButton(widgetObj) && (
+                                  <span
+                                    className="cursor-pointer text-primary hover:opacity-80 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const actionNodes = extractActionDataNodesFromSchema(
+                                        configuration?.response_type?.json_schema,
+                                        widgetObj._id
+                                      );
+                                      setActiveWidgetButtons(actionNodes);
+                                      openModal(MODAL_TYPE.BUTTON_SCHEMA_BUILDER);
+                                    }}
+                                    title="Configure Button Payload Schema"
+                                  >
+                                    <SettingsIcon size={14} />
+                                  </span>
+                                )}
+                                {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Button Schema Builder Modal */}
+                    <JsonSchemaBuilderModal
+                      params={params}
+                      searchParams={searchParams}
+                      isReadOnly={isReadOnly}
+                      schemaKey="json_schema"
+                      modalId={MODAL_TYPE.BUTTON_SCHEMA_BUILDER}
+                      title="Configure Button Payload Schema"
+                      hideName
+                      widgetButtons={activeWidgetButtons}
+                    />
+                  </div>
+                )}
+                {/* JSON Schema textarea and modal - positioned below the key/label */}
+                {field === "select" &&
+                  !isDefaultValue &&
+                  configuration?.[key]?.type === "json_schema" &&
+                  !configuration?.[key]?.is_template && (
+                    <div id={`advanced-param-json-schema-${key}`} className="mt-3 space-y-2">
+                      <div
+                        id={`advanced-param-json-schema-header-${key}`}
+                        className="flex justify-between items-center"
+                      >
+                        <div className="flex gap-2 mt-4 ml-auto items-center">
+                          <span
+                            className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                            onClick={() => {
+                              openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
+                            }}
+                          >
+                            Build Visually
+                          </span>
+                          <span className="text-xs text-base-content/50">|</span>
+                          <span
+                            className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                            onClick={() => {
+                              openModal(MODAL_TYPE.JSON_SCHEMA);
+                            }}
+                          >
+                            Build with AI
+                          </span>
+                          <span className="text-xs text-base-content/50">|</span>
+                          <FullscreenEditorButton
+                            tooltip="Open JSON schema in fullscreen"
+                            className=""
+                            onClick={() => {
+                              setJsonSchemaFullscreen(true);
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <div className="w-full text-xs font-mono">
+                          <CodeMirror
+                            id={`advanced-param-json-schema-textarea-${key}`}
+                            value={
+                              objectFieldValue ??
+                              JSON.stringify(
+                                configuration?.[key]?.json_schema ?? configuration?.[key]?.value ?? {},
+                                null,
+                                2
+                              )
+                            }
+                            extensions={[json()]}
+                            theme={actualTheme}
+                            editable={!isReadOnly}
+                            onChange={(val) => setObjectFieldValue(val)}
+                            onBlur={() => {
+                              try {
+                                const currentValueToParse =
+                                  objectFieldValue ??
+                                  JSON.stringify(
+                                    configuration?.[key]?.json_schema ?? configuration?.[key]?.value ?? {},
+                                    null,
+                                    2
+                                  );
+                                const parsedValue = JSON.parse(currentValueToParse.trim());
+
+                                const trimmedValue = {
+                                  ...parsedValue,
+                                  name: parsedValue.name?.trim(),
+                                  schema: parsedValue.schema
+                                    ? {
+                                        ...parsedValue.schema,
+                                        properties: trimPropertyNames(parsedValue.schema.properties),
+                                      }
+                                    : parsedValue.schema,
+                                };
+
+                                handleSelectChange(
+                                  { target: { value: "json_schema" } },
+                                  key,
+                                  defaultValue,
+                                  trimmedValue,
+                                  true
+                                );
+                              } catch (error) {
+                                console.error(error);
+                                toast.error("Invalid JSON schema");
+                              }
+                            }}
+                            className="border border-base-300 rounded overflow-hidden"
+                            minHeight="128px"
+                          />
+                        </div>
+                      </div>
+                      <FullscreenEditorModal
+                        modalId={MODAL_TYPE.FULLSCREEN_JSON_SCHEMA}
+                        title="JSON Schema"
+                        value={
+                          objectFieldValue ??
+                          JSON.stringify(
+                            configuration?.[key]?.json_schema ?? configuration?.[key]?.value ?? {},
+                            null,
+                            2
+                          )
+                        }
+                        isOpen={jsonSchemaFullscreen}
+                        onClose={() => setJsonSchemaFullscreen(false)}
+                        onSave={(finalVal) => {
+                          try {
+                            const parsedValue = JSON.parse(String(finalVal).trim());
+                            const trimmedValue = {
+                              ...parsedValue,
+                              name: parsedValue.name?.trim(),
+                              schema: parsedValue.schema
+                                ? {
+                                    ...parsedValue.schema,
+                                    properties: trimPropertyNames(parsedValue.schema.properties),
+                                  }
+                                : parsedValue.schema,
+                            };
+                            setObjectFieldValue(JSON.stringify(parsedValue, undefined, 4));
+                            handleSelectChange(
+                              { target: { value: "json_schema" } },
+                              key,
+                              defaultValue,
+                              trimmedValue,
+                              true
+                            );
+                            return true;
+                          } catch (error) {
+                            console.error(error);
+                            toast.error("Invalid JSON schema");
+                            return false;
+                          }
+                        }}
+                        placeholder="Enter JSON schema..."
+                        disabled={isReadOnly}
+                        mono
+                        isJson
+                      />
+                      <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
+                      <JsonSchemaModal
+                        params={params}
+                        searchParams={searchParams}
+                        messages={messages}
+                        setMessages={setMessages}
+                        thread_id={thread_id}
+                        onResetThreadId={() => {
+                          const newId = generateRandomID();
+                          setThreadId(newId);
+                          setThreadIdForVersionReducer &&
+                            dispatch(
+                              setThreadIdForVersionReducer({
+                                bridgeId: params?.id,
+                                versionId: searchParams?.version,
+                                thread_id: newId,
+                              })
+                            );
+                        }}
+                      />
+                    </div>
+                  )}
+              </div>
             )}
             {/* Slider input */}
             {field === "slider" && (
               <div className="flex items-center gap-2 w-full">
                 <button
+                  data-testid={`advanced-param-slider-min-btn-${key}`}
                   id={`advanced-param-slider-min-btn-${key}`}
                   type="button"
                   className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20`}
@@ -509,6 +1028,8 @@ const AdvancedParameters = ({
                 </button>
                 {sliderValueNode}
                 <input
+                  autoComplete="off"
+                  data-testid={`advanced-param-slider-${key}`}
                   id={`advanced-param-slider-${key}`}
                   type="range"
                   min={min || 0}
@@ -541,6 +1062,7 @@ const AdvancedParameters = ({
                   disabled={isReadOnly}
                 />
                 <button
+                  data-testid={`advanced-param-slider-max-btn-${key}`}
                   id={`advanced-param-slider-max-btn-${key}`}
                   type="button"
                   className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20 text-sm`}
@@ -562,6 +1084,7 @@ const AdvancedParameters = ({
             {field === "dropdown" && (
               <div id={`advanced-param-dropdown-wrapper-${key}`} className="relative w-full" ref={dropdownContainerRef}>
                 <div
+                  data-testid={`advanced-param-dropdown-trigger-${key}`}
                   id={`advanced-param-dropdown-trigger-${key}`}
                   className={`flex items-center gap-2 input input-bordered ${inputSizeClass} w-full min-h-[2rem] cursor-pointer`}
                   disabled={isReadOnly}
@@ -581,11 +1104,14 @@ const AdvancedParameters = ({
 
                 {showDropdown && (
                   <div
+                    data-testid={`advanced-param-dropdown-menu-${key}`}
                     id={`advanced-param-dropdown-menu-${key}`}
                     className="absolute top-full left-0 right-0 bg-base-300 border border-base-200 rounded-md shadow-lg z-50 max-h-[200px] overflow-y-auto mt-1 p-2"
                   >
                     <div className="p-2 top-0 bg-base-100">
                       <input
+                        autoComplete="off"
+                        data-testid={`advanced-param-dropdown-search-${key}`}
                         id={`advanced-param-dropdown-search-${key}`}
                         type="text"
                         placeholder="Search functions..."
@@ -596,7 +1122,8 @@ const AdvancedParameters = ({
                       />
                     </div>
                     {/* Static options (auto, none, required) */}
-                    {options &&
+                    {!searchQuery &&
+                      options &&
                       options.map((option) => (
                         <div
                           id={`advanced-param-dropdown-option-${key}-${option}`}
@@ -610,6 +1137,7 @@ const AdvancedParameters = ({
                         >
                           <label className="flex items-center gap-2">
                             <input
+                              autoComplete="off"
                               id={`advanced-param-dropdown-option-radio-${key}-${option}`}
                               type="radio"
                               name="function-select"
@@ -637,7 +1165,7 @@ const AdvancedParameters = ({
                         </div>
                         {Object.values(version_function_data)
                           .filter((func) => {
-                            const funcName = func?.script_id || func?.title || "";
+                            const funcName = integrationData?.[func?.script_id]?.title || func?.title || "";
                             return funcName.toLowerCase().includes(searchQuery.toLowerCase());
                           })
                           .map((func) => (
@@ -645,7 +1173,8 @@ const AdvancedParameters = ({
                               key={func?._id}
                               className="p-2 hover:bg-base-200 cursor-pointer"
                               onClick={() => {
-                                setSelectedOptions([{ name: func?.title, id: func?._id }]);
+                                const toolName = integrationData?.[func?.script_id]?.title || func?.title;
+                                setSelectedOptions([{ name: toolName, id: func?._id }]);
                                 handleDropdownChange(func?._id, key);
                                 setShowDropdown(false);
                               }}
@@ -655,6 +1184,7 @@ const AdvancedParameters = ({
                                 className="flex items-center gap-2"
                               >
                                 <input
+                                  autoComplete="off"
                                   id={`advanced-param-dropdown-tool-radio-${key}-${func?._id}`}
                                   type="radio"
                                   name="function-select"
@@ -679,14 +1209,23 @@ const AdvancedParameters = ({
                         </div>
                         {Object.entries(connected_agents)
                           .filter(([name, agent]) => {
-                            return name.toLowerCase().includes(searchQuery.toLowerCase());
+                            const agentName = getToolName(agent.bridge_id, allBridgesMap, orgBridges, integrationData);
+                            return String(agentName || name)
+                              .toLowerCase()
+                              .includes(searchQuery.toLowerCase());
                           })
                           .map(([name, agent]) => (
                             <div
                               key={agent.bridge_id}
                               className="p-2 hover:bg-base-200 cursor-pointer"
                               onClick={() => {
-                                setSelectedOptions([{ name, id: agent.bridge_id }]);
+                                const agentName = getToolName(
+                                  agent.bridge_id,
+                                  allBridgesMap,
+                                  orgBridges,
+                                  integrationData
+                                );
+                                setSelectedOptions([{ name: agentName, id: agent.bridge_id }]);
                                 handleDropdownChange(agent.bridge_id, key);
                                 setShowDropdown(false);
                               }}
@@ -696,6 +1235,7 @@ const AdvancedParameters = ({
                                 className="flex items-center gap-2"
                               >
                                 <input
+                                  autoComplete="off"
                                   id={`advanced-param-dropdown-agent-radio-${key}-${agent.bridge_id}`}
                                   type="radio"
                                   name="function-select"
@@ -703,7 +1243,9 @@ const AdvancedParameters = ({
                                   className="radio radio-xs"
                                   disabled={isReadOnly}
                                 />
-                                <span className="font-medium text-xs">{name}</span>
+                                <span className="font-medium text-xs">
+                                  {getToolName(agent.bridge_id, allBridgesMap, orgBridges, integrationData)}
+                                </span>
                               </label>
                             </div>
                           ))}
@@ -715,78 +1257,11 @@ const AdvancedParameters = ({
             )}
           </div>
         )}
-
-        {/* JSON Schema textarea and modal - positioned below the key/label */}
-        {field === "select" && !isDefaultValue && configuration?.[key]?.type === "json_schema" && (
-          <div id={`advanced-param-json-schema-${key}`} className="mt-3 space-y-2">
-            <div id={`advanced-param-json-schema-header-${key}`} className="flex justify-between items-center">
-              <div className="flex gap-2 mt-4 ml-auto">
-                <span
-                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                  onClick={() => {
-                    openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
-                  }}
-                >
-                  Build Visually
-                </span>
-                <span className="text-xs text-base-content/50">|</span>
-                <span
-                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                  onClick={() => {
-                    openModal(MODAL_TYPE.JSON_SCHEMA);
-                  }}
-                >
-                  Build with AI
-                </span>
-              </div>
-            </div>
-
-            <textarea
-              id={`advanced-param-json-schema-textarea-${key}`}
-              key={`${key}-${configuration?.[key]}-${objectFieldValue}-${configuration}`}
-              type="input"
-              defaultValue={objectFieldValue || JSON.stringify(configuration?.[key]?.value || {}, null, 2)}
-              onBlur={(e) => {
-                setObjectFieldValue(e.target.value);
-                try {
-                  const parsedValue = JSON.parse(e.target.value);
-                  handleSelectChange({ target: { value: "json_schema" } }, key, defaultValue, parsedValue, true);
-                } catch (error) {
-                  console.error(error);
-                  toast.error("Invalid JSON schema");
-                }
-              }}
-              className="textarea textarea-bordered w-full h-32 font-mono text-xs"
-              placeholder="Enter JSON schema..."
-              disabled={isReadOnly}
-            />
-            <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
-            <JsonSchemaModal
-              params={params}
-              searchParams={searchParams}
-              messages={messages}
-              setMessages={setMessages}
-              thread_id={thread_id}
-              onResetThreadId={() => {
-                const newId = generateRandomID();
-                setThreadId(newId);
-                setThreadIdForVersionReducer &&
-                  dispatch(
-                    setThreadIdForVersionReducer({
-                      bridgeId: params?.id,
-                      versionId: searchParams?.version,
-                      thread_id: newId,
-                    })
-                  );
-              }}
-            />
-          </div>
-        )}
       </div>
     );
   };
 
-  const shouldShowLevel1 = level1Parameters.length > 0 && (!isEmbedUser || (isEmbedUser && !hideAdvancedParameters));
+  const shouldShowLevel1 = level1Parameters.length > 0 && (!isEmbedUser || (isEmbedUser && showAdvancedParameters));
 
   if (level === 2) {
     if (level2Parameters.length === 0) {

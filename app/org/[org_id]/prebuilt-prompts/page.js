@@ -220,7 +220,7 @@ export default function PrebuiltPromptsPage() {
               {/* Full Height Textarea */}
               <div className="flex-1 flex flex-col">
                 <textarea
-                  className="textarea bg-white dark:bg-black/15 textarea-bordered flex-1 w-full font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="textarea bg-base-100 textarea-bordered flex-1 w-full font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   value={prompts[selectedAgent] || ""}
                   onChange={(e) => handlePromptChange(selectedAgent, e.target.value)}
                   placeholder="Enter the system prompt that defines how this agent should behave and respond to user requests"

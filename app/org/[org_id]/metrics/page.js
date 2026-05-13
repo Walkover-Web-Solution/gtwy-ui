@@ -100,7 +100,7 @@ function Page({ params }) {
   return (
     <div className="p-10 min-h-screen">
       {/* Page Header */}
-      <header className="mb-8">
+      <header className="mb-8" data-testid="metrics-dashboard-header">
         <h1 className="text-3xl font-bold text-base-content">Metrics Dashboard</h1>
         <p className="text-base-content">
           {descriptions?.["Metrics"] || "Monitor your application's key metrics at a glance."}
@@ -134,15 +134,17 @@ function Page({ params }) {
       />
 
       {/* Charts Section */}
-      <div className="bg-base-100 shadow-md rounded-lg p-6 mb-6">
+      <div className="bg-base-100 shadow-md rounded-lg p-6 mb-6" data-testid="metrics-visualization-container">
         <h2 className="text-lg font-bold mb-4">Metrics Visualization</h2>
-        <div className="h-96">
+        <div className="h-96" data-testid="metrics-chart-wrapper">
           <MetricsChart rawData={rawData} currentTheme={actualTheme} factor={factor} />
         </div>
       </div>
 
       {/* Token Usage Overview */}
-      <TokenUsageOverview rawData={rawData} />
+      <div data-testid="token-usage-overview-container">
+        <TokenUsageOverview rawData={rawData} />
+      </div>
     </div>
   );
 }

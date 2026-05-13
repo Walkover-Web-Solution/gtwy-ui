@@ -2,7 +2,17 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
-import { ChevronDown, LogOut, ChevronRight, ChevronLeft, User, AlignJustify, ArrowLeft } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  ChevronRight,
+  ChevronLeft,
+  User,
+  AlignJustify,
+  ArrowLeft,
+  Keyboard,
+  Building2,
+} from "lucide-react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { logoutUserFromMsg91, switchOrg, switchUser } from "@/config/index";
@@ -13,7 +23,7 @@ import { setCurrentOrgIdAction } from "@/store/action/orgAction";
 import OrgSlider from "./OrgSlider";
 import TutorialModal from "@/components/modals/TutorialModal";
 import DemoModal from "../modals/DemoModal";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, PROXY_SCRIPT_SRC } from "@/utils/enums";
 import Protected from "../Protected";
 import BridgeSlider from "./BridgeSlider";
 import {
@@ -25,6 +35,7 @@ import {
   NAV_SECTIONS,
 } from "@/utils/mainSliderHelper";
 import InviteUserModal from "../modals/InviteuserModal";
+import { logoutUser } from "../../config/authApi";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Component                                 */
@@ -47,6 +58,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     allBridges: state.bridgeReducer?.org?.[orgId]?.orgs || [],
   }));
   const orgName = useMemo(() => organizations?.[orgId]?.name || "Organization", [organizations, orgId]);
+  // When on org list page, orgId can be undefined; use first org for menu links
+  const targetOrgId = orgId || (organizations && Object.keys(organizations)[0]);
   const getInitials = (name = "") => {
     const parts = name.trim().split(" ");
     if (parts.length === 1) return parts[0][0]?.toUpperCase();
@@ -68,6 +81,27 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const [showContent, setShowContent] = useState(isSideBySideMode); // Control content visibility with delay
   const [isAdminMode, setIsAdminMode] = useState(false); // New state for admin settings mode
   // Theme detection placeholder (not actively used)
+
+  const dispatchInviteDialog = useCallback(() => {
+    const authToken = getFromCookies("proxy_token") || "";
+    const fireEvent = () => window.dispatchEvent(new CustomEvent("openAddUserDialog", { detail: { authToken } }));
+    if (typeof window.initVerification === "function") {
+      fireEvent();
+    } else {
+      const proxySrc = PROXY_SCRIPT_SRC;
+      const existing = document.querySelector(`script[src="${proxySrc}"]`);
+      if (!existing) {
+        const script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src = proxySrc;
+        script.onload = fireEvent;
+        script.onerror = (err) => console.error("Failed to load proxy script:", err);
+        document.body.appendChild(script);
+      } else {
+        existing.addEventListener("load", fireEvent, { once: true });
+      }
+    }
+  }, []);
 
   // Effect to detect mobile screen size
   useEffect(() => {
@@ -93,12 +127,16 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
     }
   }, [isMobile]);
 
+  // Pages at depth 4 that should collapse the sidebar (detail/full-screen pages)
+  const COLLAPSE_AT_DEPTH_4 = ["chatbotConfig"];
+  const shouldCollapse = pathParts.length > 4 || (pathParts.length === 4 && COLLAPSE_AT_DEPTH_4.includes(pathParts[3]));
+
   // Effect to handle sidebar state when path changes
   useEffect(() => {
-    if (isSideBySideMode) {
+    if (shouldCollapse) {
+      setIsOpen(false); // Automatically close for detail pages
+    } else if (isSideBySideMode) {
       setIsOpen(true); // Always open in side-by-side mode
-    } else if (pathParts.length > 4) {
-      setIsOpen(false); // Automatically close when pathParts length > 4
     }
 
     // Hide on mobile by default when path changes
@@ -106,7 +144,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
       setIsOpen(false);
       setIsMobileVisible(false);
     }
-  }, [isSideBySideMode, pathParts.length, isMobile]);
+  }, [shouldCollapse, isSideBySideMode, isMobile]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -120,10 +158,15 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   /** Logout handler */
   const handleLogout = useCallback(async () => {
     try {
+      if (getFromCookies("local_token")) {
+        await logoutUser(getFromCookies("local_token")); // Blacklist token
+      }
       await logoutUserFromMsg91({
         headers: { proxy_auth_token: getFromCookies("proxy_token") ?? "" },
       });
+
       clearCookie();
+      localStorage.clear();
       sessionStorage.clear();
       if (process.env.NEXT_PUBLIC_ENV === "PROD") {
         router.replace("https://gtwy.ai/");
@@ -384,6 +427,10 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
   // Reusable function for rendering organization dropdown content
   const renderOrganizationDropdown = useCallback(() => {
+    const totalOrgCount = Object.keys(organizations || {}).length;
+    const otherOrgCount = Object.keys(organizations || {}).filter((id) => id !== orgId).length;
+    const showMoreButton = totalOrgCount > 3; // show "More" only when there are more than 3 orgs total
+
     return (
       <>
         {/* User info */}
@@ -414,7 +461,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   onClick={() => {
                     setIsOrgDropdownExpanded(false);
                     setIsOrgDropdownOpen(false);
-                    openModal(MODAL_TYPE.INVITE_USER);
+                    dispatchInviteDialog();
                   }}
                   className="text-xs text-blue-400 hover:text-blue-600 transition-colors font-medium"
                 >
@@ -448,19 +495,19 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                   </button>
                 ))}
 
-              <button
-                id="main-slider-view-more-orgs-button"
-                onClick={() => handleSwitchOrg()}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-blue-400 text-sm truncate">
-                    more{" "}
-                    {Object.keys(organizations || {}).filter((id) => id !== orgId).length > 2 &&
-                      `(+${Object.keys(organizations || {}).filter((id) => id !== orgId).length - 2})`}
+              {showMoreButton && (
+                <button
+                  id="main-slider-view-more-orgs-button"
+                  onClick={() => handleSwitchOrg()}
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left text-primary"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-blue-400 text-sm truncate">
+                      more {otherOrgCount > 2 && `(+${otherOrgCount - 2})`}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              )}
               <hr className="border-base-300 my-2" />
             </>
           )}
@@ -469,7 +516,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           <button
             id="main-slider-user-details-button"
             onClick={() => {
-              router.push(`/org/${orgId}/userDetails`);
+              if (targetOrgId) router.push(`/org/${targetOrgId}/userDetails`);
               setIsOrgDropdownOpen(false);
               setIsOrgDropdownExpanded(false);
             }}
@@ -477,6 +524,34 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           >
             <User size={14} className="flex-shrink-0" />
             <div className="font-medium text-sm">User Details</div>
+          </button>
+
+          {/* Update Org Details button */}
+          <button
+            id="main-slider-org-details-button"
+            onClick={() => {
+              if (targetOrgId) router.push(`/org/${targetOrgId}/orgDetails`);
+              setIsOrgDropdownOpen(false);
+              setIsOrgDropdownExpanded(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
+          >
+            <Building2 size={14} className="flex-shrink-0" />
+            <div className="text-sm">update organization</div>
+          </button>
+
+          {/* Refer & Earn button */}
+          <button
+            id="main-slider-refer-earn-button"
+            onClick={() => {
+              if (targetOrgId) router.push(`/org/${targetOrgId}/referAndEarn`);
+              setIsOrgDropdownOpen(false);
+              setIsOrgDropdownExpanded(false);
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-base-200 transition-colors text-left mb-1"
+          >
+            <span className="text-sm flex-shrink-0">🎁</span>
+            <div className="font-medium text-sm">Refer &amp; Earn</div>
           </button>
 
           {/* Logout button */}
@@ -537,7 +612,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   );
 
   // Determine positioning based on mode
-  const sidebarPositioning = isSideBySideMode ? "relative" : "fixed";
+  const sidebarPositioning = isSideBySideMode && !shouldCollapse ? "relative" : "fixed";
   const sidebarZIndex = isMobile || isMobileVisible ? "z-50" : "z-30";
 
   // Determine if sidebar should show content (expanded view) with delayed hiding
@@ -602,7 +677,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {/*                              SIDE BAR                              */}
         {/* ------------------------------------------------------------------ */}
         <div
-          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-screen bg-base-100 my-3 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-5 ${sidebarZIndex}`}
+          data-testid="main-sidebar"
+          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
           style={{
             width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "220px" : "50px",
             transform: isMobile ? (isMobileVisible ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
@@ -697,7 +773,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             </div>
 
             {/* Main navigation - scrollable */}
-            <div className={`flex-1  scrollbar-hide overflow-x-hidden scroll-smooth p-2`}>
+            <div className={`flex-1 scrollbar-hide overflow-x-hidden scroll-smooth p-1`}>
               <div className="">
                 {/* Main Menu Button - Show only in Admin Mode */}
                 {isAdminMode && (
@@ -728,11 +804,11 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     {NAV_SECTIONS.map(({ title, items }, idx) => (
                       <div key={idx} className="">
                         {showSidebarContent && title && (
-                          <h3 className="my-2 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
+                          <h3 className="my-1 text-[10px] text-base-content/50 uppercase tracking-wider px-2">
                             {title}
                           </h3>
                         )}
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {items.map((key) => (
                             <button
                               id={`main-slider-nav-${key}`}
@@ -753,7 +829,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                               {showSidebarContent && (
                                 <div className="flex items-center gap-2 justify-center">
                                   <span className="text-sm capitalize truncate">{DISPLAY_NAMES(key)}</span>
-                                  <span>{key === "orchestratal_model" && <BetaBadge />}</span>
+                                  <span>{(key === "orchestratal_model" || key === "widgets") && <BetaBadge />}</span>
                                 </div>
                               )}
                             </button>
@@ -799,38 +875,28 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
               </div>
             </div>
 
-            {/* Tutorial & Help Section */}
-            <div className="border-t border-base-content/20 p-2 ">
-              <div className="">
-                {/* Admin Settings Button */}
+            {/* Footer Actions Section */}
+            <div className="border-t border-base-content/20 p-1">
+              <div className="space-y-1">
+                {/* Primary action: Admin */}
                 <button
                   id="main-slider-admin-settings-toggle"
                   onClick={handleAdminToggle}
                   onMouseEnter={(e) => onItemEnter("admin-toggle", e)}
                   onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 transition-colors ${
+                  className={`w-full flex items-center gap-3 rounded-lg p-2.5 transition-colors ${
                     isAdminMode ? "bg-primary text-primary-content shadow-sm" : "hover:bg-base-200 text-base-content"
                   } ${!showSidebarContent ? "justify-center" : ""}`}
                 >
                   {ITEM_ICONS.adminSettings}
                   {showSidebarContent && (
-                    <span className="text-xs truncate">{isAdminMode ? "Back to Main" : "Admin Settings"}</span>
+                    <span className="text-xs truncate font-medium">
+                      {isAdminMode ? "Back to Main" : "Admin Settings"}
+                    </span>
                   )}
                 </button>
-                <button
-                  id="main-slider-tutorial-button"
-                  onClick={() => {
-                    openModal(MODAL_TYPE.TUTORIAL_MODAL);
-                    if (isMobile) setIsMobileVisible(false);
-                  }}
-                  onMouseEnter={(e) => onItemEnter("tutorial", e)}
-                  onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                >
-                  {ITEM_ICONS.tutorial}
-                  {showSidebarContent && <span className="text-xs truncate">Tutorial</span>}
-                </button>
 
+                {/* Primary action: Lifetime access */}
                 {!currrentOrgDetail?.meta?.unlimited_access && (
                   <div className="relative">
                     <button
@@ -841,62 +907,150 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                       }}
                       onMouseEnter={(e) => onItemEnter("lifetimeAccess", e)}
                       onMouseLeave={onItemLeave}
-                      className={`w-full flex items-center gap-3 p-2 hover:bg-base-200 transition-all duration-300 border-2 border-yellow-400/50 ${!showSidebarContent ? "justify-center" : ""}`}
+                      className={`w-full flex items-center gap-3 rounded-lg p-2.5 transition-all duration-300 border border-yellow-500/60 bg-yellow-500/5 hover:bg-yellow-500/10 ${!showSidebarContent ? "justify-center" : ""}`}
                     >
-                      {/* Inner content */}
                       <div className="relative z-10 flex items-center gap-3 w-full">
                         <div className="relative">
                           {ITEM_ICONS.lifetimeAccess}
-                          {/* Sparkle effect */}
                           <div className="absolute -top-1 -right-1 w-1 h-1 bg-yellow-400 animate-ping opacity-40"></div>
                         </div>
                         {showSidebarContent && (
-                          <span className="text-xs truncate font-medium bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                          <span className="text-xs truncate font-semibold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
                             Free Lifetime Access
                           </span>
                         )}
                       </div>
                     </button>
 
-                    {/* Gift ribbon effect */}
                     {showSidebarContent && (
                       <div className="absolute -top-0.5 -right-0.5 text-xs opacity-60 transform rotate-12">🎁</div>
                     )}
                   </div>
                 )}
 
-                <button
-                  id="main-slider-speak-to-us-button"
-                  data-cal-namespace="30min"
-                  data-cal-link="team/gtwy.ai/ai-consultation"
-                  data-cal-origin="https://cal.id"
-                  data-cal-config='{"layout":"month_view"}'
-                  onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
-                  onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                >
-                  {ITEM_ICONS.speakToUs}
-                  {showSidebarContent && <span className="text-xs truncate">Speak To Us</span>}
-                </button>
+                {/* Secondary actions become compact horizontal footer in expanded mode */}
+                {showSidebarContent ? (
+                  <div className="border-t border-base-content/15 pt-2">
+                    <div className="grid grid-cols-4 gap-1">
+                      <button
+                        id="main-slider-tutorial-button"
+                        onClick={() => {
+                          openModal(MODAL_TYPE.TUTORIAL_MODAL);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("tutorial", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        {ITEM_ICONS.tutorial}
+                        <span className="text-[10px] leading-none">Tutorial</span>
+                      </button>
 
-                <a
-                  id="main-slider-feedback-link"
-                  href="https://gtwy.featurebase.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseEnter={(e) => onItemEnter("feedback", e)}
-                  onMouseLeave={onItemLeave}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-base-200 transition-colors ${!showSidebarContent ? "justify-center" : ""}`}
-                  onClick={() => isMobile && setIsMobileVisible(false)}
-                >
-                  {ITEM_ICONS.feedbackAdmin}
-                  {showSidebarContent && <span className="text-xs truncate">Feedback</span>}
-                </a>
+                      <button
+                        id="main-slider-speak-to-us-button"
+                        data-cal-namespace="30min"
+                        data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
+                        data-cal-origin="https://cal.id"
+                        data-cal-config='{"layout":"month_view"}'
+                        onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        {ITEM_ICONS.speakToUs}
+                        <span className="text-[10px] leading-none">Speak</span>
+                      </button>
+
+                      <button
+                        id="main-slider-feedback-button"
+                        type="button"
+                        onClick={() => {
+                          router.push(`/org/${orgId}/feedback`);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("feedback", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        {ITEM_ICONS.feedbackAdmin}
+                        <span className="text-[10px] leading-none">Feedback</span>
+                      </button>
+
+                      <button
+                        id="main-slider-keyboard-shortcuts-button"
+                        onClick={() => {
+                          openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
+                        onMouseLeave={onItemLeave}
+                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                      >
+                        <Keyboard size={16} className="text-base-content/70" />
+                        <span className="text-[10px] leading-none">Keys</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <button
+                      id="main-slider-tutorial-button"
+                      onClick={() => {
+                        openModal(MODAL_TYPE.TUTORIAL_MODAL);
+                        if (isMobile) setIsMobileVisible(false);
+                      }}
+                      onMouseEnter={(e) => onItemEnter("tutorial", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      {ITEM_ICONS.tutorial}
+                    </button>
+
+                    <button
+                      id="main-slider-speak-to-us-button"
+                      data-cal-namespace="30min"
+                      data-cal-link="human-gtwy-ai/book-a-demo-with-gtwy"
+                      data-cal-origin="https://cal.id"
+                      data-cal-config='{"layout":"month_view"}'
+                      onMouseEnter={(e) => onItemEnter("speak-to-us", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      {ITEM_ICONS.speakToUs}
+                    </button>
+
+                    <button
+                      id="main-slider-feedback-button"
+                      type="button"
+                      onClick={() => {
+                        router.push(`/org/${orgId}/feedback`);
+                        if (isMobile) setIsMobileVisible(false);
+                      }}
+                      onMouseEnter={(e) => onItemEnter("feedback", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      {ITEM_ICONS.feedbackAdmin}
+                    </button>
+
+                    <button
+                      id="main-slider-keyboard-shortcuts-button"
+                      onClick={() => {
+                        openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+                        if (isMobile) setIsMobileVisible(false);
+                      }}
+                      onMouseEnter={(e) => onItemEnter("keyboard-shortcuts", e)}
+                      onMouseLeave={onItemLeave}
+                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                    >
+                      <Keyboard size={18} className="text-base-content/70" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* GTWY Label Section */}
-            <div className="border-t border-base-300 p-2">
+            <div className="border-t border-base-300 p-1">
               <div className="text-center">
                 {showSidebarContent ? (
                   <span className="text-sm text-base-content/70">GTWY</span>

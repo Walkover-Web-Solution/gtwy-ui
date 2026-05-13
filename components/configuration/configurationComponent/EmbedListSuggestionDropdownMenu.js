@@ -6,6 +6,7 @@ import { GetPreBuiltToolTypeIcon, getStatusClass } from "@/utils/utility";
 import { AddIcon } from "@/components/Icons";
 import React, { useMemo, useState } from "react";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
+import { PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
 
 function EmbedListSuggestionDropdownMenu({
   params,
@@ -24,22 +25,27 @@ function EmbedListSuggestionDropdownMenu({
   setTutorialState,
   isPublished = false,
   isEditor = true,
+  onSelectBuiltInPreTool = () => {}, // new
+  connectedPreToolTypes = [],
 }) {
   // Determine if content is read-only (either published or user is not an editor)
   // Use the tutorial videos hook
   const { getFunctionCreationVideo } = useTutorialVideos();
+  const versionId = searchParams?.version;
 
-  const { integrationData, function_data, embedToken } = useCustomSelector((state) => {
+  const { integrationData, function_data, embedToken, variablesPath } = useCustomSelector((state) => {
     const orgId = Number(params?.org_id);
     const orgData = state?.bridgeReducer?.org?.[orgId] || {};
     return {
       integrationData: orgData.integrationData,
       function_data: orgData.functionData,
       embedToken: orgData.embed_token,
+      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
     };
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   const handleInputChange = (e) => {
     setSearchQuery(e.target?.value || ""); // Update search query when the input changes
@@ -51,6 +57,10 @@ function EmbedListSuggestionDropdownMenu({
   const handlePrebuiltToolClick = (tool) => {
     onSelectPrebuiltTool(tool);
   };
+
+  const handleBuiltInPreToolClick = (type) => {
+    onSelectBuiltInPreTool(type);
+  };
   const renderEmbedSuggestions = useMemo(
     () =>
       function_data &&
@@ -60,8 +70,8 @@ function EmbedListSuggestionDropdownMenu({
           const title = value?.title || integrationData?.[fnName]?.title;
           return (
             title !== undefined &&
-            title?.toLowerCase()?.includes(searchQuery.toLowerCase()) &&
-            !(connectedFunctions || [])?.includes(value?._id)
+            title?.toLowerCase()?.includes(normalizedSearchQuery) &&
+            !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id)
           );
         })
         .slice() // Create a copy of the array to avoid mutating the original
@@ -94,8 +104,7 @@ function EmbedListSuggestionDropdownMenu({
                           key={index}
                           src={icon}
                           alt={`${title} icon ${index + 1}`}
-                          className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5"
-                          style={{ zIndex: 5 - index }}
+                          className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5 z-very-low"
                           onError={(e) => {
                             e.target.style.display = "none";
                           }}
@@ -119,7 +128,7 @@ function EmbedListSuggestionDropdownMenu({
             </li>
           );
         }),
-    [integrationData, function_data, searchQuery, getStatusClass, connectedFunctions, searchParams?.version]
+    [integrationData, function_data, normalizedSearchQuery, getStatusClass, connectedFunctions, searchParams?.version]
   );
 
   const availablePrebuiltTools = useMemo(() => {
@@ -128,10 +137,10 @@ function EmbedListSuggestionDropdownMenu({
     return list.filter(
       (t) =>
         !selected.has(t.value) &&
-        t?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase() || "") &&
+        t?.name?.toLowerCase()?.includes(normalizedSearchQuery) &&
         showInbuiltTools?.[t?.value]
     );
-  }, [prebuiltToolsData, toolsVersionData, searchQuery, showInbuiltTools]);
+  }, [prebuiltToolsData, toolsVersionData, normalizedSearchQuery, showInbuiltTools]);
 
   return (
     <>
@@ -151,20 +160,25 @@ function EmbedListSuggestionDropdownMenu({
       )}
       {!tutorialState?.showTutorial && (
         <ul
+          data-testid="embed-suggestion-dropdown-menu"
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
-          className="menu menu-dropdown-toggle dropdown-content z-high px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0"
+          className={`menu menu-dropdown-toggle dropdown-content ${name === "preFunction" ? "z-[15]" : "z-high"} px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0`}
         >
           <div className="flex flex-col gap-2 w-full">
             {name === "preFunction" ? (
               <li className="text-sm font-semibold disabled">Available Pre Functions</li>
+            ) : name === "postFunction" ? (
+              <li className="text-sm font-semibold disabled">Available Post Functions</li>
             ) : (
               <li className="text-sm font-semibold disabled">Available Tools</li>
             )}
             <input
+              autoComplete="off"
+              data-testid="embed-suggestion-search-input"
               id="embed-suggestion-search-input"
               type="text"
-              placeholder={`Search ${name == "preFunction" ? "Pre Function" : "Tool"}`}
+              placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
               value={searchQuery}
               onChange={handleInputChange} // Update search query on input change
               className="input input-bordered w-full input-sm"
@@ -174,14 +188,30 @@ function EmbedListSuggestionDropdownMenu({
             ) : (
               <li className="text-center mt-2">No tools found</li>
             )}
-            {name != "preFunction" && (
+            {name === "preFunction" && (
+              <>
+                <li className="text-sm font-semibold disabled mt-2">Built-in Pre Tools</li>
+                {Object.keys(PRE_TOOL_TYPES)
+                  .filter((k) => k !== "custom_function")
+                  .map((k) => ({ type: k, label: PRE_TOOL_LABELS[k] }))
+                  .filter((t) => !connectedPreToolTypes.includes(t.type))
+                  .map((t) => (
+                    <li key={t.type} onClick={() => handleBuiltInPreToolClick(t.type)}>
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-sm">{t.label}</span>
+                      </div>
+                    </li>
+                  ))}
+              </>
+            )}
+            {name !== "preFunction" && name !== "postFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Prebuilt Tools</li>
                 {availablePrebuiltTools.length > 0 ? (
                   availablePrebuiltTools.map((item) => (
                     <li
                       id={`embed-suggestion-prebuilt-${item?.value}`}
-                      key={item?._id}
+                      key={item?.value ?? item?._id}
                       onClick={() => handlePrebuiltToolClick(item)}
                     >
                       <div className="flex justify-between items-center w-full">
@@ -206,18 +236,23 @@ function EmbedListSuggestionDropdownMenu({
 
             {!hideCreateFunction && (
               <li
+                data-testid="embed-suggestion-add-new-button"
                 id="embed-suggestion-add-new-button"
                 className="border-t border-base-300 w-full sticky bottom-0 bg-base-100 py-2"
-                onClick={() =>
-                  openViasocket(undefined, {
+                onClick={() => {
+                  const payload = {
                     embedToken,
                     meta: {
                       createFrom: name,
                       type: "tool",
                       bridge_id: params?.id,
                     },
-                  })
-                }
+                    dummy_payload: {
+                      variablesPath,
+                    },
+                  };
+                  openViasocket(undefined, payload);
+                }}
               >
                 <div>
                   <AddIcon size={16} />

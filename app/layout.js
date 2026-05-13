@@ -3,6 +3,7 @@ import "../styles/performance-optimizations.css";
 import Wrapper from "@/wrapper/Wrapper";
 import { GoogleTagManager } from "@next/third-parties/google";
 import { DM_Sans } from "next/font/google";
+import NetworkStatus from "@/components/NetworkStatus";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -27,8 +28,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" data-theme="light">
       <GoogleTagManager gtmId="GTM-PXRN8T45" />
+      <script src={`https://main.d2f49esifpcbwh.amplifyapp.com/tracker.js`} async />
       <body suppressHydrationWarning className={dmSans.className}>
         <Wrapper>{children}</Wrapper>
+        <NetworkStatus />
       </body>
     </html>
   );

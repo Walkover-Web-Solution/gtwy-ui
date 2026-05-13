@@ -41,6 +41,7 @@ function ChatBotSlider() {
         </div>
         {/* Input field for chatbot search */}
         <input
+          autoComplete="off"
           id="chatbot-slider-search-input"
           type="text"
           placeholder="Search..."

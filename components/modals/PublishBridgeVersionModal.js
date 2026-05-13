@@ -1,14 +1,14 @@
-import React, { useCallback, useState, useMemo, useEffect } from "react";
-import { X, AlertTriangle, Settings, CircleX, ArrowRightLeft, Check, Bot } from "lucide-react";
+import React, { useCallback, useState, useMemo, useEffect, useRef } from "react";
+import { X, AlertTriangle, ArrowRightLeft, Check, Bot } from "lucide-react";
 import {
   getAllBridgesAction,
   getBridgeVersionAction,
   publishBridgeVersionAction,
   publishBulkVersionAction,
-  updateBridgeAction,
 } from "@/store/action/bridgeAction";
+import { convertAgentToTemplate } from "@/config/bridgeApi";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal, sendDataToParent } from "@/utils/utility";
+import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
@@ -17,82 +17,103 @@ import Protected from "../Protected";
 import PublishVersionDataComparisonView from "../comparison/PublishVersionDataComparisonView";
 import { DIFFERNCE_DATA_DISPLAY_NAME, KEYS_TO_COMPARE } from "@/jsonFiles/bridgeParameter";
 import { AgentSummaryContent } from "./PromptSummaryModal";
+import PostPublishFeedbackModal from "./PostPublishFeedbackModal";
 
 function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_description, isEmbedUser }) {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
-  const [isPublicAgent] = useState(false);
-  const [error, setError] = useState(null);
   const [showComparison, setShowComparison] = useState(false);
   const [selectedAgentsToPublish, setSelectedAgentsToPublish] = useState(new Set());
   const [allConnectedAgents, setAllConnectedAgents] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [showSummaryValidation, setShowSummaryValidation] = useState(false);
   const [summaryAccordionOpen, setSummaryAccordionOpen] = useState(false);
+  const [summaryAutoGenerateTrigger, setSummaryAutoGenerateTrigger] = useState(0);
+  const [convertToTemplate, setConvertToTemplate] = useState(false);
+  const publishDropdownRef = useRef(null);
+  const lastSummaryAutoGenerateVersionRef = useRef(null);
 
-  const { bridge, versionData, bridgeData, agentList, bridge_summary, allBridgesMap, prompt, isEditor } =
-    useCustomSelector((state) => {
-      const isPublished = searchParams?.get("isPublished") === "true";
-      const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
-      const versionDataFromState =
-        state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+  const {
+    versionData,
+    bridgeData,
+    agentList,
+    bridge_summary,
+    allBridgesMap,
+    prompt,
+    isEditor,
+    activeService,
+    hasApiKeyForActiveService,
+    activeServiceDisplayName,
+    showDefaultApikeys,
+    bridgeType,
+    modelName,
+  } = useCustomSelector((state) => {
+    const isPublished = searchParams?.get("isPublished") === "true";
+    const bridgeDataFromState = state.bridgeReducer.allBridgesMap?.[params?.id];
+    const versionDataFromState = state.bridgeReducer.bridgeVersionMapping?.[params?.id]?.[searchParams?.get("version")];
+    const activeData = isPublished ? bridgeDataFromState : versionDataFromState;
+    const rawService = activeData?.service || bridgeDataFromState?.service || "";
+    const serviceKey = typeof rawService === "string" ? rawService.toLowerCase() : "";
+    const serviceApiKeyMap = activeData?.apikey_object_id || bridgeDataFromState?.apikey_object_id || {};
+    const hasApiKey = !!(serviceKey && serviceApiKeyMap?.[serviceKey]);
+    const services = state?.serviceReducer?.services || [];
+    const serviceLabel =
+      (Array.isArray(services) ? services.find((s) => s?.value === serviceKey)?.displayName : "") || serviceKey;
 
-      // Check if user has editor permissions
-      const orgId = params?.org_id;
-      const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
-      const currentUser = state.userDetailsReducer.userDetails;
-      const agentUsers = bridgeDataFromState?.users || [];
+    // Check if user has editor permissions
+    const orgId = params?.org_id;
+    const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
+    const currentUser = state.userDetailsReducer.userDetails;
+    const agentUsers = bridgeDataFromState?.users || [];
 
-      // Determine if user is allowed to edit based on role and agent access
-      const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
-      // Updated canEdit condition
-      const canEdit =
-        (currentOrgRole === "Editor" &&
-          (agentUsers?.length === 0 ||
-            !agentUsers ||
-            (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
-        (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
-        currentOrgRole === "Creator" ||
-        isAdminOrOwner;
+    // Determine if user is allowed to edit based on role and agent access
+    const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
+    // Updated canEdit condition
+    const canEdit =
+      (currentOrgRole === "Editor" &&
+        (agentUsers?.length === 0 ||
+          !agentUsers ||
+          (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
+      (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
+      currentOrgRole === "Creator" ||
+      isAdminOrOwner;
 
-      return {
-        bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
-        versionData: versionDataFromState,
-        bridgeData: bridgeDataFromState,
-        agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
-        bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
-        allBridgesMap: state.bridgeReducer.allBridgesMap || {},
-        prompt: isPublished
-          ? bridgeDataFromState?.configuration?.prompt || ""
-          : versionDataFromState?.configuration?.prompt || "",
-        isEditor: isEmbedUser ? true : canEdit,
-      };
-    });
+    // Get embed user API key and default API keys flag if available
+    const embedApiKey = state?.appInfoReducer?.embedUserDetails?.apikey_object_id;
+    const defaultApiKeysEnabled = state?.appInfoReducer?.embedUserDetails?.addDefaultApiKeys;
+
+    return {
+      bridge: state.bridgeReducer.allBridgesMap?.[params?.id]?.page_config,
+      versionData: versionDataFromState,
+      bridgeData: bridgeDataFromState,
+      agentList: state.bridgeReducer.org[params.org_id]?.orgs || [],
+      bridge_summary: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_summary,
+      allBridgesMap: state.bridgeReducer.allBridgesMap || {},
+      prompt: isPublished
+        ? bridgeDataFromState?.configuration?.prompt || ""
+        : versionDataFromState?.configuration?.prompt || "",
+      isEditor: isEmbedUser ? true : canEdit,
+      activeService: serviceKey,
+      hasApiKeyForActiveService: hasApiKey,
+      activeServiceDisplayName: serviceLabel,
+      embedUserApiKey: embedApiKey,
+      showDefaultApikeys: defaultApiKeysEnabled,
+      bridgeType: bridgeDataFromState?.bridgeType,
+      modelName: activeData?.configuration?.model,
+    };
+  });
 
   // Flag to determine if the UI should be in read-only mode
   const isReadOnly = !isEditor;
-  // Memoized form data initialization
-  const [formData, setFormData] = useState(() => ({
-    url_slugname: "",
-    availability: "public",
-    description: "",
-    allowedUsers: [],
-    newEmail: "",
-  }));
 
-  // Update form data when bridge data changes
-  useEffect(() => {
-    if (bridge) {
-      setFormData((prev) => ({
-        ...prev,
-        url_slugname: bridge.url_slugname || "",
-        availability: bridge.availability || "public",
-        description: bridge.description || "",
-        allowedUsers: bridge.allowedUsers || [],
-      }));
-    }
-  }, [bridge]);
+  const isChatbotWithGpt5Nano = bridgeType === "chatbot" && modelName === "gpt-5-nano";
 
+  const showApiKeyWarning =
+    Boolean(activeService) &&
+    !hasApiKeyForActiveService &&
+    !(isEmbedUser && showDefaultApikeys) &&
+    !isChatbotWithGpt5Nano;
+  const activeVersionId = searchParams?.get("version");
   const getAllConnectedAgents = useCallback(
     async (
       agentId,
@@ -288,6 +309,14 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
           if (isOpen) {
             // Modal just opened, fetch connected agents
             fetchConnectedAgents();
+            if (
+              (!bridge_summary || bridge_summary.trim() === "") &&
+              lastSummaryAutoGenerateVersionRef.current !== activeVersionId
+            ) {
+              lastSummaryAutoGenerateVersionRef.current = activeVersionId;
+              setSummaryAccordionOpen(true);
+              setSummaryAutoGenerateTrigger((prev) => prev + 1);
+            }
           }
         }
       });
@@ -301,9 +330,29 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
     // Cleanup observer on unmount
     return () => observer.disconnect();
-  }, [fetchConnectedAgents]);
+  }, [activeVersionId, bridge_summary, fetchConnectedAgents]);
+
+  useEffect(() => {
+    if (bridge_summary?.trim()) {
+      lastSummaryAutoGenerateVersionRef.current = null;
+    }
+  }, [bridge_summary]);
 
   const { filteredBridgeData, filteredVersionData } = useMemo(() => {
+    const normalizeConnectedAgents = (data) => {
+      if (!data || typeof data !== "object") return {};
+      return data.connected_agents || data.page_config?.connected_agents || data.configuration?.connected_agents || {};
+    };
+
+    const normalizeForComparison = (data) => {
+      if (!data || typeof data !== "object") return data;
+      return {
+        ...data,
+        // Normalize source shape so connected agent diffs are consistently detected.
+        connected_agents: normalizeConnectedAgents(data),
+      };
+    };
+
     const filterData = (data, keys) => {
       if (!data || !keys) return {};
       const filtered = {};
@@ -314,9 +363,13 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       });
       return filtered;
     };
+
+    const normalizedBridgeData = normalizeForComparison(bridgeData);
+    const normalizedVersionData = normalizeForComparison(versionData);
+
     return {
-      filteredBridgeData: filterData(bridgeData, KEYS_TO_COMPARE),
-      filteredVersionData: filterData(versionData, KEYS_TO_COMPARE),
+      filteredBridgeData: filterData(normalizedBridgeData, KEYS_TO_COMPARE),
+      filteredVersionData: filterData(normalizedVersionData, KEYS_TO_COMPARE),
     };
   }, [bridgeData, versionData]);
 
@@ -373,54 +426,56 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     if (differences.service) {
       extracted.service = differences.service;
     }
-
     return extracted;
   }, [differences, filteredBridgeData, filteredVersionData]);
 
+  const hasAdditionalConfigurationChanges = useMemo(() => {
+    if (!differences.configuration) return false;
+
+    const oldConfig = filteredBridgeData.configuration || {};
+    const newConfig = filteredVersionData.configuration || {};
+
+    const stripHandledConfigFields = (config) => {
+      const normalized = { ...(config || {}) };
+      delete normalized.prompt;
+      delete normalized.model;
+      delete normalized.system_prompt_version_id;
+      return normalized;
+    };
+
+    return JSON.stringify(stripHandledConfigFields(oldConfig)) !== JSON.stringify(stripHandledConfigFields(newConfig));
+  }, [differences.configuration, filteredBridgeData, filteredVersionData]);
+
   // Changes summary
   const changesSummary = useMemo(() => {
+    const baseSummary = Object.fromEntries(Object.entries(differences).map(([key, value]) => [key, value.status]));
+
+    // Hide generic configuration key when only extracted fields (prompt/model) changed.
+    if (baseSummary.configuration && !hasAdditionalConfigurationChanges) {
+      delete baseSummary.configuration;
+    }
+
     return {
-      ...Object.fromEntries(Object.entries(differences).map(([key, value]) => [key, value.status])),
+      ...baseSummary,
       ...Object.fromEntries(Object.entries(extractedConfigChanges).map(([key, value]) => [key, value.status])),
     };
-  }, [differences, extractedConfigChanges]);
+  }, [differences, extractedConfigChanges, hasAdditionalConfigurationChanges]);
 
   // Event handlers
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (publishDropdownRef.current && !publishDropdownRef.current.contains(e.target)) {
+        setShowPublishDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleCloseModal = useCallback((e) => {
     e?.preventDefault();
     closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
-  }, []);
-
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    const processedValue = name === "url_slugname" ? value.replace(/\s+/g, "_") : value;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: processedValue,
-    }));
-  }, []);
-
-  const handleAddEmail = useCallback(() => {
-    if (!formData.newEmail?.includes("@")) return;
-
-    if (formData.allowedUsers.includes(formData.newEmail)) {
-      toast.warn("This email has already been added.");
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      allowedUsers: [...(prev.allowedUsers || []), prev.newEmail],
-      newEmail: "",
-    }));
-  }, [formData.newEmail, formData.allowedUsers]);
-
-  const handleRemoveUser = useCallback((indexToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      allowedUsers: prev.allowedUsers.filter((_, i) => i !== indexToRemove),
-    }));
+    setConvertToTemplate(false);
   }, []);
 
   // Helper function to get all agents recursively (flattened for operations)
@@ -567,6 +622,9 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                         <p className="text-xs text-base-content/70 mt-1">
                           Service: {agent.service || "N/A"} | Model: {agent.configuration?.model || "N/A"}
                         </p>
+                        <p className="text-xs text-base-content/70 mt-1">
+                          Allow Cached Response: {agent?.cache_on ? "On" : "Off"}
+                        </p>
                         {agent.url_slugname && (
                           <p className="text-xs text-base-content/50">Slug: {agent.url_slugname}</p>
                         )}
@@ -583,6 +641,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                         )}
                         <span className="text-xs text-base-content/70">Include in publish</span>
                         <input
+                          autoComplete="off"
                           type="checkbox"
                           className="toggle toggle-sm"
                           checked={isSelected}
@@ -603,469 +662,366 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     [params?.id, agentList, selectedAgentsToPublish, toggleAgentSelection, isLoading, getVersionIndexToPublish]
   );
 
-  const handlePublishBridge = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const handlePublishBridge = useCallback(
+    async (shouldConvertToTemplate = false) => {
+      setIsLoading(true);
 
-    try {
-      // Require a summary before publishing
-      if (!bridge_summary || (typeof bridge_summary === "string" && bridge_summary.trim().length === 0)) {
-        // Show validation error and redirect to summary section
-        setShowSummaryValidation(true);
-        setSummaryAccordionOpen(true);
-        setIsLoading(false);
-        // Scroll to summary section
-        setTimeout(() => {
-          const summarySection = document.querySelector(".summary-accordion");
-          if (summarySection) {
-            summarySection.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }, 100);
-        return;
-      }
-
-      if (isPublicAgent) {
-        if (!formData.url_slugname.trim()) {
-          toast.error("Slug Name is required.");
+      try {
+        // Require a summary before publishing
+        if (!bridge_summary || (typeof bridge_summary === "string" && bridge_summary.trim().length === 0)) {
+          // Show validation error and redirect to summary section
+          setShowSummaryValidation(true);
+          setSummaryAccordionOpen(true);
           setIsLoading(false);
+          // Scroll to summary section
+          setTimeout(() => {
+            const summarySection = document.querySelector(".summary-accordion");
+            if (summarySection) {
+              summarySection.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }, 100);
           return;
         }
 
-        const payload = {
-          page_config: {
-            url_slugname: formData.url_slugname,
-            availability: formData.availability,
-            description: formData.description,
-            allowedUsers: formData.availability === "private" ? formData.allowedUsers : [],
-          },
-        };
-
-        try {
-          await dispatch(
-            updateBridgeAction({
-              bridgeId: params?.id,
-              dataToSend: payload,
-            })
-          );
-          toast.success("Configuration saved successfully!");
-        } catch (error) {
-          if (error?.response?.data?.detail?.includes("DuplicateKey")) {
-            setError({ error: "This slug name already exists. Please choose a different one." });
-          }
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      await dispatch(
-        publishBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.get("version"),
-          orgId: params?.org_id,
-          isPublic: isPublicAgent,
-        })
-      );
-
-      // Publish selected connected agents in bulk if available
-      if (selectedAgentsToPublish.size > 0) {
-        try {
-          await dispatch(publishBulkVersionAction(Array.from(selectedAgentsToPublish)));
-          toast.success(`Successfully published ${selectedAgentsToPublish.size} connected agent(s)`);
-        } catch (error) {
-          console.error("Error publishing connected agents:", error);
-          toast.warning("Main agent published, but some connected agents failed to publish");
-        }
-      }
-
-      // Handle embed user callback
-      if (isEmbedUser) {
-        sendDataToParent(
-          "published",
-          {
-            name: agent_name,
-            agent_description: agent_description,
-            agent_id: params?.id,
-            agent_version_id: searchParams?.get("version"),
-          },
-          "Agent Published Successfully"
+        const data = await dispatch(
+          publishBridgeVersionAction({
+            bridgeId: params?.id,
+            versionId: searchParams?.get("version"),
+            orgId: params?.org_id,
+          })
         );
-      }
 
-      dispatch(getAllBridgesAction());
-      closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
-    } catch (error) {
-      if (isPublicAgent) {
-        toast.error("Failed to save configuration. The slug name may already be in use.");
+        if (data && isEmbedUser) {
+          sendDataToParent(
+            "published",
+            {
+              name: agent_name,
+              agent_description: agent_description,
+              agent_id: params?.id,
+              agent_version_id: searchParams?.get("version"),
+            },
+            "Agent Published Successfully"
+          );
+        }
+
+        // Publish selected connected agents in bulk if available
+        if (selectedAgentsToPublish.size > 0) {
+          try {
+            await dispatch(publishBulkVersionAction(Array.from(selectedAgentsToPublish)));
+            toast.success(`Successfully published ${selectedAgentsToPublish.size} connected agent(s)`);
+          } catch (error) {
+            console.error("Error publishing connected agents:", error);
+            toast.warning("Main agent published, but some connected agents failed to publish");
+          }
+        }
+        dispatch(getAllBridgesAction());
+        setConvertToTemplate(false);
+        closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
+        openModal(MODAL_TYPE.POST_PUBLISH_FEEDBACK_MODAL);
+
+        if (shouldConvertToTemplate) {
+          const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim());
+          toast.promise(templatePromise, {
+            pending: "Evaluating and publishing template...",
+            success: "Agent converted to template successfully!",
+            error: {
+              render({ data }) {
+                return data?.response?.data?.message || data?.message || "Failed to convert agent to template";
+              },
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Error publishing bridge:", error);
+      } finally {
+        setIsLoading(false);
       }
-      console.error("Error publishing bridge:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    dispatch,
-    params,
-    searchParams,
-    isPublicAgent,
-    formData,
-    agent_name,
-    agent_description,
-    isEmbedUser,
-    selectedAgentsToPublish,
-    bridge_summary,
-  ]);
+    },
+    [
+      dispatch,
+      params,
+      searchParams,
+      agent_name,
+      agent_description,
+      isEmbedUser,
+      selectedAgentsToPublish,
+      bridge_summary,
+    ]
+  );
 
   return (
-    <Modal MODAL_ID={MODAL_TYPE.PUBLISH_BRIDGE_VERSION} onClose={handleCloseModal}>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-low-medium overflow-auto h-auto bg-base-100">
-        <div
-          id="publish-bridge-modal-container"
-          className="bg-base-100 mb-auto mt-auto rounded-lg shadow-2xl max-w-6xl w-[90vw] my-8 flex flex-col p-6 md:p-10 transition-all duration-300 ease-in-out animate-fadeIn"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Publish Bridge Version</h2>
-            <div className="flex gap-2">
-              <button
-                id="publish-toggle-comparison-button"
-                onClick={toggleComparison}
-                className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
-                title="Compare Version Changes"
-              >
-                <ArrowRightLeft size={16} />
-                {showComparison ? "Hide Changes" : "View Changes"}
-              </button>
-              <button
-                id="publish-close-x-button"
-                onClick={handleCloseModal}
-                className="btn btn-sm btn-circle btn-ghost"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Agent Summary Accordion */}
+    <>
+      <Modal MODAL_ID={MODAL_TYPE.PUBLISH_BRIDGE_VERSION} onClose={handleCloseModal}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-low-medium overflow-auto h-auto bg-base-100">
           <div
-            className={`collapse collapse-arrow border bg-base-100 rounded-lg mb-6 summary-accordion ${
-              showSummaryValidation && (!bridge_summary || bridge_summary.trim() === "")
-                ? "border-red-500"
-                : "border-base-300"
-            }`}
+            id="publish-bridge-modal-container"
+            data-testid="publish-version-modal"
+            className="bg-base-100 mb-auto mt-auto rounded-lg shadow-2xl max-w-6xl w-[90vw] my-8 flex flex-col p-6 md:p-10 transition-all duration-300 ease-in-out animate-fadeIn"
           >
-            <input
-              id="publish-summary-accordion-toggle"
-              type="checkbox"
-              className="peer"
-              defaultChecked={summaryAccordionOpen}
-              checked={summaryAccordionOpen}
-              onChange={(e) => setSummaryAccordionOpen(e.target.checked)}
-            />
-            <div className="collapse-title font-medium flex items-center">
-              <Bot className="w-5 h-5 mr-2" />
-              Agent Summary
-              {showSummaryValidation && (!bridge_summary || bridge_summary.trim() === "") && (
-                <span className="text-red-500 ml-2">*</span>
-              )}
-            </div>
-            <div className="collapse-content">
-              <AgentSummaryContent
-                params={params}
-                prompt={prompt}
-                versionId={searchParams?.get("version")}
-                showTitle={false}
-                showButtons={true}
-                onSave={() => setShowSummaryValidation(false)}
-                isMandatory={showSummaryValidation}
-                showValidationError={showSummaryValidation}
-                isEditor={isEditor}
-              />
-            </div>
-          </div>
-
-          {/* Warning Section */}
-          {!showComparison && (
-            <div className="alert bg-base/70 mb-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                  <h3 className="font-medium">Are you sure you want to publish this version?</h3>
-                </div>
-                <div className="pl-7">
-                  <p className="text-sm">Keep these important points in mind:</p>
-                  <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
-                    <li>Published version will be available to all users</li>
-                    <li>Changes will be immediately reflected in the published version</li>
-                    <li>Published changes cannot be reverted</li>
-                  </ul>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Publish Agent Version</h2>
+              <div className="flex gap-2">
+                <button
+                  id="publish-toggle-comparison-button"
+                  data-testid="publish-version-comparison-toggle"
+                  onClick={toggleComparison}
+                  className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
+                  title="Compare Version Changes"
+                >
+                  <ArrowRightLeft size={16} />
+                  {showComparison ? "Hide Changes" : "View Changes"}
+                </button>
+                <button
+                  id="publish-close-x-button"
+                  onClick={handleCloseModal}
+                  className="btn btn-sm btn-circle btn-ghost"
+                >
+                  <X size={18} />
+                </button>
               </div>
             </div>
-          )}
 
-          {/* Changes Summary */}
-          {!showComparison && (
-            <div className="mb-6">
-              <div className="bg-base-200 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold">Changes Summary</h3>
-                  {Object.keys(changesSummary).length > 0 && (
-                    <button
-                      id="publish-view-all-changes-button"
-                      className="btn btn-sm btn-outline flex gap-1"
-                      onClick={toggleComparison}
-                    >
-                      <ArrowRightLeft size={16} />
-                      View All Changes
-                    </button>
-                  )}
+            {/* Agent Summary Accordion */}
+            <div
+              className={`collapse collapse-arrow border bg-base-100 rounded-lg mb-6 summary-accordion ${
+                showSummaryValidation && (!bridge_summary || bridge_summary.trim() === "")
+                  ? "border-red-500"
+                  : "border-base-300"
+              }`}
+            >
+              <input
+                autoComplete="off"
+                id="publish-summary-accordion-toggle"
+                type="checkbox"
+                className="peer"
+                checked={summaryAccordionOpen}
+                onChange={(e) => setSummaryAccordionOpen(e.target.checked)}
+              />
+              <div className="collapse-title font-medium flex items-center">
+                <Bot className="w-5 h-5 mr-2" />
+                Agent Summary
+                {showSummaryValidation && (!bridge_summary || bridge_summary.trim() === "") && (
+                  <span className="text-red-500 ml-2">*</span>
+                )}
+              </div>
+              <div className="collapse-content">
+                <AgentSummaryContent
+                  params={params}
+                  prompt={prompt}
+                  versionId={activeVersionId}
+                  showTitle={false}
+                  showButtons={true}
+                  onSave={() => setShowSummaryValidation(false)}
+                  isMandatory={showSummaryValidation}
+                  showValidationError={showSummaryValidation}
+                  isEditor={isEditor}
+                  showSaveButton={false}
+                  autoSave={true}
+                  autoGenerateOnEmptyTrigger={summaryAutoGenerateTrigger}
+                />
+              </div>
+            </div>
+
+            {/* Warning Section */}
+            {!showComparison && (
+              <div className="flex flex-col gap-3 mb-6">
+                <div className="alert bg-base/70">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                      <h3 className="font-medium">Are you sure you want to publish this version?</h3>
+                    </div>
+                    <div className="pl-7">
+                      <p className="text-sm">Keep these important points in mind:</p>
+                      <ul className="list-disc ml-4 mt-1 space-y-1 text-sm">
+                        <li>Published version will be available to all users</li>
+                        <li>Changes will be immediately reflected in the published version</li>
+                        <li>Published changes cannot be reverted</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
-                {Object.keys(changesSummary).length === 0 ? (
-                  <div className="alert alert-success">
-                    <Check />
-                    <span>No differences found between the versions.</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {/* Extracted config changes */}
-                    <div className="flex flex-wrap gap-1">
-                      {Object.keys(extractedConfigChanges).length > 0 &&
-                        Object.keys(extractedConfigChanges).map((key) => (
-                          <div key={key} className="card bg-base-100">
-                            <div className="card-body p-3">
-                              <div className="flex justify-between items-center">
-                                <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      {Object.keys(changesSummary)
-                        .filter((key) => !Object.keys(extractedConfigChanges).includes(key))
-                        .map((key) => (
-                          <div key={key} className="card bg-base-100">
-                            <div className="card-body p-3">
-                              <div className="flex justify-between items-center">
-                                <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                {showApiKeyWarning && (
+                  <div
+                    data-testid="publish-apikey-missing-warning"
+                    id="publish-apikey-missing-warning"
+                    className="alert alert-warning border border-warning/30 bg-warning/10"
+                  >
+                    <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-base-content">API Key Not Configured</h3>
+                      <p className="text-sm text-base-content/40">
+                        No API key is configured for{" "}
+                        <span className="font-medium text-base-content/40">{activeServiceDisplayName}</span> in this
+                        version.
+                      </p>
                     </div>
+                    <span className="badge badge-warning badge-sm">API Key Not Configured</span>
                   </div>
                 )}
               </div>
+            )}
 
-              {/* Connected Agents Section */}
-              {isLoadingAgents ? (
-                <div className="mt-4 pt-4 border-t border-base-300">
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <div className="loading loading-spinner loading-lg text-primary"></div>
-                    <p className="mt-3 text-sm text-base-content/70">Loading connected agents...</p>
-                  </div>
-                </div>
-              ) : allConnectedAgents.length > 1 ? (
-                <div className="mt-4 pt-4 border-t border-base-300">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-md font-semibold flex items-center gap-2">
-                      <Bot className="w-5 h-5 text-primary" />
-                      Connected Agents ({allConnectedAgents.length - 1})
-                    </h4>
-
-                    {/* Select All option */}
-                    {allConnectedAgents.filter((agent) => agent._id !== params?.id && agent?.haveToPublish).length >
-                      1 && (
+            {/* Changes Summary */}
+            {!showComparison && (
+              <div className="mb-6">
+                <div className="bg-base-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold">Changes Summary</h3>
+                    {Object.keys(changesSummary).length > 0 && (
                       <button
-                        id="publish-select-all-agents-button"
-                        onClick={toggleSelectAllAgents}
+                        id="publish-view-all-changes-button"
                         className="btn btn-sm btn-outline flex gap-1"
+                        onClick={toggleComparison}
                       >
-                        {allConnectedAgents
-                          .filter((agent) => agent._id !== params?.id && agent?.haveToPublish)
-                          .every((agent) => selectedAgentsToPublish.has(agent._id))
-                          ? "Deselect All"
-                          : "Select All"}
+                        <ArrowRightLeft size={16} />
+                        View All Changes
                       </button>
                     )}
                   </div>
 
-                  <div className="space-y-3">{renderAgentHierarchy(allConnectedAgents)}</div>
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {/* Full Data Comparison View */}
-          {showComparison && (
-            <div>
-              <div className="bg-base-100 rounded-lg p-2">
-                <PublishVersionDataComparisonView
-                  oldData={filteredBridgeData}
-                  newData={filteredVersionData}
-                  showOnlyDifferences={true}
-                  onClose={toggleComparison}
-                  params={params}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-4">
-            {/* Public Agent Configuration Form */}
-            {isPublicAgent && (
-              <div className="bg-base-200/50 p-4 rounded-lg mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Settings className="h-5 w-5 text-primary" />
-                  <h4 className="font-medium text-base-content">Public Agent Configuration</h4>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Slug Name Field */}
-                  <div className="form-control w-full">
-                    <label className="label">
-                      <span className="label-text font-medium">
-                        Slug Name <span className="text-error">*</span>
-                      </span>
-                      <span className="label-text-alt text-xs text-base-content/60">Must be globally unique</span>
-                    </label>
-                    <input
-                      id="publish-slug-name-input"
-                      type="text"
-                      name="url_slugname"
-                      placeholder="Enter a unique slug name"
-                      className={`input input-bordered w-full ${error?.error ? "input-error" : ""}`}
-                      value={formData.url_slugname}
-                      onChange={handleChange}
-                      required
-                    />
-                    {error?.error && (
-                      <label className="label">
-                        <span className="label-text-alt text-error">{error?.error}</span>
-                      </label>
-                    )}
-                  </div>
-
-                  {/* Description Field */}
-                  <div className="form-control w-full">
-                    <label className="label">
-                      <span className="label-text font-medium">Description</span>
-                    </label>
-                    <textarea
-                      id="publish-description-textarea"
-                      name="description"
-                      placeholder="Enter a description"
-                      className="textarea bg-white dark:bg-black/15 textarea-bordered w-full h-20"
-                      value={formData.description}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  {/* Visibility Field */}
-                  <div className="form-control w-full">
-                    <label className="label">
-                      <span className="label-text font-medium">Visibility</span>
-                    </label>
-                    <select
-                      id="publish-visibility-select"
-                      className="select select-bordered w-full"
-                      name="availability"
-                      value={formData.availability}
-                      onChange={handleChange}
-                    >
-                      <option value="public">Public</option>
-                      <option value="private">Private (Only allowed users can access)</option>
-                    </select>
-                  </div>
-
-                  {/* Allowed Users Field */}
-                  {formData.availability === "private" && (
-                    <div className="form-control w-full">
-                      <label className="label">
-                        <span className="label-text font-medium">Allowed Users</span>
-                      </label>
-
-                      {formData.allowedUsers?.length > 0 && (
-                        <div className="mb-3 p-3 bg-base-200/50 rounded-lg min-h-[3rem]">
-                          <div className="flex flex-wrap gap-2">
-                            {formData.allowedUsers.map((user, index) => (
-                              <div key={index} className="badge badge-outline gap-2 py-3 px-3">
-                                <span className="text-sm">{user}</span>
-                                <button
-                                  id={`publish-remove-user-${index}`}
-                                  onClick={() => handleRemoveUser(index)}
-                                  className="hover:text-error transition-colors"
-                                  type="button"
-                                >
-                                  <CircleX className="h-4 w-4" />
-                                </button>
+                  {Object.keys(changesSummary).length === 0 ? (
+                    <div className="alert alert-success">
+                      <Check />
+                      <span>No differences found between the versions.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {/* Extracted config changes */}
+                      <div className="flex flex-wrap gap-1">
+                        {Object.keys(extractedConfigChanges).length > 0 &&
+                          Object.keys(extractedConfigChanges).map((key) => (
+                            <div key={key} className="card bg-base-100">
+                              <div className="card-body p-3">
+                                <div className="flex justify-between items-center">
+                                  <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="join w-full">
-                        <input
-                          id="publish-add-user-email-input"
-                          type="email"
-                          placeholder="Enter email address"
-                          className="input input-bordered join-item flex-1"
-                          value={formData.newEmail || ""}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              newEmail: e.target.value,
-                            }));
-                          }}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddEmail();
-                            }
-                          }}
-                        />
-                        <button
-                          id="publish-add-user-button"
-                          type="button"
-                          className="btn btn-sm join-item"
-                          onClick={handleAddEmail}
-                          disabled={!formData.newEmail || !formData.newEmail.includes("@")}
-                        >
-                          Add
-                        </button>
+                            </div>
+                          ))}
+                        {Object.keys(changesSummary)
+                          .filter((key) => !Object.keys(extractedConfigChanges).includes(key))
+                          .map((key) => (
+                            <div key={key} className="card bg-base-100">
+                              <div className="card-body p-3">
+                                <div className="flex justify-between items-center">
+                                  <h5 className="card-title text-sm">{DIFFERNCE_DATA_DISPLAY_NAME(key)}</h5>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* Connected Agents Section */}
+                {isLoadingAgents ? (
+                  <div className="mt-4 pt-4 border-t border-base-300">
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <div className="loading loading-spinner loading-lg text-primary"></div>
+                      <p className="mt-3 text-sm text-base-content/70">Loading connected agents...</p>
+                    </div>
+                  </div>
+                ) : allConnectedAgents.length > 1 ? (
+                  <div className="mt-4 pt-4 border-t border-base-300">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-md font-semibold flex items-center gap-2">
+                        <Bot className="w-5 h-5 text-primary" />
+                        Connected Agents ({allConnectedAgents.length - 1})
+                      </h4>
+
+                      {/* Select All option */}
+                      {allConnectedAgents.filter((agent) => agent._id !== params?.id && agent?.haveToPublish).length >
+                        1 && (
+                        <button
+                          id="publish-select-all-agents-button"
+                          onClick={toggleSelectAllAgents}
+                          className="btn btn-sm btn-outline flex gap-1"
+                        >
+                          {allConnectedAgents
+                            .filter((agent) => agent._id !== params?.id && agent?.haveToPublish)
+                            .every((agent) => selectedAgentsToPublish.has(agent._id))
+                            ? "Deselect All"
+                            : "Select All"}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">{renderAgentHierarchy(allConnectedAgents)}</div>
+                  </div>
+                ) : null}
               </div>
             )}
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-base-300">
-            <button id="publish-cancel-button" className="btn btn-sm" onClick={handleCloseModal} disabled={isLoading}>
-              Cancel
-            </button>
-            <button
-              id="publish-confirm-button"
-              className={`btn btn-primary btn-sm ${isLoading ? "loading" : ""}`}
-              onClick={handlePublishBridge}
-              disabled={isLoading || (isPublicAgent && !formData.url_slugname.trim()) || isReadOnly}
-              title={isReadOnly ? "You don't have permission to publish" : ""}
-            >
-              {isLoading ? (
-                <>
-                  <span className="loading loading-spinner loading-sm"></span>
-                  {isPublicAgent ? "Saving & Publishing..." : "Publishing..."}
-                </>
-              ) : (
-                <>{isPublicAgent ? "Save & Publish" : "Confirm Publish"}</>
+            {/* Full Data Comparison View */}
+            {showComparison && (
+              <div>
+                <div className="bg-base-100 rounded-lg p-2">
+                  <PublishVersionDataComparisonView
+                    oldData={filteredBridgeData}
+                    newData={filteredVersionData}
+                    showOnlyDifferences={true}
+                    onClose={toggleComparison}
+                    params={params}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end pt-4 border-t border-base-300">
+              {!isEmbedUser && (
+                <label className="flex items-center gap-2 cursor-pointer select-none mr-auto">
+                  <input
+                    autoComplete="off"
+                    type="checkbox"
+                    className="checkbox checkbox-xs checkbox-primary"
+                    checked={convertToTemplate}
+                    onChange={(e) => setConvertToTemplate(e.target.checked)}
+                    disabled={isLoading || isReadOnly}
+                  />
+                  <span className="text-sm">Save as Template</span>
+                </label>
               )}
-            </button>
+
+              <div className="flex gap-3 ml-auto">
+                <button
+                  id="publish-cancel-button"
+                  className="btn btn-sm"
+                  onClick={handleCloseModal}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  id="publish-confirm-button"
+                  data-testid="publish-version-publish-button"
+                  className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handlePublishBridge(convertToTemplate)}
+                  disabled={isLoading || !bridge_summary?.trim() || isReadOnly}
+                  title={isReadOnly ? "You don't have permission to publish" : ""}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm"></span>
+                      Publishing...
+                    </>
+                  ) : (
+                    "Publish"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="modal-backdrop" onClick={handleCloseModal}></div>
-    </Modal>
+        <div className="modal-backdrop" onClick={handleCloseModal}></div>
+
+        <PostPublishFeedbackModal agentName={agent_name} orgId={params?.org_id} />
+      </Modal>
+    </>
   );
 }
 

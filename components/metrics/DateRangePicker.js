@@ -36,6 +36,7 @@ const DateRangePicker = ({ onDateRangeSelect, isOpen, onClose, initialStartDate,
             <label className="block text-sm font-medium mb-2">Start Date</label>
             <div className="flex flex-col space-y-2">
               <input
+                autoComplete="off"
                 id="date-range-picker-start-date"
                 type="date"
                 value={startDate}
@@ -50,6 +51,7 @@ const DateRangePicker = ({ onDateRangeSelect, isOpen, onClose, initialStartDate,
             <label className="block text-sm font-medium mb-2">End Date</label>
             <div className="flex flex-col space-y-2">
               <input
+                autoComplete="off"
                 id="date-range-picker-end-date"
                 type="date"
                 value={endDate}

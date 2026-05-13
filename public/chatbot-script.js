@@ -71,8 +71,8 @@ var setPropValues = (newprops) => {
     document.getElementById('iframe-parent-container')?.classList.remove('full-screen-interfaceEmbed')
   } if ('hideIcon' in newprops && document.getElementById('interfaceEmbed')) {
     document.getElementById('interfaceEmbed').style.display = (newprops.hideIcon === true || newprops.hideIcon === 'true') ? 'none' : 'unset';
-  } if ('hideCloseButton' in newprops && document.getElementById('close-button-interfaceEmbed')) {
-    document.getElementById('close-button-interfaceEmbed').style.display = (newprops.hideCloseButton === true || newprops.hideCloseButton === 'true') ? 'none' : 'unset';
+  } if ('showCloseButton' in newprops && document.getElementById('close-button-interfaceEmbed')) {
+    document.getElementById('close-button-interfaceEmbed').style.display = (newprops.showCloseButton === false || newprops.showCloseButton === 'false') ? 'none' : 'unset';
   }
 }
 function createProps() {
@@ -91,7 +91,7 @@ function createProps() {
       'style',
       'environment',
       'fullScreen',
-      'hideCloseButton',
+      'showCloseButton',
       'hideIcon',
       'parentId',
       'config',
@@ -424,8 +424,8 @@ SendDataToChatbot = function (dataToSend) {
 }
 
 var sendOtherData = (dataToSend) => {
-  if ('hideCloseButton' in dataToSend) {
-    updateProps({ hideCloseButton: dataToSend.hideCloseButton || false })
+  if ('showCloseButton' in dataToSend) {
+    updateProps({ showCloseButton: dataToSend.showCloseButton ?? true })
   }
   if ('hideIcon' in dataToSend) {
     updateProps({ hideIcon: dataToSend.hideIcon || false })

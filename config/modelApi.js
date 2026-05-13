@@ -4,17 +4,6 @@ import { toast } from "react-toastify";
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
-// Model and Service APIs
-// export const getSingleModels = async () => {
-//   try {
-//     const getSingleModels = await axios.get(`${URL}/api/v1/agentConfig/models`)
-//     return getSingleModels
-//   } catch (error) {
-//     console.error(error)
-//     throw new Error(error)
-//   }
-// }
-
 export const getAllModels = async (service) => {
   try {
     const response = await axios.get(`${URL}/api/service/${service}`);
@@ -78,10 +67,10 @@ export const updateApikey = async (dataToSend) => {
   }
 };
 
-export const deleteApikey = async (id) => {
+export const deleteApikey = async (id, service) => {
   try {
     const response = await axios.delete(`${URL}/api/apikeys`, {
-      data: { apikey_object_id: id },
+      data: { apikey_object_id: id, service },
     });
     return response;
   } catch (error) {
@@ -104,23 +93,34 @@ export const getAllApikey = async (org_id) => {
 // Model Playground and Testing APIs
 export const dryRun = async ({ localDataToSend, bridge_id }) => {
   try {
-    let dryRun;
     const modelType = localDataToSend.configuration.type;
-    if (modelType !== "completion" && modelType !== "embedding")
-      dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
+    const isChat = modelType !== "completion" && modelType !== "embedding";
+    const isStream = !!localDataToSend.is_stream;
+    if (!localDataToSend?.version_id) {
+      localDataToSend.agent_id = bridge_id;
+    }
+    let dryRun;
+    const axiosConfig = isStream ? { responseType: "stream", adapter: "fetch" } : {};
+
+    if (isChat) dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/chat/completion`, localDataToSend, axiosConfig);
     if (modelType === "completion")
-      dryRun = await axios.post(`${URL}/api/v1/model/playground/completion/${bridge_id}`, localDataToSend);
+      dryRun = await axios.post(`${URL}/api/v1/model/completion`, localDataToSend, axiosConfig);
     if (modelType === "embedding")
-      dryRun = await axios.post(`${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`, localDataToSend);
-    if (modelType !== "completion" && modelType !== "embedding") {
-      return dryRun.data;
+      dryRun = await axios.post(
+        `${PYTHON_URL}/api/v2/model/playground/chat/completion/${bridge_id}`,
+        localDataToSend,
+        axiosConfig
+      );
+
+    if (isStream) {
+      return { success: true, stream: true, response: dryRun };
     }
     return { success: true, data: dryRun.data };
   } catch (error) {
-    console.error("dry run error", error, error.response.data.error);
+    console.error("dry run error", error, error?.response?.data?.error);
 
     const errorMessage =
-      error?.response?.data?.error || error?.response?.data?.detail?.error || "Something went wrong.";
+      error?.response?.data?.error || error?.response?.data?.detail?.error || error?.message || "Something went wrong.";
 
     const hasBothErrors = errorMessage.includes("Initial Error:") && errorMessage.includes("Fallback Error:");
 
@@ -139,6 +139,20 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
     } else {
       toast.error(errorMessage);
     }
+    throw error;
+  }
+};
+
+export const rerunApi = async ({ agent_id, thread_id, sub_thread_id, message_ids }) => {
+  try {
+    const response = await axios.post(`${PYTHON_URL}/api/v2/model/rerun`, {
+      agent_id,
+      message_ids,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error in rerun API:", error);
+    toast.error(error?.response?.data?.detail?.error || error?.response?.data?.error || "Rerun failed");
     throw error;
   }
 };

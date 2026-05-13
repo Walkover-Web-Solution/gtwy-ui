@@ -9,7 +9,7 @@ const InputSection = memo(() => {
     searchParams,
     promptTextAreaRef,
     isEmbedUser,
-    hidePreTool,
+    showPreTool,
     uiState,
     updateUiState,
     promptState,
@@ -22,8 +22,9 @@ const InputSection = memo(() => {
   } = useConfigurationContext();
   return (
     <>
-      {((!hidePreTool && isEmbedUser) || !isEmbedUser) && (
+      {((showPreTool && isEmbedUser) || !isEmbedUser) && (
         <div
+          data-testid="input-section-pre-embed-wrapper"
           id="input-section-pre-embed-wrapper"
           className="w-full cursor-default flex flex-wrap justify-between items-start gap-2"
         >

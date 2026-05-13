@@ -1,8 +1,15 @@
 import { BookIcon, BotIcon, KeyIcon, SettingsIcon, TestTubeDiagonalIcon, WrenchIcon } from "@/components/Icons";
+import { DollarSign, Star, Gauge } from "lucide-react";
 export const PAUTH_KEY_COLUMNS = ["name", "authkey", "created_at"];
-export const API_KEY_COLUMNS = ["name", "apikey", "comment", "apikey_usage", "last_used"];
+export const API_KEY_COLUMNS = ["name", "apikey", "apikey_usage", "last_used", "last_used_status"];
 export const WEBHOOKALERT_COLUMNS = ["name", "url", "headers", "alertType", "bridges"];
 export const ALERT_TYPE = ["Error", "Variable"];
+
+export const AUTO_MODEL_TRADEOFF_OPTIONS = [
+  { value: "cost", label: "Cost", icon: DollarSign },
+  { value: "quality", label: "Quality", icon: Star },
+  { value: "speed", label: "Speed", icon: Gauge },
+];
 
 export const AVAILABLE_MODEL_TYPES = {
   API: "api",
@@ -21,11 +28,13 @@ export const MODAL_TYPE = {
   OPTIMIZE_PROMPT: "optmize_prompt_modal",
   PUBLISH_BRIDGE_VERSION: "publish_bridge_version_modal",
   VERSION_DESCRIPTION_MODAL: "version_description_modal",
+  TEMPLATE_NAME_MODAL: "template_name_modal",
   API_KEY_MODAL: "API_KEY_MODAL",
   PAUTH_KEY_MODAL: "PAUTH_KEY_MODAL",
   FINE_TUNE_MODAL: "fine-tune-modal",
   PRE_FUNCTION_PARAMETER_MODAL: "pre-function-parameter-modal",
   TOOL_FUNCTION_PARAMETER_MODAL: "tool-function-parameter-modal",
+  POST_FUNCTION_PARAMETER_MODAL: "post-function-parameter-modal",
   ACTION_MODAL: "actionModel",
   CHATBOT_MODAL: "chatBot_model",
   CREATE_ORG_MODAL: "create-org-modal",
@@ -33,6 +42,7 @@ export const MODAL_TYPE = {
   CHAT_DETAILS_VIEW_MODAL: "chat_details_view",
   JSON_SCHEMA: "JSON_SCHEMA",
   JSON_SCHEMA_BUILDER: "JSON_SCHEMA_BUILDER",
+  BUTTON_SCHEMA_BUILDER: "BUTTON_SCHEMA_BUILDER",
   KNOWLEDGE_BASE_MODAL: "KNOWLEDGE_BASE_MODAL",
   PROMPT_SUMMARY: "PROMPT_SUMMARY",
   TESTCASE_MODAL: "TESTCASE_MODAL",
@@ -46,7 +56,6 @@ export const MODAL_TYPE = {
   INTEGRATION_MODAL: "INTEGRATION_MODAL",
   INTEGRATION_GUIDE_MODAL: "INTEGRATION_GUIDE_MODAL",
   AUTH_DATA_MODAL: "AUTH_DATA_MODAL",
-  KNOWLEDGE_BASE_MODAL: "KNOWLEDGE_BASE_MODAL",
   DELETE_MODAL: "DELETE_MODAL",
   DELETE_PREBUILT_TOOL_MODAL: "DELETE_PREBUILT_TOOL_MODAL",
   DELETE_TOOL_MODAL: "DELETE_TOOL_MODAL",
@@ -58,23 +67,68 @@ export const MODAL_TYPE = {
   USAGE_DETAILS_MODAL: "USAGE_DETAILS_MODAL",
   CONNECTED_AGENTS_MODAL: "CONNECTED_AGENTS_MODAL",
   DIFF_PROMPT: "DIFF_PROMPT",
+  MIGRATE_PROMPT_MODAL: "MIGRATE_PROMPT_MODAL",
   ORCHESTRAL_AGENT_PARAMETER_MODAL: "ORCHESTRAL_AGENT_PARAMETER_MODAL",
   CREATE_ORCHESTRAL_FLOW_MODAL: "CREATE_ORCHESTRAL_FLOW_MODAL",
   API_KEY_LIMIT_MODAL: "API_KEY_LIMIT_MODAL",
   PROMPT_SUMMARY_PUBLISH: "PROMPT_SUMMARY_PUBLISH",
   DELETE_VERSION_MODAL: "DELETE_VERSION_MODAL",
   PREBUILT_TOOLS_CONFIG_MODAL: "PREBUILT_TOOLS_CONFIG_MODAL",
+  PREBUILT_PRE_TOOL_CONFIG_MODAL: "prebuilt-pre-tool-config-modal",
   INVITE_USER: "INVITE_USER",
   ORCHESTRAL_DELETE_MODAL: "ORCHESTRAL_DELETE_MODAL",
   ACCESS_MANAGEMENT_MODAL: "ACCESS_MANAGEMENT_MODAL",
   UNSAVED_CHANGES_MODAL: "UNSAVED_CHANGES_MODAL",
   RESOURCE_CHUNKS_MODAL: "RESOURCE_CHUNKS_MODAL",
+  QUERY_KNOWLEDGE_BASE_MODAL: "QUERY_KNOWLEDGE_BASE_MODAL",
+  GTWY_OPEN_WITH_AGENT_MODAL: "GTWY_OPEN_WITH_AGENT_MODAL",
+  GTWY_CREATE_AGENT_MODAL: "GTWY_CREATE_AGENT_MODAL",
+  GTWY_SEND_DATA_MODAL: "GTWY_SEND_DATA_MODAL",
+  GTWY_GET_AGENTS_MODAL: "GTWY_GET_AGENTS_MODAL",
   KEYBOARD_SHORTCUTS_MODAL: "KEYBOARD_SHORTCUTS_MODAL",
+  TEMPLATE_MODAL: "TEMPLATE_MODAL",
+  TEMPLATE_PLAYGROUND: "TEMPLATE_PLAYGROUND",
+  SAVE_WIDGET_MODAL: "SAVE_WIDGET_MODAL",
+  POST_PUBLISH_FEEDBACK_MODAL: "post_publish_feedback_modal",
+  MIGRATE_PROMPT_WARNING_MODAL: "MIGRATE_PROMPT_WARNING_MODAL",
+  FULLSCREEN_PROMPT: "FULLSCREEN_PROMPT",
+  FULLSCREEN_JSON_SCHEMA: "FULLSCREEN_JSON_SCHEMA",
+  CUSTOM_TONE_MODAL: "CUSTOM_TONE_MODAL",
+  CUSTOM_RESPONSE_STYLE_MODAL: "CUSTOM_RESPONSE_STYLE_MODAL",
+  MAKE_PUBLIC_AGENT: "MAKE_PUBLIC_AGENT",
 };
 
-export const API_KEY_MODAL_INPUT = ["name", "apikey", "comment", "apikey_limit"];
+export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];
 
 export const USER_FEEDBACK_FILTER_OPTIONS = ["all", "1", "2"];
+
+export const WEB_SEARCH_PREBUILT_TOOL_VALUES = new Set(["web_search", "Gtwy_Web_Search"]);
+export const WEB_SEARCH_WARNING_CLASS = "border-warning/40 bg-warning/5";
+export const WEB_SEARCH_TOKEN_WARNING =
+  "Selecting Web Search can cause heavy token utilization and may exceed 10,000 tokens.";
+
+export const CONFIG_HISTORY_FILTER_KEYS = {
+  USER_IDS: "user_ids",
+  TYPES: "types",
+};
+
+export const CONFIG_HISTORY_FEATURE_OPTIONS = [
+  { value: "name", label: "Agent Name" },
+  { value: "prompt", label: "Prompt" },
+  { value: "type", label: "Model Type" },
+  { value: "service", label: "Service" },
+  { value: "model", label: "Model" },
+  { value: "fall_back", label: "Fallback" },
+  { value: "IsstarterQuestionEnable", label: "Starter Questions" },
+  { value: "functionData", label: "Functions" },
+  { value: "bridge_summary", label: "Bridge Summary" },
+  { value: "agents", label: "Connected Agents" },
+  { value: "apikey_object_id", label: "API Keys" },
+];
+
+export const CONFIG_HISTORY_HIDDEN_TYPES = ["system_prompt_version_id", "variables_state"];
+
+export const BATCH_PROCESSING_STATUSES = ["in_progress", "processing", "queued", "pending", "validating", "finalizing"];
 
 export const TIME_RANGE_OPTIONS = [
   "1 hour",
@@ -100,6 +154,27 @@ export const KNOWLEDGE_BASE_CUSTOM_SECTION = [
   { value: "recursive", label: "Recursive Chunking" },
 ];
 export const PROMPT_SUPPORTED_REASIONING_MODELS = ["o1", "o3-mini", "o4-mini"];
+
+export const PROMPT_SECTIONS = {
+  ROLE: "role",
+  GOAL: "goal",
+  INSTRUCTION: "instruction",
+};
+
+export const PROMPT_SECTION_CONFIG = {
+  role: { label: "Role", type: "input", placeholder: "e.g. You are a helpful customer support agent" },
+  goal: { label: "Goal", type: "input", placeholder: "e.g. Help users resolve billing issues" },
+  instruction: {
+    label: "Instruction",
+    type: "textarea",
+    placeholder: "e.g. Always be polite. Never reveal internal data. Ask clarifying questions when needed.",
+  },
+};
+
+export const PROMPT_VIEW_MODE = {
+  SIMPLE: "simple",
+  ADVANCED: "advanced",
+};
 
 export const AUTH_COLUMNS = ["name", "redirection_url", "client_id"];
 
@@ -202,3 +277,83 @@ export const TUTORIALS = [
     icon: TestTubeDiagonalIcon,
   },
 ];
+export const HISTORY_FILTER_BY_FIELDS = {
+  thread_id: "",
+  sub_thread_id: "",
+  message_id: "",
+  batch_id: "",
+  user: "",
+  llm_message: "",
+  variables: "",
+};
+
+export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id"]);
+export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
+export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide"]);
+export const EMBED_SKIP_KEYS = new Set([
+  "agent_name",
+  "agent_id",
+  "agent_purpose",
+  "meta",
+  "history",
+  "configureGtwyRedirection",
+  "variables_path",
+]);
+
+export const PRE_TOOL_TYPES = {
+  custom_function: "custom_function",
+  query_refiner: "query_refiner",
+  rag_knowledgebase: "rag_knowledgebase",
+  gtwy_web_search: "gtwy_web_search",
+};
+
+export const PRE_TOOL_LABELS = {
+  custom_function: "Custom Function",
+  query_refiner: "Query Refiner",
+  rag_knowledgebase: "RAG Knowledgebase",
+  gtwy_web_search: "Gtwy Web Search",
+};
+
+export const PRE_TOOL_TOOLTIPS = {
+  query_refiner: "Rewrites the user's query before it reaches the model, making it more specific and search-friendly.",
+  rag_knowledgebase: "Searches a knowledge base and injects relevant context into the prompt before the AI call.",
+  gtwy_web_search: "Scrapes a specified domain and passes the content as context to the AI.",
+};
+
+export const PRE_TOOL_CONFIG_SCHEMA = {
+  query_refiner: {
+    configFields: [
+      {
+        key: "prompt",
+        label: "Refinement Prompt",
+        type: "textarea",
+        placeholder:
+          "e.g. Rewrite the user's query to be more specific and search-engine friendly. Focus on intent and remove ambiguity.",
+      },
+    ],
+    argsFields: [],
+  },
+  rag_knowledgebase: {
+    configFields: [{ key: "knowledgebase", label: "Knowledge Base", type: "knowledgebase_select" }],
+    argsFields: [],
+  },
+  gtwy_web_search: {
+    configFields: [
+      {
+        key: "formats",
+        label: "Output Formats",
+        type: "multiselect",
+        options: [
+          { value: "markdown", label: "Markdown" },
+          { value: "html", label: "HTML" },
+          { value: "links", label: "Links" },
+        ],
+      },
+    ],
+    argsFields: [{ key: "url", label: "URL to Scrape", placeholder: "example.com" }],
+  },
+};
+
+export const ON_CLICK_ACTION_TYPES = ["reply", "sendDataToFrontend"];
+
+export const PROXY_SCRIPT_SRC = "https://36blocks.com/assets/proxy-auth/proxy-auth.js";

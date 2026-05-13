@@ -4,7 +4,11 @@ import Link from "next/link";
 
 const Showcaseheading = () => {
   return (
-    <div id="showcase-heading-container" className="relative flex w-3/4 mx-auto py-20 ">
+    <div
+      data-testid="showcase-heading-container"
+      id="showcase-heading-container"
+      className="relative flex w-3/4 mx-auto py-20 "
+    >
       <div className="w-full md:w-1/2 z-low">
         <div className="flex items-center mb-2">
           <Image src="/live.svg" alt="Live Logo" className="mr-2" width={54} height={34} />
@@ -14,10 +18,15 @@ const Showcaseheading = () => {
         <p className="text-md">
           Prompt templates help you interact with AI effortlessly. Just pick a template, add your inputs, and get
           accurate results. They’re perfect for tasks like content creation, customer support, and data analysis, saving
-          you time and effort.
+          saved you time and effort.
         </p>
-        <Link id="showcase-heading-login-link" href="/login">
-          <button id="showcase-heading-start-button" role="button" className="btn btn-primary btn-sm mt-3">
+        <Link data-testid="showcase-heading-login-link" id="showcase-heading-login-link" href="/login">
+          <button
+            data-testid="showcase-heading-start-button"
+            id="showcase-heading-start-button"
+            role="button"
+            className="btn btn-primary btn-sm mt-3"
+          >
             Start Building
           </button>
         </Link>

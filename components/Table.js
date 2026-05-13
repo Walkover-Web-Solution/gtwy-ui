@@ -4,7 +4,11 @@ import React from "react";
 function Table({ data }) {
   if (!data || data.length === 0) {
     return (
-      <div id="table-no-data" className="text-center my-5 text-lg font-semibold text-gray-600">
+      <div
+        data-testid="table-no-data"
+        id="table-no-data"
+        className="text-center my-5 text-lg font-semibold text-gray-600"
+      >
         No data available.
       </div>
     );
@@ -12,7 +16,7 @@ function Table({ data }) {
 
   const columnNames = Object.keys(data[0]);
   return (
-    <table id="table-container" className="table">
+    <table data-testid="table-container" id="table-container" className="table">
       <thead>
         <tr>
           {columnNames.map((columnName, index) => (
@@ -24,7 +28,7 @@ function Table({ data }) {
       </thead>
       <tbody>
         {data.map((item, index) => (
-          <tr key={index} className="hover cursor-pointer">
+          <tr key={index} data-testid={`table-row-${index}`} className="hover cursor-pointer">
             {columnNames.map((columnName) => (
               <td key={columnName} className="py-4 px-6">
                 {columnName === "created_at" ? formatDate(item[columnName]) : item[columnName]}

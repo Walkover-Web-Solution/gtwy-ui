@@ -26,6 +26,7 @@ const ServiceDropdown = ({
     service,
     SERVICES,
     DEFAULT_MODEL,
+    bridgeApikeyObjectId,
     prompt,
     bridgeApiKey,
     shouldPromptShow,
@@ -49,6 +50,7 @@ const ServiceDropdown = ({
       DEFAULT_MODEL: state?.serviceReducer?.default_model,
       bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
       service: service,
+      bridgeApikeyObjectId: activeData?.apikey_object_id || {},
       prompt: isPublished ? bridgeDataFromState?.configuration?.prompt || "" : versionData?.configuration?.prompt || "",
       bridgeApiKey: isPublished
         ? bridgeDataFromState?.apikey_object_id?.[service]
@@ -130,7 +132,7 @@ const ServiceDropdown = ({
           label: (
             <div className="flex items-center gap-2">
               {getIconOfService(svc.value, 16, 16)}
-              <span className="capitalize">{svc.displayName || svc.value}</span>
+              <span>{svc.displayName || svc.value}</span>
             </div>
           ),
         };
@@ -142,23 +144,30 @@ const ServiceDropdown = ({
     (serviceValue) => {
       const newService = serviceValue;
       const defaultModel = DEFAULT_MODEL?.[newService]?.model;
+      const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
       setSelectedService(newService);
+
+      const dataToSend = { service: newService, configuration: { model: defaultModel } };
+      if (!hasApiKeyForNewService) {
+        dataToSend.auto_model_select = null;
+      }
 
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { service: newService, configuration: { model: defaultModel } },
+          dataToSend,
         })
       );
     },
-    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL]
+    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL, bridgeApikeyObjectId]
   );
 
   const isDisabled = bridgeType === "batch" && service === "openai";
 
   const renderServiceDropdown = () => (
     <Dropdown
+      testId="service-dropdown"
       id="service-dropdown"
       disabled={isReadOnly}
       options={serviceOptions}
@@ -186,7 +195,11 @@ const ServiceDropdown = ({
           : currentValue;
 
         return (
-          <div id="service-dropdown-trigger" className="flex justify-between w-full items-center gap-2">
+          <div
+            data-testid="service-dropdown-trigger"
+            id="service-dropdown-trigger"
+            className="flex justify-between w-full items-center gap-2"
+          >
             <span id="service-dropdown-selected" className="flex items-center gap-2">
               <span
                 id="service-dropdown-icon-wrapper"
@@ -206,7 +219,7 @@ const ServiceDropdown = ({
   );
 
   return (
-    <div id="service-dropdown-container" className="space-y-4">
+    <div data-testid="service-dropdown-container" id="service-dropdown-container" className="space-y-4">
       <div id="service-dropdown-form-control" className="form-control">
         <div id="service-dropdown-wrapper" className="flex items-center gap-2 z-auto">
           {isDisabled && (

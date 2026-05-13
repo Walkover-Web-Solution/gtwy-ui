@@ -101,6 +101,7 @@ export default function SettingsPage({ params }) {
           {isContentOpen && (
             <div className="mt-4 border border-base-300 rounded-lg p-4">
               <input
+                autoComplete="off"
                 type="text"
                 placeholder="Search timezone..."
                 className="w-full p-2 border border-base-300 rounded mb-3 text-sm"

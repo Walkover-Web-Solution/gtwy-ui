@@ -126,6 +126,7 @@ const Page = () => {
         <div className="mb-4">
           <div className="relative">
             <input
+              autoComplete="off"
               type="text"
               placeholder="Search workspaces by name"
               value={formState.searchQuery}

@@ -17,8 +17,8 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
 
     return {
       response_format: isPublished
-        ? bridgeDataFromState?.configuration?.response_format
-        : versionData?.configuration?.response_format,
+        ? bridgeDataFromState?.settings?.response_format
+        : versionData?.settings?.response_format,
     };
   });
 
@@ -89,7 +89,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
     const type = key === "custom" ? "webhook" : key;
 
     const updatedDataToSend = {
-      configuration: {
+      settings: {
         response_format: {
           type,
           cred,
@@ -121,7 +121,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
     <div>
       <div className="flex items-center gap-2">
         <span className="label-text">Select Response Format</span>
-        <InfoTooltip tooltipContent="Configure the response format for your API calls">
+        <InfoTooltip tooltipContent="Choose the format in which you want to receive responses from your agent. The 'Default' option will use the standard response format, while the 'Custom' option allows you to specify a webhook URL and headers for more control over how responses are delivered.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
       </div>
@@ -129,6 +129,8 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
         <div className="form-control w-fit" key={value}>
           <label className="label  cursor-pointer mx-w-sm flex items-center gap-5">
             <input
+              autoComplete="off"
+              data-testid={`response-format-radio-${value}`}
               id={`response-format-radio-${value}`}
               disabled={isReadOnly}
               type="radio"
@@ -149,6 +151,8 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
           <label className="form-control w-full mb-4">
             <span className="text-sm block mb-2">Webhook URL</span>
             <input
+              autoComplete="off"
+              data-testid="webhook-url-input"
               id="webhook"
               disabled={isReadOnly}
               type="text"
@@ -162,9 +166,10 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
           <label className="form-control mb-4">
             <span className="text-sm block mb-2">Headers (JSON format)</span>
             <textarea
+              data-testid="webhook-headers-textarea"
               id="headers"
               disabled={isReadOnly}
-              className="textarea bg-white dark:bg-black/15 textarea-bordered h-24 w-full textarea-sm"
+              className="textarea bg-base-100 textarea-bordered h-24 w-full textarea-sm"
               defaultValue={
                 typeof webhookData?.headers === "object"
                   ? JSON.stringify(webhookData?.headers, null, 2)
@@ -176,6 +181,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
             {errors.headers && <p className="text-red-500 text-xs mt-2">{errors.headers}</p>}
           </label>
           <button
+            data-testid="response-format-apply-button"
             id="response-format-apply-button"
             className="btn btn-primary btn-sm my-2 float-right"
             onClick={() => handleResponseChange("custom")}

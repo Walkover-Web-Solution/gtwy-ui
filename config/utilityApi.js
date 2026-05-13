@@ -1,4 +1,4 @@
-import axios from "@/utils/interceptor";
+import axios, { rawAxios } from "@/utils/interceptor";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -26,7 +26,8 @@ export const optimizePromptApi = async ({
   version_id,
   query,
   thread_id,
-  data = { query, thread_id, version_id },
+  variables,
+  data = { query, thread_id, version_id, variables },
 }) => {
   try {
     const response = await axios.post(`${URL}/api/utils/call-gtwy`, {
@@ -34,6 +35,7 @@ export const optimizePromptApi = async ({
       ...data,
       bridge_id: bridge_id || data.bridge_id,
       version_id: version_id || data.version_id,
+      variables: variables || data.variables,
     });
     return response.data.result;
   } catch (error) {
@@ -123,6 +125,25 @@ export const getAllFunctionsApi = async () => {
   }
 };
 
+export const callViasocketCreateFullFlow = async (embedToken, description) => {
+  try {
+    const response = await rawAxios.post(
+      "https://flow-api.viasocket.com/embed/create-full-flow",
+      { description },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: embedToken,
+        },
+      }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Error calling ViaSocket create-full-flow:", error);
+    return { success: false, error: error.response?.data || error.message };
+  }
+};
+
 export const updateFunctionApi = async ({ function_id, dataToSend }) => {
   try {
     const response = await axios.put(`${URL}/api/tools/${function_id}`, { dataToSend });
@@ -199,7 +220,7 @@ export const deleteWebhookAlert = async (id) => {
 };
 
 // Integration and External APIs
-export const updateFlow = async (embed_token, functionId, description, title) => {
+export const updateFlowEmbed = async (embed_token, functionId, payload = {}) => {
   try {
     const response = await fetch(`https://flow-api.viasocket.com/projects/updateflowembed/${functionId}`, {
       method: "PUT",
@@ -207,11 +228,7 @@ export const updateFlow = async (embed_token, functionId, description, title) =>
         Authorization: embed_token,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        description: description,
-        title: title,
-        endpoint_name: title,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -220,6 +237,14 @@ export const updateFlow = async (embed_token, functionId, description, title) =>
     console.error(error);
     return error;
   }
+};
+
+export const updateFlow = async (embed_token, functionId, description, title) => {
+  return updateFlowEmbed(embed_token, functionId, {
+    description: description,
+    title: title,
+    endpoint_name: title,
+  });
 };
 
 export const integration = async (embed_token) => {
@@ -269,6 +294,20 @@ export const storeMarketingRefUser = async (data) => {
   }
 };
 
+export const submitPostPublishFeedbackApi = async (data) => {
+  try {
+    const response = await axios.post("https://flow.sokt.io/func/scriaYqqO3fa", data, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return response;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
 // Tutorial and Guide APIs
 export const getTutorial = async () => {
   try {
@@ -291,15 +330,6 @@ export const getApiKeyGuide = async () => {
 export const getDescriptions = async () => {
   try {
     const response = await axios.get("https://flow.sokt.io/func/scriPqFeiEKa");
-    return response;
-  } catch (error) {
-    throw new Error(error);
-  }
-};
-
-export const getGuardrailsTemplates = async () => {
-  try {
-    const response = await axios.get("https://flow.sokt.io/func/scriKh8LMVKV");
     return response;
   } catch (error) {
     throw new Error(error);
@@ -340,6 +370,29 @@ export const getLinks = async () => {
   try {
     const response = await axios.get("https://flow.sokt.io/func/scriiS7RkdxI");
     return response;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};
+
+export const generateRichUITemplate = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/utils/call-gtwy`, {
+      type: "rich_ui_template",
+      ...data,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw new Error(error);
+  }
+};
+
+export const createRichUiTemplateApi = async (data) => {
+  try {
+    const response = await axios.post(`${URL}/api/rich_ui_templates`, data);
+    return response.data;
   } catch (error) {
     console.error(error);
     throw new Error(error);

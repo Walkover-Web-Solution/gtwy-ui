@@ -109,6 +109,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const resolvedParams = use(params);
   const resolvedSearchParams = use(searchParams);
   const promptTextAreaRef = useRef(null);
+  const apiKeySectionRef = useRef(null);
   const router = useRouter();
   const mountRef = useRef(false);
   const dispatch = useDispatch();
@@ -135,6 +136,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }));
 
   const [isGuideVisible, setIsGuideVisible] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState(false);
 
   // Ref for the main container to calculate percentage-based width
   const containerRef = useRef(null);
@@ -142,6 +144,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   // Optimized selector with better memoization
   const { bridgeType, versionService, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
     useConfigurationSelector(resolvedParams, resolvedSearchParams);
+
+  const hidePlayground = useCustomSelector((state) => state?.appInfoReducer?.embedUserDetails?.hidePlayground || false);
 
   // Separate selector for allbridges to prevent unnecessary re-renders
   const allbridges = useCustomSelector(
@@ -153,7 +157,6 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     prompt: "",
     thread_id: bridge?.thread_id || generateRandomID(),
     messages: [],
-    hasUnsavedChanges: false,
     newContent: "",
   }));
 
@@ -165,14 +168,17 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
 
   // Panel size configurations
   const panelSizes = useMemo(() => {
-    if (!uiState.isPromptHelperOpen || !isFocus) {
+    if (!uiState.isPromptHelperOpen) {
       // Two panel mode: Config + Chat
-      return { config: 50, chat: 50 };
+      return { config: isEmbedUser && hidePlayground ? 100 : 50, chat: 50 };
+    } else if (isEmbedUser) {
+      // Embed users have no Notes panel: Config + PromptHelper 50/50
+      return { config: 50, promptHelper: 50, notes: 0 };
     } else {
       // Three panel mode: Config + PromptHelper + Notes
       return { config: 33.33, promptHelper: 33.33, notes: 33.33 };
     }
-  }, [uiState.isPromptHelperOpen, isFocus]);
+  }, [uiState.isPromptHelperOpen, hidePlayground, isEmbedUser]);
 
   // Optimized UI state updates with throttling for smooth resizing
   const updateUiState = useCallback((updates) => {
@@ -308,6 +314,23 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [updateUiState]);
 
+  // When prompt helper opens, force panels to correct sizes after mount
+  useEffect(() => {
+    if (!uiState.isPromptHelperOpen || !isFocus) return;
+    const timer = setTimeout(() => {
+      const hasNotes = !isEmbedUser;
+      if (hasNotes) {
+        configPanelRef.current?.resize(33.33);
+        promptHelperPanelRef.current?.resize(33.33);
+        notesPanelRef.current?.resize(33.33);
+      } else {
+        configPanelRef.current?.resize(50);
+        promptHelperPanelRef.current?.resize(50);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [uiState.isPromptHelperOpen, isFocus, isEmbedUser]);
+
   // Determine where the Close Helper button should appear
   const closeHelperButtonLocation = useMemo(() => {
     if (!uiState.isPromptHelperOpen) return null;
@@ -321,6 +344,24 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [uiState.isConfigCollapsed, uiState.isPromptHelperCollapsed, uiState.isPromptHelperOpen]);
 
+  const handleSwitchToModelTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "model");
+    router.push(`${window.location.pathname}?${current.toString()}`);
+  }, [router]);
+
+  const handleSwitchToPromptTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "prompt");
+    router.push(`${window.location.pathname}?${current.toString()}`);
+  }, [router]);
+
+  const handleSwitchToConnectorsTab = useCallback(() => {
+    const current = new URLSearchParams(window.location.search);
+    current.set("tab", "connectors");
+    router.push(`${window.location.pathname}?${current.toString()}`);
+  }, [router]);
+
   const [isAgentFlowView, setIsAgentFlowView] = useState(() => resolvedSearchParams?.view === "agent-flow");
   useEffect(() => {
     setIsAgentFlowView(resolvedSearchParams?.view === "agent-flow");
@@ -331,8 +372,10 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }, []);
   const savePrompt = useCallback(
     (newPrompt) => {
-      const newValue = (newPrompt || "").trim();
-      const promptVariables = extractPromptVariables(newValue);
+      const isObject = newPrompt !== null && typeof newPrompt === "object";
+      const newValue = isObject ? newPrompt : (newPrompt || "").trim();
+      const promptForVars = isObject ? Object.values(newPrompt).join(" ") : newValue;
+      const promptVariables = extractPromptVariables(promptForVars);
       const variablesState = {};
 
       promptVariables.forEach((varName) => {
@@ -342,7 +385,13 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
         };
       });
 
-      if (newValue !== reduxPrompt.trim()) {
+      const reduxIsObject = reduxPrompt !== null && typeof reduxPrompt === "object";
+      const hasChanged =
+        isObject || reduxIsObject
+          ? JSON.stringify(newValue) !== JSON.stringify(reduxPrompt)
+          : newValue !== (reduxPrompt || "").trim();
+
+      if (hasChanged) {
         dispatch(
           updateBridgeVersionAction({
             versionId: resolvedSearchParams?.version,
@@ -592,6 +641,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="agent-flow-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -645,6 +695,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   <ConfigurationPage
                     id="configuration-page"
                     promptTextAreaRef={promptTextAreaRef}
+                    apiKeySectionRef={apiKeySectionRef}
                     params={resolvedParams}
                     searchParams={resolvedSearchParams}
                     isEmbedUser={isEmbedUser}
@@ -659,92 +710,104 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                     bridgeName={bridgeName}
                     onViewChange={handleViewChange}
                     viewOverride={isAgentFlowView ? "agent-flow" : undefined}
+                    apiKeyError={apiKeyError}
+                    setApiKeyError={setApiKeyError}
                   />
                 </div>
               </div>
             </Panel>
 
             {/* Resizer Handle with Custom Line */}
-            <PanelResizeHandle
-              id="main-resize-handle"
-              className="w-2 bg-base-100 hover:bg-primary/50 transition-colors duration-200 relative flex items-center justify-center group"
-            >
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div
-                  id="main-resize-line"
-                  className="w-0.5 h-6 bg-base-content/20 group-hover:bg-success/80 transition-colors duration-200 rounded-full"
-                />
-              </div>
-            </PanelResizeHandle>
+            {(!isEmbedUser || (isEmbedUser && !hidePlayground)) && (
+              <PanelResizeHandle
+                id="main-resize-handle"
+                className="w-2 bg-base-100 hover:bg-primary/50 transition-colors duration-200 relative flex items-center justify-center group"
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div
+                    id="main-resize-line"
+                    className="w-0.5 h-6 bg-base-content/20 group-hover:bg-success/80 transition-colors duration-200 rounded-full"
+                  />
+                </div>
+              </PanelResizeHandle>
+            )}
 
             {/* Chat/PromptHelper Panel - Conditional based on focus mode */}
             {!uiState.isPromptHelperOpen || !isFocus ? (
               // Chat Panel (Two-panel mode)
-              <Panel
-                id="chat-panel"
-                ref={chatPanelRef}
-                defaultSize={panelSizes.chat}
-                minSize={3}
-                className="bg-base-50"
-                collapsible={false}
-                onResize={(size) => {
-                  const isCollapsed = size <= 5;
-                  if (uiState.isChatCollapsed !== isCollapsed) {
-                    updateUiState({ isChatCollapsed: isCollapsed });
-                  }
-                }}
-              >
-                {uiState.isChatCollapsed ? (
-                  <ChatBundle onClick={handleExpandChat} />
-                ) : (
-                  <div id="parentChatbot" className="h-full flex flex-col">
-                    <div
-                      className={`flex-1 overflow-x-hidden ${isGuideVisible ? "overflow-y-hidden" : "overflow-y-auto"}`}
-                    >
-                      <div id="chat-container" className="h-full flex flex-col">
-                        <AgentSetupGuide
-                          id="agent-setup-guide"
-                          promptTextAreaRef={promptTextAreaRef}
-                          params={resolvedParams}
-                          searchParams={resolvedSearchParams}
-                          onVisibilityChange={setIsGuideVisible}
-                        />
-                        {/* Only show experimental Chat for non-chatbot types */}
-                        {bridgeType !== "chatbot" && (
-                          <>
-                            {!sessionStorage.getItem("orchestralUser") ? (
-                              <div id="chat-content-container" className="flex-1 min-h-0">
-                                {bridgeType === "batch" && versionService === "openai" ? (
-                                  <WebhookForm
-                                    id="webhook-form"
-                                    params={resolvedParams}
-                                    searchParams={resolvedSearchParams}
-                                  />
-                                ) : (
+              (!isEmbedUser || (isEmbedUser && !hidePlayground)) && (
+                <Panel
+                  id="chat-panel"
+                  ref={chatPanelRef}
+                  defaultSize={panelSizes.chat}
+                  minSize={3}
+                  className="bg-base-50"
+                  collapsible={false}
+                  onResize={(size) => {
+                    const isCollapsed = size <= 5;
+                    if (uiState.isChatCollapsed !== isCollapsed) {
+                      updateUiState({ isChatCollapsed: isCollapsed });
+                    }
+                  }}
+                >
+                  {uiState.isChatCollapsed ? (
+                    <ChatBundle onClick={handleExpandChat} />
+                  ) : (
+                    <div id="parentChatbot" className="h-full flex flex-col">
+                      <div
+                        className={`flex-1 overflow-x-hidden ${isGuideVisible ? "overflow-y-hidden" : "overflow-y-auto"}`}
+                      >
+                        <div id="chat-container" className="h-full flex flex-col">
+                          <AgentSetupGuide
+                            id="agent-setup-guide"
+                            promptTextAreaRef={promptTextAreaRef}
+                            apiKeySectionRef={apiKeySectionRef}
+                            params={resolvedParams}
+                            searchParams={resolvedSearchParams}
+                            draftPrompt={promptState.newContent}
+                            onVisibilityChange={setIsGuideVisible}
+                            onSwitchToModelTab={handleSwitchToModelTab}
+                            onSwitchToPromptTab={handleSwitchToPromptTab}
+                            onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
+                            setApiKeyError={setApiKeyError}
+                          />
+                          {/* Only show experimental Chat for non-chatbot types */}
+                          {bridgeType !== "chatbot" && !isGuideVisible && (
+                            <>
+                              {!sessionStorage.getItem("orchestralUser") ? (
+                                <div id="chat-content-container" className="flex-1 min-h-0">
+                                  {bridgeType === "batch" && versionService === "openai" ? (
+                                    <WebhookForm
+                                      id="webhook-form"
+                                      params={resolvedParams}
+                                      searchParams={resolvedSearchParams}
+                                    />
+                                  ) : (
+                                    <Chat
+                                      id="chat-component"
+                                      params={resolvedParams}
+                                      searchParams={resolvedSearchParams}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <div id="alternative-chat-container" className="flex-1 min-h-0">
                                   <Chat
-                                    id="chat-component"
+                                    id="alternative-chat-component"
                                     params={resolvedParams}
                                     searchParams={resolvedSearchParams}
                                   />
-                                )}
-                              </div>
-                            ) : (
-                              <div id="alternative-chat-container" className="flex-1 min-h-0">
-                                <Chat
-                                  id="alternative-chat-component"
-                                  params={resolvedParams}
-                                  searchParams={resolvedSearchParams}
-                                />
-                              </div>
-                            )}
-                          </>
-                        )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
+                      <Chatbot id="chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
                     </div>
-                    <Chatbot id="chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
-                  </div>
-                )}
-              </Panel>
+                  )}
+                </Panel>
+              )
             ) : (
               // Three-panel mode: PromptHelper + Notes
               <>
@@ -777,6 +840,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                       searchParams={resolvedSearchParams}
                       onClose={handleCloseTextAreaFocus}
                       savePrompt={savePrompt}
+                      isEmbedUser={isEmbedUser}
+                      variable_key={promptState.activeHelperField || null}
                       setPrompt={(value) => {
                         // Update prompt state for diff/summary
                         setPromptState((prev) => ({ ...prev, newContent: value }));
@@ -790,7 +855,10 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                           }
                         }
                       }}
-                      showCloseButton={closeHelperButtonLocation === "promptHelper"}
+                      showCloseButton={
+                        closeHelperButtonLocation === "promptHelper" ||
+                        (isEmbedUser && closeHelperButtonLocation === "config")
+                      }
                       messages={promptState.messages}
                       setMessages={(value) => {
                         if (typeof value === "function") {
@@ -812,13 +880,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             })
                           );
                       }}
-                      prompt={promptState.prompt}
-                      hasUnsavedChanges={promptState.hasUnsavedChanges}
-                      setHasUnsavedChanges={(value) =>
-                        setPromptState((prev) => ({ ...prev, hasUnsavedChanges: value }))
-                      }
                       setNewContent={(value) => setPromptState((prev) => ({ ...prev, newContent: value }))}
-                      isEmbedUser={isEmbedUser}
                     />
                   )}
                 </Panel>
@@ -880,6 +942,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="mobile-agent-flow-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -907,6 +970,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               <ConfigurationPage
                 id="mobile-configuration-page"
                 promptTextAreaRef={promptTextAreaRef}
+                apiKeySectionRef={apiKeySectionRef}
                 params={resolvedParams}
                 searchParams={resolvedSearchParams}
                 isEmbedUser={isEmbedUser}
@@ -926,44 +990,56 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
           </div>
 
           {/* Chat Panel */}
-          <div id="parentChatbot" className="min-h-screen">
-            <div id="mobile-chat-container" className="h-full flex flex-col">
-              <AgentSetupGuide
-                id="mobile-agent-setup-guide"
-                promptTextAreaRef={promptTextAreaRef}
-                params={resolvedParams}
-                searchParams={resolvedSearchParams}
-              />
+          {(!isEmbedUser || (isEmbedUser && !hidePlayground)) && (
+            <div id="parentChatbot" className="min-h-screen">
+              <div id="mobile-chat-container" className="h-full flex flex-col">
+                <AgentSetupGuide
+                  id="mobile-agent-setup-guide"
+                  promptTextAreaRef={promptTextAreaRef}
+                  apiKeySectionRef={apiKeySectionRef}
+                  params={resolvedParams}
+                  searchParams={resolvedSearchParams}
+                  draftPrompt={promptState.newContent}
+                  onSwitchToModelTab={handleSwitchToModelTab}
+                  onSwitchToPromptTab={handleSwitchToPromptTab}
+                  onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
+                  setApiKeyError={setApiKeyError}
+                />
 
-              {/* Only show experimental Chat for non-chatbot types */}
-              {bridgeType !== "chatbot" && (
-                <>
-                  {!sessionStorage.getItem("orchestralUser") ? (
-                    <div id="mobile-chat-content-container" className="flex-1 min-h-0">
-                      {bridgeType === "batch" && versionService === "openai" ? (
-                        <WebhookForm
-                          id="mobile-webhook-form"
+                {/* Only show experimental Chat for non-chatbot types */}
+                {bridgeType !== "chatbot" && !isGuideVisible && (
+                  <>
+                    {!sessionStorage.getItem("orchestralUser") ? (
+                      <div id="mobile-chat-content-container" className="flex-1 min-h-0">
+                        {bridgeType === "batch" && versionService === "openai" ? (
+                          <WebhookForm
+                            id="mobile-webhook-form"
+                            params={resolvedParams}
+                            searchParams={resolvedSearchParams}
+                          />
+                        ) : (
+                          <Chat
+                            id="mobile-chat-component"
+                            params={resolvedParams}
+                            searchParams={resolvedSearchParams}
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div id="mobile-alternative-chat-container" className="flex-1 min-h-0">
+                        <Chat
+                          id="mobile-alternative-chat-component"
                           params={resolvedParams}
                           searchParams={resolvedSearchParams}
                         />
-                      ) : (
-                        <Chat id="mobile-chat-component" params={resolvedParams} searchParams={resolvedSearchParams} />
-                      )}
-                    </div>
-                  ) : (
-                    <div id="mobile-alternative-chat-container" className="flex-1 min-h-0">
-                      <Chat
-                        id="mobile-alternative-chat-component"
-                        params={resolvedParams}
-                        searchParams={resolvedSearchParams}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <Chatbot id="mobile-chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
             </div>
-            <Chatbot id="mobile-chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
-          </div>
+          )}
         </div>
       )}
     </div>

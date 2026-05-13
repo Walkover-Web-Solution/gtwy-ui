@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { initializeVariablesState, updateVariables } from "@/store/reducer/variableReducer";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { sendDataToParent, toggleSidebar } from "@/utils/utility";
 import { CloseIcon } from "@/components/Icons";
 import { Trash2, Upload, Play } from "lucide-react";
@@ -77,7 +78,7 @@ const validateAndFormatValue = (rawValue, type, { allowEmpty } = {}) => {
     case "object":
     case "array": {
       try {
-        const parsed = JSON.parse(stringValue);
+        const parsed = JSON.parse(trimmed);
         if (type === "array" && !Array.isArray(parsed)) {
           return { ok: false, error: "Value must be a JSON array" };
         }
@@ -118,6 +119,23 @@ const normaliseDraftList = (list = []) =>
     type: item.type || inferType(item.value, item.defaultValue),
     required: item.required !== false,
   }));
+
+const collectPreToolVariableKeys = (preTools = []) => {
+  const keys = new Set();
+
+  (preTools || []).forEach((tool) => {
+    if (tool?.type === "custom_function" && tool?.args) {
+      Object.values(tool.args).forEach((argValue) => {
+        const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
+        if (trimmedKey) {
+          keys.add(trimmedKey);
+        }
+      });
+    }
+  });
+
+  return keys;
+};
 
 const validateVariables = (variables, options = {}) => {
   const { suppressErrors = false } = options;
@@ -170,33 +188,45 @@ const validateVariables = (variables, options = {}) => {
 const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const dispatch = useDispatch();
 
-  const { prompt, bridgeName, variableGroups, activeGroup, variablesKeyValue, variablesPath, variable_state } =
-    useCustomSelector((state) => {
-      const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
-      const groups = versionState?.groups || [];
-      const activeGroupId = versionState?.activeGroupId;
+  const {
+    prompt,
+    bridgeName,
+    variableGroups,
+    activeGroup,
+    variablesKeyValue,
+    variablesPath,
+    variable_state,
+    bridge_pre_tools,
+  } = useCustomSelector((state) => {
+    const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
+    const groups = versionState?.groups || [];
+    const activeGroupId = versionState?.activeGroupId;
 
-      return {
-        prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
-        bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
-        variableGroups: groups,
-        activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
-        variablesKeyValue: versionState?.variables || [],
-        variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-        variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
-      };
-    });
+    return {
+      prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
+      bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
+      variableGroups: groups,
+      activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
+      variablesKeyValue: versionState?.variables || [],
+      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
+      variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
+      bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
+    };
+  });
   const [draftVariables, setDraftVariables] = useState([]);
   const [error, setError] = useState("");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkEditText, setBulkEditText] = useState("");
   const [missingVariables, setMissingVariables] = useState([]);
-  const [blockedDeleteKey, setBlockedDeleteKey] = useState("");
-  const [blockedDeleteMessage, setBlockedDeleteMessage] = useState("");
+  const [deleteWarningKey, setDeleteWarningKey] = useState(null);
 
   const activeGroupId = activeGroup?.id;
 
-  const variablesPathKeySet = useMemo(() => {
+  const preToolKeySet = useMemo(() => {
+    return collectPreToolVariableKeys(bridge_pre_tools);
+  }, [bridge_pre_tools]);
+
+  const functionPathKeySet = useMemo(() => {
     const keys = new Set();
     Object.values(variablesPath || {}).forEach((functionVars = {}) => {
       Object.values(functionVars || {}).forEach((key) => {
@@ -209,15 +239,50 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     return keys;
   }, [variablesPath]);
 
+  const variablesPathKeySet = useMemo(() => {
+    const keys = new Set([...preToolKeySet, ...functionPathKeySet]);
+    return keys;
+  }, [preToolKeySet, functionPathKeySet]);
+
+  const visibleEmbedFieldNameSet = useMemo(() => {
+    if (!isEmbedUser || typeof prompt !== "object" || !Array.isArray(prompt?.embedFields)) {
+      return new Set();
+    }
+    return new Set(
+      prompt.embedFields
+        .filter((field) => !field?.hidden)
+        .map((field) => (typeof field?.name === "string" ? field.name.trim() : ""))
+        .filter(Boolean)
+    );
+  }, [isEmbedUser, prompt]);
+
   const promptKeySet = useMemo(() => {
     if (!prompt) {
       return new Set();
     }
-    const matches = prompt.match(/\{\{([^}]+)\}\}/g);
+    // Ensure prompt is a string — it may be an object or JSON string
+    let promptStr = prompt;
+    if (typeof promptStr === "object") {
+      promptStr = Object.values(promptStr).join(" ");
+    } else if (typeof promptStr !== "string") {
+      promptStr = String(promptStr);
+    }
+    const matches = promptStr.match(/\{\{([^}]+)\}\}/g);
     if (!matches) {
       return new Set();
     }
     const keys = matches.map((match) => match.replace(/[{}]/g, "").trim()).filter(Boolean);
+
+    // For embed users: filter out variables that match visible embedField names
+    // Visible fields are shown in the embed UI, so they shouldn't appear in the variable slider
+    if (typeof prompt === "object" && Array.isArray(prompt.embedFields)) {
+      const visibleFieldNames = new Set(prompt.embedFields.filter((field) => !field.hidden).map((field) => field.name));
+
+      // Only include variables that are NOT visible embed fields
+      const filteredKeys = keys.filter((key) => !visibleFieldNames.has(key));
+      return new Set(filteredKeys);
+    }
+
     return new Set(keys);
   }, [prompt]);
 
@@ -270,6 +335,23 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         });
       });
 
+      // Add variables from bridge_pre_tools
+      collectPreToolVariableKeys(bridge_pre_tools).forEach((trimmedKey) => {
+        const existsInSource = allVariables.find((v) => v.key === trimmedKey);
+
+        if (!existsInSource) {
+          const variableStateData = variable_state[trimmedKey];
+          allVariables.push({
+            id: createLocalId(),
+            key: trimmedKey,
+            value: variableStateData?.value || "",
+            defaultValue: variableStateData?.default_value || "",
+            type: inferType(variableStateData?.value || variableStateData?.default_value, "") || "string",
+            required: variableStateData?.status === "required" || false,
+          });
+        }
+      });
+
       // Also check for variables that exist in variable_state but not in Redux or variables_path
       Object.keys(variable_state || {}).forEach((stateKey) => {
         const trimmedKey = typeof stateKey === "string" ? stateKey.trim() : "";
@@ -293,10 +375,20 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         }
       });
 
-      const { normalised } = validateVariables(allVariables, { suppressErrors: true });
+      // For embed users, keep only hidden/embed-independent vars in the slider.
+      // Visible embed fields are collected directly in embed form UI.
+      const filteredVariables =
+        isEmbedUser && visibleEmbedFieldNameSet.size > 0
+          ? allVariables.filter((variable) => {
+              const key = typeof variable?.key === "string" ? variable.key.trim() : "";
+              return !key || !visibleEmbedFieldNameSet.has(key);
+            })
+          : allVariables;
+
+      const { normalised } = validateVariables(filteredVariables, { suppressErrors: true });
       setDraftVariables(normalised);
     },
-    [variablesKeyValue, variablesPath, variable_state]
+    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, bridge_pre_tools, visibleEmbedFieldNameSet]
   );
 
   useEffect(() => {
@@ -323,6 +415,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       syncDraftWithStore();
     }
   }, [params?.id, versionId, variablesKeyValue, variablesPath, variable_state, syncDraftWithStore]);
+
+  // Clear the "Run Anyway" flag when variables change
+  useEffect(() => {
+    // Clear the flag so validation runs again after variable changes
+    sessionStorage.removeItem(SLIDER_DISABLE_KEY);
+  }, [variablesKeyValue]);
 
   // Check for missing variables from sessionStorage (set by chat input validation)
   useEffect(() => {
@@ -400,7 +498,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   // Function to check if variables have actually changed (only prompt and variables_path variables)
   const hasVariablesChanged = useCallback(
     (currentVariables) => {
-      const dbVariablesMap = new Map((variablesKeyValue || []).map((variable) => [variable.key, variable]));
+      const dbVariablesMap = new Map(
+        (Array.isArray(variablesKeyValue) ? variablesKeyValue : []).map((variable) => [variable.key, variable])
+      );
 
       return currentVariables.some((current) => {
         const key = typeof current?.key === "string" ? current.key.trim() : "";
@@ -432,8 +532,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       setBulkEditMode(false);
       setBulkEditText("");
       setMissingVariables([]); // Clear missing variables state
-      setBlockedDeleteKey("");
-      setBlockedDeleteMessage("");
+      setDeleteWarningKey(null);
 
       // Force a fresh sync with the latest store data
       syncDraftWithStore(sourceList);
@@ -443,16 +542,21 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
   const updateVersionVariable = useCallback(
     (updatedPairs) => {
+      const pairsToProcess = Array.isArray(updatedPairs)
+        ? updatedPairs
+        : Array.isArray(variablesKeyValue)
+          ? variablesKeyValue
+          : [];
       const filteredPairs =
-        (updatedPairs || variablesKeyValue)
-          ?.filter((pair) => {
+        pairsToProcess
+          .filter((pair) => {
             const key = typeof pair?.key === "string" ? pair.key.trim() : "";
             if (!key) {
               return false;
             }
             return promptKeySet.has(key) || variablesPathKeySet.has(key);
           })
-          ?.map((pair) => {
+          .map((pair) => {
             const key = typeof pair?.key === "string" ? pair.key.trim() : "";
             if (!key) {
               return null;
@@ -538,6 +642,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       if (!hasVariableStateChanged()) {
         return;
       }
+
+      // Update the version's variables_state in Redux and persist via API
+      dispatch(
+        updateBridgeVersionAction({
+          bridgeId: params?.id,
+          versionId,
+          dataToSend: { variables_state: currentVariableState },
+        })
+      );
 
       if (isEmbedUser) {
         sendDataToParent(
@@ -644,19 +757,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     window.dispatchEvent(clearValidationEvent);
   }, []);
 
-  const handleFieldChange = useCallback(
-    (index, field, value) => {
-      if (field === "key" && blockedDeleteKey && value.trim() !== blockedDeleteKey) {
-        setBlockedDeleteKey("");
-        setBlockedDeleteMessage("");
-      }
-      setDraftVariables((prev) =>
-        prev.map((variable, idx) => (idx === index ? { ...variable, [field]: value } : variable))
-      );
-      setError("");
-    },
-    [blockedDeleteKey]
-  );
+  const handleFieldChange = useCallback((index, field, value) => {
+    setDraftVariables((prev) =>
+      prev.map((variable, idx) => (idx === index ? { ...variable, [field]: value } : variable))
+    );
+    setError("");
+  }, []);
 
   const applyDraftUpdate = useCallback(
     (updater, options) => {
@@ -754,6 +860,16 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     };
   }, []);
 
+  // Clear delete warning after 5 seconds
+  useEffect(() => {
+    if (deleteWarningKey) {
+      const timer = setTimeout(() => {
+        setDeleteWarningKey(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteWarningKey]);
+
   const handleRequiredToggle = useCallback(
     (index) => {
       applyDraftUpdate(
@@ -767,31 +883,29 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
   const handleDeleteVariable = useCallback(
     (index) => {
-      applyDraftUpdate(
-        (prev) => {
-          const target = prev[index];
-          const key = typeof target?.key === "string" ? target.key.trim() : "";
+      const target = draftVariables[index];
+      const key = typeof target?.key === "string" ? target.key.trim() : "";
 
-          if (key && promptKeySet.has(key)) {
-            setError("");
-            setBlockedDeleteKey(key);
-            setBlockedDeleteMessage(`Variable "${key}" is referenced in the prompt and can't be removed.`);
-            return prev;
-          }
+      if (!key) return;
 
-          setBlockedDeleteKey("");
-          setBlockedDeleteMessage("");
-          return prev.filter((_, idx) => idx !== index);
-        },
-        { suppressErrors: true }
-      );
+      const isReferencedInPrompt = promptKeySet.has(key);
+      const isReferencedInPreTool = preToolKeySet.has(key);
+      const isReferencedInFunction = functionPathKeySet.has(key);
+      const isReferenced = isReferencedInPrompt || isReferencedInPreTool || isReferencedInFunction;
+
+      if (isReferenced) {
+        setDeleteWarningKey(key);
+        return;
+      }
+
+      applyDraftUpdate((prev) => prev.filter((_, idx) => idx !== index), { suppressErrors: true });
     },
-    [applyDraftUpdate, promptKeySet]
+    [draftVariables, promptKeySet, preToolKeySet, functionPathKeySet, applyDraftUpdate]
   );
 
   const parseJsonToKeyValue = useCallback((jsonText) => {
     try {
-      const parsed = JSON.parse(jsonText);
+      const parsed = JSON.parse(jsonText.trim());
       if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
         return Object.entries(parsed).map(([key, value]) => ({
           key,
@@ -945,8 +1059,10 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   useEffect(() => {
     // sync prompt variables into groups
     if (!prompt || !variableGroups.length) return;
+
     const regex = /{{(.*?)}}/g;
-    const matches = [...prompt.matchAll(regex)];
+    const promptStr = typeof prompt === "object" ? Object.values(prompt).join(" ") : String(prompt);
+    const matches = [...promptStr.matchAll(regex)];
     const promptVariables = [...new Set(matches.map((match) => match[1].trim()))];
     if (!promptVariables.length) return;
 
@@ -980,6 +1096,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   return (
     <aside
       id={SLIDER_ID}
+      data-testid="variable-collection-slider"
       className="sidebar-container fixed z-very-high flex flex-col top-0 right-0 p-6 w-full md:w-[50%] lg:w-[50%] opacity-100 h-screen bg-base-200 transition-all duration-300 border-l border-base-300 overflow-y-auto translate-x-full"
       aria-label="Variable collection slider"
       onClick={(event) => event.stopPropagation()}
@@ -1070,15 +1187,21 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                 {variableCount ? (
                   draftVariables.map((variable, index) => {
                     const trimmedKey = typeof variable.key === "string" ? variable.key.trim() : "";
-                    const showBlockedWarning = Boolean(blockedDeleteKey) && trimmedKey === blockedDeleteKey;
+                    const isReferencedInPrompt = trimmedKey && promptKeySet.has(trimmedKey);
+                    const isReferencedInPreTool = trimmedKey && preToolKeySet.has(trimmedKey);
+                    const isReferencedInFunction = trimmedKey && functionPathKeySet.has(trimmedKey);
                     // Check if previous variable has a key to enable current row
                     const isPreviousRowFilled = index === 0 || draftVariables[index - 1]?.key?.trim();
                     const isCurrentRowEnabled = isPreviousRowFilled;
 
                     return (
-                      <div key={variable.id || `${variable.key}-${index}`} className="px-3 py-2 text-sm">
+                      <div
+                        key={variable.id || `${variable.key}-${index}`}
+                        className="px-3 py-3 text-sm border-b border-base-200 hover:bg-base-200/30 transition-colors"
+                      >
                         <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 items-center">
                           <input
+                            autoComplete="off"
                             id={`variable-key-input-${index}`}
                             type="text"
                             className={`input input-xs input-bordered w-full ${
@@ -1114,6 +1237,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             </select>
                           ) : variable.type === "number" ? (
                             <input
+                              autoComplete="off"
                               id={`variable-value-number-${index}`}
                               type="number"
                               step="any"
@@ -1130,6 +1254,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             />
                           ) : variable.type === "string" ? (
                             <input
+                              autoComplete="off"
                               id={`variable-value-text-${index}`}
                               type="text"
                               className={`input input-xs input-bordered w-full ${
@@ -1191,6 +1316,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             </select>
                           ) : variable.type === "number" ? (
                             <input
+                              autoComplete="off"
                               id={`variable-default-number-${index}`}
                               type="number"
                               step="any"
@@ -1213,6 +1339,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             />
                           ) : (
                             <input
+                              autoComplete="off"
                               id={`variable-default-text-${index}`}
                               type="text"
                               className="input input-xs input-bordered w-full"
@@ -1259,21 +1386,25 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             <button
                               id={`variable-delete-button-${index}`}
                               type="button"
-                              className="btn btn-ghost btn-xs text-error"
+                              className="btn btn-ghost btn-xs text-error hover:bg-error/10"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               onClick={() => handleDeleteVariable(index)}
-                              title="Delete variable"
+                              title={
+                                isReferencedInPrompt || isReferencedInPreTool || isReferencedInFunction
+                                  ? "Delete variable (will show confirmation if referenced)"
+                                  : "Delete variable"
+                              }
                             >
                               <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
-                        {showBlockedWarning && (
-                          <p className="text-[11px] text-warning mt-1">
-                            {blockedDeleteMessage ||
-                              `Variable "${trimmedKey}" is referenced in the prompt and can't be removed.`}
-                          </p>
-                        )}
+                        {(isReferencedInPrompt || isReferencedInPreTool || isReferencedInFunction) &&
+                          deleteWarningKey === trimmedKey && (
+                            <div className="mt-2 p-2 bg-error/10 border border-error/30 rounded text-error text-xs">
+                              ⚠️ This variable is in use. Deleting it may cause errors in your configuration.
+                            </div>
+                          )}
                       </div>
                     );
                   })

@@ -10,19 +10,29 @@ function InputWithCopyButton({ label, placeholder, value, disabled }) {
   };
 
   return (
-    <div id="input-with-copy-container" className="join form-control w-full max-w-xs">
+    <div
+      data-testid="input-with-copy-container"
+      id="input-with-copy-container"
+      className="join form-control w-full max-w-xs"
+    >
       <div className="label">
         <span className="label-text">{label}</span>
       </div>
       <div className="flex items-center justify-start">
         <input
+          data-testid="input-with-copy-input"
           id="input-with-copy-input"
           className="input input-bordered join-item input-sm w-[25rem]"
           placeholder={placeholder}
           value={value}
           disabled={disabled}
         />
-        <button id="input-with-copy-button" className="btn join-item btn-sm" onClick={copyToClipboard}>
+        <button
+          data-testid="input-with-copy-button"
+          id="input-with-copy-button"
+          className="btn join-item btn-sm"
+          onClick={copyToClipboard}
+        >
           <CopyIcon size={16} />
         </button>
       </div>
@@ -34,18 +44,26 @@ export default function PrivateFormSection({ params, ChooseChatbot, setChatBotId
   const [showInput, setShowInput] = useState(false);
   const [accessKey, setAccessKey] = useState("");
   const [chatbotId, setChatBotId] = useState("");
+  const chatbotPayload = `{
+    "org_id": "${params?.org_id}",
+    "chatbot_id": "${params.chatbot_id || chatbotId}",
+    "user_id": "// Add your User Id here",
+    "variables": {
+        "key": "value"
+    }
+}`;
 
   const handleGetAccessKey = async () => {
     try {
       const response = await createOrgToken(params?.org_id);
-      setAccessKey(response?.data?.orgAcessToken);
+      setAccessKey(response?.data?.orgAccessToken);
       setShowInput(true);
     } catch (error) {
       console.error("Error fetching access key:", error);
     }
   };
   return (
-    <div id="first-step-container" className="flex flex-col gap-4 p-4">
+    <div data-testid="first-step-container" id="first-step-container" className="flex flex-col gap-4 p-4">
       <div>
         <h3 className="text-lg font-semibold">Step 1</h3>
         <p className="text-sm text-gray-600">Generate a JWT token</p>
@@ -64,32 +82,49 @@ export default function PrivateFormSection({ params, ChooseChatbot, setChatBotId
         </div>
       )}
       <div className="mockup-code">
-        <CopyButton
-          data={`{
-    "org_id": "${params?.org_id}",
-    "chatbot_id": "${params.chatbot_id || chatbotId}",
-    "user_id":  "// Add your User Id here",
-    "variables": {
-        "key": "value"
-    }
-}`}
-        />
-        <pre data-prefix=">" className="text-sm p-2 rounded">
-          {`{
-        "org_id": "${params?.org_id}",
-        "chatbot_id": "${params.chatbot_id || chatbotId}",
-        "user_id":  // Add your User Id here,
-        "variables": {
-            // Add your variables here: "key": "value"
-        }
-    }`}
+        <CopyButton data={chatbotPayload} />
+        <pre data-prefix=">">
+          <code className="text-error">{`{`}</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error"> "org_id": </code>
+          <code className="text-warning">"{params?.org_id}"</code>
+          <code>,</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error"> "chatbot_id": </code>
+          <code className="text-warning">"{params.chatbot_id || chatbotId}"</code>
+          <code>,</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error"> "user_id": </code>
+          <code className="text-warning">"// Add your User Id here"</code>
+          <code>,</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error"> "variables": {`{`}</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error"> "key": </code>
+          <code className="text-warning">"value"</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error"> {`}`}</code>
+        </pre>
+        <pre data-prefix=">">
+          <code className="text-error">{`}`}</code>
         </pre>
       </div>
       <div className="flex flex-col gap-2">
         {showInput ? (
           <InputWithCopyButton label="Access Key" placeholder="Access Key" value={accessKey} />
         ) : (
-          <button id="first-step-show-access-key" className="btn btn-primary w-fit btn-sm" onClick={handleGetAccessKey}>
+          <button
+            data-testid="first-step-show-access-key"
+            id="first-step-show-access-key"
+            className="btn btn-primary w-fit btn-sm"
+            onClick={handleGetAccessKey}
+          >
             Show Access Key
           </button>
         )}

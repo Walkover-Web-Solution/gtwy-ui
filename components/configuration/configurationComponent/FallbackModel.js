@@ -7,7 +7,15 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { getIconOfService } from "@/utils/utility";
 import { CircleQuestionMark } from "lucide-react";
 
-const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor = true, isEmbedUser }) => {
+const FallbackModel = ({
+  params,
+  searchParams,
+  bridgeType,
+  isPublished,
+  shouldRenderApiKey,
+  isEditor = true,
+  isEmbedUser,
+}) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const [showApiKeysToggle, setShowApiKeysToggle] = useState(false);
@@ -28,6 +36,7 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
     currentModel,
     embedDefaultApiKeys,
     showDefaultApikeys,
+    embedModelsConfig,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -47,10 +56,11 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
       serviceModels: state?.modelReducer?.serviceModels || {},
       currentService: service,
       currentModel: isPublished ? bridgeDataFromState?.configuration?.model : versionData?.configuration?.model,
-      fallbackModel: isPublished ? bridgeDataFromState?.fall_back : versionData?.fall_back,
+      fallbackModel: isPublished ? bridgeDataFromState?.settings?.fall_back : versionData?.settings?.fall_back,
       DefaultModel: state?.serviceReducer?.default_model || [],
       embedDefaultApiKeys: state.appInfoReducer.embedUserDetails?.apikey_object_id || {},
       showDefaultApikeys: state.appInfoReducer.embedUserDetails?.addDefaultApiKeys,
+      embedModelsConfig: state.appInfoReducer.embedUserDetails?.models || {},
     };
   });
   useEffect(() => {
@@ -92,8 +102,14 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
 
   const handleSelectionChange = useCallback(
     (service, apiKeyId) => {
+      if (isReadOnly) return;
       setSelectedApiKeys((prev) => {
-        const updated = { ...prev, [service]: apiKeyId };
+        const updated = { ...prev };
+        if (prev[service] === apiKeyId) {
+          delete updated[service];
+        } else {
+          updated[service] = apiKeyId;
+        }
         dispatch(
           updateBridgeVersionAction({
             bridgeId: params?.id,
@@ -158,11 +174,13 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            fall_back: {
-              ...(fallbackModel || {}),
-              is_enable: !!isFallbackEnabled,
-              service: service || null,
-              model: newDefaultModel || null,
+            settings: {
+              fall_back: {
+                ...(fallbackModel || {}),
+                is_enable: !!isFallbackEnabled,
+                service: service || null,
+                model: newDefaultModel || null,
+              },
             },
           },
         })
@@ -182,11 +200,13 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            fall_back: {
-              ...(fallbackModel || {}),
-              is_enable: enableNext,
-              service: fallbackService || null,
-              model: model || null,
+            settings: {
+              fall_back: {
+                ...(fallbackModel || {}),
+                is_enable: enableNext,
+                service: fallbackService || null,
+                model: model || null,
+              },
             },
           },
         })
@@ -204,9 +224,11 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
         bridgeId: params.id,
         versionId: searchParams?.version,
         dataToSend: {
-          fall_back: {
-            ...(fallbackModel || {}),
-            is_enable: next,
+          settings: {
+            fall_back: {
+              ...(fallbackModel || {}),
+              is_enable: next,
+            },
           },
         },
       })
@@ -224,7 +246,7 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
   const computedModelsList = serviceModels?.[fallbackService] || {};
 
   return (
-    <div id="fallback-model-container" className="space-y-2">
+    <div data-testid="fallback-model-container" id="fallback-model-container" className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <label className="block text-base-content/70 text-sm font-medium">Fallback Model</label>
@@ -233,6 +255,8 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
           </InfoTooltip>
         </div>
         <input
+          autoComplete="off"
+          data-testid="fallback-model-toggle"
           id="fallback-model-toggle"
           disabled={isReadOnly}
           type="checkbox"
@@ -259,6 +283,7 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
               <label className="block text-base-content/70 text-xs font-medium">Fallback Service</label>
               <div className="relative w-full">
                 <details
+                  data-testid="fallback-service-dropdown"
                   id="fallback-service-dropdown"
                   className="dropdown dropdown-end w-full"
                   onToggle={(e) => {
@@ -270,6 +295,7 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
                   disabled={bridgeType === "batch" || isReadOnly}
                 >
                   <summary
+                    data-testid="fallback-service-dropdown-button"
                     id="fallback-service-dropdown-button"
                     tabIndex={0}
                     disabled={isReadOnly}
@@ -287,17 +313,25 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
                     <ChevronDownIcon size={16} />
                   </summary>
                   <ul
+                    data-testid="fallback-service-dropdown-menu"
                     id="fallback-service-dropdown-menu"
                     tabIndex={0}
                     className="dropdown-content z-high menu bg-base-100 rounded-box w-full p-1 shadow border border-base-300 max-h-80 overflow-y-auto"
                   >
                     {Array.isArray(SERVICES) &&
-                      SERVICES.map((svc) => {
+                      SERVICES.filter((svc) => {
+                        // For embed users with showDefaultApikeys, only show services in embedDefaultApiKeys
+                        if (showDefaultApikeys && embedDefaultApiKeys) {
+                          return embedDefaultApiKeys.hasOwnProperty(svc.value);
+                        }
+                        return true;
+                      }).map((svc) => {
                         const hasApiKeys = hasApiKeysForService(svc.value);
                         return (
                           <li key={svc.value}>
                             {hasApiKeys ? (
                               <a
+                                data-testid={`fallback-service-item-${svc.value}`}
                                 id={`fallback-service-item-${svc.value}`}
                                 className={`flex items-center gap-2 ${fallbackService === svc.value ? "active" : ""}`}
                                 onClick={(e) => {
@@ -308,13 +342,13 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
                                 disabled={isPublished}
                               >
                                 {getIconOfService(svc.value, 16, 16)}
-                                <span className="capitalize">{svc.displayName || svc.value}</span>
+                                <span>{svc.displayName || svc.value}</span>
                               </a>
                             ) : (
                               <div className="w-full flex items-center justify-between">
                                 <span className="flex items-center gap-2 opacity-50 cursor-not-allowed pointer-events-none">
                                   {getIconOfService(svc.value, 16, 16)}
-                                  <span className="capitalize">{svc.displayName || svc.value}</span>
+                                  <span>{svc.displayName || svc.value}</span>
                                 </span>
                                 <span className="text-xs text-error">No API Key Available</span>
                               </div>
@@ -338,18 +372,27 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
             {/* Fallback Model */}
             <div className="space-y-2">
               <label className="block text-base-content/70 text-xs font-medium">Fallback Model</label>
-              <details id="fallback-model-dropdown" className="dropdown w-full">
+              <details data-testid="fallback-model-dropdown" id="fallback-model-dropdown" className="dropdown w-full">
                 <summary
+                  data-testid="fallback-model-dropdown-button"
                   id="fallback-model-dropdown-button"
                   tabIndex={0}
                   disabled={isReadOnly}
                   role="button"
                   className="btn btn-sm w-full justify-between border border-base-200 bg-base-300 text-base-content/70 hover:bg-base-200 font-normal"
                 >
-                  <span>{fallbackModelName ? truncateText(fallbackModelName, 30) : "Select a Model"}</span>
+                  <span>
+                    {fallbackModelName
+                      ? truncateText(
+                          embedModelsConfig?.[fallbackService]?.[fallbackModelName]?.value || fallbackModelName,
+                          30
+                        )
+                      : "Select a Model"}
+                  </span>
                   <ChevronDownIcon size={16} />
                 </summary>
                 <ul
+                  data-testid="fallback-model-dropdown-menu"
                   id="fallback-model-dropdown-menu"
                   tabIndex={0}
                   className="dropdown-content mb-6 z-high p-2 shadow bg-base-100 rounded-lg mt-1 max-h-[340px] w-[260px] overflow-y-auto border border-base-300"
@@ -373,6 +416,11 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
 
                             if (currentModel === modelName || currentModel === option) return null;
 
+                            // Get display name from embedModelsConfig for embed users
+                            const serviceConfig = embedModelsConfig?.[fallbackService];
+                            const modelConfig = serviceConfig?.[modelName];
+                            const displayName = modelConfig?.value || modelName;
+
                             return (
                               <li
                                 key={`${group}-${option}`}
@@ -385,7 +433,7 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
                               >
                                 {selected && <span className="flex-shrink-0 ml-2">✓</span>}
                                 <span className={`truncate flex-1 pl-2 ${!selected ? "ml-4" : ""}`}>
-                                  {truncateText(modelName || option, 30)}
+                                  {truncateText(displayName || option, 30)}
                                 </span>
                               </li>
                             );
@@ -400,7 +448,11 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
           </div>
 
           {fallbackModelName && currentModel && fallbackModelName === currentModel && (
-            <div id="fallback-model-same-model-alert" className="alert alert-warning mt-3 py-2 px-2">
+            <div
+              data-testid="fallback-model-same-model-alert"
+              id="fallback-model-same-model-alert"
+              className="alert alert-warning mt-3 py-2 px-2"
+            >
               <div className="flex items-center gap-2">
                 <AlertIcon size={12} />
                 <span className="text-xs">This model is already selected please change the model</span>
@@ -410,13 +462,13 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
         </div>
       )}
 
-      {((!showDefaultApikeys && isEmbedUser) || !isEmbedUser) && (
+      {shouldRenderApiKey && (
         <div className="mt-4">
           <div className="flex flex-col gap-3 w-full">
             {/* Multiple API Keys Label */}
             <div className="flex items-center gap-1">
               <span className="label-text font-medium">Multiple API Keys</span>
-              <InfoTooltip tooltipContent="Add multiple API keys from different services to use with your agent for enhanced functionality and redundancy.">
+              <InfoTooltip tooltipContent="Add API keys for different models/services. This ensures your agent continues working when switching models in runtime or using fallback options.">
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             </div>
@@ -446,12 +498,14 @@ const FallbackModel = ({ params, searchParams, bridgeType, isPublished, isEditor
                             <div key={apiKey?._id} className="p-2 hover:bg-base-200 cursor-pointer rounded">
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
+                                  autoComplete="off"
                                   disabled={isReadOnly}
                                   type="radio"
                                   name={`apiKey-${service?.value}`}
                                   value={apiKey?._id}
                                   checked={selectedApiKeys[service?.value] === apiKey?._id}
-                                  onChange={() => handleSelectionChange(service?.value, apiKey?._id)}
+                                  onClick={() => handleSelectionChange(service?.value, apiKey?._id)}
+                                  onChange={() => {}}
                                   className="radio radio-sm h-4 w-4"
                                 />
                                 <span

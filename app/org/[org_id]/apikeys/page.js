@@ -6,16 +6,23 @@ import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { deleteApikeyAction, updateApikeyAction } from "@/store/action/apiKeyAction";
 import { API_KEY_COLUMNS, MODAL_TYPE } from "@/utils/enums";
-import { formatDate, formatRelativeTime, getIconOfService, openModal, toggleSidebar } from "@/utils/utility";
+import {
+  formatDate,
+  formatRelativeTime,
+  getIconOfService,
+  getServiceDisplayName,
+  openModal,
+  toggleSidebar,
+  getApiKeyStatusClass,
+} from "@/utils/utility";
 import { BookIcon, RefreshIcon, SquarePenIcon, TrashIcon } from "@/components/Icons";
 import { usePathname } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
 import ApiKeyGuideSlider from "@/components/configuration/configurationComponent/ApiKeyGuide";
 import ConnectedAgentsModal from "@/components/modals/ConnectedAgentsModal";
-import { toast } from "react-toastify";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 export const runtime = "edge";
@@ -25,11 +32,13 @@ const Page = () => {
   const dispatch = useDispatch();
   const path = pathName?.split("?")[0].split("/");
   const orgId = path[2] || "";
-  const { apikeyData, descriptions, linksData } = useCustomSelector((state) => ({
+  const { apikeyData, descriptions, linksData, SERVICES } = useCustomSelector((state) => ({
     apikeyData: state?.apiKeysReducer?.apikeys?.[orgId] || [],
     descriptions: state.flowDataReducer.flowData.descriptionsData?.descriptions || {},
     linksData: state.flowDataReducer.flowData.linksData || [],
+    SERVICES: state?.serviceReducer?.services || [],
   }));
+  // Filter API keys to only show keys for services that exist in current services
   const [filterApiKeys, setFilterApiKeys] = useState(apikeyData);
 
   useEffect(() => {
@@ -60,17 +69,19 @@ const Page = () => {
 
   const deleteApikey = useCallback(
     async (item) => {
+      const apiKeyDetails = apikeyData?.find((api) => api._id === item._id);
       await executeDelete(async () => {
         return dispatch(
           deleteApikeyAction({
             org_id: item.org_id,
             name: item.name,
             id: item._id,
+            service: apiKeyDetails?.service,
           })
         );
       });
     },
-    [dispatch, executeDelete]
+    [dispatch, executeDelete, apikeyData]
   );
 
   const showConnectedAgents = useCallback((item) => {
@@ -78,14 +89,21 @@ const Page = () => {
     openModal(MODAL_TYPE.CONNECTED_AGENTS_MODAL);
   }, []);
 
-  const dataWithIcons = filterApiKeys.map((item) => ({
+  // Only show API keys for services that currently exist
+  const validApiKeys = filterApiKeys.filter((apiKey) => {
+    const serviceExists = SERVICES.some((service) => service.value === apiKey?.service);
+    return serviceExists;
+  });
+
+  const dataWithIcons = validApiKeys.map((item) => ({
     ...item,
     actualName: item.name,
+    serviceKey: item.service,
     apikey_usage: item?.apikey_usage ? parseFloat(item.apikey_usage).toFixed(4) : 0,
     service: (
       <div className="flex items-center gap-2">
         {getIconOfService(item.service, 18, 18)}
-        <span className="capitalize">{item.service}</span>
+        <span>{getServiceDisplayName(item.service, SERVICES)}</span>
       </div>
     ),
     last_used: item.last_used ? (
@@ -97,6 +115,31 @@ const Page = () => {
       "No records found"
     ),
     last_used_original: item.last_used,
+    last_used_status: item.status
+      ? (() => {
+          const Icon = getApiKeyStatusClass(item.status, "icon");
+          const iconClass = getApiKeyStatusClass(item.status, "iconClass");
+          return Icon ? (
+            <div className="relative flex items-center group/status">
+              <Icon size={16} className={iconClass} />
+              <span
+                className={`
+        absolute left-5 z-10
+        px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap
+        opacity-0 -translate-x-2 pointer-events-none
+        group-hover/status:opacity-100 group-hover/status:translate-x-0
+        transition-all duration-200 ease-out
+        ${getApiKeyStatusClass(item.status, "badge")}
+      `}
+              >
+                {item.status}
+              </span>
+            </div>
+          ) : (
+            "-"
+          );
+        })()
+      : "-",
   }));
 
   const resetUsage = useCallback(
@@ -105,15 +148,11 @@ const Page = () => {
         name: item.name,
         apikey_object_id: item._id,
         service: apikeyData?.find((api) => api._id === item._id)?.service,
-        comment: item.comment,
         apikey_limit: item?.apikey_limit || 1,
         apikey_usage: 0,
         org_id: item.org_id,
       };
-      const response = await dispatch(updateApikeyAction(dataToSend));
-      if (response) {
-        toast.success("API key reset successfully");
-      }
+      await dispatch(updateApikeyAction(dataToSend));
     },
     [apikeyData, dispatch]
   );
@@ -158,6 +197,17 @@ const Page = () => {
     );
   };
 
+  const groupedApiKeys = useMemo(() => {
+    return dataWithIcons.reduce((acc, item) => {
+      const serviceKey = item.serviceKey;
+      if (!acc[serviceKey]) {
+        acc[serviceKey] = [];
+      }
+      acc[serviceKey].push(item);
+      return acc;
+    }, {});
+  }, [dataWithIcons]);
+
   return (
     <div className="w-full">
       <div className="px-2">
@@ -188,27 +238,18 @@ const Page = () => {
         </div>
       </div>
       {filterApiKeys.length > 0 ? (
-        Object.entries(
-          dataWithIcons.reduce((acc, item) => {
-            const service = item.service.props.children[1].props.children;
-            if (!acc[service]) {
-              acc[service] = [];
-            }
-            acc[service].push(item);
-            return acc;
-          }, {})
-        ).map(([service, items]) => (
-          <div key={service} className="mb-2 mt-4">
-            <h2 className="text-xl font-semibold capitalize flex items-center gap-2 pl-4">
-              {getIconOfService(service.toLowerCase(), 24, 24)}
-              {service}
+        Object.entries(groupedApiKeys).map(([serviceKey, items]) => (
+          <div key={serviceKey} className="mb-2 mt-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2 pl-4">
+              {getIconOfService(serviceKey, 24, 24)}
+              {getServiceDisplayName(serviceKey, SERVICES)}
             </h2>
             <CustomTable
               data={items}
               columnsToShow={API_KEY_COLUMNS}
               sorting
               sortingColumns={["name", "last_used", "apikey_usage"]}
-              keysToWrap={["apikey", "comment"]}
+              keysToWrap={["apikey"]}
               endComponent={EndComponent}
               handleRowClick={(data) => showConnectedAgents(data)}
               keysToExtractOnRowClick={["_id", "name", "version_ids"]}

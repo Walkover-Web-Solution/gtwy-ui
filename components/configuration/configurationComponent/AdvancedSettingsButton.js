@@ -6,7 +6,7 @@ const AdvancedSettingsButton = ({
   params,
   searchParams,
   isEmbedUser,
-  hideAdvancedParameters = false,
+  showAdvancedParameters = false,
   isPublished = false,
   isEditor = true,
 }) => {
@@ -31,13 +31,19 @@ const AdvancedSettingsButton = ({
     };
   }, [showAdvancedSettings]);
 
-  if (hideAdvancedParameters) {
+  if (!showAdvancedParameters) {
     return null;
   }
 
   return (
-    <div id="advanced-settings-container" className="relative" ref={advancedSettingsRef}>
+    <div
+      data-testid="advanced-settings-container"
+      id="advanced-settings-container"
+      className="relative"
+      ref={advancedSettingsRef}
+    >
       <button
+        data-testid="advanced-settings-toggle-button"
         id="advanced-settings-toggle-button"
         type="button"
         className={`btn btn-sm border-base-content/20 ${showAdvancedSettings ? "btn-active text-primary border-primary/60" : "btn-ghost"}`}
@@ -49,6 +55,7 @@ const AdvancedSettingsButton = ({
 
       {showAdvancedSettings && (
         <div
+          data-testid="advanced-settings-dropdown"
           id="advanced-settings-dropdown"
           className="absolute right-0 top-full z-high mt-2 w-[320px] max-h-[60vh] overflow-y-auto rounded-lg border border-base-content/30 bg-base-100 p-3 shadow-lg"
         >
@@ -56,7 +63,7 @@ const AdvancedSettingsButton = ({
             params={params}
             searchParams={searchParams}
             isEmbedUser={isEmbedUser}
-            hideAdvancedParameters={hideAdvancedParameters}
+            showAdvancedParameters={showAdvancedParameters}
             level={1}
             className="mt-0"
             compact

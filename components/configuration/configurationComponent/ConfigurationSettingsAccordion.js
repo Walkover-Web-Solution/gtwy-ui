@@ -15,7 +15,7 @@ const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = t
   const {
     params,
     searchParams,
-    hideAdvancedConfigurations,
+    showAdvancedConfigurations,
     bridgeType,
     modelType,
     currentView,
@@ -27,7 +27,11 @@ const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = t
     [isEmbedUser, showConfigType]
   );
   return (
-    <div className="z-very-low text-base-content w-full max-w-md cursor-pointer" tabIndex={0}>
+    <div
+      data-testid="configuration-settings-accordion"
+      className="z-very-low text-base-content w-full max-w-md cursor-pointer"
+      tabIndex={0}
+    >
       <div
         className={`px-2 py-1.5 ${isOpen ? "border border-base-content/20 rounded-x-lg rounded-t-lg" : "border border-base-content/20 rounded-lg"} flex items-center justify-between font-medium w-full !cursor-pointer`}
         onClick={() => setIsOpen((prev) => !prev)}
@@ -40,6 +44,7 @@ const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = t
       </div>
 
       <div
+        data-testid="configuration-settings-content"
         className={`transition-all duration-300 ease-in-out ${isOpen ? "px-2 py-2 border-x border-b border-base-content/20 rounded-x-lg rounded-b-lg opacity-100" : "max-h-0 opacity-0 overflow-hidden border border-base-content/20 rounded-lg p-0"}`}
       >
         {/* Settings Content */}
@@ -68,6 +73,7 @@ const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = t
                   <label className="label cursor-pointer gap-2">
                     <span className="text-xs font-semibold">{currentView === "agent-flow" ? "On" : "Off"}</span>
                     <input
+                      autoComplete="off"
                       type="checkbox"
                       disabled={isReadOnly}
                       className="toggle toggle-sm"
@@ -99,7 +105,7 @@ const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = t
                 </div>
               </div>
 
-              {((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && (
+              {((isEmbedUser && showAdvancedConfigurations) || !isEmbedUser) && (
                 <div className="bg-base-100 rounded-lg">
                   <AdvancedConfiguration
                     params={params}

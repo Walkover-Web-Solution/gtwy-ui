@@ -41,6 +41,7 @@ export default function ThemeToggle() {
     <>
       <div className="w-full" data-dropdown="theme-toggle">
         <button
+          data-testid="theme-toggle-button"
           id="theme-toggle-button"
           onClick={toggleDropdown}
           className="btn btn-ghost btn-sm w-full justify-between normal-case font-normal text-xs h-8"
@@ -57,6 +58,7 @@ export default function ThemeToggle() {
           <div className="menu bg-base-200 w-full rounded-lg mt-1 p-1 shadow border border-base-300">
             <li>
               <button
+                data-testid="theme-light-button"
                 id="theme-light-button"
                 className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "light" ? "bg-base-300" : ""}`}
                 onClick={() => handleThemeChange("light")}
@@ -70,6 +72,7 @@ export default function ThemeToggle() {
 
             <li>
               <button
+                data-testid="theme-dark-button"
                 id="theme-dark-button"
                 className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "dark" ? "bg-base-300" : ""}`}
                 onClick={() => handleThemeChange("dark")}
@@ -83,6 +86,7 @@ export default function ThemeToggle() {
 
             <li>
               <button
+                data-testid="theme-system-button"
                 id="theme-system-button"
                 className={`flex items-center gap-2 p-2 rounded text-xs hover:bg-base-300 transition-colors ${theme === "system" ? "bg-base-300" : ""}`}
                 onClick={() => handleThemeChange("system")}

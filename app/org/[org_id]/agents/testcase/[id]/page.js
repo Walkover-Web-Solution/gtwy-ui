@@ -192,12 +192,19 @@ function TestCases({ params }) {
               <tbody className="divide-y divide-base-300 w-full">
                 {Array.isArray(testCases)
                   ? testCases.map((testCase, index) => {
+                      const lastUserMessageRaw = testCase?.conversation
+                        ?.filter((message) => message?.role === "user")
+                        ?.pop()?.content;
                       const lastUserMessage =
-                        testCase?.conversation?.filter((message) => message?.role === "user")?.pop()?.content || "N/A";
+                        typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
+                          ? JSON.stringify(lastUserMessageRaw)
+                          : lastUserMessageRaw || "N/A";
 
                       const expectedOutput = testCase?.expected?.tool_calls
                         ? JSON.stringify(testCase?.expected?.tool_calls)
-                        : testCase?.expected?.response || "N/A";
+                        : typeof testCase?.expected?.response === "object" && testCase?.expected?.response !== null
+                          ? JSON.stringify(testCase.expected.response)
+                          : testCase?.expected?.response || "N/A";
 
                       // Find the best version to display
                       // 1. Try the version from URL if it has data
@@ -285,7 +292,7 @@ function TestCases({ params }) {
                                       <textarea
                                         value={editExpectedOutput}
                                         onChange={(e) => setEditExpectedOutput(e.target.value)}
-                                        className="textarea bg-white dark:bg-black/15 textarea-bordered w-full min-h-20"
+                                        className="textarea bg-base-100 textarea-bordered w-full min-h-20"
                                       />
                                     ) : (
                                       <div className="p-3 bg-base-100 rounded-md shadow-sm text-sm text-base-content whitespace-pre-wrap overflow-auto max-h-40">

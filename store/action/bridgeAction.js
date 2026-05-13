@@ -1,6 +1,7 @@
 import {
   addorRemoveResponseIdInBridge,
   archiveBridgeApi,
+  createAgentFromTemplateApi,
   createBridge,
   createBridgeVersionApi,
   createDuplicateBridge,
@@ -21,6 +22,7 @@ import {
   integration,
   publishBridgeVersionApi,
   publishBulkVersionApi,
+  submitPostPublishFeedbackApi,
   updateBridge,
   updateBridgeVersionApi,
   updateFunctionApi,
@@ -58,6 +60,7 @@ import {
 } from "../reducer/bridgeReducer";
 import { getAllResponseTypeSuccess } from "../reducer/responseTypeReducer";
 import { markUpdateInitiatedByCurrentTab } from "@/utils/utility";
+import { callViasocketCreateFullFlow } from "@/config/utilityApi";
 //   ---------------------------------------------------- ADMIN ROUTES ---------------------------------------- //
 export const getSingleBridgesAction =
   ({ id, version }) =>
@@ -80,6 +83,9 @@ export const getBridgeVersionAction =
   async (dispatch) => {
     try {
       dispatch(isPending());
+      if (!versionId || versionId === "null") {
+        return;
+      }
       const data = await getBridgeVersionApi({ bridgeVersionId: versionId });
       dispatch(fetchSingleBridgeVersionReducer({ bridge: data?.agent }));
       return data?.agent;
@@ -88,6 +94,35 @@ export const getBridgeVersionAction =
       console.error(error);
     }
   };
+
+export const createAgentFromTemplateAction = (templateId, onSuccess) => async (dispatch) => {
+  try {
+    dispatch(clearPreviousBridgeDataReducer());
+    const response = await createAgentFromTemplateApi(templateId);
+    const serializableData = {
+      data: response.data,
+      status: response.status,
+      statusText: response.statusText,
+    };
+    onSuccess(serializableData);
+    dispatch(createBridgeReducer({ data: serializableData, orgId: response.data.orgid }));
+    if (response?.data?._id) {
+      trackAgentEvent("created", {
+        agent_id: response.data._id,
+        name: response.data.name,
+        org_id: response.data.orgid,
+      });
+    }
+  } catch (error) {
+    if (error?.response?.data?.message?.includes("duplicate key")) {
+      toast.error("Agent Name can't be duplicate");
+    } else {
+      toast.error(error?.response?.data?.message || "Something went wrong");
+    }
+    console.error(error);
+    throw error;
+  }
+};
 
 export const createBridgeAction = (dataToSend, onSuccess) => async (dispatch, getState) => {
   try {
@@ -126,10 +161,11 @@ export const createBridgeWithAiAction =
       dispatch(clearPreviousBridgeDataReducer());
       const data = await createBridge(dataToSend);
       dispatch(createBridgeReducer({ data, orgId: orgId }));
+      await dispatch(getAllFunctions());
       return data;
     } catch (error) {
       if (error?.response?.data?.message?.includes("duplicate key")) {
-        toast.error("Agent Name can't be duplicate fallBack to manual bridge creation");
+        console.error("Agent Name can't be duplicate fallBack to manual bridge creation");
       } else {
         toast.error("Something went wrong");
       }
@@ -139,17 +175,12 @@ export const createBridgeWithAiAction =
   };
 
 export const createEmbedAgentAction =
-  ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent }) =>
+  ({ purpose, agent_name, orgId, isEmbedUser, router, sendDataToParent, meta }) =>
   async (dispatch, getState) => {
     try {
       dispatch(isPending());
 
       // Generate unique name if not provided
-      const generateUniqueName = () => {
-        const timestamp = Date.now();
-        const randomNum = Math.floor(Math.random() * 1000);
-        return `Agent_${timestamp}_${randomNum}`;
-      };
 
       let response;
 
@@ -159,7 +190,11 @@ export const createEmbedAgentAction =
           const aiDataToSend = {
             purpose: purpose.trim(),
             bridgeType: "api",
+            name: agent_name?.trim() || null,
           };
+          if (meta) {
+            aiDataToSend.meta = meta;
+          }
 
           response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
 
@@ -190,17 +225,17 @@ export const createEmbedAgentAction =
       }
 
       // Manual creation fallback
-      const name = agent_name?.trim() || generateUniqueName();
-      const slugName = generateUniqueName();
-
       const fallbackDataToSend = {
         service: "openai",
         model: "gpt-4o",
-        name,
-        slugName: slugName,
+        name: agent_name?.trim() || null,
+        slugName: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
       };
+      if (meta) {
+        fallbackDataToSend.meta = meta;
+      }
 
       response = await new Promise((resolve, reject) => {
         dispatch(
@@ -360,11 +395,19 @@ export const getAllFunctions = () => async (dispatch) => {
 };
 
 export const updateFuntionApiAction =
-  ({ function_id, dataToSend }) =>
+  ({ function_id, dataToSend, embedToken = null }) =>
   async (dispatch) => {
     try {
+      const description = dataToSend?.description || "";
       const response = await updateFunctionApi({ function_id, dataToSend });
       dispatch(updateFunctionReducer({ org_id: response.data.org_id, data: response.data }));
+
+      if (embedToken && description) {
+        const regenerateResult = await callViasocketCreateFullFlow(embedToken, description);
+        if (!regenerateResult.success) {
+          console.warn("Failed to regenerate ViaSocket flow:", regenerateResult.error);
+        }
+      }
     } catch (error) {
       dispatch(isError());
       console.error(error);
@@ -554,6 +597,14 @@ export const updateBridgeVersionAction =
         optimisticData.web_search_filters = dataToSend.web_search_filters;
       }
 
+      // Handle settings if present (deep merge)
+      if (dataToSend.settings) {
+        optimisticData.settings = {
+          ...currentVersion.settings,
+          ...dataToSend.settings,
+        };
+      }
+
       dispatch(
         updateBridgeVersionReducer({
           bridges: optimisticData,
@@ -660,9 +711,13 @@ export const updateApiAction = (bridge_id, dataFromEmbed) => async (dispatch) =>
   try {
     markUpdateInitiatedByCurrentTab(dataFromEmbed?.version_id);
     const data = await updateapi(bridge_id, dataFromEmbed);
-    dispatch(updateBridgeVersionReducer({ bridges: data?.data?.agent }));
+    if (data?.data?.agent) {
+      dispatch(updateBridgeVersionReducer({ bridges: data.data.agent }));
+    }
+    return data;
   } catch (error) {
     console.error(error);
+    return error;
   }
 };
 
@@ -675,10 +730,21 @@ export const publishBridgeVersionAction =
         dispatch(publishBrigeVersionReducer({ versionId: data?.version_id, bridgeId, orgId }));
         toast.success("Agent Version published successfully");
       }
+      return data;
     } catch (error) {
       console.error(error);
     }
   };
+
+export const submitPostPublishFeedbackAction = (payload) => async () => {
+  try {
+    const response = await submitPostPublishFeedbackApi(payload);
+    return response?.data || response;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
 
 export const addorRemoveResponseIdInBridgeAction = (bridge_id, org_id, responseObj) => async (dispatch) => {
   try {

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { clearCookie, getFromCookies, setInCookies } from "./utility";
+export const rawAxios = axios.create();
 
 axios.interceptors.request.use(
   async (config) => {
@@ -18,7 +19,10 @@ axios.interceptors.request.use(
       config.headers["proxy_auth_token"] = proxyToken;
     } else {
       // For other backend APIs, use local_token in Authorization header
-      let localToken = getFromCookies("local_token") || sessionStorage.getItem("local_token");
+      let localToken = getFromCookies("local_token");
+      if (window.location.hostname.includes("embed") || window.location.hostname.includes("localhost")) {
+        localToken = sessionStorage.getItem("local_token") || localToken;
+      }
       config.headers["Authorization"] = localToken;
     }
     return config;

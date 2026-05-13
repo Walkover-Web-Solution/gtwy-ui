@@ -1,6 +1,7 @@
 "use client";
 
 import React, { memo, useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import TabsLayout from "./sections/TabsLayout";
 import PromptTab from "./sections/PromptTab";
 import ModelTab from "./sections/ModelTab";
@@ -13,15 +14,24 @@ import { BookOpen } from "lucide-react";
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const NonImageModelConfig = memo(() => {
-  const { isPublished, uiState, currentView, isEmbedUser } = useConfigurationContext();
-  const [activeTab, setActiveTab] = useState("prompt");
+  const { isPublished, uiState, currentView, isEmbedUser, modelType } = useConfigurationContext();
+  const searchParams = useSearchParams();
 
-  // Sync activeTab with currentView from URL
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || (modelType === "image" ? "model" : "prompt"));
+
+  useEffect(() => {
+    if (modelType === "image" && (!currentView || currentView === "config")) {
+      setActiveTab("model");
+    }
+  }, [modelType, currentView]);
+
   useEffect(() => {
     if (currentView && currentView !== "config" && currentView !== "agent-flow" && currentView !== "chatbot-config") {
-      setActiveTab(currentView);
+      if (!searchParams.get("tab")) {
+        setActiveTab(currentView);
+      }
     }
-  }, [currentView]);
+  }, [currentView, searchParams]);
 
   const tabs = useMemo(() => {
     const baseTabs = [

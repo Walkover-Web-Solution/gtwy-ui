@@ -4,12 +4,12 @@ import AdvancedConfiguration from "./configurationComponent/AdvancedConfiguratio
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const AdvancedSection = memo(() => {
-  const { params, searchParams, isEmbedUser, hideAdvancedConfigurations, bridgeType, modelType } =
+  const { params, searchParams, isEmbedUser, showAdvancedConfigurations, bridgeType, modelType } =
     useConfigurationContext();
 
   return (
     <>
-      {((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && (
+      {((isEmbedUser && showAdvancedConfigurations) || !isEmbedUser) && (
         <AdvancedConfiguration
           params={params}
           searchParams={searchParams}

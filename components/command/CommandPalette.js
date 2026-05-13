@@ -22,6 +22,7 @@ function getCurrentCategoryGroup(currentCategory) {
     docs: "Knowledge Base",
     integrations: "Integrations",
     rag_embed: "RAG Embeds",
+    widgets: "Widgets",
   };
   return categoryGroupMap[currentCategory] || null;
 }
@@ -37,6 +38,7 @@ const CommandPalette = ({ isEmbedUser }) => {
   const [collapsedSearchCategories, setCollapsedSearchCategories] = useState(new Set());
 
   const filterParam = searchParams.get("filter");
+  const typeParam = searchParams.get("type");
 
   const orgId = useMemo(() => getOrgIdFromPath(pathname), [pathname]);
 
@@ -49,21 +51,29 @@ const CommandPalette = ({ isEmbedUser }) => {
     if (parts.includes("knowledge_base")) return "docs";
     if (parts.includes("integration")) return "integrations";
     if (parts.includes("RAG_embed")) return "rag_embed";
+    if (parts.includes("widgets")) return "widgets";
     if (parts.includes("orchestratal_model")) return "flows";
     return null;
   }, [pathname]);
 
-  const { agentList, apikeys, knowledgeBase, functionData, integrationData, authData } = useCustomSelector((state) => ({
-    agentList: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
-    apikeys: state?.apiKeysReducer?.apikeys?.[orgId] || [],
-    knowledgeBase: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
-    functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
-    integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
-    authData: state?.authDataReducer?.authData || [],
-  }));
-
-  const apiAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "api");
-  const chatbotAgents = agentList.filter((agent) => !agent.deletedAt && agent.bridgeType === "chatbot");
+  const { agentList, apikeys, knowledgeBase, functionData, integrationData, authData, widgetsData } = useCustomSelector(
+    (state) => ({
+      agentList: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
+      apikeys: state?.apiKeysReducer?.apikeys?.[orgId] || [],
+      knowledgeBase: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
+      functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
+      integrationData: state?.integrationReducer?.integrationData?.[orgId] || [],
+      authData: state?.authDataReducer?.authData || [],
+      widgetsData: state?.richUiTemplateReducer?.templates || [],
+    })
+  );
+  const apiAgents = (Array.isArray(agentList) ? agentList : []).filter(
+    (agent) =>
+      (!agent.deletedAt && agent.bridgeType === "api") || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
+  );
+  const chatbotAgents = (Array.isArray(agentList) ? agentList : []).filter(
+    (agent) => !agent.deletedAt && agent.bridgeType === "chatbot"
+  );
 
   const functions = useMemo(() => Object.values(functionData || {}), [functionData]);
 
@@ -118,13 +128,13 @@ const CommandPalette = ({ isEmbedUser }) => {
         case "docs":
           return knowledgeBase.map((d) => ({
             id: d._id,
-            title: d.name || d._id,
+            title: d.title || d.name || d._id,
             subtitle: "Knowledge Base",
             type: "docs",
           }));
 
         case "integrations":
-          return integrationData
+          return (Array.isArray(integrationData) ? integrationData : [])
             .filter((d) => d.type === "embed")
             .map((d) => ({
               id: d._id,
@@ -134,7 +144,7 @@ const CommandPalette = ({ isEmbedUser }) => {
             }));
 
         case "rag_embed":
-          return integrationData
+          return (Array.isArray(integrationData) ? integrationData : [])
             .filter((d) => d.type === "rag_embed")
             .map((d) => ({
               id: d._id,
@@ -150,11 +160,19 @@ const CommandPalette = ({ isEmbedUser }) => {
             type: "Auths",
           }));
 
+        case "widgets":
+          return (widgetsData || []).map((d) => ({
+            id: d._id,
+            title: d.name || d._id,
+            subtitle: "Widget",
+            type: "widgets",
+          }));
+
         default:
           return [];
       }
     },
-    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData]
+    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData, widgetsData]
   );
 
   const createAgentItem = (a, type) => ({
@@ -250,15 +268,15 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "apikeys",
   }));
 
-  const kbGroup = filterBy(knowledgeBase, ["name", "_id"]).map((d) => ({
+  const kbGroup = filterBy(knowledgeBase, ["title", "name", "_id"]).map((d) => ({
     id: d._id,
-    title: d.name || d._id,
+    title: d.title || d.name || d._id,
     subtitle: "Knowledge Base",
     type: "docs",
   }));
 
   const integrationGroup = filterBy(
-    integrationData.filter((d) => d.type === "embed"),
+    (Array.isArray(integrationData) ? integrationData : []).filter((d) => d.type === "embed"),
     ["name", "service", "_id"]
   ).map((d) => ({
     id: d._id,
@@ -267,21 +285,28 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "integrations",
   }));
 
-  const authGroup = filterBy(authData, ["name", "service", "_id"]).map((d) => ({
-    id: d._id,
-    title: d.name || d._id,
+  const authGroup = filterBy(authData, ["name", "service", "id", "authkey"]).map((d) => ({
+    id: d.id,
+    title: d.name || d.id,
     subtitle: "Auth Key",
     type: "Auths",
   }));
 
   const ragEmbedGroup = filterBy(
-    integrationData.filter((d) => d.type === "rag_embed"),
+    (Array.isArray(integrationData) ? integrationData : []).filter((d) => d.type === "rag_embed"),
     ["name", "_id"]
   ).map((d) => ({
     id: d._id,
     title: d.name || d._id,
     subtitle: "RAG Embed",
     type: "rag_embed",
+  }));
+
+  const widgetsGroup = filterBy(widgetsData || [], ["name", "_id"]).map((d) => ({
+    id: d._id,
+    title: d.name || d._id,
+    subtitle: "Widget",
+    type: "widgets",
   }));
 
   const items = useMemo(
@@ -293,8 +318,9 @@ const CommandPalette = ({ isEmbedUser }) => {
       integrations: integrationGroup,
       auths: authGroup,
       rag_embed: ragEmbedGroup,
+      widgets: widgetsGroup,
     }),
-    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData]
+    [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData, widgetsData]
   );
 
   const allResults = useMemo(
@@ -308,6 +334,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       ...items.integrations.map((it) => ({ group: "Integrations", ...it })),
       ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
       ...items.rag_embed.map((it) => ({ group: "RAG Embeds", ...it })),
+      ...items.widgets.map((it) => ({ group: "Widgets", ...it })),
     ],
     [items]
   );
@@ -369,7 +396,24 @@ const CommandPalette = ({ isEmbedUser }) => {
       { key: "docs", label: "Knowledge Base", desc: "Documents and sources" },
       { key: "integrations", label: "Gtwy as Embed", desc: "Configure integrations" },
       { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
+      { key: "widgets", label: "Widgets", desc: "Create and manage UI widgets" },
     ];
+
+    // When on agents page, order based on type query parameter
+    if (currentCategory === "agents") {
+      const apiAgentsIndex = allCategories.findIndex((cat) => cat.key === "api-agents");
+      const chatbotAgentsIndex = allCategories.findIndex((cat) => cat.key === "chatbot-agents");
+      const apiAgentsCat = allCategories[apiAgentsIndex];
+      const chatbotAgentsCat = allCategories[chatbotAgentsIndex];
+      const otherCats = allCategories.filter((_, index) => index !== apiAgentsIndex && index !== chatbotAgentsIndex);
+
+      // If type=chatbot, show Chatbot agents first, otherwise show API agents first
+      if (typeParam === "chatbot") {
+        return [chatbotAgentsCat, apiAgentsCat, ...otherCats];
+      } else {
+        return [apiAgentsCat, chatbotAgentsCat, ...otherCats];
+      }
+    }
 
     const currentCategoryIndex = allCategories.findIndex((cat) => cat.key === currentCategory);
     if (currentCategoryIndex > -1) {
@@ -379,7 +423,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     }
 
     return allCategories;
-  }, [currentCategory]);
+  }, [currentCategory, typeParam]);
 
   // Build flat navigation list for landing mode (categories + visible items)
   const landingFlatList = useMemo(() => {
@@ -409,12 +453,19 @@ const CommandPalette = ({ isEmbedUser }) => {
     // Collapse all categories except the first one (current category)
     const allCategoryKeys = categories.map((c) => c.key);
     const firstCategoryKey = allCategoryKeys[0];
-    const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== firstCategoryKey));
-    setCollapsedLandingCategories(collapsedSet);
+
+    // Special handling for agents page: keep both API agents and Chatbot agents expanded
+    if (currentCategory === "agents") {
+      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== "api-agents" && key !== "chatbot-agents"));
+      setCollapsedLandingCategories(collapsedSet);
+    } else {
+      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== firstCategoryKey));
+      setCollapsedLandingCategories(collapsedSet);
+    }
 
     // For search mode, collapse all except first group
     setCollapsedSearchCategories(new Set());
-  }, [categories]);
+  }, [categories, currentCategory]);
 
   const closePalette = useCallback(() => setOpen(false), []);
 
@@ -490,6 +541,9 @@ const CommandPalette = ({ isEmbedUser }) => {
           // Always navigate to auth keys page with filter parameter
           router.push(`/org/${orgId}/pauthkey?filter=${item.id}`);
           break;
+        case "widgets":
+          router.push(`/org/${orgId}/widgets${item.id ? `?filter=${item.id}` : ""}`);
+          break;
         default:
           router.push("/");
       }
@@ -512,6 +566,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         integrations: `/org/${orgId}/integration`,
         rag_embed: `/org/${orgId}/RAG_embed`,
         Auths: `/org/${orgId}/pauthkey`,
+        widgets: `/org/${orgId}/widgets`,
         flows: `/org/${orgId}/orchestratal_model`,
       };
       router.push(routes[key] || "/");
@@ -529,17 +584,23 @@ const CommandPalette = ({ isEmbedUser }) => {
         !pathname.endsWith("/org") &&
         !pathname.endsWith("/login")
       ) {
-        e.preventDefault();
-        openPalette();
+        const isPageLoading = document.querySelector('[data-testid="loading-spinner"]') !== null;
+        if (!isPageLoading) {
+          e.preventDefault();
+          openPalette();
+        }
       }
       // Check for Ctrl+/ or Cmd+/ to toggle keyboard shortcuts modal
       if ((e.ctrlKey || e.metaKey) && e.key === "/" && !isEmbedUser) {
-        e.preventDefault();
-        const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-        if (modal && modal.hasAttribute("open")) {
-          closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
-        } else {
-          openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+        const isPageLoading = document.querySelector('[data-testid="loading-spinner"]') !== null;
+        if (!isPageLoading) {
+          e.preventDefault();
+          const modal = document.getElementById(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          if (modal && modal.hasAttribute("open")) {
+            closeModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          } else {
+            openModal(MODAL_TYPE.KEYBOARD_SHORTCUTS_MODAL);
+          }
         }
       }
       if (e.key === "Escape") {
@@ -638,18 +699,56 @@ const CommandPalette = ({ isEmbedUser }) => {
       const categoryKey = current.key;
       // Collapse all categories except the current one
       const allCategoryKeys = categories.map((c) => c.key);
-      const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== categoryKey));
-      setCollapsedLandingCategories(collapsedSet);
+
+      // Special handling for agents page: keep both API agents and Chatbot agents expanded
+      if (currentCategory === "agents" && (categoryKey === "api-agents" || categoryKey === "chatbot-agents")) {
+        const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== "api-agents" && key !== "chatbot-agents"));
+        setCollapsedLandingCategories((prev) => {
+          // Only update if the set actually changed
+          if (prev.size !== collapsedSet.size || [...prev].some((key) => !collapsedSet.has(key))) {
+            return collapsedSet;
+          }
+          return prev;
+        });
+      } else {
+        const collapsedSet = new Set(allCategoryKeys.filter((key) => key !== categoryKey));
+        setCollapsedLandingCategories((prev) => {
+          // Only update if the set actually changed
+          if (prev.size !== collapsedSet.size || [...prev].some((key) => !collapsedSet.has(key))) {
+            return collapsedSet;
+          }
+          return prev;
+        });
+      }
     } else if (current?.type === "item") {
       // If navigating to an item, ensure its category is expanded
       const categoryKey = current.key;
-      setCollapsedLandingCategories((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(categoryKey);
-        return newSet;
-      });
+
+      // Special handling for agents page: keep both agent categories expanded
+      if (currentCategory === "agents" && (categoryKey === "api-agents" || categoryKey === "chatbot-agents")) {
+        setCollapsedLandingCategories((prev) => {
+          // Only update if these keys are actually in the set
+          if (prev.has("api-agents") || prev.has("chatbot-agents")) {
+            const newSet = new Set(prev);
+            newSet.delete("api-agents");
+            newSet.delete("chatbot-agents");
+            return newSet;
+          }
+          return prev;
+        });
+      } else {
+        setCollapsedLandingCategories((prev) => {
+          // Only update if this key is actually in the set
+          if (prev.has(categoryKey)) {
+            const newSet = new Set(prev);
+            newSet.delete(categoryKey);
+            return newSet;
+          }
+          return prev;
+        });
+      }
     }
-  }, [activeIndex, open, query, landingFlatList, categories]);
+  }, [activeIndex, open, query, landingFlatList, currentCategory]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -684,12 +783,14 @@ const CommandPalette = ({ isEmbedUser }) => {
 
   return (
     <div
+      data-testid="command-palette-backdrop"
       id="command-palette-backdrop"
       className="fixed inset-0 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={closePalette}
       style={{ zIndex: 999999 }}
     >
       <div
+        data-testid="command-palette-modal"
         id="command-palette-modal"
         className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -702,6 +803,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                 <span>Filter active on current page</span>
               </div>
               <button
+                data-testid="command-palette-clear-filter"
                 id="command-palette-clear-filter"
                 onClick={clearCurrentFilter}
                 className="btn btn-xs btn-ghost hover:bg-error hover:text-error-content"
@@ -714,6 +816,8 @@ const CommandPalette = ({ isEmbedUser }) => {
           <div className="flex items-center gap-2 p-3">
             <Search className="w-4 h-4 opacity-70" />
             <input
+              autoComplete="off"
+              data-testid="command-palette-search-input"
               id="command-palette-search-input"
               autoFocus
               value={query}
@@ -721,7 +825,12 @@ const CommandPalette = ({ isEmbedUser }) => {
               placeholder="Search agents, bridges, API keys, docs..."
               className="flex-1 bg-transparent outline-none"
             />
-            <button id="command-palette-close-button" className="btn btn-sm" onClick={closePalette}>
+            <button
+              data-testid="command-palette-close-button"
+              id="command-palette-close-button"
+              className="btn btn-sm"
+              onClick={closePalette}
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -745,6 +854,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                       }`}
                     >
                       <button
+                        data-testid={`command-palette-category-${cat.key}`}
                         id={`command-palette-category-${cat.key}`}
                         data-nav-index={categoryNavIndex}
                         onClick={() => navigateCategory(cat.key)}
@@ -756,6 +866,7 @@ const CommandPalette = ({ isEmbedUser }) => {
 
                       {categoryItems.length > 0 && (
                         <button
+                          data-testid={`command-palette-toggle-${cat.key}`}
                           id={`command-palette-toggle-${cat.key}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -784,6 +895,7 @@ const CommandPalette = ({ isEmbedUser }) => {
 
                             return (
                               <li
+                                data-testid={`command-palette-item-${item.type}-${item.id}`}
                                 id={`command-palette-item-${item.type}-${item.id}`}
                                 key={`${item.type}-${item.id}`}
                                 data-nav-index={itemNavIndex}
@@ -837,6 +949,7 @@ const CommandPalette = ({ isEmbedUser }) => {
                                 const active = globalIdx === activeIndex;
                                 return (
                                   <li
+                                    data-testid={`command-palette-result-${row.type}-${row.id}`}
                                     id={`command-palette-result-${row.type}-${row.id}`}
                                     key={`${row.type}-${row.id}`}
                                     data-nav-index={globalIdx}

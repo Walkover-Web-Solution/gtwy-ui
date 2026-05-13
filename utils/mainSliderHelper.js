@@ -17,6 +17,9 @@ import {
   MessageSquareMoreIcon,
   Cog,
   Code2,
+  LayoutTemplate,
+  Sparkles,
+  Wrench,
 } from "lucide-react";
 import { AddIcon, KeyIcon } from "@/components/Icons";
 import GiftIcon from "@/icons/GiftIcon";
@@ -49,6 +52,9 @@ export const ITEM_ICONS = {
   auth: <KeyIcon size={15} />,
   addModel: <AddIcon size={15} />,
   prebuiltPrompts: <Bot size={15} />,
+  widgets: <LayoutTemplate size={15} />,
+  "model-garden": <Sparkles size={15} />,
+  tools: <Wrench size={15} />,
 };
 
 export const DISPLAY_NAMES = (key) => {
@@ -83,6 +89,14 @@ export const DISPLAY_NAMES = (key) => {
       return "Auth Key";
     case "apikeys":
       return "API Keys";
+    case "widgets":
+      return "Widgets";
+    case "keyboard-shortcuts":
+      return "Keyboard Shortcuts";
+    case "model-garden":
+      return "Model Garden";
+    case "tools":
+      return "Tools";
     default:
       return key;
   }
@@ -90,7 +104,7 @@ export const DISPLAY_NAMES = (key) => {
 
 export const NAV_SECTIONS = [
   { title: "AGENT TYPES", items: ["api", "chatbot"] },
-  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base"] },
+  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets", "model-garden", "tools"] },
   { title: "SECURITY & ACCESS", items: ["pauthkey", "apikeys"] },
   { title: "MONITORING & SUPPORT", items: ["alerts", "metrics"] },
   { title: "Developer", items: ["integration", "RAG_embed"] },

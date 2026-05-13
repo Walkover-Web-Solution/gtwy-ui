@@ -1,8 +1,16 @@
-import { BuildingIcon, CheckCircleIcon, LinkIcon } from "@/components/Icons";
+import {
+  BuildingIcon,
+  CheckCircleIcon,
+  LinkIcon,
+  CircleAlertIcon,
+  TriangleWarningIcon,
+  ShieldIcon,
+  CircleMinusIcon,
+} from "@/components/Icons";
 import AIMLIcon from "@/icons/AIMLIcon";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
-import FavIcon from "@/icons/FavIcon";
+import DeepgramIcon from "@/icons/DeepgramIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
@@ -145,6 +153,13 @@ export const isValidJson = (jsonString) => {
   }
 };
 
+export const collapseMainSlider = () => {
+  const mainSlider = document.getElementById("main-slider");
+  if (mainSlider && !mainSlider.classList.contains("-translate-x-full")) {
+    toggleSidebar("main-slider", "left");
+  }
+};
+
 export const toggleSidebar = (sidebarId, direction = "left") => {
   const sidebar = document.getElementById(sidebarId);
   if (!sidebar) return;
@@ -235,6 +250,36 @@ export const toggleSidebar = (sidebarId, direction = "left") => {
   }
 };
 
+export const openSidebar = (sidebarId, direction = "left") => {
+  const sidebar = document.getElementById(sidebarId);
+  if (!sidebar) return;
+
+  const translateClass = direction === "left" ? "-translate-x-full" : "translate-x-full";
+
+  // Only open if it's currently hidden (closed)
+  if (sidebar.classList.contains(translateClass)) {
+    toggleSidebar(sidebarId, direction);
+  }
+};
+
+export const closeSidebar = (sidebarId, direction = "left") => {
+  const sidebar = document.getElementById(sidebarId);
+  if (!sidebar) return;
+
+  const translateClass = direction === "left" ? "-translate-x-full" : "translate-x-full";
+
+  // Only close if it's currently visible (open)
+  if (!sidebar.classList.contains(translateClass)) {
+    sidebar.classList.add(translateClass);
+
+    // Clean up listeners
+    document.removeEventListener("click", sidebar._clickHandler, true);
+    document.removeEventListener("keyup", sidebar._keyHandler, true);
+    sidebar._clickHandler = null;
+    sidebar._keyHandler = null;
+  }
+};
+
 export const getIconOfService = (service, height, width) => {
   switch (service) {
     case "openai":
@@ -255,9 +300,17 @@ export const getIconOfService = (service, height, width) => {
       return <MistralIcon height={height} width={width} />;
     case "grok":
       return <Grok height={height} width={width} />;
+    case "deepgram":
+      return <DeepgramIcon height={height} width={width} />;
     default:
       return <OpenAiIcon height={height} width={width} />;
   }
+};
+
+export const getServiceDisplayName = (serviceKey, services = []) => {
+  return Array.isArray(services)
+    ? services.find((svc) => svc?.value === serviceKey)?.displayName || serviceKey
+    : serviceKey;
 };
 
 export function getStatusClass(status) {
@@ -305,7 +358,7 @@ export function flattenParameters(parameters, prefix = "") {
       type: value?.type,
       description: value?.description,
       enum: value.enum,
-      required_params: value?.required_params,
+      required: value?.required,
       parameter: value?.parameter,
       items: value?.items,
     });
@@ -355,7 +408,7 @@ export function closeModal(modalName) {
 export const allowedAttributes = {
   important: [
     ["variables", "Variables"],
-    ["system Prompt", "System Prompt"],
+    ["prompt", "System Prompt"],
     ["AiConfig", "AI Configuration"],
     ["latency", "Latency"],
   ],
@@ -423,8 +476,52 @@ export const simulateStreaming = (text, setStreamed, setIsStreaming, callback) =
 };
 
 export const createDiff = (oldText, newText) => {
-  const oldLines = oldText?.split("\n");
-  const newLines = newText?.split("\n");
+  // Helper to format prompt object into string
+  const formatPromptObject = (textObj) => {
+    if (typeof textObj === "string") return textObj;
+    if (typeof textObj !== "object" || textObj === null) return String(textObj || "");
+
+    const parts = [];
+
+    // Case 1: Embed User (with embedFields)
+    if (Array.isArray(textObj.embedFields)) {
+      // If custom prompt text exists, add it first
+      if (textObj.customPrompt) {
+        parts.push(`[Custom Prompt Template]\n${textObj.customPrompt}`);
+      }
+
+      // Add visible fields
+      textObj.embedFields.forEach((field) => {
+        if (!field.hidden) {
+          parts.push(`[${field.name}]\n${field.value || ""}`);
+        }
+      });
+
+      if (parts.length > 0) return parts.join("\n\n");
+    }
+
+    // Case 2: Main User (Role, Goal, Instruction)
+    if (textObj.role || textObj.goal || textObj.instruction) {
+      if (textObj.role) parts.push(`[Role]\n${textObj.role}`);
+      if (textObj.goal) parts.push(`[Goal]\n${textObj.goal}`);
+      if (textObj.instruction) parts.push(`[Instruction]\n${textObj.instruction}`);
+      return parts.join("\n\n");
+    }
+
+    // Case 3: Simple Custom Prompt wrapper
+    if (textObj.customPrompt) {
+      return textObj.customPrompt;
+    }
+
+    // Fallback: JSON string
+    return JSON.stringify(textObj, null, 2);
+  };
+
+  const oldTextStr = formatPromptObject(oldText);
+  const newTextStr = formatPromptObject(newText);
+
+  const oldLines = oldTextStr?.split("\n");
+  const newLines = newTextStr?.split("\n");
   const maxLines = Math.max(oldLines?.length, newLines?.length);
 
   const diffLines = [];
@@ -469,7 +566,7 @@ export const createDiff = (oldText, newText) => {
 
 export const transformAgentVariableToToolCallFormat = (inputData) => {
   const fields = {};
-  const required_params = [];
+  const required = [];
 
   function setNestedValue(obj, path, value, isRequired) {
     const parts = path.split(".");
@@ -483,7 +580,7 @@ export const transformAgentVariableToToolCallFormat = (inputData) => {
           type: "object",
           description: "",
           enum: [],
-          required_params: [],
+          required: [],
           parameter: {},
         };
       } else if (!current[part].parameter) {
@@ -506,7 +603,7 @@ export const transformAgentVariableToToolCallFormat = (inputData) => {
       type: paramType,
       description: "",
       enum: [],
-      required_params: [],
+      required: [],
     };
 
     if (isRequired) {
@@ -519,14 +616,14 @@ export const transformAgentVariableToToolCallFormat = (inputData) => {
         const parentKey = parts[i];
         const childKey = parts[i + 1];
 
-        if (!currentLevel[parentKey].required_params.includes(childKey)) {
-          currentLevel[parentKey].required_params.push(childKey);
+        if (!currentLevel[parentKey].required.includes(childKey)) {
+          currentLevel[parentKey].required.push(childKey);
         }
       }
 
-      // Add top-level key to required_params
-      if (!required_params.includes(parts[0])) {
-        required_params.push(parts[0]);
+      // Add top-level key to required
+      if (!required.includes(parts[0])) {
+        required.push(parts[0]);
       }
     }
   }
@@ -548,16 +645,16 @@ export const transformAgentVariableToToolCallFormat = (inputData) => {
         type: paramType,
         description: "",
         enum: [],
-        required_params: [],
+        required: [],
       };
 
-      if (isRequired && !required_params.includes(key)) {
-        required_params.push(key);
+      if (isRequired && !required.includes(key)) {
+        required.push(key);
       }
     }
   }
 
-  return { fields, required_params };
+  return { fields, required };
 };
 
 export function toBoolean(str) {
@@ -797,12 +894,22 @@ export const createConversationForTestCase = (conversationData) => {
 
   conversation = conversationMessages.map((message) => ({
     role: message.sender === "assistant" ? "assistant" : "user",
-    content: message.content,
+    content:
+      (message.sender === "assistant" || message.role === "assistant") &&
+      typeof message.content === "object" &&
+      message.content !== null
+        ? JSON.stringify(message.content)
+        : message.content,
   }));
 
   const lastMessage = conversationData[conversationData.length - 1];
   expected_response = {
-    response: lastMessage.content,
+    response:
+      (lastMessage.sender === "assistant" || lastMessage.role === "assistant") &&
+      typeof lastMessage.content === "object" &&
+      lastMessage.content !== null
+        ? JSON.stringify(lastMessage.content)
+        : lastMessage.content,
   };
 
   return { conversation, expected: expected_response };
@@ -903,13 +1010,132 @@ export const useOutsideClick = (elementRef, triggerRef, onOutsideClick, isActive
 
 export const extractPromptVariables = (prompt) => {
   if (!prompt) return [];
+
+  // Handle both string and object formats
+  let promptText = "";
+  if (typeof prompt === "string") {
+    promptText = prompt;
+  } else if (typeof prompt === "object") {
+    // Extract text from structured prompt object
+    if (prompt.role) promptText += prompt.role + " ";
+    if (prompt.goal) promptText += prompt.goal + " ";
+    if (prompt.instruction) promptText += prompt.instruction + " ";
+    if (prompt.customPrompt) promptText += prompt.customPrompt + " ";
+    // Extract from embedFields if present
+    if (Array.isArray(prompt.embedFields)) {
+      prompt.embedFields.forEach((field) => {
+        if (field.value) promptText += field.value + " ";
+      });
+    }
+  }
+
+  if (!promptText) return [];
+
   const variableRegex = /\{\{([^}]+)\}\}/g;
   const matches = [];
   let match;
-  while ((match = variableRegex.exec(prompt)) !== null) {
+  while ((match = variableRegex.exec(promptText)) !== null) {
     if (!matches.includes(match[1])) {
       matches.push(match[1]);
     }
   }
   return matches;
+};
+
+/**
+ * Recursively trims all property names in a JSON schema properties object
+ * @param {Object} properties - The properties object from a JSON schema
+ * @returns {Object} - New properties object with trimmed keys
+ */
+export const trimPropertyNames = (properties) => {
+  if (!properties || typeof properties !== "object") return properties;
+
+  const trimmedProperties = {};
+  Object.entries(properties).forEach(([key, value]) => {
+    const trimmedKey = key.trim();
+    const trimmedValue = { ...value };
+
+    // Recursively trim nested object properties
+    if (trimmedValue.properties) {
+      trimmedValue.properties = trimPropertyNames(trimmedValue.properties);
+    }
+
+    // Recursively trim array item properties
+    if (trimmedValue.type === "array" && trimmedValue.items?.properties) {
+      trimmedValue.items = {
+        ...trimmedValue.items,
+        properties: trimPropertyNames(trimmedValue.items.properties),
+      };
+    }
+
+    trimmedProperties[trimmedKey] = trimmedValue;
+  });
+
+  return trimmedProperties;
+};
+
+export const getApiKeyStatusClass = (status, type) => {
+  const config = {
+    working: {
+      badge: "border border-green-500 bg-green-500/20 text-green-600",
+      text: "text-green-600",
+      dot: "bg-green-500",
+      icon: CheckCircleIcon,
+      iconClass: "text-green-500",
+    },
+    invalid: {
+      badge: "border border-red-500 bg-red-500/20 text-red-600",
+      text: "text-red-600",
+      dot: "bg-red-500",
+      icon: CircleAlertIcon,
+      iconClass: "text-red-500",
+    },
+    unauthorized: {
+      badge: "border border-orange-500 bg-orange-500/20 text-orange-600",
+      text: "text-orange-600",
+      dot: "bg-orange-500",
+      icon: ShieldIcon,
+      iconClass: "text-orange-500",
+    },
+    exhausted: {
+      badge: "border border-yellow-500 bg-yellow-500/20 text-yellow-600",
+      text: "text-yellow-600",
+      dot: "bg-yellow-500",
+      icon: TriangleWarningIcon,
+      iconClass: "text-yellow-500",
+    },
+    service_down: {
+      badge: "border border-gray-500 bg-gray-500/20 text-gray-600",
+      text: "text-gray-600",
+      dot: "bg-gray-500",
+      icon: CircleMinusIcon,
+      iconClass: "text-gray-500",
+    },
+  };
+  return config[status]?.[type] ?? "";
+};
+
+export const isValidDomain = (input) => {
+  const trimmedInput = (input || "").trim();
+  if (trimmedInput.length < 3 || trimmedInput.includes(" ")) return false;
+  if (trimmedInput.startsWith("http://") || trimmedInput.startsWith("https://")) return false;
+  const domainPattern =
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+  return domainPattern.test(trimmedInput);
+};
+export const getToolName = (toolId, allBridgesMap = {}, orgBridges = [], integrationData = {}) => {
+  if (!toolId) return "Unknown";
+
+  // Check in allBridgesMap first (full data if available)
+  if (allBridgesMap?.[toolId]?.name) return allBridgesMap[toolId].name;
+
+  // Fallback to orgBridges (might be already fetched for the current org)
+  const bridgeInOrg = orgBridges?.find?.((b) => b?._id === toolId);
+  if (bridgeInOrg?.name) return bridgeInOrg.name;
+
+  // Check integrationData for external tools
+  if (integrationData?.[toolId]?.title) return integrationData[toolId].title;
+
+  // If not found or not an ID, return original name
+  return toolId;
 };

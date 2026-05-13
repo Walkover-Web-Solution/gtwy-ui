@@ -35,7 +35,10 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       if (Array.isArray(content)) {
         return content?.[0]?.text ?? "";
       }
-      return typeof content === "string" ? content : "";
+      if (typeof content === "object" && content !== null) {
+        return JSON.stringify(content);
+      }
+      return typeof content === "string" ? content : String(content || "");
     };
 
     // If it's a single object with AiConfig, extract the conversation from AiConfig input/messages
@@ -205,6 +208,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           <div className="flex justify-between items-center p-6 pb-0  top-0 bg-base-100 z-low">
             <h3 className="text-xl font-semibold">Add Test Case</h3>
             <button
+              data-testid="add-testcase-close-x-button"
               id="add-testcase-close-x-button"
               type="button"
               className="btn btn-circle btn-ghost btn-sm"
@@ -219,6 +223,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             {finalTestCases && finalTestCases.length > 2 && !showFullConversation && (
               <div className="flex xs">
                 <button
+                  data-testid="add-testcase-show-conversations-button"
                   id="add-testcase-show-conversations-button"
                   type="button"
                   onClick={() => setShowFullConversation(true)}
@@ -258,7 +263,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                             <textarea
                               id={`add-testcase-tool-textarea-${index}-${idx}`}
                               defaultValue={JSON.stringify(item, null, 2)}
-                              className="textarea bg-white dark:bg-black/15 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
+                              className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
                               onInput={handleTextareaInput}
                               onBlur={(e) => handleChange(e.target.value, index, idx)}
                               rows={4}
@@ -279,7 +284,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                       <textarea
                         id={`add-testcase-content-textarea-${index}`}
                         defaultValue={message.content}
-                        className="textarea bg-white dark:bg-black/15 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
+                        className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
                         onInput={handleTextareaInput}
                         onBlur={(e) => handleChange(e.target.value, index, null)}
                         rows={3}
@@ -311,7 +316,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                               <textarea
                                 id={`add-testcase-second-last-tool-textarea-${idx}`}
                                 defaultValue={JSON.stringify(item, null, 2)}
-                                className="textarea bg-white dark:bg-black/15 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
+                                className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
                                 onInput={handleTextareaInput}
                                 onBlur={(e) => handleChange(e.target.value, secondLastIndex, idx)}
                                 rows={4}
@@ -332,7 +337,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                         <textarea
                           id={`add-testcase-second-last-remove-tool`}
                           defaultValue={secondLastMessage.content}
-                          className="textarea bg-white dark:bg-black/15 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
+                          className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
                           onInput={handleTextareaInput}
                           onBlur={(e) => handleChange(e.target.value, secondLastIndex, null)}
                           rows={3}
@@ -365,7 +370,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                               <textarea
                                 id={`add-testcase-expected-tool-textarea-${idx}`}
                                 defaultValue={JSON.stringify(item, null, 2)}
-                                className="textarea bg-white dark:bg-black/15 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
+                                className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
                                 onInput={handleTextareaInput}
                                 onBlur={(e) => handleChange(e.target.value, lastIndex, idx)}
                                 rows={4}
@@ -386,7 +391,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                         <textarea
                           id="add-testcase-expected-content-textarea"
                           defaultValue={lastMessage.content}
-                          className="textarea bg-white dark:bg-black/15 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
+                          className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
                           onInput={handleTextareaInput}
                           onBlur={(e) => handleChange(e.target.value, lastIndex, null)}
                           rows={3}
@@ -403,6 +408,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             <div className="flex items-center gap-3">
               <label className="text-sm text-base-content">Matching strategy:</label>
               <select
+                data-testid="add-testcase-matching-strategy-select"
                 id="add-testcase-matching-strategy-select"
                 className="select select-sm bg-base-100 focus:outline-none border-none"
                 value={responseType}
@@ -415,6 +421,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
             <div className="flex gap-2">
               <button
+                data-testid="add-testcase-cancel-button"
                 id="add-testcase-cancel-button"
                 type="button"
                 className="btn btn-sm btn-ghost"
@@ -423,6 +430,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 Cancel
               </button>
               <button
+                data-testid="add-testcase-create-button"
                 id="add-testcase-create-button"
                 type="submit"
                 className="btn btn-sm btn-primary px-6"

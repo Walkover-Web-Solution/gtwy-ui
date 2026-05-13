@@ -8,6 +8,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import ErrorPage from "@/app/not-found";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
 import { trackAuthEvent } from "@/utils/posthog";
+import { PROXY_SCRIPT_SRC } from "@/utils/enums";
 
 const handleUserDetailsAndSwitchOrg = async (url, dispatch, userDetails) => {
   const userDetailsData = await dispatch(userDetails());
@@ -50,8 +51,8 @@ const WithAuth = (Children) => {
 
     useLayoutEffect(() => {
       const runEffect = async (isEmbedUser) => {
-        const proxyToken = getFromCookies("proxy_token");
         const proxyAuthToken = proxy_auth_token;
+        const proxyToken = getFromCookies("proxy_token");
         let redirectionUrl = getFromCookies("previous_url") || "/org";
         if (isEmbedUser) {
           const proxy_auth_token = sessionStorage.getItem("proxy_token");
@@ -81,22 +82,25 @@ const WithAuth = (Children) => {
             orgName: "",
           });
           setInCookies("local_token", localToken.token);
-
           const finalRedirectUrl = await handleUserDetailsAndSwitchOrg(redirectionUrl, dispatch, userDetails);
-
           trackAuthEvent("user_logged_in", {
             user_id: searchParams.get("user_ref_id"),
             org_id: searchParams.get("company_ref_id"),
           });
+          const userDetailsData = await dispatch(userDetails());
+          if (userDetailsData && !userDetailsData?.meta?.newUser) {
+            router.replace("/org/onBoarding");
+            return;
+          }
           router.replace(finalRedirectUrl);
           removeCookie("previous_url");
           return;
         } else {
           setLoading(false);
         }
-
         const configuration = {
           referenceId: process.env.NEXT_PUBLIC_REFERENCEID,
+          type: "authorization",
           addInfo: {
             redirect_path: "/login",
           },
@@ -107,7 +111,6 @@ const WithAuth = (Children) => {
             console.error("failure reason", error);
           },
         };
-
         // Load the login script from msg91
         const script = document.createElement("script");
         script.type = "text/javascript";
@@ -119,7 +122,7 @@ const WithAuth = (Children) => {
             }
           }, 100);
         };
-        script.src = "https://proxy.msg91.com/assets/proxy-auth/proxy-auth.js";
+        script.src = PROXY_SCRIPT_SRC;
         document.body.appendChild(script); // Add the script to the page
       };
 

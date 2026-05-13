@@ -9,20 +9,21 @@ import { useConfigurationContext } from "./ConfigurationContext";
 const ChatbotConfigSection = ({ isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const [isChatbotAccordionOpen, setIsChatbotAccordionOpen] = useState(false);
-  const { params, searchParams, bridgeType } = useConfigurationContext();
+  const { params, searchParams, bridgeType, modelType } = useConfigurationContext();
 
   const toggleChatbotAccordion = () => {
     setIsChatbotAccordionOpen(!isChatbotAccordionOpen);
   };
 
   // Only show for chatbot bridge type
-  if (bridgeType !== "chatbot") {
+  if (bridgeType !== "chatbot" || modelType === "image") {
     return null;
   }
 
   return (
     <div className="z-very-low mt-2 text-base-content w-full max-w-md cursor-pointer" tabIndex={0}>
       <div
+        data-testid="chatbot-config-accordion-toggle"
         id="chatbot-config-accordion-toggle"
         className={`info p-1 ${isChatbotAccordionOpen ? "border border-base-content/20" : "border border-base-content/20 "} flex items-center justify-between font-medium w-full !cursor-pointer input input-sm`}
         onClick={toggleChatbotAccordion}

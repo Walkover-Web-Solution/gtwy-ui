@@ -1,6 +1,17 @@
 import React, { useMemo } from "react";
 import { SettingsIcon, TrashIcon, RefreshIcon, SquareFunctionIcon } from "@/components/Icons";
 import useExpandableList from "@/customHooks/useExpandableList";
+import InfoTooltip from "@/components/InfoTooltip";
+import { AlertTriangle } from "lucide-react";
+
+const WEB_SEARCH_WARNING_CLASS = "border-warning/40";
+const WEB_SEARCH_TOKEN_WARNING = "Selecting Web Search can cause heavy token utilization and may exceed 10,000 tokens.";
+import { useCustomSelector } from "@/customHooks/customSelector";
+
+const truncateTitle = (text, maxLength) => {
+  if (!maxLength || typeof text !== "string") return text;
+  return text.length > maxLength ? `${text.slice(0, maxLength).trimEnd()}…` : text;
+};
 
 const RenderEmbed = ({
   bridgeFunctions,
@@ -14,11 +25,16 @@ const RenderEmbed = ({
   handleChangePreTool,
   name,
   halfLength = 1,
+  versionId,
   isPublished,
   isEditor = true,
+  maxTitleLength,
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
+  const { variablesPath } = useCustomSelector((state) => ({
+    variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
+  }));
   // Sort functions first
   const sortedFunctions = useMemo(() => {
     return (
@@ -43,25 +59,42 @@ const RenderEmbed = ({
   const renderEmbed = useMemo(() => {
     const embedItems = displayItems?.map((value) => {
       const functionName = value?.script_id;
-      const title = value?.title || integrationData?.[functionName]?.title;
+      const rawTitle = value?.title || integrationData?.[functionName]?.title;
+      const title = truncateTitle(rawTitle, maxTitleLength);
+      const isTitleTruncated = !!maxTitleLength && typeof rawTitle === "string" && rawTitle.length > maxTitleLength;
+      const isWebSearchPreTool = value?._type === "gtwy_web_search";
 
       return (
         <div
+          data-testid={`render-embed-item-${value?._id}`}
           key={value?._id}
           id={value?._id}
-          className={`group flex items-center border border-base-200 cursor-pointer bg-base-100 relative min-h-[44px] w-full ${value?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200`}
+          className={`group flex items-center border cursor-pointer bg-base-100 relative min-h-[44px] w-full ${
+            value?.description?.trim() === ""
+              ? "border-red-600"
+              : isWebSearchPreTool
+                ? WEB_SEARCH_WARNING_CLASS
+                : "border-base-200"
+          } transition-colors duration-200`}
         >
           <div
             className="p-2 flex-1 flex items-center"
-            onClick={() =>
-              openViasocket(functionName, {
-                embedToken,
-                meta: {
-                  type: "tool",
-                  bridge_id: params?.id,
-                },
-              })
-            }
+            onClick={() => {
+              if (isReadOnly) return;
+              if (value?._type === "custom_function" || !value?._type) {
+                openViasocket(functionName, {
+                  embedToken,
+                  meta: {
+                    type: "tool",
+                    bridge_id: params?.id,
+                  },
+                  dummy_payload: {
+                    variablesPath,
+                  },
+                });
+              }
+            }}
+            disabled={isReadOnly}
           >
             <div className="flex items-center gap-2 w-full">
               {integrationData?.[functionName]?.serviceIcons?.length > 0 ? (
@@ -80,25 +113,24 @@ const RenderEmbed = ({
                   ))}
                 </div>
               ) : (
-                <SquareFunctionIcon size={16} className="shrink-0" />
+                <SquareFunctionIcon className="w-6 h-6 shrink-0" />
               )}
-              {title?.length > 24 ? (
-                <div className="tooltip tooltip-top min-w-0" data-tip={title}>
-                  <span className="min-w-0 text-sm truncate text-left">
-                    <span className="truncate text-sm font-normal block w-[300px]">{title}</span>
-                  </span>
+              {isTitleTruncated || (title?.length || 0) > 24 ? (
+                <div className="tooltip tooltip-top min-w-0 flex-1 overflow-hidden" data-tip={rawTitle}>
+                  <span className="block text-sm font-normal truncate text-left">{title}</span>
                 </div>
               ) : (
-                <span className="min-w-0 text-sm truncate text-left">
-                  <span className="truncate text-sm font-normal block w-[300px]">{title}</span>
-                </span>
+                <span className="block text-sm font-normal truncate flex-1 min-w-0 text-left">{title}</span>
               )}
             </div>
           </div>
 
           {/* Action buttons that appear on hover */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+          <div
+            className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
+          >
             <button
+              data-testid={`render-embed-config-button-${value?._id}`}
               id={`render-embed-config-button-${value?._id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -111,6 +143,7 @@ const RenderEmbed = ({
             </button>
             {name === "preFunction" && handleChangePreTool && (
               <button
+                data-testid={`render-embed-refresh-button-${value?._id}`}
                 id={`render-embed-refresh-button-${value?._id}`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -124,6 +157,7 @@ const RenderEmbed = ({
               </button>
             )}
             <button
+              data-testid={`render-embed-delete-button-${value?._id}`}
               id={`render-embed-delete-button-${value?._id}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -136,12 +170,29 @@ const RenderEmbed = ({
               <TrashIcon size={16} />
             </button>
           </div>
+          {isWebSearchPreTool && (
+            <span
+              className="pr-2"
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <InfoTooltip tooltipContent={WEB_SEARCH_TOKEN_WARNING}>
+                <button
+                  type="button"
+                  aria-label="Web Search token usage warning"
+                  className="btn btn-ghost btn-sm p-1 text-warning"
+                >
+                  <AlertTriangle size={16} />
+                </button>
+              </InfoTooltip>
+            </span>
+          )}
         </div>
       );
     });
 
     return (
-      <div id="render-embed-container" className="w-full">
+      <div data-testid="render-embed-container" id="render-embed-container" className="w-full">
         <div className={`grid gap-2 w-full`}>{embedItems}</div>
       </div>
     );
@@ -152,6 +203,7 @@ const RenderEmbed = ({
     handleOpenModal,
     embedToken,
     params,
+    variablesPath,
     handleRemoveEmbed,
     handleChangePreTool,
     name,
@@ -159,6 +211,8 @@ const RenderEmbed = ({
     isExpanded,
     toggleExpanded,
     hiddenItemsCount,
+    isReadOnly,
+    maxTitleLength,
   ]);
 
   return renderEmbed;

@@ -27,9 +27,10 @@ function getStatusClass(status) {
 
 export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
   const dispatch = useDispatch();
-  const { triggerEmbedToken, triggerData, isViewer } = useCustomSelector((state) => ({
+  const { triggerEmbedToken, triggerData, isViewer, bridgeType } = useCustomSelector((state) => ({
     triggerEmbedToken: state?.bridgeReducer?.org?.[params?.org_id]?.triggerEmbedToken,
     triggerData: state?.bridgeReducer?.org?.[params?.org_id]?.triggerData,
+    bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
     isViewer: state?.userDetailsReducer?.organizations?.[params?.org_id]?.role_name === "Viewer" || false,
   }));
   const [triggers, setTriggers] = useState([]);
@@ -39,14 +40,34 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
     const keytoset = await getOrCreateNotificationAuthKey("gtwy_bridge_trigger");
     if (keytoset) setAuthkey(keytoset?.authkey);
   }
+
   useEffect(() => {
     if (triggerData) {
       const filteredTriggers = triggerData.filter((flow) => flow?.metadata?.bridge_id === params?.id) || [];
       setTriggers(filteredTriggers);
-      if (!filteredTriggers?.length && window?.openViasocket && authkey && !isReadOnly) openTrigger();
+      return;
     }
+    setTriggers([]);
+  }, [triggerData, params?.id]);
+
+  useEffect(() => {
     if (!isEmbedUser && !isViewer) getAndSetAuthKey();
-  }, [params?.org_id, authkey, isEmbedUser, isViewer]);
+  }, [isEmbedUser, isViewer]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isReadOnly || isEmbedUser || isViewer) return;
+    if (!window?.openViasocket || !authkey || !triggerEmbedToken) return;
+
+    const isTriggerType = bridgeType?.toString()?.toLowerCase() === "trigger";
+    if (!isTriggerType) return;
+
+    const autoOpenKey = `auto_open_trigger_embed_${params?.id}`;
+    if (sessionStorage.getItem(autoOpenKey) !== "1") return;
+
+    sessionStorage.removeItem(autoOpenKey);
+    openTrigger();
+  }, [bridgeType, authkey, triggerEmbedToken, params?.id, isReadOnly, isEmbedUser, isViewer]);
 
   function openTrigger(triggerId) {
     openViasocket(triggerId, {
@@ -118,6 +139,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
           </div>
           {hasTriggers && (
             <button
+              data-testid="triggers-add-button"
               id="triggers-add-button"
               onClick={() => openTrigger()}
               className="btn btn-outline hover:bg-base-200 hover:text-base-content btn-xs gap-1"
@@ -135,6 +157,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
             <div className="border-2 border-dashed border-base-200 p-4 text-center">
               <p className="text-sm text-base-content/70">No triggers found.</p>
               <button
+                data-testid="triggers-add-first-button"
                 id="triggers-add-first-button"
                 onClick={() => openTrigger()}
                 className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
@@ -150,6 +173,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
             <div className="flex flex-col gap-2">
               {activeTriggers.map((trigger) => (
                 <div
+                  data-testid={`trigger-card-${trigger?.id}`}
                   id={`trigger-card-${trigger?.id}`}
                   key={trigger?.id}
                   onClick={() => openTrigger(trigger?.id)}

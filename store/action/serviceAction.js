@@ -10,7 +10,7 @@ export const getServiceAction = () => async (dispatch) => {
 
       const services = Object.keys(data?.services).map((service) => ({
         value: service,
-        displayName: service.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
+        displayName: data?.services?.[service]?.default_name,
       }));
 
       dispatch(fetchServiceReducer({ services, default_model }));

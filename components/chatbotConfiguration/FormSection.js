@@ -8,6 +8,8 @@ function RadioButton({ name, label, checked, onChange }) {
     <div className="form-control">
       <label className="label gap-2 cursor-pointer">
         <input
+          autoComplete="off"
+          data-testid={`radio-${name}-${label.replaceAll(" ", "-").toLowerCase()}`}
           id={`radio-${name}-${label.replaceAll(" ", "-").toLowerCase()}`}
           type="radio"
           name={name}
@@ -31,7 +33,7 @@ function RadioGroup({ onChange, name, value }) {
   ];
 
   return (
-    <div id="radio-group-position">
+    <div data-testid="radio-group-position" id="radio-group-position">
       <div className="label">
         <span className="label-text">Position</span>
       </div>
@@ -58,6 +60,8 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
       </div>
       <div className="join">
         <input
+          autoComplete="off"
+          data-testid={`dimension-input-${name}`}
           id={`dimension-input-${name}`}
           className="input input-bordered join-item input-sm max-w-[90px]"
           type="number"
@@ -68,6 +72,7 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
           name={name}
         />
         <select
+          data-testid={`dimension-select-${name}-unit`}
           id={`dimension-select-${name}-unit`}
           className="select select-bordered join-item select-sm max-w-[70px]"
           value={unit || ""}
@@ -189,7 +194,7 @@ export default function FormSection({ params, chatbotId = null }) {
   }, [formData]);
 
   return (
-    <div id="form-section-container" className="space-y-6">
+    <div data-testid="form-section-container" id="form-section-container" className="space-y-6">
       {/* Display Settings Section */}
       <div className="bg-base-200 rounded-lg max-w-4xl shadow p-6">
         <h3 className="text-lg font-semibold mb-6 border-b border-base-content/20 pb-2">Display Settings</h3>
@@ -202,6 +207,8 @@ export default function FormSection({ params, chatbotId = null }) {
                 <span className="label-text font-medium">Chatbot Title</span>
               </div>
               <input
+                autoComplete="off"
+                data-testid="form-section-chatbot-title"
                 id="form-section-chatbot-title"
                 type="text"
                 placeholder="Enter chatbot title"
@@ -218,6 +225,8 @@ export default function FormSection({ params, chatbotId = null }) {
                 <span className="label-text font-medium">Chatbot Subtitle</span>
               </div>
               <input
+                autoComplete="off"
+                data-testid="form-section-chatbot-subtitle"
                 id="form-section-chatbot-subtitle"
                 type="text"
                 placeholder="Enter chatbot subtitle"
@@ -234,6 +243,8 @@ export default function FormSection({ params, chatbotId = null }) {
                 <span className="label-text font-medium">Button Title</span>
               </div>
               <input
+                autoComplete="off"
+                data-testid="form-section-button-title"
                 id="form-section-button-title"
                 type="text"
                 placeholder="Enter button title"
@@ -250,6 +261,8 @@ export default function FormSection({ params, chatbotId = null }) {
                 <span className="label-text font-medium">Button Icon URL</span>
               </div>
               <input
+                autoComplete="off"
+                data-testid="form-section-icon-url"
                 id="form-section-icon-url"
                 type="text"
                 placeholder="Enter icon URL"
@@ -301,6 +314,8 @@ export default function FormSection({ params, chatbotId = null }) {
               </div>
               <div className="flex items-center gap-3">
                 <input
+                  autoComplete="off"
+                  data-testid="form-section-theme-color"
                   id="form-section-theme-color"
                   type="color"
                   key={formData?.themeColor}

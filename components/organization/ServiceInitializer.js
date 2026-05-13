@@ -15,14 +15,17 @@ const ServiceInitializer = ({ isEmbedUser }) => {
   const isOrgPage = pathname === "/org" || pathname.endsWith("/org");
   const hasCalledAPIs = useRef(false);
 
-  // Always run on org page - initial data fetch
+  // Always run on org page - fetches fresh service list (picks up new services from backend)
   useEffect(() => {
     if (isOrgPage && !isEmbedUser) {
       dispatch(userDetails());
       dispatch(getServiceAction());
+      // Reset so non-org pages re-check after returning from org
+      hasCalledAPIs.current = false;
     }
   }, [dispatch, isOrgPage]);
 
+  // On non-org pages: fetch services only if missing from redux
   useEffect(() => {
     if (!isOrgPage && !hasCalledAPIs.current) {
       const hasServices = Array.isArray(SERVICES) && SERVICES.length > 0;
@@ -33,27 +36,32 @@ const ServiceInitializer = ({ isEmbedUser }) => {
       }
     }
   }, [dispatch, isOrgPage, SERVICES, MODELS]);
-  // Fetch models for each service and retry if models are missing
-  useEffect(() => {
-    const getModelData = async () => {
-      if ((Array.isArray(SERVICES) && SERVICES.length > 0 && !Object.entries(MODELS).length) || isOrgPage) {
-        SERVICES.forEach((service) => {
-          const serviceValue = service?.value;
-          if (serviceValue) {
-            const serviceModels = MODELS?.[serviceValue];
 
-            if (!serviceModels || !Array.isArray(serviceModels) || serviceModels.length === 0) {
-              dispatch(getModelAction({ service: serviceValue }));
-            }
-          }
-        });
-      }
+  // Fetch models per-service:
+  // - org page: always re-fetch all models (picks up new/updated services from backend)
+  // - other pages: only fetch models missing from redux
+  useEffect(() => {
+    if (!Array.isArray(SERVICES) || SERVICES.length === 0) return;
+
+    const getModelData = () => {
+      SERVICES.forEach((service) => {
+        const serviceValue = service?.value;
+        if (!serviceValue) return;
+
+        const serviceModels = MODELS?.[serviceValue];
+        const hasModelData =
+          serviceModels && typeof serviceModels === "object" && Object.keys(serviceModels).length > 0;
+
+        if (isOrgPage || !hasModelData) {
+          dispatch(getModelAction({ service: serviceValue }));
+        }
+      });
     };
-    setTimeout(() => {
-      getModelData();
-    }, 1000);
-  }, [SERVICES, MODELS, isOrgPage]);
-  // This component doesn't render anything
+
+    const timer = setTimeout(getModelData, 1000);
+    return () => clearTimeout(timer);
+  }, [SERVICES, isOrgPage]);
+
   return null;
 };
 

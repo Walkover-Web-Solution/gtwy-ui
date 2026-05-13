@@ -229,6 +229,7 @@ function Page({ params }) {
           <label className="input input-sm input-bordered flex items-center gap-2">
             <span>Name{RequiredItem()} :</span>
             <input
+              autoComplete="off"
               type="text"
               className="grow input input-sm border-none"
               id="authNameInput"

@@ -20,19 +20,20 @@ const ModelTab = () => {
     service,
     showDefaultApikeys,
     isEmbedUser,
-    hideAdvancedParameters,
-    hideAdvancedConfigurations,
+    showAdvancedParameters,
+    showAdvancedConfigurations,
     bridgeType,
     isPublished,
     isEditor,
+    apiKeyError,
+    modelType,
   } = useConfigurationContext();
   const shouldRenderApiKey = useMemo(
     () => (!showDefaultApikeys && isEmbedUser) || !isEmbedUser,
     [isEmbedUser, showDefaultApikeys]
   );
-
   return (
-    <div id="model-tab-container" className="flex flex-col mt-4 w-full">
+    <div data-testid="model-tab-container" id="model-tab-container" className="flex flex-col mt-4 w-full">
       {/* LLM Configuration Header */}
       <div className="mb-4 mt-2">
         <h3 className="text-base-content text-md font-medium">LLM Configuration</h3>
@@ -53,7 +54,7 @@ const ModelTab = () => {
         />
       )}
 
-      <div id="model-tab-config-section" className="space-y-6">
+      <div data-testid="model-tab-config-section" id="model-tab-config-section" className="space-y-6">
         {/* Service Provider and Model Row */}
         <div className="grid grid-cols-2 mt-2 gap-6">
           <div className="space-y-2">
@@ -70,8 +71,14 @@ const ModelTab = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-base-content/70 text-sm font-medium">Model</label>
-            <ModelDropdown params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+            <ModelDropdown
+              params={params}
+              searchParams={searchParams}
+              isPublished={isPublished}
+              isEditor={isEditor}
+              isEmbedUser={isEmbedUser}
+              showAdvancedConfigurations={showAdvancedConfigurations}
+            />
           </div>
         </div>
 
@@ -84,42 +91,50 @@ const ModelTab = () => {
               params={params}
               searchParams={searchParams}
               isEmbedUser={isEmbedUser}
-              hideAdvancedParameters={hideAdvancedParameters}
+              showAdvancedParameters={showAdvancedParameters}
               isPublished={isPublished}
               isEditor={isEditor}
+              hasError={apiKeyError}
             />
             <p className="text-xs text-base-content/50 mt-2">Your API key is encrypted and stored securely</p>
           </div>
         )}
 
         {/* Parameters Section with Border */}
-        <div id="model-tab-parameters-section" className="border-t border-base-200 pt-6">
-          <div className="mb-4">
-            <h2 className="text-base-content text-md font-medium">Parameters</h2>
+        {((showAdvancedParameters && isEmbedUser) || !isEmbedUser) && (
+          <div
+            data-testid="model-tab-parameters-section"
+            id="model-tab-parameters-section"
+            className="border-t border-base-200 pt-6"
+          >
+            <div className="mb-4">
+              <h2 className="text-base-content text-md font-medium">Parameters</h2>
+            </div>
+            <div className="max-w-2xl">
+              <AdvancedParameters
+                params={params}
+                searchParams={searchParams}
+                isEmbedUser={isEmbedUser}
+                showAdvancedParameters={showAdvancedParameters}
+                level={1}
+                className="mt-0"
+                defaultExpanded
+                showAccordion={false}
+                compact
+                isPublished={isPublished}
+                isEditor={isEditor}
+              />
+            </div>
           </div>
-          <div className="max-w-2xl">
-            <AdvancedParameters
-              params={params}
-              searchParams={searchParams}
-              isEmbedUser={isEmbedUser}
-              hideAdvancedParameters={hideAdvancedParameters}
-              level={1}
-              className="mt-0"
-              defaultExpanded
-              showAccordion={false}
-              compact
-              isPublished={isPublished}
-              isEditor={isEditor}
-            />
-          </div>
-        </div>
+        )}
         {/* Fallback Model Section */}
-        {((isEmbedUser && !hideAdvancedConfigurations) || !isEmbedUser) && (
+        {((isEmbedUser && showAdvancedConfigurations) || !isEmbedUser) && modelType !== "image" && (
           <div className="space-y-2">
             <FallbackModel
               params={params}
               searchParams={searchParams}
               bridgeType={bridgeType}
+              shouldRenderApiKey={shouldRenderApiKey}
               isPublished={isPublished}
               isEditor={isEditor}
             />

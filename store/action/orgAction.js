@@ -1,14 +1,6 @@
-import {
-  createOrg,
-  generateAccessKey,
-  generateGtwyAccessTokenApi,
-  getAllOrg,
-  getUsers,
-  updateOrganizationData,
-  updateUser,
-} from "@/config/index";
+import { createOrg, generateAccessKey, getAllOrg, getUsers, updateOrganizationData, updateUser } from "@/config/index";
 import { organizationCreated, organizationsFetched, setCurrentOrgId, usersFetched } from "../reducer/orgReducer";
-import { updateGtwyAccessToken, updateToken, updateUserDetails, updateUserMeta } from "../reducer/userDetailsReducer";
+import { updateToken, updateUserDetails, updateUserMeta } from "../reducer/userDetailsReducer";
 import { trackOrganizationEvent } from "@/utils/posthog";
 
 export const createOrgAction = (dataToSend, onSuccess, onError) => async (dispatch) => {
@@ -71,18 +63,6 @@ export const generateAccessKeyAction = (orgId) => async (dispatch) => {
   try {
     const response = await generateAccessKey();
     dispatch(updateToken({ orgId, auth_token: response?.data?.auth_token }));
-  } catch (error) {
-    console.error("Error updating organization timezone:", error);
-    throw error;
-  }
-};
-
-export const generateGtwyAccessTokenAction = (orgId) => async (dispatch) => {
-  try {
-    const response = await generateGtwyAccessTokenApi();
-    if (response) {
-      dispatch(updateGtwyAccessToken({ orgId, gtwyAccessToken: response?.data?.gtwyAccessToken }));
-    }
   } catch (error) {
     console.error("Error updating organization timezone:", error);
     throw error;
