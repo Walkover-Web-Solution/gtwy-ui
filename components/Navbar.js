@@ -14,6 +14,7 @@ import {
   BotIcon,
   ChevronDown,
   RefreshCcw,
+  Settings,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -33,6 +34,7 @@ const VariableCollectionSlider = dynamic(() => import("./sliders/VariableCollect
 import AccessManagementModal from "./modals/AccessManagementModal";
 import AgentActionMenu from "@/components/agents/AgentActionMenu";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
+const MakePublicAgentModal = dynamic(() => import("./modals/MakePublicAgentModal"), { ssr: false });
 
 const BRIDGE_STATUS = {
   ACTIVE: 1,
@@ -80,14 +82,18 @@ const Navbar = ({ isEmbedUser, params }) => {
     publishedVersionId,
     showAgentName,
     isAdminOrOwner,
+    hasPageConfig,
+    bridgeSummary,
+    publicAgentConfig,
   } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
+    const bridgeData =
+      state?.bridgeReducer?.org?.[orgId]?.orgs?.find((bridge) => bridge._id === bridgeId) ||
+      state.bridgeReducer.allBridgesMap[bridgeId] ||
+      {};
     return {
-      bridgeData:
-        state?.bridgeReducer?.org?.[orgId]?.orgs?.find((bridge) => bridge._id === bridgeId) ||
-        state.bridgeReducer.allBridgesMap[bridgeId] ||
-        {},
+      bridgeData,
       bridge: state.bridgeReducer.allBridgesMap[bridgeId] || {},
       publishedVersion: state.bridgeReducer.allBridgesMap?.[bridgeId]?.published_version_id ?? null,
       isDrafted: state.bridgeReducer.bridgeVersionMapping?.[bridgeId]?.[versionId]?.is_drafted ?? false,
@@ -112,6 +118,9 @@ const Navbar = ({ isEmbedUser, params }) => {
       isAdminOrOwner,
       currentOrgRole: orgRole || "",
       currentUser: state?.userDetailsReducer?.userDetails || {},
+      hasPageConfig: !!state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
+      bridgeSummary: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.bridge_summary || "",
+      publicAgentConfig: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
     };
   });
   // Define tabs based on user type
@@ -670,6 +679,27 @@ const Navbar = ({ isEmbedUser, params }) => {
                             <span>Revert</span>
                           </button>
                         </li>
+                        {!isEmbedUser && (
+                          <li>
+                            <button
+                              data-testid="navbar-make-public-agent-button"
+                              id="navbar-make-public-agent-button"
+                              onClick={() => openModal(MODAL_TYPE.MAKE_PUBLIC_AGENT)}
+                              disabled={isPublishing || !publishedVersion}
+                              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-base-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                !publishedVersion
+                                  ? "Publish a version first to make it public"
+                                  : hasPageConfig
+                                    ? "Update public agent configuration"
+                                    : "Make this agent public"
+                              }
+                            >
+                              <Settings size={14} className="text-primary" />
+                              <span>{hasPageConfig ? "Update Public Agent" : "Make Public Agent"}</span>
+                            </button>
+                          </li>
+                        )}
                       </ul>
                     </div>
                   ) : (
@@ -893,6 +923,13 @@ const Navbar = ({ isEmbedUser, params }) => {
       />
 
       <AccessManagementModal agent={selectedAgentForAccess} />
+
+      <MakePublicAgentModal
+        bridgeId={bridgeId}
+        agent_name={agentName}
+        pageConfig={publicAgentConfig}
+        agentSummary={bridgeSummary}
+      />
 
       {/* Portal components from hook */}
       <PortalStyles />
