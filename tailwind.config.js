@@ -36,6 +36,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      colors: {
+        "base-50": "var(--base-50, oklch(0.985 0.002 247.84))",
+      },
       fontFamily: {
         sans: ['"DM Sans"', "sans-serif"],
       },
@@ -112,6 +115,13 @@ module.exports = {
     require("daisyui"),
     function ({ addBase, addUtilities }) {
       addBase({
+        /* Custom themed tokens */
+        ':root, [data-theme="light"]': {
+          "--base-50": "oklch(0.985 0.002 247.84)",
+        },
+        '[data-theme="dark"]': {
+          "--base-50": "oklch(0.20 0.002 247.84)",
+        },
         /* Light Theme Scrollbar */
         '[data-theme="light"] ::-webkit-scrollbar': {
           width: "8px",

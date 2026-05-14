@@ -51,7 +51,6 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
     typeof modalContent === "string" || typeof modalContent === "number" || typeof modalContent === "boolean";
   const copyData = typeof modalContent === "string" ? modalContent : JSON.stringify(modalContent, null, 2);
   const contentEntries = isPrimitiveContent ? [["Prompt", modalContent]] : Object.entries(modalContent || {});
-
   return (
     <Modal MODAL_ID={MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL} onClose={() => closeModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL)}>
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-start z-low-medium min-w-[100vw] min-h-[100vh] overflow-auto py-4">

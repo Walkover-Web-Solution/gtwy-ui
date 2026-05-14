@@ -107,7 +107,20 @@ const ThreadContainer = ({
       const conversation = [];
       let AiConfigForVariable = {};
       AiConfigForVariable = thread[index]?.AiConfig ? thread[index]?.AiConfig : {};
-      conversation.push(item || {});
+
+      // Extract variables from the thread item
+      const threadItem = thread[index] || {};
+      const threadVariables =
+        threadItem.variables && typeof threadItem.variables === "object" && !Array.isArray(threadItem.variables)
+          ? { ...threadItem.variables }
+          : {};
+
+      const itemWithVariables = {
+        ...item,
+        AiConfig: AiConfigForVariable,
+        threadVariables: threadVariables,
+      };
+      conversation.push(itemWithVariables || {});
       setTestCaseConversation(conversation);
       if (variables) return AiConfigForVariable;
       openModal(MODAL_TYPE.ADD_TEST_CASE_MODAL);

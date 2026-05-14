@@ -61,7 +61,7 @@ export const deleteTestCaseAction =
 
 export const runTestCaseAction =
   ({
-    versionId = null,
+    versionIds = null,
     bridgeId = null,
     testcase_id = null,
     testCaseData = null,
@@ -71,7 +71,7 @@ export const runTestCaseAction =
   async (dispatch) => {
     try {
       const response = await runTestCaseApi({
-        versionId,
+        versionIds,
         testcase_id,
         testCaseData,
         bridgeId,
@@ -81,33 +81,37 @@ export const runTestCaseAction =
 
       if (response?.success && response?.results) {
         // Transform the results array into the format the reducer expects
-        const testcases_result = {};
-        response.results.forEach((result) => {
-          if (result.testcase_id) {
-            testcases_result[result.testcase_id] = {
-              result: {
-                score: result.score,
-                model_output: result.actual_result,
-                expected: result.expected,
-                matching_type: result.matching_type,
-                metadata: {
-                  bridge_id: result.bridge_id,
+        const versionIdsArray = Array.isArray(versionIds) ? versionIds : [versionIds];
+
+        versionIdsArray.forEach((versionId) => {
+          const testcases_result = {};
+          response.results.forEach((result) => {
+            if (result.testcase_id) {
+              testcases_result[result.testcase_id] = {
+                result: {
+                  score: result.score,
+                  model_output: result.actual_result,
+                  expected: result.expected,
+                  matching_type: result.matching_type,
+                  metadata: {
+                    bridge_id: result.bridge_id,
+                  },
+                  created_at: new Date().toISOString(),
                 },
-                created_at: new Date().toISOString(),
-              },
-            };
+              };
+            }
+          });
+
+          if (Object.keys(testcases_result).length > 0 && bridgeId && versionId) {
+            dispatch(
+              runTestCaseReducer({
+                data: { testcases_result },
+                bridgeId,
+                versionId,
+              })
+            );
           }
         });
-
-        if (Object.keys(testcases_result).length > 0 && bridgeId && versionId) {
-          dispatch(
-            runTestCaseReducer({
-              data: { testcases_result },
-              bridgeId,
-              versionId,
-            })
-          );
-        }
 
         toast.success("Test case run successfully");
       }
@@ -123,8 +127,8 @@ export const updateTestCaseAction =
     try {
       const response = await updateTestCaseApi({ testCaseId, dataToUpdate });
       if (response?.success) {
-        // Pass testCaseId and update data to the reducer
-        dispatch(updateTestCaseReducer({ testCaseId, dataToUpdate }));
+        // Use the API result so updatedAt and other server-set fields are accurate
+        dispatch(updateTestCaseReducer({ testCaseId, dataToUpdate: response?.result || dataToUpdate }));
         toast.success("Test case updated successfully");
       }
       return;

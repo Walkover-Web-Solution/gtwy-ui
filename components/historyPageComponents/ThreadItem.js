@@ -154,7 +154,6 @@ const ThreadItem = ({
   handleAddTestCase,
   setModalInput,
 }) => {
-  console.log(item, "hello");
   // Determine message type based on new data structure
   const getInitialMessageType = () => {
     if (item?.user === "user") {

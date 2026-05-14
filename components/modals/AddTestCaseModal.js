@@ -122,8 +122,27 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
   const [finalTestCases, setFinalTestCases] = useState(initialTestCases);
   const [responseType, setResponseType] = useState("cosine");
   const [showFullConversation, setShowFullConversation] = useState(false);
+  // Filter out unwanted variables
+  const filterVariables = (vars) => {
+    const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
+    const filtered = {};
+    Object.entries(vars || {}).forEach(([key, value]) => {
+      if (!excludeKeys.includes(key)) {
+        filtered[key] = value;
+      }
+    });
+    return filtered;
+  };
+
+  const [editableVariables, setEditableVariables] = useState(
+    testCaseConversation?.[0]?.threadVariables ? filterVariables(testCaseConversation[0].threadVariables) : {}
+  );
+
   useEffect(() => {
     setFinalTestCases(initialTestCases);
+    if (testCaseConversation?.[0]?.threadVariables) {
+      setEditableVariables(filterVariables(testCaseConversation[0].threadVariables));
+    }
   }, [testCaseConversation]);
 
   useEffect(() => {
@@ -151,6 +170,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       },
       bridge_id: params?.id,
       matching_type: responseType,
+      variables: editableVariables,
     };
     dispatch(createTestCaseAction({ bridgeId: params?.id, data: payload })).then(() => {
       // Clear testcase_id from Redux when creating new testcase
@@ -185,6 +205,14 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     e.target.style.height = "auto";
     e.target.style.height = e.target.scrollHeight + "px";
   };
+
+  const handleVariableChange = (key, newValue) => {
+    setEditableVariables((prev) => ({
+      ...prev,
+      [key]: newValue,
+    }));
+  };
+
   const removeTool = (index, childIndex) => {
     setFinalTestCases((prevTestCases) => {
       const updatedTestCases = [...prevTestCases];
@@ -219,6 +247,35 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           </div>
 
           <div className="px-6 py-4 space-y-6">
+            {/* Variables Section */}
+            {Object.keys(editableVariables).length > 0 && (
+              <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
+                <div className="text-sm font-semibold text-base-content mb-4">Variables</div>
+                <div className="space-y-3">
+                  {Object.entries(editableVariables).map(([key, value]) => (
+                    <div key={key} className="bg-base-100 rounded-lg p-3 border border-base-200">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-base-content mb-1 block">Key</label>
+                          <div className="text-sm font-mono bg-base-200 px-3 py-2 rounded text-base-content">{key}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-base-content mb-1 block">Value</label>
+                          <input
+                            type="text"
+                            value={typeof value === "string" ? value : JSON.stringify(value)}
+                            onChange={(e) => handleVariableChange(key, e.target.value)}
+                            className="input input-bordered input-sm bg-base-50 text-sm w-full"
+                            placeholder="Enter value"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Show Conversations Button - Only when there are conversations to show */}
             {finalTestCases && finalTestCases.length > 2 && !showFullConversation && (
               <div className="flex xs">

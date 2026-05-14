@@ -3,35 +3,25 @@ import React, { useState, useEffect, useMemo, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
-import {
-  deleteTestCaseAction,
-  getAllTestCasesOfBridgeAction,
-  runTestCaseAction,
-  updateTestCaseAction,
-} from "@/store/action/testCasesAction";
-import { PencilIcon, PlayIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
-import OnBoarding from "@/components/OnBoarding";
+import { toast } from "react-toastify";
+import { deleteTestCaseAction, getAllTestCasesOfBridgeAction, runTestCaseAction } from "@/store/action/testCasesAction";
+import { PlayIcon, ChevronDownIcon } from "@/components/Icons";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
-import useTutorialVideos from "@/hooks/useTutorialVideos";
 import PageHeader from "@/components/Pageheader";
+import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetailsPanel";
 
 export const runtime = "edge";
 
 function TestCases({ params }) {
   // Use the tutorial videos hook
-  const { getTestCasesVideo } = useTutorialVideos();
 
   const resolvedParams = use(params);
   const router = useRouter();
   const dispatch = useDispatch();
   const [isloading, setIsLoading] = useState(false);
-  const [expandedRows, setExpandedRows] = useState({});
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [editUserInput, setEditUserInput] = useState("");
-  const [editExpectedOutput, setEditExpectedOutput] = useState("");
   const searchParams = useSearchParams();
   const bridgeVersion = searchParams.get("version");
-  const [selectedVersion, setSelectedVersion] = useState(searchParams.get("versionId") || "");
+  const [selectedVersion] = useState(searchParams.get("versionId") || "");
 
   const allBridges = useCustomSelector((state) => state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.orgs || [])
     .slice()
@@ -61,347 +51,297 @@ function TestCases({ params }) {
     }
   }, [selectedVersion, router, searchParams]);
 
-  const handleRunTestCase = (versionId) => {
+  const handleRunAllTestCases = async () => {
+    if (!selectedVersions.length) return;
     setIsLoading(true);
-    dispatch(runTestCaseAction({ versionId, bridgeId: resolvedParams?.id })).then(() => {
-      dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }));
+    try {
+      await dispatch(
+        runTestCaseAction({ versionIds: selectedVersions, bridgeId: resolvedParams?.id, matching_type: matchingType })
+      );
+      await dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }));
+      toast.success("All test cases completed successfully");
+    } catch (error) {
+      toast.error("Error running test cases");
+      console.error("Error running all test cases:", error);
+    } finally {
       setIsLoading(false);
-      setSelectedVersion(versionId);
-    });
-
-    // Preserve the type parameter when updating URL
-    const typeParam = searchParams.get("type");
-    const typeQueryPart = typeParam ? `&type=${typeParam}` : "";
-    router.push(`?version=${bridgeVersion}&versionId=${versionId}${typeQueryPart}`);
+    }
   };
 
-  const toggleRow = (index) => {
-    setExpandedRows((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
+  const handleRunSingleTestCase = async (testCaseId, variables = null) => {
+    if (!selectedVersions.length) return;
+    setRunningTestCaseId(testCaseId);
+    try {
+      await dispatch(
+        runTestCaseAction({
+          testcase_id: testCaseId,
+          versionIds: selectedVersions,
+          bridgeId: resolvedParams?.id,
+          matching_type: matchingType,
+          variables,
+        })
+      );
+      await dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }));
+    } finally {
+      setRunningTestCaseId(null);
+    }
   };
 
-  const handleEditClick = (e, index, testCase) => {
-    e?.stopPropagation();
-    setEditingIndex(index);
-    setEditUserInput(testCase?.conversation?.[testCase?.conversation?.length - 1]?.content || "");
-    setEditExpectedOutput(
-      testCase?.expected?.tool_calls
-        ? JSON.stringify(testCase?.expected?.tool_calls)
-        : testCase?.expected?.response || ""
-    );
+  const handleDeleteTestCase = async (testCaseId) => {
+    try {
+      await dispatch(deleteTestCaseAction({ testCaseId }));
+      await dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }));
+      setSelectedTestCaseIndex(0);
+    } catch (error) {
+      console.error("Error deleting test case:", error);
+    }
   };
 
-  const handleSaveEdit = (e, testCase) => {
-    e?.stopPropagation();
-    const updatedTestCase = {
-      ...testCase,
-      conversation: testCase?.conversation?.map((message, i) =>
-        i === testCase?.conversation?.length - 1 && message?.role === "user"
-          ? { ...message, content: editUserInput }
-          : message
-      ),
-      expected:
-        testCase?.type === "function"
-          ? { tool_calls: JSON.parse(editExpectedOutput) }
-          : { response: editExpectedOutput },
-    };
-    dispatch?.(updateTestCaseAction({ testCaseId: testCase?._id, dataToUpdate: updatedTestCase }));
-    setEditingIndex(null);
+  const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState(0);
+  const [selectedVersions, setSelectedVersions] = useState([]);
+  const [runningTestCaseId, setRunningTestCaseId] = useState(null);
+  const [matchingType, setMatchingType] = useState("AI");
+  const [isMatchingDropdownOpen, setIsMatchingDropdownOpen] = useState(false);
+  const matchingTypes = ["AI", "Exact", "Semantic"];
+
+  useEffect(() => {
+    if (selectedVersions.length === 0 && versions.length > 0) {
+      setSelectedVersions([...versions]);
+    }
+  }, [versions]);
+
+  const selectedTestCase = Array.isArray(testCases) && testCases[selectedTestCaseIndex];
+
+  const getScoreColor = (score) => {
+    if (score >= 0.9) return "text-success";
+    if (score >= 0.75) return "text-warning";
+    if (score >= 0.5) return "text-error";
+    return "text-error";
+  };
+
+  const getScoreMessage = (score) => {
+    if (score >= 0.95) return "Perfect match with expected output";
+    if (score >= 0.85) return "Excellent match, minor variations";
+    if (score >= 0.75) return "Good match, acceptable quality";
+    if (score >= 0.5) return "Moderate match, some deviations";
+    if (score >= 0.25) return "Below average, significant differences";
+    return "Poor match, major deviations from expected output";
   };
 
   return (
-    <div className="p-6 bg-base-100 rounded-lg shadow-sm relative">
-      {/* Loading Overlay */}
-      {isloading && (
-        <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-50">
-          <div className="flex items-center gap-3 bg-base-100 p-6 rounded-lg shadow-lg border border-base-content/20">
-            <span className="loading loading-spinner loading-lg text-primary"></span>
-            <div className="flex flex-col">
-              <span className="text-lg font-medium text-base-content">Running Test Cases</span>
-              <span className="text-sm text-base-content/60">Please wait while we process your test cases...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="">
+    <div className="bg-base-50 h-screen flex flex-col">
+      <div className="px-6">
         <PageHeader
           title="Test Cases"
           description="Test cases are used to compare outputs from different versions with varying prompts and models. You can add test cases from chat history and choose a comparison type - Exact, AI, or Cosine to measure accuracy."
           docLink="https://gtwy.ai/blogs/features/testcases"
         />
-        {tutorialState?.showSuggestion && (
-          <TutorialSuggestionToast
-            setTutorialState={setTutorialState}
-            flagKey={"TestCasesSetup"}
-            TutorialDetails={"TestCases Creation"}
-          />
-        )}
-        {tutorialState?.showTutorial && (
-          <OnBoarding
-            setShowTutorial={() => setTutorialState((prev) => ({ ...prev, showTutorial: false }))}
-            video={getTestCasesVideo()}
-            flagKey={"TestCasesSetup"}
-          />
-        )}
-        <div className="overflow-x-auto">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="bg-base-100">
-                <tr>
-                  <th className="w-8 p-3 text-left text-sm font-medium text-base-content border-b border-base-300">
+      </div>
+
+      {tutorialState?.showSuggestion && (
+        <TutorialSuggestionToast
+          setTutorialState={setTutorialState}
+          flagKey={"TestCasesSetup"}
+          TutorialDetails={"TestCases Creation"}
+        />
+      )}
+
+      <div className="p-6 pb-0">
+        {/* Top Controls */}
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative">
+              <button
+                onClick={() => setIsMatchingDropdownOpen(!isMatchingDropdownOpen)}
+                className="px-4 py-2.5 bg-base-100 border border-base-200 hover:border-base-400 text-base-content rounded-lg flex items-center gap-2 transition-all text-sm font-medium"
+              >
+                Matching: {matchingType}
+                <ChevronDownIcon
+                  size={16}
+                  className={`text-base-content/40 transition-transform ${isMatchingDropdownOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {isMatchingDropdownOpen && (
+                <div className="absolute top-full left-0 mt-2 bg-base-100 border border-base-200 rounded-lg shadow-lg z-30 min-w-[140px]">
+                  {matchingTypes.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setMatchingType(type);
+                        setIsMatchingDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                        matchingType === type
+                          ? "bg-primary/10 text-primary font-semibold"
+                          : "hover:bg-base-200 text-base-content"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="h-9 w-px bg-base-300"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-base-content">Versions:</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    selectedVersions.length === versions.length && versions.length > 0
+                      ? "bg-primary text-primary-content shadow-sm"
+                      : "bg-base-200 text-base-content hover:bg-base-300"
+                  }`}
+                  onClick={() => {
+                    if (selectedVersions.length === versions.length && versions.length > 0) {
+                      setSelectedVersions([]);
+                    } else {
+                      setSelectedVersions([...versions]);
+                    }
+                  }}
+                >
+                  ALL
+                </button>
+                {versions.slice(0, 10).map((version, idx) => (
+                  <button
+                    key={idx}
+                    className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      selectedVersions.includes(version)
+                        ? "bg-primary text-primary-content shadow-sm"
+                        : "bg-base-200 text-base-content hover:bg-base-300"
+                    }`}
+                    onClick={() => {
+                      setSelectedVersions((prev) => {
+                        const updated = prev.includes(version) ? prev.filter((v) => v !== version) : [...prev, version];
+                        return updated;
+                      });
+                    }}
+                  >
+                    V{idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleRunAllTestCases}
+            disabled={!Array.isArray(testCases) || testCases.length === 0 || isloading || selectedVersions.length === 0}
+            title={selectedVersions.length === 0 ? "Select at least one version to run" : ""}
+            className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-content rounded-lg flex items-center gap-2 font-medium transition-all text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {isloading ? (
+              <>
+                <span className="loading loading-spinner loading-sm"></span>
+                Running
+              </>
+            ) : (
+              <>
+                <PlayIcon size={16} />
+                Run All Testcases
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden px-6 pb-6 pt-6">
+        {/* Left Panel - Test Cases List */}
+        <div className="col-span-4 bg-base-100 border border-base-200 rounded-xl overflow-hidden flex flex-col">
+          <div className="overflow-x-auto overflow-y-auto flex-1">
+            <table className="w-full">
+              <thead className="bg-base-50 sticky top-0 z-10">
+                <tr className="border-b border-base-200">
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-0 bg-base-50 w-[40px] z-20">
                     #
                   </th>
-                  <th className="p-3 text-left text-sm font-medium text-base-content border-b border-base-300">
-                    User Input
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-[40px] bg-base-50 w-[140px] z-20">
+                    Input
                   </th>
-                  <th className="p-3 text-left text-sm font-medium text-base-content border-b border-base-300">
-                    Expected Output
-                  </th>
-                  <th className="p-3 text-left text-sm font-medium text-base-content border-b border-base-300">
-                    Model Answer
-                  </th>
-                  <th className="p-3 text-left text-sm font-medium text-base-content border-b border-base-300">
-                    Matching Type
-                  </th>
-                  {versions.map((version, index) => (
+                  {selectedVersions.map((version, idx) => (
                     <th
-                      key={index}
-                      className={`p-3 text-left text-sm font-medium text-gray-700 border-b ${version === selectedVersion ? "relative after:absolute after:left-0 after:bottom-[-2px] after:w-full after:h-[2px] after:bg-green-500 after:rounded-full" : ""}`}
+                      key={idx}
+                      className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 z-10"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="tooltip tooltip-left" data-tip="Run Test Case">
-                          {Array.isArray(testCases) && testCases?.length > 0 && (
-                            <button
-                              className="btn btn-sm btn-circle bg-base-100 border border-base-300 hover:bg-primary hover:border-primary hover:text-base-content disabled:bg-base-100 disabled:border-base-300 disabled:text-base-content"
-                              onClick={() => handleRunTestCase(version)}
-                              disabled={!resolvedParams?.id || isloading}
-                            >
-                              <PlayIcon size={12} />
-                            </button>
-                          )}
-                        </div>
-                        <span className={`font-medium text-base-content `}>{`V${index + 1}`}</span>
-                      </div>
+                      v{versions.indexOf(version) + 1}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-base-300 w-full">
-                {Array.isArray(testCases)
-                  ? testCases.map((testCase, index) => {
-                      const lastUserMessageRaw = testCase?.conversation
-                        ?.filter((message) => message?.role === "user")
-                        ?.pop()?.content;
-                      const lastUserMessage =
-                        typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
-                          ? JSON.stringify(lastUserMessageRaw)
-                          : lastUserMessageRaw || "N/A";
+              <tbody className="divide-y divide-base-200">
+                {Array.isArray(testCases) &&
+                  testCases.map((testCase, index) => {
+                    const lastUserMessageRaw = testCase?.conversation
+                      ?.filter((message) => message?.role === "user")
+                      ?.pop()?.content;
+                    const lastUserMessage =
+                      typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
+                        ? JSON.stringify(lastUserMessageRaw)
+                        : lastUserMessageRaw || "N/A";
 
-                      const expectedOutput = testCase?.expected?.tool_calls
-                        ? JSON.stringify(testCase?.expected?.tool_calls)
-                        : typeof testCase?.expected?.response === "object" && testCase?.expected?.response !== null
-                          ? JSON.stringify(testCase.expected.response)
-                          : testCase?.expected?.response || "N/A";
+                    const isSelected = selectedTestCaseIndex === index;
 
-                      // Find the best version to display
-                      // 1. Try the version from URL if it has data
-                      // 2. Otherwise, find the last version that has data in version_history
-                      const versionFromUrl = selectedVersion;
-                      let displayVersion = versionFromUrl;
-
-                      // Check if the URL version has data
-                      if (!testCase?.version_history?.[displayVersion]) {
-                        // Find the last version that has data, starting from the end
-                        displayVersion =
-                          [...versions].reverse().find((v) => testCase?.version_history?.[v]) ||
-                          versions?.[versions?.length - 1];
-                      }
-
-                      const testCaseVersionArray = testCase?.version_history?.[displayVersion];
-                      const modelOutputRaw = testCaseVersionArray?.[testCaseVersionArray?.length - 1]?.model_output;
-                      const model_output =
-                        typeof modelOutputRaw === "string" ? modelOutputRaw : JSON.stringify(modelOutputRaw);
-
-                      const isExpanded = expandedRows[index] || false;
-
-                      return (
-                        <React.Fragment key={index}>
-                          <tr
-                            className="hover:bg-base-100 cursor-pointer transition-colors"
-                            onClick={() => toggleRow(index)}
-                          >
-                            <td className="p-2 font-medium text-base-content">
-                              <div className="flex items-center">
-                                <span className="mr-2 text-base-content">
-                                  {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+                    return (
+                      <tr
+                        key={index}
+                        onClick={() => setSelectedTestCaseIndex(index)}
+                        className={`cursor-pointer transition-all ${isSelected ? "bg-base-200" : "hover:bg-base-50"}`}
+                      >
+                        <td
+                          className={`px-2 py-3.5 text-sm sticky left-0 bg-inherit z-10 w-[40px] ${isSelected ? "font-semibold" : "font-medium"} text-base-content`}
+                        >
+                          {index + 1}
+                        </td>
+                        <td
+                          className={`px-2 py-3.5 text-sm sticky left-[40px] bg-inherit z-10 w-[140px] ${isSelected ? "font-semibold" : "font-medium"} text-base-content whitespace-nowrap overflow-hidden text-ellipsis`}
+                        >
+                          {lastUserMessage?.substring(0, 20)}
+                          {lastUserMessage?.length > 20 ? "..." : ""}
+                        </td>
+                        {selectedVersions.map((version, vIdx) => {
+                          return (
+                            <td key={vIdx} className="px-2 py-3.5 text-center bg-inherit min-w-[60px]">
+                              {testCase?.version_history?.[version] && (
+                                <span
+                                  className={`text-xs font-semibold ${getScoreColor(testCase?.version_history?.[version]?.[testCase?.version_history?.[version]?.length - 1]?.score || 0)}`}
+                                >
+                                  {testCase?.version_history?.[version]?.[
+                                    testCase?.version_history?.[version]?.length - 1
+                                  ]?.score
+                                    ? `${(testCase?.version_history?.[version]?.[testCase?.version_history?.[version]?.length - 1]?.score * 100).toFixed(0)}%`
+                                    : "0%"}
                                 </span>
-                                <span>{index + 1}</span>
-                              </div>
+                              )}
                             </td>
-                            <td className="p-3 max-w-xs truncate" title={lastUserMessage}>
-                              {lastUserMessage?.substring(0, 30)}
-                              {lastUserMessage?.length > 30 ? "..." : ""}
-                            </td>
-                            <td className="p-3 max-w-xs truncate" title={expectedOutput}>
-                              {expectedOutput?.substring(0, 30)}
-                              {expectedOutput?.length > 30 ? "..." : ""}
-                            </td>
-                            <td className="p-3 max-w-xs truncate" title={model_output}>
-                              {model_output
-                                ? model_output?.substring(0, 30) + (model_output?.length > 30 ? "..." : "")
-                                : "N/A"}
-                            </td>
-                            <td className="p-3 max-w-xs truncate" title={testCase?.matching_type}>
-                              {" "}
-                              {testCase?.matching_type}
-                            </td>
-                            {versions?.map((version, versionIndex) => {
-                              const versionArray = testCase?.version_history?.[version];
-                              const versionScore = versionArray?.[versionArray?.length - 1]?.score;
-                              return (
-                                <td key={versionIndex} className="p-3 truncate max-w-20">
-                                  {versionScore ? `${(versionScore * 100).toFixed(2)}%` : "0"}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                          {isExpanded && (
-                            <tr>
-                              <td colSpan={versions.length + 5} className="p-4 bg-base-100">
-                                <div className="space-y-4">
-                                  <div>
-                                    <h3 className="text-sm font-medium text-base-content mb-1">User Input</h3>
-                                    {editingIndex === index ? (
-                                      <textarea
-                                        value={editUserInput}
-                                        onChange={(e) => setEditUserInput(e.target.value)}
-                                        className="textarea bg-base-200 dark:bg-black/15/10 textarea-bordered w-full min-h-20"
-                                      />
-                                    ) : (
-                                      <div className="p-3 bg-base-100 rounded-md shadow-sm text-sm text-base-content overflow-auto max-h-40">
-                                        {lastUserMessage}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h3 className="text-sm font-medium text-base-content mb-1">Expected Output</h3>
-                                    {editingIndex === index ? (
-                                      <textarea
-                                        value={editExpectedOutput}
-                                        onChange={(e) => setEditExpectedOutput(e.target.value)}
-                                        className="textarea bg-base-100 textarea-bordered w-full min-h-20"
-                                      />
-                                    ) : (
-                                      <div className="p-3 bg-base-100 rounded-md shadow-sm text-sm text-base-content whitespace-pre-wrap overflow-auto max-h-40">
-                                        {expectedOutput}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h3 className="text-sm font-medium text-base-content mb-1">Model Answer</h3>
-                                    <div className="p-3 bg-base-100 rounded-md shadow-sm text-sm text-base-content whitespace-pre-wrap overflow-auto max-h-40">
-                                      {model_output || "N/A"}
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    {editingIndex === index ? (
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSaveEdit(e, testCase);
-                                          }}
-                                          className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 text-sm flex items-center gap-1.5 transition-colors"
-                                        >
-                                          Save
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingIndex(null);
-                                          }}
-                                          className="px-3 py-1.5 bg-base-100 text-base-content rounded-lg hover:bg-base-100 text-sm flex items-center gap-1.5 transition-colors"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleEditClick(e, index, testCase);
-                                        }}
-                                        className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-1.5 transition-colors"
-                                      >
-                                        <PencilIcon className="w-4 h-4" /> Edit
-                                      </button>
-                                    )}
-                                    <button
-                                      onClick={(e) => {
-                                        e?.stopPropagation();
-                                        dispatch?.(
-                                          deleteTestCaseAction({
-                                            testCaseId: testCase?._id,
-                                            bridgeId: resolvedParams?.id,
-                                          })
-                                        );
-                                      }}
-                                      className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm flex items-center gap-1.5 transition-colors"
-                                    >
-                                      <TrashIcon className="w-4 h-4" /> Delete
-                                    </button>
-                                  </div>
-
-                                  <div>
-                                    <h3 className="text-sm font-medium text-base-content mb-1">Version Scores</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                      {versions?.map((version, versionIndex) => {
-                                        const versionArray = testCase?.version_history?.[version];
-                                        const versionScore = versionArray?.[versionArray?.length - 1]?.score;
-                                        const progressValue = versionScore ? Math.round(versionScore * 100) : 0;
-                                        const lastRun = versionArray?.[versionArray?.length - 1]?.created_at;
-                                        return (
-                                          <div
-                                            key={versionIndex}
-                                            className="flex flex-col gap-2 px-3 py-2 bg-base-100 rounded-lg text-sm text-base-content border border-base-300"
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <span>V{versionIndex + 1}:</span>
-                                              <div
-                                                className="radial-progress text-primary"
-                                                style={{
-                                                  "--value": progressValue,
-                                                  "--size": "3rem",
-                                                  "--thickness": "3px",
-                                                }}
-                                                role="progressbar"
-                                              >
-                                                {progressValue}%
-                                              </div>
-                                            </div>
-                                            <div className="text-xs text-base-content">
-                                              Last run: {lastRun ? new Date(lastRun).toLocaleString() : "-"}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  : null}
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
+          <div className="px-4 py-3 border-t border-base-200 text-xs text-base-content/60 bg-base-50">
+            {Array.isArray(testCases)
+              ? `${testCases.length} testcases • ${selectedVersions.length} versions selected`
+              : "0 testcases"}
+          </div>
         </div>
+
+        {/* Right Panel - Details */}
+        <TestCaseDetailsPanel
+          selectedTestCase={selectedTestCase}
+          selectedVersions={selectedVersions}
+          versions={versions}
+          runningTestCaseId={runningTestCaseId}
+          isloading={isloading}
+          handleRunSingleTestCase={handleRunSingleTestCase}
+          handleDeleteTestCase={handleDeleteTestCase}
+          getScoreColor={getScoreColor}
+          getScoreMessage={getScoreMessage}
+          bridgeId={resolvedParams?.id}
+          onTestCaseUpdate={() => dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }))}
+        />
       </div>
     </div>
   );

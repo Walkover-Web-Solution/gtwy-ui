@@ -45,10 +45,10 @@ export const deleteTestCaseApi = async ({ testCaseId }) => {
   }
 };
 
-export const runTestCaseApi = async ({ versionId, testcase_id, testCaseData, bridgeId, variables, matching_type }) => {
+export const runTestCaseApi = async ({ versionIds, testcase_id, testCaseData, bridgeId, variables, matching_type }) => {
   try {
     const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, {
-      version_id: versionId,
+      version_ids: Array.isArray(versionIds) ? versionIds : [versionIds],
       testcases: true,
       testcase_id: testcase_id,
       testcase_data: testCaseData,
