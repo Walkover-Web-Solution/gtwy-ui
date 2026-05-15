@@ -1,5 +1,4 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { ADVANCED_BRIDGE_PARAMETERS } from "@/jsonFiles/bridgeParameter";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
@@ -453,14 +452,18 @@ const AdvancedParameters = ({
     });
   }, []);
   // Helper function to render parameter fields
-  const renderParameterField = (key, { field, min = 0, max, step, default: defaultValue, options }) => {
+  const renderParameterField = (
+    key,
+    { field, min = 0, max, step, default: defaultValue, options, name, description }
+  ) => {
     const isDeafaultObject = typeof modelInfoData?.[key]?.default === "object";
     if (key === "response_type" && isEmbedUser && !showResponseType) {
       return null;
     }
 
-    const name = ADVANCED_BRIDGE_PARAMETERS?.[key]?.name || key;
-    const description = ADVANCED_BRIDGE_PARAMETERS?.[key]?.description || "";
+    // Use name and description from modelInfoData instead of static file
+    const displayName = name || modelInfoData?.[key]?.name || key;
+    const displayDescription = description || modelInfoData?.[key]?.description || "";
     const isDefaultValue = configuration?.[key] === "default" || configuration?.[key] === undefined;
     // Check if this parameter has a default value defined in model info
     const hasDefaultValue = modelInfoData?.[key]?.default !== undefined;
@@ -502,9 +505,9 @@ const AdvancedParameters = ({
       >
         <div className="flex items-center justify-between gap-2 mb-1 min-h-[32px]">
           <div className="flex items-center gap-2">
-            <span className={labelTextClass}>{name || key}</span>
-            {description && (
-              <InfoTooltip tooltipContent={description}>
+            <span className={labelTextClass}>{displayName}</span>
+            {displayDescription && (
+              <InfoTooltip tooltipContent={displayDescription}>
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             )}
