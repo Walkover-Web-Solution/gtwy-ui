@@ -277,9 +277,9 @@ sendMessageToGtwy({
     prompt,
     tools_id,
     slide,
-    hideCloseButton,
-    hideFullScreenButton,
-    hideHeader,
+    showCloseButton,
+    showFullScreenButton,
+    showHeader,
     defaultOpen,
     parentId,
   },
@@ -321,10 +321,10 @@ state.appInfoReducer.embedUserDetails = {
     customPrompt: string,
     embedFields: [{ name, type, hidden, displayValue, description }]
   },
-  hideAdvancedParameters: boolean,
-  hideCreateManuallyButton: boolean,
-  hideAdvancedConfigurations: boolean,
-  hidePreTool: boolean,
+  showAdvancedParameters: boolean,
+  showCreateManuallyButton: boolean,
+  showAdvancedConfigurations: boolean,
+  showPreTool: boolean,
   // ... additional UI toggle flags
 }
 ```
@@ -346,9 +346,9 @@ The embed script reads these attributes from `<script id="gtwy-main-script">`:
 | `parentId`             | DOM container ID (optional, defaults to fixed position) |
 | `slide`                | Position: `"full"` \| `"left"` \| `"right"`             |
 | `defaultOpen`          | Auto-open on page load                                  |
-| `hideCloseButton`      | Hide close button in header                             |
-| `hideFullScreenButton` | Hide fullscreen toggle                                  |
-| `hideHeader`           | Hide entire embed header                                |
+| `showCloseButton`      | Show close button in header                             |
+| `showFullScreenButton` | Show fullscreen toggle                                  |
+| `showHeader`           | Show entire embed header                                |
 | `agent_id`             | Target a specific agent                                 |
 | `agent_name`           | Create agent with this name                             |
 | `agent_purpose`        | Create agent with AI-generated config                   |
