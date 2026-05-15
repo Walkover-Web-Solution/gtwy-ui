@@ -90,14 +90,12 @@ export const KEYS_TO_COMPARE = [
   "org_id",
   "apikey_object_id",
   "gpt_memory",
-  "function_ids",
+  "connected_tools",
   "settings",
   "IsstarterQuestionEnable",
   "actions",
   "apikey",
-  "connected_agents",
   "user_reference",
-  "doc_ids",
   "gpt_memory_context",
 ];
 

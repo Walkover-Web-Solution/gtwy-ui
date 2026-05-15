@@ -103,7 +103,9 @@ const AdvancedParameters = ({
       integrationData,
       service,
       configuration,
-      connected_agents: isPublished ? bridgeDataFromState?.connected_agents : versionData?.connected_agents,
+      connected_agents: isPublished
+        ? bridgeDataFromState?.connected_tools?.connected_agents
+        : versionData?.connected_tools?.connected_agents,
       modelInfoData,
       bridge: activeData,
       richUiWidgets: state?.richUiTemplateReducer?.templates || [],

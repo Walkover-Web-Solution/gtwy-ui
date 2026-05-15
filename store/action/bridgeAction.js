@@ -505,7 +505,8 @@ export const updateBridgeVersionAction =
         // Handle both flat structure (API response) and nested structure (optimistic updates)
         // After refresh: currentVersion.connected_agents (flat)
         // After optimistic update: currentVersion.agents.connected_agents (nested)
-        const currentConnectedAgents = currentVersion.agents?.connected_agents || currentVersion.connected_agents || {};
+        const currentConnectedAgents =
+          currentVersion.agents?.connected_agents || currentVersion.connected_tools?.connected_agents || {};
 
         if (isRemoval && dataToSend.agents.connected_agents) {
           // Remove the specified agent(s)
@@ -546,55 +547,87 @@ export const updateBridgeVersionAction =
         }
       }
 
-      // Deep merge variables_path if present
-      if (dataToSend.variables_path) {
-        optimisticData.variables_path = {
-          ...currentVersion.variables_path,
-          ...dataToSend.variables_path,
-        };
-      }
+      // variables_path is now stored in connected_agents[].args
 
       // Handle function_ids for EmbedList - update optimistically based on functionData
       if (dataToSend.functionData) {
-        const currentFunctionIds = currentVersion.function_ids || [];
+        const currentTools = currentVersion.connected_tools?.tools || [];
         if (dataToSend.functionData.function_operation === "1") {
           // Add function if not already present
-          if (!currentFunctionIds.includes(dataToSend.functionData.function_id)) {
-            optimisticData.function_ids = [...currentFunctionIds, dataToSend.functionData.function_id];
+          const toolExists = currentTools.some(
+            (t) => t.id === dataToSend.functionData.function_id && t.type === "tool"
+          );
+          if (!toolExists) {
+            optimisticData.connected_tools = {
+              ...optimisticData.connected_tools,
+              tools: [
+                ...currentTools,
+                {
+                  id: dataToSend.functionData.function_id,
+                  type: "tool",
+                  args: {},
+                },
+              ],
+            };
           }
         } else {
           // Remove function
-          optimisticData.function_ids = currentFunctionIds.filter((id) => id !== dataToSend.functionData.function_id);
+          optimisticData.connected_tools = {
+            ...optimisticData.connected_tools,
+            tools: currentTools.filter((t) => !(t.id === dataToSend.functionData.function_id && t.type === "tool")),
+          };
         }
       }
 
       // Handle doc_ids if present (complete array replacement)
       if (dataToSend.doc_ids !== undefined) {
-        optimisticData.doc_ids = dataToSend.doc_ids;
+        optimisticData.connected_tools = {
+          ...optimisticData.connected_tools,
+          docs: (dataToSend.doc_ids || []).map((id) => ({
+            id: id,
+            type: "doc",
+          })),
+        };
       }
 
       // Handle built_in_tools_data if present
       if (dataToSend.built_in_tools_data) {
-        optimisticData.built_in_tools = currentVersion.built_in_tools || [];
+        const currentTools = currentVersion.connected_tools?.tools || [];
         if (dataToSend.built_in_tools_data.built_in_tools_operation === "1") {
           // Add tool if not already present
-          if (!optimisticData.built_in_tools.includes(dataToSend.built_in_tools_data.built_in_tools)) {
-            optimisticData.built_in_tools = [
-              ...optimisticData.built_in_tools,
-              dataToSend.built_in_tools_data.built_in_tools,
-            ];
+          const toolExists = currentTools.some(
+            (t) => t.id === dataToSend.built_in_tools_data.built_in_tools && t.type === "built_in_tool"
+          );
+          if (!toolExists) {
+            optimisticData.connected_tools = {
+              ...optimisticData.connected_tools,
+              tools: [
+                ...currentTools,
+                {
+                  id: dataToSend.built_in_tools_data.built_in_tools,
+                  type: "built_in_tool",
+                  args: {},
+                },
+              ],
+            };
           }
         } else {
           // Remove tool
-          optimisticData.built_in_tools = optimisticData.built_in_tools.filter(
-            (tool) => tool !== dataToSend.built_in_tools_data.built_in_tools
-          );
+          optimisticData.connected_tools = {
+            ...optimisticData.connected_tools,
+            tools: currentTools.filter(
+              (t) => !(t.id === dataToSend.built_in_tools_data.built_in_tools && t.type === "built_in_tool")
+            ),
+          };
         }
       }
 
       // Handle web_search_filters if present (complete array replacement)
       if (dataToSend.web_search_filters !== undefined) {
-        optimisticData.web_search_filters = dataToSend.web_search_filters;
+        optimisticData.connected_tools = {
+          ...optimisticData.connected_tools,
+          web_search_filters: dataToSend.web_search_filters,
+        };
       }
 
       // Handle settings if present (deep merge)

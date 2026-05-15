@@ -204,10 +204,12 @@ const KnowledgeBaseModal = ({
             bridgeId: params?.bridge_id,
             versionId: searchParams?.version,
             dataToSend: {
-              doc_ids: [
-                ...(knowbaseVersionData || {}),
-                { resource_id: result._id, collection_id: result.collectionId, description: result.description },
-              ],
+              connected_tools: {
+                doc_ids: [
+                  ...(knowbaseVersionData || {}),
+                  { resource_id: result._id, collection_id: result.collectionId, description: result.description },
+                ],
+              },
             },
           })
         );

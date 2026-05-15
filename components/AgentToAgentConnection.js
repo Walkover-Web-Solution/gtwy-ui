@@ -194,8 +194,8 @@ function AgentNode({ id, data }) {
 
   const functions = useMemo(() => {
     const selected = allAgent?.find((a) => a._id === data.selectedAgent?._id);
-    if (!selected?.function_ids || !allFunction) return [];
-    return selected.function_ids.map((fid) => allFunction[fid]).filter(Boolean);
+    if (!selected?.connected_tools?.function_ids || !allFunction) return [];
+    return selected.connected_tools.function_ids.map((fid) => allFunction[fid]).filter(Boolean);
   }, [allAgent, data.selectedAgent, allFunction]);
 
   const isMasterAgent = data.isFirstAgent;
@@ -524,20 +524,26 @@ function Flow({
         };
 
         // Process nested connected agents if they exist
-        if (agentData.connected_agents && agentData.connected_agents.length > 0) {
-          agentData.connected_agents.forEach((connectedAgent) => {
+        if (
+          agentData.connected_tools?.connected_agents &&
+          Object.keys(agentData.connected_tools.connected_agents).length > 0
+        ) {
+          Object.entries(agentData.connected_tools.connected_agents).forEach(([agentName, connectedAgent]) => {
             const connectedAgentName =
-              connectedAgent.name || connectedAgent.agent_name || `Agent_${connectedAgent._id}`;
+              agentName || connectedAgent.name || connectedAgent.agent_name || `Agent_${connectedAgent.bridge_id}`;
             connectedAgentsData[connectedAgentName] = {
               bridge_id: connectedAgent._id || connectedAgent.bridge_id,
               thread_id: connectedAgent.thread_id || false,
-              version_id: connectedAgent.published_version_id || connectedAgent?.versions?.[0],
+              version_id:
+                connectedAgent.version_id || connectedAgent.published_version_id || connectedAgent?.versions?.[0],
             };
 
             // Process deeply nested connections recursively
-            if (connectedAgent.connected_agents && connectedAgent.connected_agents.length > 0) {
+            if (connectedAgent.connected_agents) {
               const processNestedAgents = (nestedAgents, depth = 0) => {
                 if (depth > 3) return; // Prevent infinite recursion
+
+                // Handle both array and object formats for nested agents
                 nestedAgents.forEach((nestedAgent) => {
                   const nestedAgentName = nestedAgent.name || nestedAgent.agent_name || `Agent_${nestedAgent._id}`;
                   connectedAgentsData[nestedAgentName] = {
@@ -1380,7 +1386,11 @@ function Flow({
             createFanoutSubgraph(rootNodeId, childBridge, childConnectedRefs, false, newVisitedAgents);
 
             // Update child agent's internal connections if they exist
-            if (isConnectedMode && childBridge.connected_agents && childBridge.connected_agents.length > 0) {
+            if (
+              isConnectedMode &&
+              childBridge.connected_tools?.connected_agents &&
+              Object.keys(childBridge.connected_tools.connected_agents).length > 0
+            ) {
               setTimeout(() => {
                 const childNodeId = childBridge._id || childBridge.name;
                 const childNode = nodes.find((n) => n.id === childNodeId);
