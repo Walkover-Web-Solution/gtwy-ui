@@ -598,9 +598,9 @@ function Flow({
       const agent = agents.find((a) => a._id === sel._id);
       const base = {
         name: sel?.name || "",
-        description: agent?.connected_agent_details?.description || "",
-        fields: agent?.connected_agent_details?.agent_variables?.fields || {},
-        required: agent?.connected_agent_details?.agent_variables?.required || [],
+        description: agent?.agent_info?.description || "",
+        fields: agent?.agent_info?.agent_variables?.fields || {},
+        required: agent?.agent_info?.agent_variables?.required || [],
       };
 
       setNodes((currentNodes) => {
@@ -712,14 +712,12 @@ function Flow({
         updateBridgeAction({
           bridgeId: selectedAgent?._id || selectedAgent?.bridge_id,
           dataToSend: {
-            connected_agent_details: {
+            agent_info: {
               agent_variables: {
                 fields: toolData?.fields,
                 required: toolData?.required,
               },
-              description: toolData?.description
-                ? toolData?.description
-                : selectedAgent?.connected_agent_details?.description,
+              description: toolData?.description ? toolData?.description : selectedAgent?.agent_info?.description,
             },
           },
         })

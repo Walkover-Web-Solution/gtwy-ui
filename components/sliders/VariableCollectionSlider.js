@@ -209,7 +209,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
       variablesKeyValue: versionState?.variables || [],
       variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-      variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
+      variable_state:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.agent_info?.variables_state || {},
       bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
     };
   });
@@ -648,7 +649,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId,
-          dataToSend: { variables_state: currentVariableState },
+          dataToSend: { agent_info: { variables_state: currentVariableState } },
         })
       );
 

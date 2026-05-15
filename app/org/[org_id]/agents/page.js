@@ -615,8 +615,8 @@ function Home({ params, searchParams, isEmbedUser }) {
       const createdAt = item.created_at || item.createdAt;
       const updatedAt = item.updated_at || item.updatedAt;
       const lastUsed = item.last_used;
-      const promptTotalTokens = item?.prompt_total_tokens;
-      const promptEnhancerPercentage = item?.ai_updates?.prompt_enhancer_percentage;
+      const promptTotalTokens = item?.agent_info?.prompt_total_tokens;
+      const promptEnhancerPercentage = item?.ai_updates?.ai_updates?.prompt_enhancer_percentage;
       return {
         _id: item._id,
         model: item.configuration?.model || "",
@@ -722,8 +722,8 @@ function Home({ params, searchParams, isEmbedUser }) {
     const updatedAt = item.updated_at || item.updatedAt;
     const lastUsed = item.last_used;
     // Direct access to metrics data without using helper functions
-    const promptTotalTokens = item?.prompt_total_tokens;
-    const promptEnhancerPercentage = item?.ai_updates?.prompt_enhancer_percentage;
+    const promptTotalTokens = item?.agent_info?.prompt_total_tokens;
+    const promptEnhancerPercentage = item?.ai_updates?.ai_updates?.prompt_enhancer_percentage;
 
     return {
       _id: item._id,

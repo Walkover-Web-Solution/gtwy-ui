@@ -404,7 +404,9 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
               configuration: {
                 prompt: newValue,
               },
-              variables_state: variablesState,
+              agent_info: {
+                variables_state: variablesState,
+              },
             },
           })
         );

@@ -162,7 +162,7 @@ export const bridgeReducer = createSlice({
         }
       }
 
-      if (bridges?.connected_agent_details) {
+      if (bridges?.agent_info?.connected_agent_details) {
         const allData = state.org[bridges.org_id]?.orgs;
         if (allData) {
           // Find the index of the bridge to update

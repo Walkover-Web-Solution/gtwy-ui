@@ -53,15 +53,10 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   const handleSaveAgent = (overrideBridge = null, bridgeData) => {
     try {
       const sb = overrideBridge ? overrideBridge : selectedBridge;
-      if (!description && !sb?.bridge_summary && !sb?.connected_agent_details?.description) {
+      if (!description && !sb?.bridge_summary && !sb?.agent_info?.description) {
         toast?.error("Description Required");
         return;
       }
-      const bridgeItem = bridgeData?.find((bridge) => {
-        if (bridge?._id === sb?._id) {
-          return bridge;
-        }
-      });
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
@@ -82,13 +77,12 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         updateBridgeAction({
           bridgeId: sb?._id || sb?.bridge_id,
           dataToSend: {
-            connected_agent_details: {
-              ...bridgeItem?.connected_agent_details,
+            agent_info: {
               description: description
                 ? description
                 : sb?.bridge_summary
                   ? sb?.bridge_summary
-                  : sb?.connected_agent_details?.description,
+                  : sb?.agent_info?.description,
             },
           },
         })
@@ -104,7 +98,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   };
   const handleSelectAgents = (bridge, bridgeData) => {
     setSelectedBridge(bridge);
-    if (!bridge?.connected_agent_details?.description && !bridge?.bridge_summary) {
+    if (!bridge?.agent_info?.description && !bridge?.bridge_summary) {
       openModal(MODAL_TYPE?.AGENT_DESCRIPTION_MODAL);
       return;
     }
@@ -122,8 +116,8 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         }
       });
       setSelectedBridge({ name: name, ...item });
-      const agent_variables = bridgeItem?.connected_agent_details?.agent_variables || {};
-      const description = bridgeItem?.connected_agent_details?.description || item?.description || "";
+      const agent_variables = bridgeItem?.agent_info?.agent_variables || {};
+      const description = bridgeItem?.agent_info?.description || item?.description || "";
       const { fields, required } = agent_variables;
       const agentData = {
         name: item?.bridge_id,
@@ -194,7 +188,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         updateBridgeAction({
           bridgeId: selectedBridge?._id || selectedBridge?.bridge_id,
           dataToSend: {
-            connected_agent_details: {
+            agent_info: {
               agent_variables: {
                 fields: agentTools?.fields,
                 required: agentTools?.required,
@@ -259,7 +253,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           data-testid={`connected-agent-item-${item?.bridge_id}`}
           key={item?.bridge_id}
           id={item?.bridge_id}
-          className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full overflow-hidden ${!bridge?.connected_agent_details?.description && !item.description ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
+          className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full overflow-hidden ${!bridge?.agent_info?.description && !item.description ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
         >
           <div className="p-2 flex-1 flex items-center" onClick={() => handleAgentClicked(item)}>
             <div className="flex items-center gap-2 w-full">

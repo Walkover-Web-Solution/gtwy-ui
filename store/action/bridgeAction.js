@@ -605,6 +605,22 @@ export const updateBridgeVersionAction =
         };
       }
 
+      // Handle agent_info if present (deep merge)
+      if (dataToSend.agent_info) {
+        optimisticData.agent_info = {
+          ...currentVersion.agent_info,
+          ...dataToSend.agent_info,
+        };
+      }
+
+      // Handle settings if present (deep merge)
+      if (dataToSend.settings) {
+        optimisticData.settings = {
+          ...currentVersion.settings,
+          ...dataToSend.settings,
+        };
+      }
+
       dispatch(
         updateBridgeVersionReducer({
           bridges: optimisticData,
