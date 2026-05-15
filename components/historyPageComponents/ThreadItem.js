@@ -197,7 +197,6 @@ const ThreadItem = ({
     }
   };
 
-  const [debugQuery, setDebugQuery] = useState("");
   const [isUserQueryExpanded, setIsUserQueryExpanded] = useState(false);
   const [isAiResponseExpanded, setIsAiResponseExpanded] = useState(false);
   const { sliderState, openSlider, closeSlider } = useSlider();
@@ -332,7 +331,11 @@ const ThreadItem = ({
     return found || null;
   }, [item?.tools_call_data, flattenTools]);
 
-  const { preTools, postTools, otherTools } = useMemo(() => {
+  const {
+    preTools,
+    postTools,
+    otherTools: _otherTools,
+  } = useMemo(() => {
     const allTools = flattenTools(item?.tools_call_data);
     const pre = [];
     const post = [];
@@ -531,7 +534,7 @@ const ThreadItem = ({
     [knowledgeBaseData, openSlider, embedToken, params?.id, params?.org_id, orgBridges, allBridgesMap]
   );
 
-  const renderToolData = useCallback(
+  const _renderToolData = useCallback(
     (tool, index) => (
       <div
         key={index}
@@ -795,6 +798,16 @@ const ThreadItem = ({
                 <AddIcon className="h-3 w-3" />
                 <span>Test Case</span>
               </button>
+              <div className="w-px h-4 bg-base-300 mx-0.5" />
+              <button
+                data-testid="thread-item-user-variables-button-sticky"
+                id="thread-item-user-variables-button-sticky"
+                className="btn btn-ghost btn-xs rounded-md gap-1.5"
+                onClick={() => handleUserButtonClick("variables")}
+              >
+                <ParenthesesIcon className="h-3 w-3" />
+                <span>Variables</span>
+              </button>
             </div>
           </div>
         </div>
@@ -816,22 +829,22 @@ const ThreadItem = ({
                 <span className="text-xs font-medium text-base-content/70 shrink-0">Pre Function:</span>
                 <div
                   onClick={(e) => handleToolPrimaryClick(e, preFunction)}
-                  className="inline-flex items-center justify-between gap-3 bg-base-200 border border-base-300 rounded-lg px-3 py-2 text-sm cursor-pointer hover:bg-base-300 transition-colors"
+                  className="inline-flex items-center gap-2 bg-base-200 border border-base-300 rounded-md px-4 py-2 text-xs cursor-pointer hover:bg-base-300 transition-colors"
                 >
                   <span className="font-medium truncate max-w-[120px]" title={getToolNameHelper(preFunction)}>
                     {truncate(getToolNameHelper(preFunction), 20)}
                   </span>
-                  <div className="flex gap-3">
+                  <div className="flex gap-1.5">
                     <div className="tooltip tooltip-top" data-tip="function logs">
                       <SquareFunctionIcon
-                        size={22}
+                        size={14}
                         onClick={(e) => handleToolPrimaryClick(e, preFunction)}
                         className="opacity-80 cursor-pointer"
                       />
                     </div>
-                    <div className="tooltip tooltip-top pr-2" data-tip="function data">
+                    <div className="tooltip tooltip-top" data-tip="function data">
                       <FileClockIcon
-                        size={22}
+                        size={14}
                         onClick={(e) => {
                           e.stopPropagation();
                           setToolsData(preFunction);
@@ -1366,7 +1379,7 @@ const ThreadItem = ({
             {/* User message */}
             <div className="chat group chat-end mb-4">
               <div className="chat-image avatar flex justify-center items-center">
-                <div className="w-100 p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors">
+                <div className="p-2 rounded-full bg-base-300 flex justify-center items-center hover:bg-base-300/80 transition-colors">
                   <div className="relative rounded-full bg-base-300 flex justify-center items-center">
                     <UserIcon size={20} className="text-base-content" />
                   </div>
@@ -1597,16 +1610,6 @@ const ThreadItem = ({
             )}
 
             {/* Other tools (pre_function, post_function, etc.) rendered using renderToolData */}
-            {otherTools.length > 0 && (
-              <div className="mb-6 mt-4 flex flex-col items-center w-full justify-center">
-                <h3 className="text-sm font-medium text-base-content/70 mb-4">() Functions Executed Successfully</h3>
-                <div
-                  className={`grid ${otherTools.length === 1 ? "grid-cols-1" : otherTools.length === 2 ? "grid-cols-2" : "grid-cols-3"} gap-2 justify-center`}
-                >
-                  {otherTools.map((tool, index) => renderToolData(tool, index))}
-                </div>
-              </div>
-            )}
 
             {/* 3. Third: Render Assistant Message if exists */}
             {!item.error && (
@@ -1821,39 +1824,6 @@ const ThreadItem = ({
                   <BotIcon className="text-base-content" size={18} />
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Debug Agent footer — single-query */}
-        {isSingleQuery && (
-          <div className="mt-4 mb-2">
-            <div className="flex items-center gap-2 border border-base-200 rounded-lg px-3 py-2 bg-base-100 focus-within:border-primary/50 transition-colors">
-              <BotMessageIcon className="h-3.5 w-3.5 text-base-content/40 shrink-0" />
-              <input
-                type="text"
-                value={debugQuery}
-                onChange={(e) => setDebugQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && debugQuery.trim()) {
-                    handleAskAi({ ...item, user: debugQuery.trim() });
-                    setDebugQuery("");
-                  }
-                }}
-                placeholder="Debug with me..."
-                className="flex-1 bg-transparent text-sm outline-none text-base-content placeholder:text-base-content/30"
-              />
-              <button
-                id="thread-item-debug-agent-button"
-                disabled={!debugQuery.trim()}
-                onClick={() => {
-                  handleAskAi({ ...item, user: debugQuery.trim() });
-                  setDebugQuery("");
-                }}
-                className="btn btn-primary btn-xs rounded-md"
-              >
-                Send
-              </button>
             </div>
           </div>
         )}

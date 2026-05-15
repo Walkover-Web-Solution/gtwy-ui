@@ -89,7 +89,13 @@ export const getSubThreadsAction =
   ({ thread_id, error, bridge_id, version_id }) =>
   async (dispatch) => {
     try {
+      console.log("[getSubThreadsAction] start", { thread_id, timestamp: new Date().toISOString() });
       const data = await getSubThreadIds({ thread_id, error, bridge_id, version_id });
+      console.log("[getSubThreadsAction] response received", {
+        thread_id,
+        threadsCount: data?.threads?.length || 0,
+        timestamp: new Date().toISOString(),
+      });
       dispatch(fetchSubThreadReducer({ data: data.threads }));
     } catch (error) {
       console.error(error);

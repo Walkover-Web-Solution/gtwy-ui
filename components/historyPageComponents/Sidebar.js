@@ -34,16 +34,14 @@ const Sidebar = memo(
     isErrorTrue,
     activeFilterByRef,
   }) => {
-    const { subThreads, userFeedbackCount, bridgeVersionsArray, allBridgesMap, bridgeVersionMapping } =
-      useCustomSelector((state) => ({
-        subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
-        userFeedbackCount: state?.historyReducer?.userFeedbackCount,
-        bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
-          ? state.bridgeReducer.allBridgesMap[params.id].versions
-          : [],
-        allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
-        bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping || {},
-      }));
+    const { subThreads, userFeedbackCount, bridgeVersionsArray, allBridgesMap } = useCustomSelector((state) => ({
+      subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
+      userFeedbackCount: state?.historyReducer?.userFeedbackCount,
+      bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
+        ? state.bridgeReducer.allBridgesMap[params.id].versions
+        : [],
+      allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
+    }));
 
     const [selectedThreadIds, _setSelectedThreadIds] = useState([]);
     const [expandedThreads, setExpandedThreads] = useState([]);
@@ -53,9 +51,7 @@ const Sidebar = memo(
     const [variableValue, setVariableValue] = useState("");
     const isBridgeStateless = (bridgeId) => {
       const bridgeInfo = allBridgesMap?.[bridgeId];
-      const versions = bridgeInfo?.versions || [];
-      const vMapping = bridgeVersionMapping?.[bridgeId] || {};
-      return versions.some((vId) => vMapping?.[vId]?.settings?.stateless_conversation === true);
+      return bridgeInfo?.settings?.stateless_conversation === true;
     };
 
     const isThreadSingleQuery = (item) => {

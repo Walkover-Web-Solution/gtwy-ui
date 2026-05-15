@@ -11,7 +11,7 @@ import ChatbotConfigSection from "../ChatbotConfigSection";
 import ReviewerAgentSelector from "../configurationComponent/ReviewerAgentSelector";
 import UnsupportedFeatureOverlay from "../UnsupportedFeatureOverlay";
 import { useDispatch } from "react-redux";
-import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
+import { updateBridgeAction, updateBridgeVersionAction } from "@/store/action/bridgeAction";
 
 const SettingsTab = () => {
   const dispatch = useDispatch();
@@ -52,9 +52,8 @@ const SettingsTab = () => {
 
   const handleStatelessConversationToggle = () => {
     dispatch(
-      updateBridgeVersionAction({
+      updateBridgeAction({
         bridgeId: params?.id,
-        versionId: searchParams?.version,
         dataToSend: { settings: { stateless_conversation: !statelessConversation } },
       })
     );

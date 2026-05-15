@@ -53,6 +53,11 @@ function Page({ params, searchParams }) {
 
   useEffect(() => {
     if (selectedBatchMessageId !== null) return;
+    if (!Array.isArray(thread) || thread.length === 0) return;
+    // Ensure the loaded thread actually belongs to the currently selected thread_id
+    // (prevents auto-selecting a batch from a stale thread when navigating)
+    const currentThreadId = resolvedSearchParams?.thread_id;
+    if (currentThreadId && thread[0]?.thread_id && thread[0].thread_id !== currentThreadId) return;
     const firstBatch = thread.find((msg) => msg?.batch_data?.batch_id);
     if (firstBatch) setSelectedBatchMessageId(firstBatch.message_id);
   }, [thread, selectedBatchMessageId, resolvedSearchParams?.thread_id]);
@@ -214,15 +219,7 @@ function Page({ params, searchParams }) {
     />
   );
 
-  if (loading || !historyData)
-    return (
-      <div className="flex">
-        {batchPanel}
-        <div className="flex-1">
-          <ChatLoadingSkeleton />
-        </div>
-      </div>
-    );
+  const isLoadingState = loading || !historyData;
 
   return (
     <div className="bg-base-100 relative scrollbar-hide text-base-content max-h-[calc(100vh-9rem)]">
@@ -231,32 +228,36 @@ function Page({ params, searchParams }) {
         <div className="drawer-content flex flex-row overflow-hidden">
           {batchPanel}
           <div className="flex-1 overflow-hidden">
-            <React.Suspense>
-              <ThreadContainer
-                key={`thread-container-${resolvedParams.id}-${resolvedParams.version}`}
-                thread={displayThread}
-                filterOption={filterOption}
-                setFilterOption={setFilterOption}
-                isFetchingMore={isFetchingMore}
-                setIsFetchingMore={setIsFetchingMore}
-                setLoading={setLoading}
-                searchMessageId={searchMessageId}
-                setSearchMessageId={setSearchMessageId}
-                params={resolvedParams}
-                pathName={pathName}
-                search={resolvedSearchParams}
-                historyData={historyData}
-                threadHandler={threadHandler}
-                threadPage={threadPage}
-                setThreadPage={setThreadPage}
-                hasMoreThreadData={hasMoreThreadData}
-                setHasMoreThreadData={setHasMoreThreadData}
-                selectedVersion={selectedVersion}
-                setIsErrorTrue={setIsErrorTrue}
-                isErrorTrue={isErrorTrue}
-                previousPrompt={previousPrompt}
-              />
-            </React.Suspense>
+            {isLoadingState ? (
+              <ChatLoadingSkeleton />
+            ) : (
+              <React.Suspense>
+                <ThreadContainer
+                  key={`thread-container-${resolvedParams.id}-${resolvedParams.version}`}
+                  thread={displayThread}
+                  filterOption={filterOption}
+                  setFilterOption={setFilterOption}
+                  isFetchingMore={isFetchingMore}
+                  setIsFetchingMore={setIsFetchingMore}
+                  setLoading={setLoading}
+                  searchMessageId={searchMessageId}
+                  setSearchMessageId={setSearchMessageId}
+                  params={resolvedParams}
+                  pathName={pathName}
+                  search={resolvedSearchParams}
+                  historyData={historyData}
+                  threadHandler={threadHandler}
+                  threadPage={threadPage}
+                  setThreadPage={setThreadPage}
+                  hasMoreThreadData={hasMoreThreadData}
+                  setHasMoreThreadData={setHasMoreThreadData}
+                  selectedVersion={selectedVersion}
+                  setIsErrorTrue={setIsErrorTrue}
+                  isErrorTrue={isErrorTrue}
+                  previousPrompt={previousPrompt}
+                />
+              </React.Suspense>
+            )}
           </div>
         </div>
         <React.Suspense>
