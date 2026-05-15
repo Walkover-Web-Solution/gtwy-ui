@@ -208,8 +208,10 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
       variablesKeyValue: versionState?.variables || [],
-      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-      variable_state: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_state || {},
+      variablesPath:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.connected_tools?.variables_path || {},
+      variable_state:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.connected_tools?.variables_state || {},
       bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
     };
   });

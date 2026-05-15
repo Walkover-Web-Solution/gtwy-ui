@@ -74,20 +74,26 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     return {
       integrationData: orgData?.integrationData || {},
       function_data: orgData?.functionData || {},
-      bridge_functions: isPublished ? bridgeDataFromState?.function_ids || [] : versionData?.function_ids || [],
+      bridge_functions: isPublished
+        ? bridgeDataFromState?.connected_tools?.function_ids || []
+        : versionData?.connected_tools?.function_ids || [],
       model: modelName,
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
       showInbuiltTools: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.inbuilt_tools,
       embedToken: orgData?.embed_token,
-      variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
+      variables_path: isPublished
+        ? bridgeDataFromState?.connected_tools?.variables_path || {}
+        : versionData?.connected_tools?.variables_path || {},
       prebuiltToolsData: state?.bridgeReducer?.prebuiltTools,
-      toolsVersionData: isPublished ? bridgeDataFromState?.built_in_tools : versionData?.built_in_tools,
+      toolsVersionData: isPublished
+        ? bridgeDataFromState?.connected_tools?.built_in_tools
+        : versionData?.connected_tools?.built_in_tools,
       webSearchFilters: isPublished
-        ? bridgeDataFromState?.web_search_filters || []
-        : versionData?.web_search_filters || [],
+        ? bridgeDataFromState?.connected_tools?.web_search_filters || []
+        : versionData?.connected_tools?.web_search_filters || [],
       gtwyWebSearchFilters: isPublished
-        ? bridgeDataFromState?.gtwy_web_search_filters || []
-        : versionData?.gtwy_web_search_filters || [],
+        ? bridgeDataFromState?.connected_tools?.gtwy_web_search_filters || []
+        : versionData?.connected_tools?.gtwy_web_search_filters || [],
     };
   });
   // Use the tutorial videos hook
@@ -138,9 +144,8 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            functionData: {
-              function_id: functionId,
-              function_operation: "1",
+            connected_tools: {
+              function_ids: [...new Set([...(bridge_functions || []), functionId])],
             },
           },
         })
@@ -155,10 +160,8 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            functionData: {
-              function_id: id,
-              function_operation: "0",
-              script_id: name,
+            connected_tools: {
+              function_ids: (bridge_functions || []).filter((fid) => fid !== id),
             },
           },
         })
@@ -190,7 +193,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { variables_path: { [function_name]: cleanedVariablesPath } },
+          dataToSend: { connected_tools: { variables_path: { [function_name]: cleanedVariablesPath } } },
         })
       );
     }
@@ -202,7 +205,11 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     dispatch(
       updateBridgeVersionAction({
         versionId: searchParams?.version,
-        dataToSend: { built_in_tools_data: { built_in_tools: item?.value, built_in_tools_operation: "1" } },
+        dataToSend: {
+          connected_tools: {
+            built_in_tools: [...new Set([...(toolsVersionData || []), item?.value])],
+          },
+        },
       })
     );
     // Close dropdown after selection
@@ -220,7 +227,11 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
       return dispatch(
         updateBridgeVersionAction({
           versionId: searchParams?.version,
-          dataToSend: { built_in_tools_data: { built_in_tools: item?.value } },
+          dataToSend: {
+            connected_tools: {
+              built_in_tools: (toolsVersionData || []).filter((tool) => tool !== item?.value),
+            },
+          },
         })
       );
     });
@@ -246,7 +257,9 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            [filterKey]: domains,
+            connected_tools: {
+              [filterKey]: domains,
+            },
           },
         })
       );

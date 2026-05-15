@@ -43,11 +43,13 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
     return {
       bridgeData: bridges,
       connect_agents: isPublished
-        ? bridgeDataFromState?.agents?.connected_agents || bridgeDataFromState?.connected_agents || {}
-        : versionData?.agents?.connected_agents || versionData?.connected_agents || {},
+        ? bridgeDataFromState?.connected_tools?.connected_agents || {}
+        : versionData?.connected_tools?.connected_agents || {},
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
       model: modelName,
-      variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
+      variables_path: isPublished
+        ? bridgeDataFromState?.connected_tools?.variables_path || {}
+        : versionData?.connected_tools?.variables_path || {},
     };
   });
   const handleSaveAgent = (overrideBridge = null, bridgeData) => {
@@ -67,13 +69,13 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            agents: {
+            connected_tools: {
               connected_agents: {
+                ...(connect_agents || {}),
                 [sb?._id || sb?.bridge_id]: {
                   bridge_id: sb?._id || sb?.bridge_id,
                 },
               },
-              agent_status: "1",
             },
           },
         })
@@ -149,12 +151,10 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            agents: {
-              connected_agents: {
-                [name]: {
-                  bridge_id: item?.bridge_id,
-                },
-              },
+            connected_tools: {
+              connected_agents: Object.fromEntries(
+                Object.entries(connect_agents || {}).filter(([key]) => key !== name)
+              ),
             },
           },
         })
@@ -169,18 +169,18 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   const handleSaveAgentVariable = () => {
     try {
       const dataToSend = {
-        agents: {
+        connected_tools: {
           connected_agents: {
+            ...(connect_agents || {}),
             [selectedBridge?.name]: {
               bridge_id: selectedBridge?._id || selectedBridge?.bridge_id,
               thread_id: agentTools?.thread_id ? agentTools?.thread_id : false,
             },
           },
-          agent_status: "1",
         },
       };
       if (agentTools?.version_id) {
-        dataToSend.agents.connected_agents[selectedBridge?.name].version_id = agentTools?.version_id;
+        dataToSend.connected_tools.connected_agents[selectedBridge?.name].version_id = agentTools?.version_id;
       }
       // on Save the bridge and thread id in version only
       dispatch(
@@ -209,7 +209,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           updateBridgeVersionAction({
             bridgeId: params.id,
             versionId: searchParams?.version,
-            dataToSend: { variables_path: { [selectedBridge?.bridge_id]: variablesPath } },
+            dataToSend: { connected_tools: { variables_path: { [selectedBridge?.bridge_id]: variablesPath } } },
           })
         );
       }

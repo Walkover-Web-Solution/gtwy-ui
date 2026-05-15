@@ -31,9 +31,15 @@ export const useConfigurationState = (params, searchParams) => {
         ? bridgeDataFromState?.apikey_object_id?.[service === "openai_response" ? "openai" : service]
         : versionData?.apikey_object_id?.[service === "openai_response" ? "openai" : service],
       shouldPromptShow: validationConfig?.system_prompt,
-      bridge_functions: isPublished ? bridgeDataFromState?.function_ids || [] : versionData?.function_ids || [],
-      connect_agents: isPublished ? bridgeDataFromState?.connected_agents || {} : versionData?.connected_agents || {},
-      knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
+      bridge_functions: isPublished
+        ? bridgeDataFromState?.connected_tools?.function_ids || []
+        : versionData?.connected_tools?.function_ids || [],
+      connect_agents: isPublished
+        ? bridgeDataFromState?.connected_tools?.connected_agents || {}
+        : versionData?.connected_tools?.connected_agents || {},
+      knowbaseVersionData: isPublished
+        ? bridgeDataFromState?.connected_tools?.doc_ids || []
+        : versionData?.connected_tools?.doc_ids || [],
       showAdvancedParameters: state.appInfoReducer.embedUserDetails.showAdvancedParameters,
       showAdvancedConfigurations: state.appInfoReducer.embedUserDetails.showAdvancedConfigurations,
       service: service,

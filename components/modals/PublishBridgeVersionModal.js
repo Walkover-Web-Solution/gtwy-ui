@@ -168,7 +168,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
       // Get connected agents from the current agent
       // For bridge data, connected_agents might be in different locations
-      let connectedAgents = agent?.connected_agents || {};
+      let connectedAgents = agent?.connected_tools?.connected_agents || {};
 
       // If no connected_agents found, try other possible locations
       if (Object.keys(connectedAgents).length === 0) {
@@ -177,13 +177,13 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
         // Try configuration.connected_agents
         if (Object.keys(connectedAgents).length === 0) {
-          connectedAgents = agent?.configuration?.connected_agents || {};
+          connectedAgents = agent?.configuration?.connected_tools?.connected_agents || {};
         }
 
         // For version data, try the direct structure
         if (Object.keys(connectedAgents).length === 0 && agent.isVersionData) {
           // Version data might have connected_agents at root level
-          connectedAgents = versionData?.connected_agents || {};
+          connectedAgents = versionData?.connected_tools?.connected_agents || {};
         }
       }
 

@@ -84,8 +84,8 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     versionData:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.apiCalls || {},
     variablesPath:
-      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.variables_path ||
-      {},
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.connected_tools
+        ?.variables_path || {},
     organizations: state.userDetailsReducer.organizations,
     preTools:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.pre_tools || [],
@@ -504,7 +504,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                 updateBridgeVersionAction({
                   bridgeId: path[5],
                   versionId: resolvedSearchParams?.get("version"),
-                  dataToSend: { variables_path: { [data.script_id]: cleanedToolVariablesPath } },
+                  dataToSend: { connected_tools: { variables_path: { [data.script_id]: cleanedToolVariablesPath } } },
                 })
               );
             }

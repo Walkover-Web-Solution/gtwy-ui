@@ -35,7 +35,9 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
 
     return {
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
-      knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
+      knowbaseVersionData: isPublished
+        ? bridgeDataFromState?.connected_tools?.doc_ids || []
+        : versionData?.connected_tools?.doc_ids || [],
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
     };
   });
@@ -75,7 +77,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     dispatch(
       updateBridgeVersionAction({
         versionId: searchParams?.version,
-        dataToSend: { doc_ids: [...(knowbaseVersionData || []), newDocItem] },
+        dataToSend: { connected_tools: { doc_ids: [...(knowbaseVersionData || []), newDocItem] } },
       })
     );
     // Close dropdown after selection
@@ -91,14 +93,16 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         updateBridgeVersionAction({
           versionId: searchParams?.version,
           dataToSend: {
-            doc_ids: knowbaseVersionData.filter((docItem) => {
-              // Handle both old format (string) and new format (object)
-              if (typeof docItem === "string") {
-                return docItem !== item?._id;
-              } else {
-                return docItem.resource_id !== item?._id;
-              }
-            }),
+            connected_tools: {
+              doc_ids: knowbaseVersionData.filter((docItem) => {
+                // Handle both old format (string) and new format (object)
+                if (typeof docItem === "string") {
+                  return docItem !== item?._id;
+                } else {
+                  return docItem.resource_id !== item?._id;
+                }
+              }),
+            },
           },
         })
       );
