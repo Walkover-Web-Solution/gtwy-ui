@@ -223,7 +223,7 @@ const AdvancedParameters = ({
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: { ...updatedDataToSend },
+          dataToSend: { ...updatedDataToSend, service, model },
         })
       );
     }
@@ -285,7 +285,7 @@ const AdvancedParameters = ({
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: { ...updatedDataToSend },
+          dataToSend: { ...updatedDataToSend, service, model },
         })
       );
     }
@@ -321,7 +321,7 @@ const AdvancedParameters = ({
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: updatedDataToSend,
+          dataToSend: { ...updatedDataToSend, service, model },
         })
       );
     }
@@ -339,11 +339,11 @@ const AdvancedParameters = ({
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: updatedDataToSend,
+          dataToSend: { ...updatedDataToSend, service, model },
         })
       );
     },
-    [dispatch, params?.id, searchParams?.version]
+    [dispatch, params?.id, searchParams?.version, service, model]
   );
 
   // State for selected widgets (indices)
@@ -655,7 +655,7 @@ const AdvancedParameters = ({
                           updateBridgeVersionAction({
                             bridgeId: params?.id,
                             versionId: searchParams?.version,
-                            dataToSend: updatedDataToSend,
+                            dataToSend: { ...updatedDataToSend, service, model },
                           })
                         );
                         return;
@@ -674,7 +674,7 @@ const AdvancedParameters = ({
                           updateBridgeVersionAction({
                             bridgeId: params?.id,
                             versionId: searchParams?.version,
-                            dataToSend: updatedDataToSend,
+                            dataToSend: { ...updatedDataToSend, service, model },
                           })
                         );
                         return;
@@ -691,6 +691,8 @@ const AdvancedParameters = ({
                               configuration: {
                                 [key]: { type: selectedValue },
                               },
+                              service,
+                              model,
                             },
                           })
                         );
@@ -776,7 +778,7 @@ const AdvancedParameters = ({
                                   updateBridgeVersionAction({
                                     bridgeId: params?.id,
                                     versionId: searchParams?.version,
-                                    dataToSend: updatedDataToSend,
+                                    dataToSend: { ...updatedDataToSend, service, model },
                                   })
                                 );
 
