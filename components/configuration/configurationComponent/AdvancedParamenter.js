@@ -527,8 +527,9 @@ const AdvancedParameters = ({
                     onChange={(e) => {
                       if (isDefaultValue) {
                         setSliderValue(e.target.checked, key, isDeafaultObject);
+                      } else {
+                        handleInputChange(e, key);
                       }
-                      handleInputChange(e, key);
                     }}
                     disabled={isReadOnly}
                   />
@@ -569,7 +570,7 @@ const AdvancedParameters = ({
                 onBlur={(e) => {
                   if (e.target.value === "") {
                     setSliderValue("default", key, isDeafaultObject);
-                  } else {
+                  } else if (e.target.value !== configuration?.[key]) {
                     handleInputChange(e, key);
                   }
                 }}
@@ -600,7 +601,7 @@ const AdvancedParameters = ({
                 onBlur={(e) => {
                   if (e.target.value === "") {
                     setSliderValue("default", key, isDeafaultObject);
-                  } else {
+                  } else if (e.target.value !== configuration?.[key]?.toString()) {
                     handleInputChange(e, key);
                   }
                 }}

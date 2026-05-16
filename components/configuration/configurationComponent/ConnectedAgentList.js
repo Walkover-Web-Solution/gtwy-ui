@@ -194,6 +194,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
                 required: agentTools?.required,
               },
               description: agentTools?.description,
+              thread_id: agentTools?.thread_id,
             },
           },
         })

@@ -602,7 +602,7 @@ function FunctionParameterModal({
 
   useEffect(() => {
     if (!isEqual(toolData, function_details)) {
-      const thread_id = function_details?.thread_id ?? false;
+      const thread_id = toolData?.thread_id ?? function_details?.thread_id ?? false;
       const version_id = function_details?.version_id ?? toolData?.version_id;
       setToolData({ ...function_details, thread_id, version_id });
     }
@@ -629,7 +629,7 @@ function FunctionParameterModal({
   }, [functionName, variables_path, name]);
 
   useEffect(() => {
-    if (!toolData) {
+    if (!toolData || !function_details) {
       setIsModified(false);
       return;
     }

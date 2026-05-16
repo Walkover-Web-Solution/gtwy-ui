@@ -85,6 +85,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     hasPageConfig,
     bridgeSummary,
     publicAgentConfig,
+    bridgeVersionsArray,
   } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
@@ -121,6 +122,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       hasPageConfig: !!state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
       bridgeSummary: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.bridge_summary || "",
       publicAgentConfig: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
+      bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.versions || [],
     };
   });
   // Define tabs based on user type
@@ -148,6 +150,13 @@ const Navbar = ({ isEmbedUser, params }) => {
   }, [isEmbedUser, bridgeType]);
 
   const agentName = useMemo(() => bridgeName || bridgeData?.name || "Agent not Found", [bridgeName, bridgeData?.name]);
+
+  // Get published version number (e.g., "V2")
+  const publishedVersionNumber = useMemo(() => {
+    if (!publishedVersion || !bridgeVersionsArray.length) return "";
+    const versionIndex = bridgeVersionsArray.indexOf(publishedVersion);
+    return versionIndex >= 0 ? `V${versionIndex + 1}` : "";
+  }, [publishedVersion, bridgeVersionsArray]);
 
   const [showSavedText, setShowSavedText] = useState(false);
   useEffect(() => {
@@ -501,8 +510,8 @@ const Navbar = ({ isEmbedUser, params }) => {
                       }`}
                       title={isPublished ? "Currently viewing published version" : "Switch to published version"}
                     >
-                      <span className="hidden sm:inline">Published</span>
-                      <span className="sm:hidden">Pub</span>
+                      <span className="hidden sm:inline">Published ({publishedVersionNumber})</span>
+                      <span className="sm:hidden">Pub ({publishedVersionNumber})</span>
                       {isPublished && (
                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0" title="Active"></span>
                       )}
@@ -786,7 +795,7 @@ const Navbar = ({ isEmbedUser, params }) => {
                   }`}
                   title={isPublished ? "Currently viewing published version" : "Switch to published version"}
                 >
-                  <span>Pub</span>
+                  <span>Pub ({publishedVersionNumber})</span>
                   {isPublished && (
                     <span className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0" title="Active"></span>
                   )}

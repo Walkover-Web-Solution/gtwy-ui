@@ -131,7 +131,9 @@ function useRtLayerEventHandler(channelIdentifier = "") {
           return { success: false, error: "No response found" };
         }
         if (error) {
-          dispatch(addChatErrorMessage(channelIdentifier, error?.error));
+          const errorMessage =
+            typeof error === "string" ? error : error?.error || error?.message || JSON.stringify(error);
+          dispatch(addChatErrorMessage(channelIdentifier, errorMessage));
           return;
         }
         const { Thread, Messages, type } = response;
