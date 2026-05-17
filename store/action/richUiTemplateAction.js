@@ -5,6 +5,7 @@ import {
   getRichUiTemplatesError,
   createRichUiTemplateApiSuccess,
 } from "../reducer/richUiTemplateReducer";
+import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 
 export const getRichUiTemplatesAction = (orgId) => async (dispatch) => {
   try {
@@ -12,7 +13,13 @@ export const getRichUiTemplatesAction = (orgId) => async (dispatch) => {
     const response = await getRichUiTemplates(orgId);
     dispatch(getRichUiTemplatesSuccess(response.data.data));
   } catch (error) {
-    dispatch(getRichUiTemplatesError(error.message));
+    const errorMessage = isNetworkError(error)
+      ? "Connection lost. Please check your internet connection."
+      : error.message;
+    dispatch(getRichUiTemplatesError(errorMessage));
+    if (isNetworkError(error)) {
+      handleApiError(error, "Failed to load Rich UI Templates");
+    }
     console.error("Error fetching Rich UI Templates:", error);
   }
 };

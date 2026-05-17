@@ -54,6 +54,13 @@ axios.interceptors.response.use(
         window.location.href = "/login";
       }
     }
+
+    // Handle network errors (no response from server)
+    if (!error?.response) {
+      error.isNetworkError = true;
+      error.message = error.message || "Connection lost. Please check your internet connection.";
+    }
+
     return Promise.reject(error);
   }
 );

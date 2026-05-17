@@ -10,6 +10,7 @@ import {
 } from "@/config/index";
 
 import { toast } from "react-toastify";
+import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 import {
   addKnowbaseDataReducer,
   backupKnowledgeBaseReducer,
@@ -63,7 +64,11 @@ export const getAllKnowBaseDataAction = (orgId) => async (dispatch) => {
       dispatch(fetchAllKnowlegdeBaseData({ data: response, orgId }));
     }
   } catch (error) {
-    toast.error("something went wrong");
+    if (isNetworkError(error)) {
+      handleApiError(error, "Failed to load knowledge base");
+    } else {
+      toast.error("something went wrong");
+    }
     console.error(error);
   }
 };

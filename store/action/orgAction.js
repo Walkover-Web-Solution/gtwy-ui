@@ -2,6 +2,7 @@ import { createOrg, generateAccessKey, getAllOrg, getUsers, updateOrganizationDa
 import { organizationCreated, organizationsFetched, setCurrentOrgId, usersFetched } from "../reducer/orgReducer";
 import { updateToken, updateUserDetails, updateUserMeta } from "../reducer/userDetailsReducer";
 import { trackOrganizationEvent } from "@/utils/posthog";
+import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 
 export const createOrgAction = (dataToSend, onSuccess, onError) => async (dispatch) => {
   try {
@@ -86,6 +87,9 @@ export const getUsersAction = () => async (dispatch) => {
     dispatch(usersFetched(response.data));
     return response;
   } catch (error) {
+    if (isNetworkError(error)) {
+      handleApiError(error, "Failed to load users");
+    }
     console.error("Error fetching users:", error);
   }
 };

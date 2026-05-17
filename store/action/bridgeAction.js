@@ -31,6 +31,7 @@ import {
 } from "@/config/index";
 import { toast } from "react-toastify";
 import posthog, { trackAgentEvent } from "@/utils/posthog";
+import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 import {
   backupBridgeVersionReducer,
   bridgeVersionRollBackReducer,
@@ -73,7 +74,10 @@ export const getSingleBridgesAction =
       getBridgeVersionAction({ versionId: version || data.data?.agent?.published_version_id })(dispatch);
     } catch (error) {
       dispatch(isError());
-      console.error(error);
+      if (isNetworkError(error)) {
+        handleApiError(error, "Failed to load agent");
+      }
+      console.error("Error in getSingleBridgesAction:", error);
       throw error.response;
     }
   };

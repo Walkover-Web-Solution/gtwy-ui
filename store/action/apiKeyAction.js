@@ -9,6 +9,7 @@ import {
 } from "../reducer/apiKeysReducer";
 import { toast } from "react-toastify";
 import { trackUserAction } from "@/utils/posthog";
+import { handleApiError, isNetworkError, getErrorMessage } from "@/utils/errorHandler";
 
 export const saveApiKeysAction = (data, orgId) => async (dispatch) => {
   try {
@@ -71,6 +72,11 @@ export const updateApikeyAction = (dataToSend) => async (dispatch) => {
     }
   } catch (error) {
     // API call failed with exception
+    if (isNetworkError(error)) {
+      handleApiError(error, "Failed to update API key");
+    } else {
+      toast.error(getErrorMessage(error) || "Failed to update API key");
+    }
     console.error(error);
     // Roll back to the original state
     dispatch(apikeyRollBackReducer({ org_id: dataToSend.org_id }));
@@ -101,6 +107,11 @@ export const deleteApikeyAction =
       }
     } catch (error) {
       // API call failed with exception
+      if (isNetworkError(error)) {
+        handleApiError(error, "Failed to delete API key");
+      } else {
+        toast.error(getErrorMessage(error) || "Failed to delete API key");
+      }
       console.error(error);
       // Roll back to original state
       dispatch(apikeyRollBackReducer({ org_id }));
@@ -112,7 +123,11 @@ export const getAllApikeyAction = (org_id) => async (dispatch) => {
     const response = await getAllApikey({ org_id: org_id });
     if (response.data.success) dispatch(apikeyDataReducer({ org_id, data: response.data.result }));
   } catch (error) {
+    if (isNetworkError(error)) {
+      handleApiError(error, "Failed to load API keys");
+    } else {
+      toast.error(getErrorMessage(error));
+    }
     console.error(error);
-    toast.error(error);
   }
 };
