@@ -1009,40 +1009,41 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     </div>
                                   )}
 
-                                  {message?.type === "richui_json" && message?.content && (
-                                    <div className="mt-4 richui-container w-full">
-                                      {(() => {
-                                        return (
-                                          <RenderNode
-                                            node={message.content}
-                                            onAction={(action) => {
-                                              if (action?.type === "reply" && action?.text) {
-                                                if (handleSendMessageRef.current && inputRef.current) {
-                                                  // Set the input field value and triggers send
-                                                  inputRef.current.value = action.text;
-                                                  setTimeout(() => {
-                                                    handleSendMessageRef.current(null, true);
-                                                  }, 50);
+                                  {(message?.type === "richui_json" || message?.type === "template") &&
+                                    message?.content && (
+                                      <div className="mt-4 richui-container w-full">
+                                        {(() => {
+                                          return (
+                                            <RenderNode
+                                              node={message.content}
+                                              onAction={(action) => {
+                                                if (action?.type === "reply" && action?.text) {
+                                                  if (handleSendMessageRef.current && inputRef.current) {
+                                                    // Set the input field value and triggers send
+                                                    inputRef.current.value = action.text;
+                                                    setTimeout(() => {
+                                                      handleSendMessageRef.current(null, true);
+                                                    }, 50);
 
-                                                  // Clear the input field after sending
-                                                  setTimeout(() => {
-                                                    if (inputRef.current) {
-                                                      inputRef.current.value = "";
-                                                    }
-                                                  }, 200);
-                                                } else {
-                                                  console.warn("[Chat] handleSendMessageRef or inputRef is missing", {
-                                                    handleSendMessageRef: handleSendMessageRef.current,
-                                                    inputRef: inputRef.current,
-                                                  });
+                                                    // Clear the input field after sending
+                                                    setTimeout(() => {
+                                                      if (inputRef.current) {
+                                                        inputRef.current.value = "";
+                                                      }
+                                                    }, 200);
+                                                  } else {
+                                                    console.warn("[Chat] handleSendMessageRef or inputRef is missing", {
+                                                      handleSendMessageRef: handleSendMessageRef.current,
+                                                      inputRef: inputRef.current,
+                                                    });
+                                                  }
                                                 }
-                                              }
-                                            }}
-                                          />
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
+                                              }}
+                                            />
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
 
                                   {/* Render message attachments (images, etc.) */}
                                   {_renderMessageAttachments(message)}
