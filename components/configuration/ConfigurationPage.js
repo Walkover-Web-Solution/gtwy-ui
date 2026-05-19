@@ -25,6 +25,7 @@ const ConfigurationPage = ({
   viewOverride,
   apiKeyError,
   setApiKeyError,
+  onUnsavedChangesChange,
 }) => {
   const router = useRouter();
   const view = searchParams?.view || "config";
@@ -164,6 +165,7 @@ const ConfigurationPage = ({
       isEditor,
       apiKeyError,
       setApiKeyError,
+      onUnsavedChangesChange,
     }),
     [
       configState,
@@ -185,6 +187,7 @@ const ConfigurationPage = ({
       currentView,
       handleNavigation,
       apiKeyError,
+      onUnsavedChangesChange,
     ]
   );
 

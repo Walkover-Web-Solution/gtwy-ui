@@ -15,6 +15,8 @@ import AgentSetupGuide from "@/components/AgentSetupGuide";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { RefreshIcon } from "@/components/Icons";
 import { CircleAlert } from "lucide-react";
+import { useUnsavedChangesWarning } from "@/customHooks/useUnsavedChangesWarning";
+import ConfirmationModal from "@/components/UI/ConfirmationModal";
 const ConfigurationPage = dynamic(() => import("@/components/configuration/ConfigurationPage"));
 const Chat = dynamic(() => import("@/components/configuration/Chat"), { loading: () => null });
 const WebhookForm = dynamic(() => import("@/components/BatchApi"), { ssr: false });
@@ -164,6 +166,33 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     messages: [],
     newContent: "",
   }));
+
+  // Unsaved changes warning modal state
+  const [unsavedChangesModalOpen, setUnsavedChangesModalOpen] = useState(false);
+  const [hasPromptChanges, setHasPromptChanges] = useState(false);
+
+  // Memoized callback for unsaved changes to prevent child render issues
+  const handleUnsavedChangesChange = useCallback((hasChanges) => {
+    setHasPromptChanges(hasChanges);
+  }, []);
+
+  // Open/close modal when unsavedChangesModalOpen changes
+  useEffect(() => {
+    const modalElement = document.getElementById("unsaved-changes");
+    if (!modalElement) return;
+
+    if (unsavedChangesModalOpen) {
+      setTimeout(() => {
+        if (typeof modalElement.showModal === "function") {
+          modalElement.showModal();
+        }
+      }, 0);
+    } else {
+      if (typeof modalElement.close === "function") {
+        modalElement.close();
+      }
+    }
+  }, [unsavedChangesModalOpen]);
 
   // Memoized mobile view detection
   const isMobileView = useMemo(
@@ -415,6 +444,14 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     [dispatch, resolvedSearchParams?.version, reduxPrompt]
   );
 
+  // Setup unsaved changes warning hook (after savePrompt is defined)
+  const { handleConfirmSave, handleConfirmDiscard } = useUnsavedChangesWarning(
+    hasPromptChanges,
+    savePrompt,
+    () => {},
+    { isOpen: unsavedChangesModalOpen, setIsOpen: setUnsavedChangesModalOpen }
+  );
+
   const scrollToTextarea = () => {
     if (leftPanelScrollRef.current && promptTextAreaRef.current) {
       const textareaContainer = promptTextAreaRef.current;
@@ -663,6 +700,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                 bridgeName={bridgeName}
                 onViewChange={handleViewChange}
                 viewOverride={isAgentFlowView ? "agent-flow" : undefined}
+                onUnsavedChangesChange={handleUnsavedChangesChange}
               />
             </div>
           </div>
@@ -719,6 +757,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                     viewOverride={isAgentFlowView ? "agent-flow" : undefined}
                     apiKeyError={apiKeyError}
                     setApiKeyError={setApiKeyError}
+                    onUnsavedChangesChange={handleUnsavedChangesChange}
                   />
                 </div>
               </div>
@@ -964,6 +1003,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                 bridgeName={bridgeName}
                 onViewChange={handleViewChange}
                 viewOverride={isAgentFlowView ? "agent-flow" : undefined}
+                onUnsavedChangesChange={handleUnsavedChangesChange}
               />
             </div>
           </div>
@@ -992,6 +1032,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                 bridgeName={bridgeName}
                 onViewChange={handleViewChange}
                 viewOverride={isAgentFlowView ? "agent-flow" : undefined}
+                onUnsavedChangesChange={handleUnsavedChangesChange}
               />
             </div>
           </div>
@@ -1049,6 +1090,20 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
           )}
         </div>
       )}
+
+      {/* Unsaved Changes Confirmation Modal */}
+      <ConfirmationModal
+        onClose={() => setUnsavedChangesModalOpen(false)}
+        onConfirm={handleConfirmSave}
+        onCancel={handleConfirmDiscard}
+        title="Unsaved Changes"
+        message="You have unsaved changes to your prompt. Do you want to save them before leaving?"
+        confirmText="Save"
+        cancelText="Discard"
+        confirmButtonClass="btn-primary"
+        cancelButtonClass="btn-ghost"
+        modalType="unsaved-changes"
+      />
     </div>
   );
 };

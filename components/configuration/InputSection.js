@@ -19,6 +19,7 @@ const InputSection = memo(() => {
     isMobileView,
     isPublished,
     isEditor,
+    onUnsavedChangesChange,
   } = useConfigurationContext();
   return (
     <>
@@ -53,6 +54,7 @@ const InputSection = memo(() => {
         isMobileView={isMobileView}
         isPublished={isPublished}
         isEditor={isEditor}
+        onUnsavedChangesChange={onUnsavedChangesChange}
       />
     </>
   );

@@ -50,6 +50,7 @@ const InputConfigComponent = memo(
     isPublished,
     isEditor,
     isEmbedUser,
+    onUnsavedChangesChange,
   }) => {
     // Optimized Redux selector with memoization and shallow comparison
     const { prompt: reduxPrompt, oldContent } = usePromptSelector(params, searchParams);
@@ -347,6 +348,12 @@ const InputConfigComponent = memo(
       () => !arePromptValuesEqual(currentPromptValue, savedPromptSnapshot),
       [currentPromptValue, savedPromptSnapshot]
     );
+
+    useEffect(() => {
+      if (onUnsavedChangesChange) {
+        onUnsavedChangesChange(hasPromptChanges);
+      }
+    }, [hasPromptChanges, onUnsavedChangesChange]);
 
     const handleKeyDown = useCallback(
       (event) => {
