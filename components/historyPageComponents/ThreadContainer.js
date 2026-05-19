@@ -375,30 +375,35 @@ const ThreadContainer = ({
       lastFetchedThreadKeyRef.current = fetchKey;
 
       setLoadingData(true);
-      // small debounce to absorb rapid filter/URL changes
-      await new Promise((r) => setTimeout(r, 150));
-      if (cancelled) return;
-      const res = await fetchThread({
-        threadId: thread_id,
-        subThreadId,
-        version,
-        error,
-        page: 1,
-      });
-
-      if (cancelled || !isMountedRef.current) return;
-
-      if (res) {
-        setThreadMessageState({
-          totalPages: res?.totalPages,
-          totalEntries: res?.totalEnteries,
+      try {
+        // small debounce to absorb rapid filter/URL changes
+        await new Promise((r) => setTimeout(r, 150));
+        if (cancelled) return;
+        const res = await fetchThread({
+          threadId: thread_id,
+          subThreadId,
+          version,
+          error,
+          page: 1,
         });
-        setHasMoreThreadData((res?.data?.length || 0) >= PAGE_SIZE);
-      }
 
-      setIsFetchingMore(false);
-      setLoading(false);
-      setLoadingData(false);
+        if (cancelled || !isMountedRef.current) return;
+
+        if (res) {
+          setThreadMessageState({
+            totalPages: res?.totalPages,
+            totalEntries: res?.totalEnteries,
+          });
+          setHasMoreThreadData((res?.data?.length || 0) >= PAGE_SIZE);
+        }
+
+        setIsFetchingMore(false);
+        setLoading(false);
+      } finally {
+        if (isMountedRef.current) {
+          setLoadingData(false);
+        }
+      }
     };
 
     run();

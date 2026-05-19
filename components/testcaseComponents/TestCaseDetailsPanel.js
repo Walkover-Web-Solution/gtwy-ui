@@ -18,6 +18,7 @@ const TestCaseDetailsPanel = ({
   handleDeleteTestCase,
   getScoreColor,
   getScoreMessage,
+  getScoreDisplay,
   bridgeId,
   onTestCaseUpdate,
 }) => {
@@ -35,7 +36,34 @@ const TestCaseDetailsPanel = ({
   const [editedConversation, setEditedConversation] = useState([]);
   const [editedExpected, setEditedExpected] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const normalizeMatchingType = (type) => {
+    if (!type) return "AI";
+    const lower = type.toLowerCase();
+    if (lower === "ai") return "AI";
+    if (lower === "exact") return "Exact";
+    if (lower === "cosine") return "Cosine";
+    return "AI";
+  };
+  const [matchingType, setMatchingType] = useState(normalizeMatchingType(selectedTestCase?.matching_type));
+  const [isMatchingDropdownOpen, setIsMatchingDropdownOpen] = useState(false);
+  const matchingTypes = ["AI", "Exact", "Cosine"];
   const dropdownRef = useRef(null);
+  const matchingDropdownRef = useRef(null);
+
+  // Close all dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+      }
+      if (matchingDropdownRef.current && !matchingDropdownRef.current.contains(event.target)) {
+        setIsMatchingDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Get current expected value as string for editing
   const getExpectedValue = (testCase) => {
@@ -48,8 +76,26 @@ const TestCaseDetailsPanel = ({
   useEffect(() => {
     setEditedConversation(selectedTestCase?.conversation ? [...selectedTestCase.conversation] : []);
     setEditedExpected(getExpectedValue(selectedTestCase));
+    setMatchingType(normalizeMatchingType(selectedTestCase?.matching_type));
     setHasUnsavedChanges(false);
   }, [selectedTestCase?._id]);
+
+  const handleMatchingTypeChange = async (newType) => {
+    setMatchingType(newType);
+    setIsMatchingDropdownOpen(false);
+    await dispatch(
+      updateTestCaseAction({
+        testCaseId: selectedTestCase?._id,
+        dataToUpdate: {
+          conversation: selectedTestCase?.conversation,
+          type: selectedTestCase?.type,
+          expected: selectedTestCase?.expected,
+          matching_type: newType.toLowerCase(),
+          variables: selectedTestCase?.variables,
+        },
+      })
+    );
+  };
 
   // Detect unsaved changes
   useEffect(() => {
@@ -261,11 +307,11 @@ const TestCaseDetailsPanel = ({
   };
 
   return (
-    <div className="col-span-8 overflow-hidden">
-      <div className="bg-base-100 border border-base-200 rounded-xl overflow-hidden flex flex-col h-full">
+    <div className="overflow-hidden h-full min-h-0">
+      <div className="bg-base-100 border border-base-200 rounded-xl overflow-hidden flex flex-col h-full min-h-0">
         {/* Header */}
         <div className="px-6 py-4 border-b border-base-200 flex items-center justify-between bg-base-50">
-          <div>
+          <div className="flex-1">
             <h2 className="text-lg font-semibold text-base-content">
               {selectedTestCase?.conversation
                 ?.filter((m) => m?.role === "user")
@@ -275,6 +321,35 @@ const TestCaseDetailsPanel = ({
             <p className="text-xs text-base-content/60 mt-0.5">Comparison across selected versions</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative" ref={matchingDropdownRef}>
+              <button
+                onClick={() => setIsMatchingDropdownOpen(!isMatchingDropdownOpen)}
+                className="px-3 py-2 bg-base-100 border border-base-200 hover:border-base-400 text-base-content rounded-lg flex items-center gap-2 transition-all text-sm font-medium"
+              >
+                Matching: {matchingType}
+                <ChevronDownIcon
+                  size={14}
+                  className={`text-base-content/40 transition-transform ${isMatchingDropdownOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {isMatchingDropdownOpen && (
+                <div className="absolute top-full right-0 mt-2 bg-base-100 border border-base-200 rounded-lg shadow-lg z-30 min-w-[140px]">
+                  {matchingTypes.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => handleMatchingTypeChange(type)}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                        matchingType === type
+                          ? "bg-primary/10 text-primary font-semibold"
+                          : "hover:bg-base-200 text-base-content"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => handleRunWithVariableCheck(selectedTestCase?._id)}
               disabled={isRunningThis || isloading || noVersionsSelected || isRunDisabled}
@@ -307,13 +382,27 @@ const TestCaseDetailsPanel = ({
               <Settings size={18} />
             </button>
             <button
-              onClick={() => {
-                handleDeleteTestCase(selectedTestCase?._id);
+              onClick={async () => {
+                setIsDeleting(true);
+                try {
+                  await handleDeleteTestCase(selectedTestCase?._id);
+                } finally {
+                  setIsDeleting(false);
+                }
               }}
-              title="Delete test case"
-              className="p-2 text-base-content/40 text-error hover:bg-error/10 rounded-lg transition-colors"
+              disabled={isDeleting}
+              title={isDeleting ? "Deleting test case..." : "Delete test case"}
+              className={`p-2 rounded-lg transition-colors ${
+                isDeleting
+                  ? "text-base-content/20 cursor-not-allowed"
+                  : "text-base-content/40 text-error hover:bg-error/10"
+              }`}
             >
-              <TrashIcon size={18} />
+              {isDeleting ? (
+                <span className="loading loading-spinner loading-sm inline-block"></span>
+              ) : (
+                <TrashIcon size={18} />
+              )}
             </button>
           </div>
         </div>
@@ -418,6 +507,24 @@ const TestCaseDetailsPanel = ({
             </div>
           </div>
 
+          {/* Variables Response */}
+          {selectedTestCase?.variables && Object.keys(selectedTestCase.variables).length > 0 && (
+            <div className="mb-6">
+              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">Variables</div>
+              <div className="bg-base-50 rounded-lg px-4 py-3 border border-base-200 space-y-2">
+                {Object.entries(selectedTestCase.variables).map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between py-1.5 px-2 bg-base-100 rounded border border-base-200"
+                  >
+                    <span className="text-sm font-medium text-base-content">{key}:</span>
+                    <span className="text-sm text-base-content/70">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Version Comparison (independent of run-version selection) */}
           <div ref={dropdownRef}>
             <div className="mb-5 flex items-center gap-2 flex-wrap">
@@ -426,37 +533,42 @@ const TestCaseDetailsPanel = ({
                 {comparisonVersions.map((version, idx) => {
                   const availableForThisSlot = versions.filter((v) => v === version || !comparisonVersions.includes(v));
                   return (
-                    <div key={idx} className="relative flex items-center">
-                      <button
-                        onClick={() => setOpenDropdown(openDropdown === idx ? null : idx)}
-                        className="px-3 py-1.5 bg-base-100 border border-base-200 rounded-md text-sm font-medium text-base-content hover:bg-base-200 flex items-center gap-1.5 transition-all"
-                      >
-                        V{versions.indexOf(version) + 1}
-                        <ChevronDownIcon size={12} className="text-base-content/40" />
-                      </button>
+                    <div key={idx} className="relative">
+                      <div className="dropdown">
+                        <div
+                          tabIndex={0}
+                          role="button"
+                          className="px-3 py-1.5 bg-base-100 border border-base-200 rounded-md text-sm font-medium text-base-content hover:bg-base-200 flex items-center gap-1.5 transition-all"
+                        >
+                          V{versions.indexOf(version) + 1}
+                          <ChevronDownIcon size={12} className="text-base-content/40" />
+                        </div>
+                        <ul
+                          tabIndex={0}
+                          className="dropdown-content menu bg-base-100 border border-base-200 rounded-md shadow-lg z-30 min-w-[120px] max-h-60 overflow-y-auto p-1 mt-1 flex-nowrap"
+                        >
+                          {availableForThisSlot.map((v, vIdx) => (
+                            <li key={vIdx}>
+                              <button
+                                onClick={(e) => {
+                                  handleVersionChange(idx, v);
+                                  e.currentTarget.blur();
+                                }}
+                                className={`text-sm ${v === version ? "bg-primary/10 text-primary font-semibold" : ""}`}
+                              >
+                                V{versions.indexOf(v) + 1}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                       {comparisonVersions.length > 1 && (
                         <button
                           onClick={() => handleRemoveVersion(version)}
-                          title="Remove from comparison"
-                          className="ml-1 p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded transition-colors"
+                          className="absolute -top-1.5 -right-1.5 p-0.5 bg-base-100 text-base-content/60 hover:text-error border border-base-300 hover:border-error rounded-full transition-colors shadow-sm z-10"
                         >
-                          <X size={12} />
+                          <X size={10} />
                         </button>
-                      )}
-                      {openDropdown === idx && (
-                        <div className="absolute top-full left-0 mt-1 bg-base-100 border border-base-200 rounded-md shadow-lg z-30 min-w-[120px] max-h-60 overflow-y-auto">
-                          {availableForThisSlot.map((v, vIdx) => (
-                            <button
-                              key={vIdx}
-                              onClick={() => handleVersionChange(idx, v)}
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-base-200 transition-colors ${
-                                v === version ? "bg-primary/10 text-primary font-semibold" : ""
-                              }`}
-                            >
-                              V{versions.indexOf(v) + 1}
-                            </button>
-                          ))}
-                        </div>
                       )}
                     </div>
                   );
@@ -483,6 +595,7 @@ const TestCaseDetailsPanel = ({
                   const score = versionArray?.[versionArray?.length - 1]?.score || 0;
                   const modelOutput = versionArray?.[versionArray?.length - 1]?.model_output || "N/A";
 
+                  const matchingTypeFromResult = selectedTestCase?.matching_type || "cosine";
                   return (
                     <div key={idx} className="bg-base-50 border border-base-200 rounded-lg p-4 h-fit">
                       <div className="flex items-center justify-between mb-3 pb-3 border-b border-base-200">
@@ -490,24 +603,40 @@ const TestCaseDetailsPanel = ({
                           v{versions.indexOf(version) + 1}
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="relative group">
-                            <span className={`text-lg font-bold cursor-help ${getScoreColor(score)}`}>
-                              {(score * 100).toFixed(0)}%
-                            </span>
-                            <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-20">
-                              <div className="bg-base-900 text-base-100 text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg">
-                                {getScoreMessage(score)}
-                                <div className="absolute top-full right-4 -mt-1">
-                                  <div className="w-2 h-2 bg-base-900 rotate-45"></div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                          <span className={`text-lg font-bold ${getScoreColor(score, matchingTypeFromResult)}`}>
+                            {getScoreDisplay(score, matchingTypeFromResult)}
+                          </span>
                         </div>
                       </div>
-                      <div className="text-sm text-base-content leading-relaxed">
+                      <div className="text-sm text-base-content leading-relaxed mb-3">
                         {typeof modelOutput === "string" ? modelOutput : JSON.stringify(modelOutput)}
                       </div>
+
+                      {/* Variables Response */}
+                      {selectedTestCase?.variables && Object.keys(selectedTestCase.variables).length > 0 && (
+                        <div className="pt-3 border-t border-base-200">
+                          <div className="text-xs font-semibold text-base-content/60 mb-2 uppercase tracking-wide">
+                            Variables Response
+                          </div>
+                          <div className="space-y-1.5">
+                            {Object.entries(selectedTestCase.variables).map(([key, value]) => {
+                              const variableResult =
+                                versionArray?.[versionArray?.length - 1]?.variables_response?.[key];
+                              const variableScore = variableResult?.score || 0;
+                              const matchingType = selectedTestCase?.matching_type || "cosine";
+                              const displayValue = getScoreDisplay(variableScore, matchingType);
+                              const colorClass = getScoreColor(variableScore, matchingType);
+
+                              return (
+                                <div key={key} className="flex items-center justify-between text-xs">
+                                  <span className="text-base-content/70">{key}:</span>
+                                  <span className={`font-semibold ${colorClass}`}>{displayValue}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

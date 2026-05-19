@@ -123,9 +123,11 @@ const TestCaseVariablesModal = ({
                   Run Anyway
                 </button>
               )}
-            <button onClick={handleSave} className="btn btn-primary btn-sm">
-              Save Variables
-            </button>
+            {Object.keys(editableVariables).length > 0 && (
+              <button onClick={handleSave} className="btn btn-primary btn-sm">
+                Save Variables
+              </button>
+            )}
           </div>
         </div>
       </div>

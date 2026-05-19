@@ -2,7 +2,6 @@ import {
   CircleAlertIcon,
   BotIcon,
   FileClockIcon,
-  ParenthesesIcon,
   PencilIcon,
   AddIcon,
   SquareFunctionIcon,
@@ -21,7 +20,16 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { formatRelativeTime, getIconOfService, getToolName, openModal } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, ExternalLink, RotateCcw, ChevronRight } from "lucide-react";
+import {
+  AlertTriangle,
+  Braces,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  ExternalLink,
+  RotateCcw,
+  ChevronRight,
+} from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
 import { GenericSlider, useSlider } from "@/utils/sliderUtility";
@@ -808,7 +816,7 @@ const ThreadItem = ({
               <RotateCcw className={`h-3 w-3 ${isRerunning ? "animate-spin" : ""}`} />
               <span>{isRerunning ? "Running..." : "Rerun"}</span>
             </button>
-            <div className="flex items-center gap-0.5 bg-base-200 rounded-lg p-1">
+            <div className="flex items-center gap-0.5 bg-base-200 rounded-lg p-1 shrink-0">
               <button
                 data-testid="thread-item-user-aiconfig-button-sticky"
                 className="btn btn-ghost btn-xs rounded-md gap-1.5"
@@ -833,7 +841,7 @@ const ThreadItem = ({
                 className="btn btn-ghost btn-xs rounded-md gap-1.5"
                 onClick={() => handleUserButtonClick("variables")}
               >
-                <ParenthesesIcon className="h-3 w-3" />
+                <Braces className="h-3 w-3" />
                 <span>Variables</span>
               </button>
             </div>
@@ -1263,11 +1271,11 @@ const ThreadItem = ({
             {!item.error && (
               <div className="w-full relative">
                 {/* Total time badge — top right outside card */}
-                {item?.latency?.over_all_time && (
-                  <span className="absolute -top-2 right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
-                    <Clock3 size={10} /> {parseFloat(item.latency.over_all_time).toFixed(2)}s total
-                  </span>
-                )}
+
+                <span className="absolute -top-2 right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
+                  <Clock3 size={10} /> {(parseFloat(item?.latency?.over_all_time) || 0).toFixed(2)}s total
+                </span>
+
                 <div
                   className="bg-base-200 rounded-xl px-4 py-3 text-sm text-base-content relative group"
                   style={{ wordBreak: "break-word" }}
@@ -1465,7 +1473,7 @@ const ThreadItem = ({
                     className={`btn text-xs font-normal btn-sm hover:btn-primary ${isLastMessage() ? "" : "see-on-hover"}`}
                     onClick={() => handleUserButtonClick("variables")}
                   >
-                    <ParenthesesIcon className="h-3 w-3" />
+                    <Braces className="h-3 w-3" />
                     <span>Variables</span>
                   </button>
                   <button
@@ -1788,49 +1796,46 @@ const ThreadItem = ({
                       </ReactMarkdown>
                     )}
 
-                    {/* Edit button for assistant messages */}
-                    {!item?.llm_urls?.length && !item?.fromRTLayer && (
-                      <div
-                        className={`tooltip absolute top-2 right-2 text-sm cursor-pointer transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                        data-tip="Edit message"
-                      >
-                        <button
-                          id="thread-item-edit-message-button"
-                          className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
-                          onClick={handleEdit}
-                        >
-                          <PencilIcon size={14} />
-                        </button>
-                      </div>
-                    )}
+                    {/* Edit button and action buttons for assistant messages */}
+                    <div
+                      className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                    >
+                      {!item?.llm_urls?.length && !item?.fromRTLayer && (
+                        <div className="tooltip" data-tip="Edit message">
+                          <button
+                            id="thread-item-edit-message-button"
+                            className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
+                            onClick={handleEdit}
+                          >
+                            <PencilIcon size={14} />
+                          </button>
+                        </div>
+                      )}
+                      {!item.error && (
+                        <>
+                          <button
+                            id="thread-item-add-test-case-button"
+                            className="btn text-xs font-normal btn-sm hover:btn-primary"
+                            onClick={() => handleAddTestCase(item, index)}
+                            title="Add Test Case"
+                          >
+                            <AddIcon className="h-3 w-3" />
+                            <span>Test Case</span>
+                          </button>
+                          <button
+                            id="thread-item-debug-agent-button"
+                            className="btn text-xs font-normal btn-sm hover:btn-primary"
+                            onClick={() => handleAskAi(item)}
+                            title="Debug Agent"
+                          >
+                            <BotMessageIcon className="h-3 w-3" />
+                            <span>Debug Agent</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Debug Agent footer — multi-query */}
-            {!item.error && (
-              <div
-                className={`see-on-hover flex gap-2 ml-14 mb-2 transition-opacity z-10 ${
-                  isLastMessage() ? "opacity-70" : "opacity-0 group-hover:opacity-70"
-                }`}
-              >
-                <button
-                  id="thread-item-add-test-case-button"
-                  className="btn text-xs font-normal btn-sm hover:btn-primary"
-                  onClick={() => handleAddTestCase(item, index)}
-                >
-                  <AddIcon className="h-3 w-3" />
-                  <span>Test Case</span>
-                </button>
-                <button
-                  id="thread-item-debug-agent-button"
-                  className="btn text-xs font-normal btn-sm hover:btn-primary"
-                  onClick={() => handleAskAi(item)}
-                >
-                  <BotMessageIcon className="h-3 w-3" />
-                  <span>Debug Agent</span>
-                </button>
               </div>
             )}
           </div>
