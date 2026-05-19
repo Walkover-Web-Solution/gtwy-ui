@@ -4,7 +4,7 @@ import { clearSubThreadData, clearThreadData, setSelectedVersion } from "@/store
 import { USER_FEEDBACK_FILTER_OPTIONS, HISTORY_FILTER_BY_FIELDS } from "@/utils/enums.js";
 import { formatDate, formatRelativeTime } from "@/utils/utility.js";
 import { ThumbsDownIcon, ThumbsUpIcon, UserIcon, MessageCircleIcon } from "@/components/Icons";
-import { useEffect, useState, memo, useCallback } from "react";
+import { useEffect, useState, memo, useCallback, useRef } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
@@ -49,6 +49,7 @@ const Sidebar = memo(
     const [filterByFields, setFilterByFields] = useState({ ...HISTORY_FILTER_BY_FIELDS, variables: {} });
     const [variableKey, setVariableKey] = useState("");
     const [variableValue, setVariableValue] = useState("");
+    const initialMessageIdHandledRef = useRef(false);
     const isBridgeStateless = (bridgeId) => {
       const bridgeInfo = allBridgesMap?.[bridgeId];
       return bridgeInfo?.settings?.stateless_conversation === true;
@@ -124,9 +125,12 @@ const Sidebar = memo(
       }
       if (subThreads?.length > 0) {
         const firstSubThreadId = subThreads[0]?.sub_thread_id;
-        if (firstSubThreadId) {
-          const url = `${pathName}?version=${liveVersion}&thread_id=${liveThreadId}&subThread_id=${firstSubThreadId}&start=${p.get("start") || ""}&end=${p.get("end") || ""}${p.get("message_id") ? `&message_id=${p.get("message_id")}` : ""}&type=${p.get("type") || ""}`;
-          router.push(url, undefined, { shallow: true });
+        const currentSubThreadId = p.get("subThread_id");
+        // Only push if the URL's subThread_id differs from the desired firstSubThreadId.
+        // Preserve all other params (including message_id) by mutating `p` instead of rebuilding.
+        if (firstSubThreadId && currentSubThreadId !== firstSubThreadId) {
+          p.set("subThread_id", firstSubThreadId);
+          router.push(`${pathName}?${p.toString()}`, undefined, { shallow: true });
         }
       }
     }, [subThreads, selectedVersion]);
@@ -138,8 +142,11 @@ const Sidebar = memo(
       };
     };
     useEffect(() => {
+      // Only auto-search on initial mount when landing on a URL that already has message_id.
+      // Subsequent in-app updates (e.g., batch click) should NOT re-trigger search.
+      if (initialMessageIdHandledRef.current) return;
       if (searchParams?.message_id) {
-        // Set the search query state and input value
+        initialMessageIdHandledRef.current = true;
         if (searchRef?.current) {
           searchRef.current.value = searchParams.message_id;
         }

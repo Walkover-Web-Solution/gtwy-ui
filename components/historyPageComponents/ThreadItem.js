@@ -1796,46 +1796,49 @@ const ThreadItem = ({
                       </ReactMarkdown>
                     )}
 
-                    {/* Edit button and action buttons for assistant messages */}
-                    <div
-                      className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                    >
-                      {!item?.llm_urls?.length && !item?.fromRTLayer && (
-                        <div className="tooltip" data-tip="Edit message">
-                          <button
-                            id="thread-item-edit-message-button"
-                            className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
-                            onClick={handleEdit}
-                          >
-                            <PencilIcon size={14} />
-                          </button>
-                        </div>
-                      )}
-                      {!item.error && (
-                        <>
-                          <button
-                            id="thread-item-add-test-case-button"
-                            className="btn text-xs font-normal btn-sm hover:btn-primary"
-                            onClick={() => handleAddTestCase(item, index)}
-                            title="Add Test Case"
-                          >
-                            <AddIcon className="h-3 w-3" />
-                            <span>Test Case</span>
-                          </button>
-                          <button
-                            id="thread-item-debug-agent-button"
-                            className="btn text-xs font-normal btn-sm hover:btn-primary"
-                            onClick={() => handleAskAi(item)}
-                            title="Debug Agent"
-                          >
-                            <BotMessageIcon className="h-3 w-3" />
-                            <span>Debug Agent</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {/* Edit button for assistant messages */}
+                    {!item?.llm_urls?.length && !item?.fromRTLayer && (
+                      <div
+                        className={`tooltip absolute top-2 right-2 text-sm cursor-pointer transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                        data-tip="Edit message"
+                      >
+                        <button
+                          id="thread-item-edit-message-button"
+                          className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
+                          onClick={handleEdit}
+                        >
+                          <PencilIcon size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Debug Agent footer — multi-query */}
+            {!item.error && (
+              <div
+                className={`see-on-hover flex gap-2 ml-14 mb-2 transition-opacity z-10 ${
+                  isLastMessage() ? "opacity-70" : "opacity-0 group-hover:opacity-70"
+                }`}
+              >
+                <button
+                  id="thread-item-add-test-case-button"
+                  className="btn text-xs font-normal btn-sm hover:btn-primary"
+                  onClick={() => handleAddTestCase(item, index)}
+                >
+                  <AddIcon className="h-3 w-3" />
+                  <span>Test Case</span>
+                </button>
+                <button
+                  id="thread-item-debug-agent-button"
+                  className="btn text-xs font-normal btn-sm hover:btn-primary"
+                  onClick={() => handleAskAi(item)}
+                >
+                  <BotMessageIcon className="h-3 w-3" />
+                  <span>Debug Agent</span>
+                </button>
               </div>
             )}
           </div>

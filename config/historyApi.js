@@ -113,6 +113,27 @@ export const updateHistoryMessage = async ({ id, bridge_id, message }) => {
   return response?.data;
 };
 
+export const getBatchHistory = async ({
+  agent_id,
+  thread_id,
+  sub_thread_id,
+  filter = "completed",
+  page = 1,
+  limit = 30,
+}) => {
+  try {
+    const encodedAgentId = encodeURIComponent(agent_id);
+    const params = { filter, page, limit };
+    if (thread_id) params.thread_id = thread_id;
+    if (sub_thread_id) params.sub_thread_id = sub_thread_id;
+    const response = await axios.get(`${URL}/api/batch/history/${encodedAgentId}`, { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching batch history:", error);
+    throw error;
+  }
+};
+
 export const getRecursiveHistory = async ({ agent_id, thread_id, message_id }) => {
   try {
     const encodedAgentId = encodeURIComponent(agent_id);

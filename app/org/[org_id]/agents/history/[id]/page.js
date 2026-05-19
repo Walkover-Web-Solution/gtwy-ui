@@ -206,10 +206,29 @@ function Page({ params, searchParams }) {
 
   const batchPanel = (
     <BatchSubthreadPanel
-      thread={thread}
+      agentId={resolvedParams?.id}
+      threadId={search.get("thread_id") ? decodeURIComponent(search.get("thread_id").replace(/%26/g, "&")) : undefined}
+      subThreadId={
+        search.get("subThread_id") ? decodeURIComponent(search.get("subThread_id").replace(/%26/g, "&")) : undefined
+      }
       subThreadIdFromURL={search.get("subThread_id")}
       selectedBatchMessageId={selectedBatchMessageId}
-      onSelectBatch={(messageId) => setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId))}
+      onSelectBatch={(messageId, batch) => {
+        // Toggle highlight; if batch metadata includes thread routing info, navigate to it.
+        setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId));
+        const targetThreadId = batch?.thread_id;
+        const targetSubThreadId = batch?.sub_thread_id || batch?.subThread_id || targetThreadId;
+        const p = new URLSearchParams(search.toString());
+        if (targetThreadId) {
+          p.set("thread_id", encodeURIComponent(targetThreadId.replace(/&/g, "%26")));
+          if (targetSubThreadId) {
+            p.set("subThread_id", encodeURIComponent(targetSubThreadId.replace(/&/g, "%26")));
+          }
+        }
+        // Never carry message_id in the URL on batch selection.
+        p.delete("message_id");
+        router.push(`${pathName}?${p.toString()}`);
+      }}
       onSelectSubThread={(subThreadId) => {
         setSelectedBatchMessageId(null);
         const p = new URLSearchParams(search.toString());
