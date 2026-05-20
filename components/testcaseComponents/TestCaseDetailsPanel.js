@@ -7,6 +7,7 @@ import { openModal } from "@/utils/utility";
 import { getBridgeVersionAction } from "@/store/action/bridgeAction";
 import { updateTestCaseAction } from "@/store/action/testCasesAction";
 import TestCaseVariablesModal from "./TestCaseVariablesModal";
+import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -206,8 +207,8 @@ const TestCaseDetailsPanel = ({
       if (versionId) {
         if (bridgeVersionMapping[versionId]) {
           const versionData = bridgeVersionMapping[versionId];
-          // Extract variable_state from the version
-          const variableState = versionData?.variables_state || {};
+          // variables_state is stored under agent_info on the version document.
+          const variableState = versionData?.agent_info?.variables_state || {};
           mergedVersionVariables[versionId] = variableState;
         } else {
           versionsToFetch.push(versionId);
@@ -442,14 +443,13 @@ const TestCaseDetailsPanel = ({
                             {message?.role === "user" ? "User" : "Assistant"}
                           </div>
                           {isStringContent ? (
-                            <textarea
+                            <AutoResizeTextarea
                               value={message?.content || ""}
                               onChange={(e) => handleConversationChange(idx, e.target.value)}
                               onBlur={() => {
                                 if (hasUnsavedChanges) handleSaveChanges();
                               }}
-                              rows={Math.max(1, (message?.content || "").split("\n").length)}
-                              className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none resize-none border-0 focus:ring-1 focus:ring-primary/30 rounded p-1"
+                              className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-1 focus:ring-primary/30 rounded p-1"
                             />
                           ) : (
                             <div className="text-sm text-base-content leading-relaxed">
@@ -477,14 +477,13 @@ const TestCaseDetailsPanel = ({
               <div className="mb-5">
                 <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">Input</div>
                 <div className="bg-base-50 rounded-lg px-4 py-3 border border-base-200">
-                  <textarea
+                  <AutoResizeTextarea
                     value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
                     onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
                     onBlur={() => {
                       if (hasUnsavedChanges) handleSaveChanges();
                     }}
-                    rows={Math.max(1, String(lastUserContent).split("\n").length)}
-                    className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none resize-none"
+                    className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
                   />
                 </div>
               </div>
@@ -498,14 +497,14 @@ const TestCaseDetailsPanel = ({
               Expected Output
             </div>
             <div className="bg-success/10 rounded-lg px-4 py-3 border border-success/30">
-              <textarea
+              <AutoResizeTextarea
                 value={editedExpected}
                 onChange={(e) => setEditedExpected(e.target.value)}
                 onBlur={() => {
                   if (hasUnsavedChanges) handleSaveChanges();
                 }}
-                rows={Math.max(2, String(editedExpected ?? "").split("\n").length)}
-                className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none resize-none"
+                minRows={2}
+                className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
               />
             </div>
           </div>
@@ -596,8 +595,9 @@ const TestCaseDetailsPanel = ({
                 {comparisonVersions.map((version, idx) => {
                   const versionArray = selectedTestCase?.version_history?.[version];
                   const latestRun = versionArray?.[versionArray?.length - 1];
+                  const hasRun = !!latestRun;
                   const score = latestRun?.score || 0;
-                  const modelOutput = latestRun?.model_output ?? "N/A";
+                  const modelOutput = latestRun?.model_output;
                   const runError = latestRun?.error;
                   const runErrorMessage =
                     typeof runError === "string"
@@ -615,7 +615,7 @@ const TestCaseDetailsPanel = ({
                           v{versions.indexOf(version) + 1}
                         </div>
                         <div className="flex items-center gap-2">
-                          {runErrorMessage ? (
+                          {!hasRun ? null : runErrorMessage ? (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error">
                               Error
                             </span>
@@ -626,7 +626,9 @@ const TestCaseDetailsPanel = ({
                           )}
                         </div>
                       </div>
-                      {runErrorMessage ? (
+                      {!hasRun ? (
+                        <div className="text-xs text-base-content/40 italic mb-3">Not run yet</div>
+                      ) : runErrorMessage ? (
                         <div className="text-sm leading-relaxed mb-3 p-3 rounded-md bg-error/5 border border-error/20 text-error break-words">
                           {runErrorMessage}
                         </div>

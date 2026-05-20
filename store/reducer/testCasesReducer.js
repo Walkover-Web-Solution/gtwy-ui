@@ -7,12 +7,17 @@ const initialState = {
 
 const applyResultToTestCase = (state, bridgeId, versionId, result) => {
   if (!result || !result.testcase_id) return false;
+  // Skipped results (no_changes_since_last_execution) carry null score / null
+  // actual_result — they are NOT a fresh evaluation and would clobber the
+  // previously cached run for this version. Leave version_history untouched.
+  if (result.skipped) return false;
   const list = state.testCases[bridgeId];
   if (!Array.isArray(list)) return false;
   const tc = list.find((t) => t._id === result.testcase_id);
   if (!tc) return false;
   if (!tc.version_history) tc.version_history = {};
   if (!Array.isArray(tc.version_history[versionId])) tc.version_history[versionId] = [];
+  const nowIso = new Date().toISOString();
   tc.version_history[versionId].push({
     score: result.score,
     model_output: result.actual_result,
@@ -21,8 +26,12 @@ const applyResultToTestCase = (state, bridgeId, versionId, result) => {
     success: result.success,
     error: result.error || null,
     metadata: { bridge_id: result.bridge_id || bridgeId },
-    created_at: new Date().toISOString(),
+    created_at: nowIso,
   });
+  // Mirror the backend's `execution.lastExecutedAt` so the in-memory testcase
+  // matches what a refresh would fetch. Without this, the single-run button's
+  // "no changes since last execution" guard would only trigger after a reload.
+  tc.execution = { ...(tc.execution || {}), lastExecutedAt: nowIso };
   return true;
 };
 

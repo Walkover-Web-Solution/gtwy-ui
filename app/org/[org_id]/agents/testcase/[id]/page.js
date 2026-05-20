@@ -192,9 +192,11 @@ function TestCases({ params }) {
   const [versionSliderStart, setVersionSliderStart] = useState(0);
 
   // Sync local UI state with the RTLayer-driven testRun in redux.
+  // `isloading` represents *any* active run (Run-All or single) so that every
+  // run button stays disabled until the run completes.
   useEffect(() => {
     const isRunning = testRun?.status === "running";
-    setIsLoading(isRunning && !testRun?.testcaseId); // "Run All" spinner
+    setIsLoading(isRunning);
     setRunningTestCaseId(isRunning ? testRun?.testcaseId || null : null);
   }, [testRun?.status, testRun?.testcaseId]);
 
@@ -258,22 +260,26 @@ function TestCases({ params }) {
             {/* Versions and Run Button Row */}
             <div className="flex items-center gap-2 flex-wrap justify-between">
               <span className="text-sm font-medium text-base-content">Versions:</span>
-              <button
-                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                  selectedVersions.length === versions.length && versions.length > 0
-                    ? "bg-primary text-primary-content shadow-sm"
-                    : "bg-base-200 text-base-content hover:bg-base-300"
-                }`}
-                onClick={() => {
-                  if (selectedVersions.length === versions.length && versions.length > 0) {
-                    setSelectedVersions([]);
-                  } else {
-                    setSelectedVersions([...versions]);
-                  }
-                }}
-              >
-                ALL
-              </button>
+              {versions.length > 1 && (
+                <button
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    selectedVersions.length === versions.length
+                      ? "bg-primary text-primary-content shadow-sm"
+                      : "bg-base-200 text-base-content hover:bg-base-300"
+                  }`}
+                  onClick={() => {
+                    // Toggling ALL off would leave zero selected — keep the
+                    // first version selected so a run is always possible.
+                    if (selectedVersions.length === versions.length) {
+                      setSelectedVersions([versions[0]]);
+                    } else {
+                      setSelectedVersions([...versions]);
+                    }
+                  }}
+                >
+                  ALL
+                </button>
+              )}
               <div className="flex items-center gap-1.5 flex-wrap">
                 {versions.slice(versionSliderStart, versionSliderStart + 10).map((version, idx) => (
                   <button
@@ -285,8 +291,12 @@ function TestCases({ params }) {
                     }`}
                     onClick={() => {
                       setSelectedVersions((prev) => {
-                        const updated = prev.includes(version) ? prev.filter((v) => v !== version) : [...prev, version];
-                        return updated;
+                        // Never allow zero selected versions.
+                        if (prev.includes(version)) {
+                          if (prev.length <= 1) return prev;
+                          return prev.filter((v) => v !== version);
+                        }
+                        return [...prev, version];
                       });
                     }}
                   >

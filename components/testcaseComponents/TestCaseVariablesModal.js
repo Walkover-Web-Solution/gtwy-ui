@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import Modal from "@/components/UI/Modal";
+import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 
 const TestCaseVariablesModal = ({
   testCaseId,
@@ -86,19 +87,20 @@ const TestCaseVariablesModal = ({
               <div className="space-y-3">
                 {Object.entries(editableVariables).map(([key, value]) => (
                   <div key={key} className="bg-base-50 rounded-lg p-4 border border-base-200">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3 items-start">
                       <div>
                         <label className="text-xs font-semibold text-base-content mb-2 block">Key</label>
-                        <div className="text-sm font-mono bg-base-200 px-3 py-2 rounded text-base-content">{key}</div>
+                        <div className="text-sm font-mono bg-base-200 px-3 py-2 rounded text-base-content break-all whitespace-pre-wrap">
+                          {key}
+                        </div>
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-base-content mb-2 block">Value</label>
-                        <input
-                          type="text"
+                        <AutoResizeTextarea
                           value={typeof value === "string" ? value : JSON.stringify(value)}
                           onChange={(e) => handleVariableChange(key, e.target.value)}
-                          className="input input-bordered input-sm bg-base-100 text-sm w-full"
                           placeholder="Enter value"
+                          className="textarea textarea-bordered textarea-sm bg-base-100 text-sm w-full leading-relaxed"
                         />
                       </div>
                     </div>
