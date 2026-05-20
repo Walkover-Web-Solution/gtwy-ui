@@ -341,6 +341,20 @@ const ThreadItem = ({
     [allBridgesMap, orgBridges, integrationData]
   );
 
+  // Returns true only if the tool exists in the available tools/integration data
+  // (i.e., resolvable via integrationData, allBridgesMap, or orgBridges).
+  // Tools that are not present in the tools API are hidden from history.
+  const isToolKnown = useCallback(
+    (tool) => {
+      if (!tool) return false;
+      const lookupKey = tool.type === "pre_function" ? tool.id || tool.name : tool.name || tool.id;
+      if (!lookupKey) return false;
+      const resolved = getToolName(lookupKey, allBridgesMap, orgBridges, integrationData);
+      return Boolean(resolved) && resolved !== lookupKey;
+    },
+    [allBridgesMap, orgBridges, integrationData]
+  );
+
   const flattenTools = useCallback((toolsData) => {
     const flattened = [];
     (toolsData || []).forEach((entry) => {
@@ -363,9 +377,9 @@ const ThreadItem = ({
 
   const preFunctionEntry = useMemo(() => {
     const allTools = flattenTools(item?.tools_call_data);
-    const found = allTools.find((tool) => tool?.type === "pre_function");
+    const found = allTools.find((tool) => tool?.type === "pre_function" && isToolKnown(tool));
     return found || null;
-  }, [item?.tools_call_data, flattenTools]);
+  }, [item?.tools_call_data, flattenTools, isToolKnown]);
 
   const {
     preTools,
@@ -379,6 +393,8 @@ const ThreadItem = ({
 
     allTools.forEach((tool) => {
       if (!tool) return;
+      // Hide tools that are not present in the tools API / integration data
+      if (!isToolKnown(tool)) return;
       const type = tool.type;
       if (type === "pre_tool") {
         pre.push(tool);
@@ -390,7 +406,7 @@ const ThreadItem = ({
       }
     });
     return { preTools: pre, postTools: post, otherTools: other };
-  }, [item?.tools_call_data, flattenTools]);
+  }, [item?.tools_call_data, flattenTools, isToolKnown]);
 
   const preFunctionStripText = useMemo(() => {
     if (!preFunctionEntry) return "";
@@ -856,7 +872,7 @@ const ThreadItem = ({
           // Find the pre_tool from tools_call_data
           const preFunction = item.tools_call_data
             .flatMap((tools) => Object.values(tools || {}))
-            .find((tool) => tool?.type === "pre_tool");
+            .find((tool) => tool?.type === "pre_tool" && isToolKnown(tool));
 
           if (!preFunction) return null;
           return (
@@ -981,6 +997,8 @@ const ThreadItem = ({
 
                 // Filter based on mode
                 const allToolEntries = allTools.filter(([, tool]) => {
+                  // Hide tools that are not present in the tools API / integration data
+                  if (!isToolKnown(tool)) return false;
                   // In stateful mode: include ALL tools (including pre_tool)
                   if (!isSingleQuery) return true;
                   // In stateless mode: exclude pre_tool (it's shown separately)
@@ -1509,6 +1527,8 @@ const ThreadItem = ({
 
                 // Filter based on mode
                 const allToolEntries = allTools.filter(([, tool]) => {
+                  // Hide tools that are not present in the tools API / integration data
+                  if (!isToolKnown(tool)) return false;
                   // In stateful mode: include ALL tools (including pre_tool)
                   if (!isSingleQuery) return true;
                   // In stateless mode: exclude pre_tool (it's shown separately)
@@ -1757,7 +1777,7 @@ const ThreadItem = ({
                   style={{ width: "-webkit-fill-available" }}
                 >
                   <div
-                    className={`bg-base-200 text-base-content pr-10 pt-6 mb-7 chat-bubble transition-all ease-in-out duration-300 relative group break-words overflow-visible border border-base-300 ${
+                    className={`bg-base-200 text-base-content pr-10 chat-bubble transition-all ease-in-out duration-300 relative group break-words overflow-visible border border-base-300 ${
                       preFunctionEntry ? "min-w-[16rem]" : ""
                     }`}
                     style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
@@ -1796,11 +1816,11 @@ const ThreadItem = ({
                       </ReactMarkdown>
                     )}
 
-                    {/* Edit button and action buttons for assistant messages */}
-                    <div
-                      className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                    >
-                      {!item?.llm_urls?.length && !item?.fromRTLayer && (
+                    {/* Edit button for assistant messages */}
+                    {!item?.llm_urls?.length && !item?.fromRTLayer && (
+                      <div
+                        className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${isLastMessage() ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                      >
                         <div className="tooltip" data-tip="Edit message">
                           <button
                             id="thread-item-edit-message-button"
@@ -1810,32 +1830,33 @@ const ThreadItem = ({
                             <PencilIcon size={14} />
                           </button>
                         </div>
-                      )}
-                      {!item.error && (
-                        <>
-                          <button
-                            id="thread-item-add-test-case-button"
-                            className="btn text-xs font-normal btn-sm hover:btn-primary"
-                            onClick={() => handleAddTestCase(item, index)}
-                            title="Add Test Case"
-                          >
-                            <AddIcon className="h-3 w-3" />
-                            <span>Test Case</span>
-                          </button>
-                          <button
-                            id="thread-item-debug-agent-button"
-                            className="btn text-xs font-normal btn-sm hover:btn-primary"
-                            onClick={() => handleAskAi(item)}
-                            title="Debug Agent"
-                          >
-                            <BotMessageIcon className="h-3 w-3" />
-                            <span>Debug Agent</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+                {/* Action buttons below AI response — visible on hover */}
+                {!item.error && (
+                  <div className="chat-footer opacity-0 group-hover:opacity-100 transition-opacity mt-1 flex items-center gap-1">
+                    <button
+                      id="thread-item-add-test-case-button"
+                      className="btn text-xs font-normal btn-sm hover:btn-primary"
+                      onClick={() => handleAddTestCase(item, index)}
+                      title="Add Test Case"
+                    >
+                      <AddIcon className="h-3 w-3" />
+                      <span>Test Case</span>
+                    </button>
+                    <button
+                      id="thread-item-debug-agent-button"
+                      className="btn text-xs font-normal btn-sm hover:btn-primary"
+                      onClick={() => handleAskAi(item)}
+                      title="Debug Agent"
+                    >
+                      <BotMessageIcon className="h-3 w-3" />
+                      <span>Debug Agent</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

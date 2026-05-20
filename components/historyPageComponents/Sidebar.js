@@ -34,14 +34,17 @@ const Sidebar = memo(
     isErrorTrue,
     activeFilterByRef,
   }) => {
-    const { subThreads, userFeedbackCount, bridgeVersionsArray, allBridgesMap } = useCustomSelector((state) => ({
-      subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
-      userFeedbackCount: state?.historyReducer?.userFeedbackCount,
-      bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
-        ? state.bridgeReducer.allBridgesMap[params.id].versions
-        : [],
-      allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
-    }));
+    const { subThreads, userFeedbackCount, bridgeVersionsArray, allBridgesMap, isEmbedUser } = useCustomSelector(
+      (state) => ({
+        subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
+        userFeedbackCount: state?.historyReducer?.userFeedbackCount,
+        bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
+          ? state.bridgeReducer.allBridgesMap[params.id].versions
+          : [],
+        allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
+        isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
+      })
+    );
 
     const [selectedThreadIds, _setSelectedThreadIds] = useState([]);
     const [expandedThreads, setExpandedThreads] = useState([]);
@@ -55,6 +58,7 @@ const Sidebar = memo(
     };
 
     const isThreadSingleQuery = (item) => {
+      if (isEmbedUser) return false;
       if (!isBridgeStateless(params?.id)) return false;
       // For the currently expanded thread, check actual subthread count from reducer
       if (decodeURIComponent(searchParams?.thread_id) === item?.thread_id) {

@@ -62,6 +62,8 @@ const ThreadContainer = ({
     searchResults: Array.isArray(state?.historyReducer?.search?.results) ? state.historyReducer.search.results : [],
     isSearchActive: state?.historyReducer?.search?.isActive || false,
     isSingleQuery: (() => {
+      const isEmbedUser = state?.appInfoReducer?.embedUserDetails?.isEmbedUser;
+      if (isEmbedUser) return false;
       const bridgeInfo = state?.bridgeReducer?.allBridgesMap?.[bridgeId];
       const isStateless = bridgeInfo?.settings?.stateless_conversation === true;
       if (!isStateless) return false;
