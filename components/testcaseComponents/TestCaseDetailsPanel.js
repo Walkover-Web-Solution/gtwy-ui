@@ -67,7 +67,10 @@ const TestCaseDetailsPanel = ({
 
   // Get current expected value as string for editing
   const getExpectedValue = (testCase) => {
-    if (testCase?.expected?.response) return testCase.expected.response;
+    const response = testCase?.expected?.response;
+    if (response !== undefined && response !== null && response !== "") {
+      return typeof response === "string" ? response : JSON.stringify(response, null, 2);
+    }
     if (testCase?.expected?.tool_calls) return JSON.stringify(testCase.expected.tool_calls, null, 2);
     return "";
   };
@@ -501,7 +504,7 @@ const TestCaseDetailsPanel = ({
                 onBlur={() => {
                   if (hasUnsavedChanges) handleSaveChanges();
                 }}
-                rows={Math.max(2, editedExpected.split("\n").length)}
+                rows={Math.max(2, String(editedExpected ?? "").split("\n").length)}
                 className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none resize-none"
               />
             </div>
@@ -592,25 +595,46 @@ const TestCaseDetailsPanel = ({
               >
                 {comparisonVersions.map((version, idx) => {
                   const versionArray = selectedTestCase?.version_history?.[version];
-                  const score = versionArray?.[versionArray?.length - 1]?.score || 0;
-                  const modelOutput = versionArray?.[versionArray?.length - 1]?.model_output || "N/A";
+                  const latestRun = versionArray?.[versionArray?.length - 1];
+                  const score = latestRun?.score || 0;
+                  const modelOutput = latestRun?.model_output ?? "N/A";
+                  const runError = latestRun?.error;
+                  const runErrorMessage =
+                    typeof runError === "string"
+                      ? runError
+                      : runError?.error || runError?.message || (runError ? "Run failed" : null);
 
                   const matchingTypeFromResult = selectedTestCase?.matching_type || "cosine";
                   return (
-                    <div key={idx} className="bg-base-50 border border-base-200 rounded-lg p-4 h-fit">
+                    <div
+                      key={idx}
+                      className={`bg-base-50 border rounded-lg p-4 h-fit ${runErrorMessage ? "border-error/40" : "border-base-200"}`}
+                    >
                       <div className="flex items-center justify-between mb-3 pb-3 border-b border-base-200">
                         <div className="text-xs font-bold text-primary uppercase tracking-wide">
                           v{versions.indexOf(version) + 1}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-lg font-bold ${getScoreColor(score, matchingTypeFromResult)}`}>
-                            {getScoreDisplay(score, matchingTypeFromResult)}
-                          </span>
+                          {runErrorMessage ? (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error">
+                              Error
+                            </span>
+                          ) : (
+                            <span className={`text-lg font-bold ${getScoreColor(score, matchingTypeFromResult)}`}>
+                              {getScoreDisplay(score, matchingTypeFromResult)}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="text-sm text-base-content leading-relaxed mb-3">
-                        {typeof modelOutput === "string" ? modelOutput : JSON.stringify(modelOutput)}
-                      </div>
+                      {runErrorMessage ? (
+                        <div className="text-sm leading-relaxed mb-3 p-3 rounded-md bg-error/5 border border-error/20 text-error break-words">
+                          {runErrorMessage}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-base-content leading-relaxed mb-3">
+                          {typeof modelOutput === "string" ? modelOutput : JSON.stringify(modelOutput)}
+                        </div>
+                      )}
 
                       {/* Variables Response */}
                       {selectedTestCase?.variables && Object.keys(selectedTestCase.variables).length > 0 && (

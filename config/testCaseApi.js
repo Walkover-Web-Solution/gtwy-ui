@@ -5,9 +5,11 @@ const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
 // Test Case Management APIs
-export const getAllTestCasesOfBridgeApi = async ({ bridgeId }) => {
+export const getAllTestCasesOfBridgeApi = async ({ bridgeId, page = 1, limit = 30 }) => {
   try {
-    const response = await axios.get(`${URL}/api/testcases/${bridgeId}`);
+    const response = await axios.get(`${URL}/api/testcases/${bridgeId}`, {
+      params: { page, limit },
+    });
     return response.data;
   } catch (error) {
     console.error(error);

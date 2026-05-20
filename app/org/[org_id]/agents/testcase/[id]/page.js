@@ -1,9 +1,10 @@
 "use client";
-import React, { useState, useEffect, useMemo, use } from "react";
+import React, { useState, useEffect, useMemo, useCallback, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
+import InfiniteScroll from "react-infinite-scroll-component";
 import { deleteTestCaseAction, getAllTestCasesOfBridgeAction, runTestCaseAction } from "@/store/action/testCasesAction";
 import { PlayIcon } from "@/components/Icons";
 import { FileText } from "lucide-react";
@@ -76,9 +77,10 @@ function TestCases({ params }) {
   const allBridges = useCustomSelector((state) => state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.orgs || [])
     .slice()
     .reverse();
-  const { testCases, isFirstTestcase } = useCustomSelector((state) => ({
+  const { testCases, isFirstTestcase, testRun } = useCustomSelector((state) => ({
     testCases: state?.testCasesReducer?.testCases?.[resolvedParams?.id] || {},
     isFirstTestcase: state?.userDetailsReducer?.userDetails?.meta?.onboarding?.TestCasesSetup || "",
+    testRun: state?.testCasesReducer?.testRuns?.[resolvedParams?.id] || null,
   }));
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
@@ -88,12 +90,47 @@ function TestCases({ params }) {
     return allBridges.find((bridge) => bridge?._id === resolvedParams?.id)?.versions || [];
   }, [allBridges, resolvedParams?.id]);
 
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+
   useEffect(() => {
     setIsLoadingTestCases(true);
-    dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id })).finally(() => {
-      setIsLoadingTestCases(false);
-    });
-  }, []);
+    setPage(1);
+    setHasMore(true);
+    dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id, page: 1 }))
+      .then((res) => {
+        // Backend doesn't return hasMore — if we got a full page, assume there's more.
+        setHasMore(Array.isArray(res?.data) && res.data.length >= 30);
+      })
+      .finally(() => {
+        setIsLoadingTestCases(false);
+      });
+  }, [dispatch, resolvedParams?.id]);
+
+  const fetchMoreTestCases = useCallback(async () => {
+    if (isFetchingMore || !hasMore) return;
+    setIsFetchingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await dispatch(
+        getAllTestCasesOfBridgeAction({
+          bridgeId: resolvedParams?.id,
+          page: nextPage,
+          append: true,
+        })
+      );
+      if (res?.success) {
+        setPage(nextPage);
+        // Backend doesn't return hasMore — short page means we're done.
+        setHasMore(Array.isArray(res?.data) && res.data.length >= 30);
+      } else {
+        setHasMore(false);
+      }
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [dispatch, hasMore, isFetchingMore, page, resolvedParams?.id]);
 
   useEffect(() => {
     if (selectedVersion) {
@@ -106,30 +143,23 @@ function TestCases({ params }) {
 
   const handleRunAllTestCases = async () => {
     if (!selectedVersions.length) return;
-    setIsLoading(true);
+    // Loading + completion is now driven by RTLayer events via redux `testRun`.
     try {
-      // Run all testcases - each will use its own matching_type
       await dispatch(
         runTestCaseAction({
           versionIds: selectedVersions,
           bridgeId: resolvedParams?.id,
         })
       );
-      await dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }));
-      toast.success("All test cases completed successfully");
     } catch (error) {
       toast.error("Error running test cases");
       console.error("Error running all test cases:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleRunSingleTestCase = async (testCaseId, variables = null) => {
     if (!selectedVersions.length) return;
-    setRunningTestCaseId(testCaseId);
     try {
-      // Get the testcase to retrieve its matching type
       const testCase = Array.isArray(testCases) && testCases.find((tc) => tc._id === testCaseId);
       const testCaseMatchingType = testCase?.matching_type || "AI";
 
@@ -142,9 +172,8 @@ function TestCases({ params }) {
           variables,
         })
       );
-      await dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }));
-    } finally {
-      setRunningTestCaseId(null);
+    } catch (error) {
+      console.error("Error running test case:", error);
     }
   };
 
@@ -161,6 +190,13 @@ function TestCases({ params }) {
   const [selectedVersions, setSelectedVersions] = useState([]);
   const [runningTestCaseId, setRunningTestCaseId] = useState(null);
   const [versionSliderStart, setVersionSliderStart] = useState(0);
+
+  // Sync local UI state with the RTLayer-driven testRun in redux.
+  useEffect(() => {
+    const isRunning = testRun?.status === "running";
+    setIsLoading(isRunning && !testRun?.testcaseId); // "Run All" spinner
+    setRunningTestCaseId(isRunning ? testRun?.testcaseId || null : null);
+  }, [testRun?.status, testRun?.testcaseId]);
 
   useEffect(() => {
     if (selectedVersions.length === 0 && versions.length > 0) {
@@ -292,7 +328,7 @@ function TestCases({ params }) {
                 {isloading ? (
                   <>
                     <span className="loading loading-spinner loading-sm"></span>
-                    Running
+                    {testRun?.total ? `Running ${testRun?.completed || 0}/${testRun.total}` : "Running"}
                   </>
                 ) : (
                   <>
@@ -325,86 +361,114 @@ function TestCases({ params }) {
           <div className="grid grid-cols-12 gap-4 h-full relative">
             {/* Left Panel - Test Cases List */}
             <div className="col-span-4 bg-base-100 border border-base-200 rounded-xl overflow-hidden flex flex-col h-full relative z-10 shadow-lg">
-              <div className="overflow-x-auto overflow-y-auto flex-1 bg-base-100">
-                <table className="w-full border-collapse bg-base-100">
-                  <thead className="bg-base-50 sticky top-0 z-20">
-                    <tr className="border-b border-base-200">
-                      <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-0 bg-base-50 w-[40px] z-30">
-                        #
-                      </th>
-                      <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-[40px] bg-base-50 w-[140px] z-30">
-                        Input
-                      </th>
-                      {selectedVersions.map((version, idx) => (
-                        <th
-                          key={idx}
-                          className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 z-20"
-                        >
-                          v{versions.indexOf(version) + 1}
+              <div
+                id="testcase-list-scrollable"
+                data-testid="testcase-list-scrollable"
+                className="overflow-x-auto overflow-y-auto flex-1 bg-base-100"
+              >
+                <InfiniteScroll
+                  dataLength={Array.isArray(testCases) ? testCases.length : 0}
+                  next={fetchMoreTestCases}
+                  hasMore={hasMore}
+                  loader={
+                    <div className="flex justify-center items-center py-3">
+                      <span className="loading loading-spinner loading-sm text-base-content/50" />
+                    </div>
+                  }
+                  scrollableTarget="testcase-list-scrollable"
+                  style={{ overflow: "visible" }}
+                >
+                  <table className="w-full border-collapse bg-base-100">
+                    <thead className="bg-base-50 sticky top-0 z-20">
+                      <tr className="border-b border-base-200">
+                        <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-0 bg-base-50 w-[40px] z-30">
+                          #
                         </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-base-200">
-                    {Array.isArray(testCases) &&
-                      testCases.map((testCase, index) => {
-                        const lastUserMessageRaw = testCase?.conversation
-                          ?.filter((message) => message?.role === "user")
-                          ?.pop()?.content;
-                        const lastUserMessage =
-                          typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
-                            ? JSON.stringify(lastUserMessageRaw)
-                            : lastUserMessageRaw || "N/A";
-
-                        const isSelected = selectedTestCaseIndex === index;
-
-                        return (
-                          <tr
-                            key={index}
-                            onClick={() => setSelectedTestCaseIndex(index)}
-                            className={`cursor-pointer transition-all ${isSelected ? "bg-base-200" : "bg-base-100 hover:bg-base-50"}`}
+                        <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-[40px] bg-base-50 w-[140px] z-30">
+                          Input
+                        </th>
+                        {selectedVersions.map((version, idx) => (
+                          <th
+                            key={idx}
+                            className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 z-20"
                           >
-                            <td
-                              className={`px-2 py-3.5 text-sm sticky left-0 z-10 w-[40px] ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content`}
+                            v{versions.indexOf(version) + 1}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-base-200">
+                      {Array.isArray(testCases) &&
+                        testCases.map((testCase, index) => {
+                          const lastUserMessageRaw = testCase?.conversation
+                            ?.filter((message) => message?.role === "user")
+                            ?.pop()?.content;
+                          const lastUserMessage =
+                            typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
+                              ? JSON.stringify(lastUserMessageRaw)
+                              : lastUserMessageRaw || "N/A";
+
+                          const isSelected = selectedTestCaseIndex === index;
+
+                          return (
+                            <tr
+                              key={index}
+                              onClick={() => setSelectedTestCaseIndex(index)}
+                              className={`cursor-pointer transition-all ${isSelected ? "bg-base-200" : "bg-base-100 hover:bg-base-50"}`}
                             >
-                              {index + 1}
-                            </td>
-                            <td
-                              className={`px-2 py-3.5 text-sm sticky left-[40px] z-10 w-[140px] ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content whitespace-nowrap overflow-hidden text-ellipsis`}
-                            >
-                              {lastUserMessage?.substring(0, 20)}
-                              {lastUserMessage?.length > 20 ? "..." : ""}
-                            </td>
-                            {selectedVersions.map((version, vIdx) => {
-                              const versionArray = testCase?.version_history?.[version];
-                              const latestResult = versionArray?.[versionArray?.length - 1];
-                              const score = latestResult?.score || 0;
-                              const matchingTypeFromResult = testCase?.matching_type || "cosine";
-                              return (
-                                <td
-                                  key={vIdx}
-                                  className={`px-2 py-3.5 text-center min-w-[60px] ${isSelected ? "bg-base-200" : "bg-base-100"}`}
-                                >
-                                  {testCase?.version_history?.[version] && (
-                                    <span
-                                      className={`text-xs font-semibold ${getScoreColor(score, matchingTypeFromResult)}`}
-                                    >
-                                      {getScoreDisplay(score, matchingTypeFromResult)}
-                                    </span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
+                              <td
+                                className={`px-2 py-3.5 text-sm sticky left-0 z-10 w-[40px] ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content`}
+                              >
+                                {index + 1}
+                              </td>
+                              <td
+                                className={`px-2 py-3.5 text-sm sticky left-[40px] z-10 w-[140px] ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content whitespace-nowrap overflow-hidden text-ellipsis`}
+                              >
+                                {lastUserMessage?.substring(0, 20)}
+                                {lastUserMessage?.length > 20 ? "..." : ""}
+                              </td>
+                              {selectedVersions.map((version, vIdx) => {
+                                const versionArray = testCase?.version_history?.[version];
+                                const latestResult = versionArray?.[versionArray?.length - 1];
+                                const score = latestResult?.score || 0;
+                                const matchingTypeFromResult = testCase?.matching_type || "cosine";
+                                const runError = latestResult?.error;
+                                const runErrorMessage =
+                                  typeof runError === "string"
+                                    ? runError
+                                    : runError?.error || runError?.message || (runError ? "Run failed" : null);
+                                return (
+                                  <td
+                                    key={vIdx}
+                                    className={`px-2 py-3.5 text-center min-w-[60px] ${isSelected ? "bg-base-200" : "bg-base-100"}`}
+                                  >
+                                    {versionArray &&
+                                      (runErrorMessage ? (
+                                        <span
+                                          title={runErrorMessage}
+                                          className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error"
+                                        >
+                                          Error
+                                        </span>
+                                      ) : (
+                                        <span
+                                          className={`text-xs font-semibold ${getScoreColor(score, matchingTypeFromResult)}`}
+                                        >
+                                          {getScoreDisplay(score, matchingTypeFromResult)}
+                                        </span>
+                                      ))}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </InfiniteScroll>
               </div>
               <div className="px-4 py-3 border-t border-base-200 text-xs text-base-content/60 bg-base-50">
-                {Array.isArray(testCases)
-                  ? `${testCases.length} testcases • ${selectedVersions.length} versions selected`
-                  : "0 testcases"}
+                {Array.isArray(testCases) ? `${testCases.length} testcases` : "0 testcases"}
               </div>
             </div>
 

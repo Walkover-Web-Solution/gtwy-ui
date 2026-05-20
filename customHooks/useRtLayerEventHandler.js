@@ -8,6 +8,12 @@ import {
   addChatErrorMessage,
 } from "@/store/action/chatAction";
 import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
+import {
+  testRunStartedReducer,
+  testRunResultReducer,
+  testRunCompletedReducer,
+  testRunFailedReducer,
+} from "@/store/reducer/testCasesReducer";
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
@@ -95,6 +101,46 @@ function useRtLayerEventHandler(channelIdentifier = "") {
       try {
         const parsedData = typeof message === "string" ? JSON.parse(message) : message;
         const { response, error, event } = parsedData;
+
+        // ---------- Testcase run events (RTLayer-driven) ----------
+        // Channel name from backend is `${org_id}_${bridge_id}`. We trust the
+        // bridge_id present in the payload, falling back to the parsed path.
+        if (
+          event === "run_started" ||
+          event === "testcase_result" ||
+          event === "run_completed" ||
+          event === "run_failed"
+        ) {
+          const runBridgeId = parsedData.bridge_id || bridgeId;
+          if (!runBridgeId) return;
+          if (event === "run_started") {
+            dispatch(
+              testRunStartedReducer({
+                bridgeId: runBridgeId,
+                total: parsedData.total_testcases,
+                versionIds: parsedData.version_ids,
+                testcaseId: parsedData.testcase_id || null,
+              })
+            );
+          } else if (event === "testcase_result") {
+            dispatch(
+              testRunResultReducer({
+                bridgeId: runBridgeId,
+                versionId: parsedData.version_id,
+                result: parsedData.result,
+              })
+            );
+          } else if (event === "run_completed") {
+            dispatch(testRunCompletedReducer({ bridgeId: runBridgeId, payload: parsedData }));
+            toast.success("Test run completed");
+          } else if (event === "run_failed") {
+            const errMsg =
+              typeof parsedData.error === "string" ? parsedData.error : parsedData.error?.message || "Test run failed";
+            dispatch(testRunFailedReducer({ bridgeId: runBridgeId, error: errMsg }));
+            toast.error(errMsg);
+          }
+          return;
+        }
 
         // Handle streaming events early
         if (event) {
