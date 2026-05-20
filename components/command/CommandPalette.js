@@ -83,7 +83,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     (categoryKey) => {
       switch (categoryKey) {
         case "api-agents":
-          return apiAgents.map((a) => ({
+          return (Array.isArray(apiAgents) ? apiAgents : []).map((a) => ({
             id: a._id,
             title: a.name || a.slugName || a._id,
             subtitle: "API Agent",
@@ -94,7 +94,7 @@ const CommandPalette = ({ isEmbedUser }) => {
           }));
 
         case "chatbot-agents":
-          return chatbotAgents.map((a) => ({
+          return (Array.isArray(chatbotAgents) ? chatbotAgents : []).map((a) => ({
             id: a._id,
             title: a.name || a.slugName || a._id,
             subtitle: "Chatbot Agent",
@@ -105,7 +105,7 @@ const CommandPalette = ({ isEmbedUser }) => {
           }));
 
         case "apikeys":
-          return apikeys.map((k) => ({
+          return (Array.isArray(apikeys) ? apikeys : []).map((k) => ({
             id: k._id,
             title: k.name || k._id,
             subtitle: (
@@ -127,7 +127,7 @@ const CommandPalette = ({ isEmbedUser }) => {
           }));
 
         case "docs":
-          return knowledgeBase.map((d) => ({
+          return (Array.isArray(knowledgeBase) ? knowledgeBase : []).map((d) => ({
             id: d._id,
             title: d.title || d.name || d._id,
             subtitle: "Knowledge Base",
@@ -154,7 +154,7 @@ const CommandPalette = ({ isEmbedUser }) => {
               type: "rag_embed",
             }));
         case "Auths":
-          return authData.map((d) => ({
+          return (Array.isArray(authData) ? authData : []).map((d) => ({
             id: d.id,
             title: d.name || d.id,
             subtitle: "Auth Key",
@@ -162,7 +162,7 @@ const CommandPalette = ({ isEmbedUser }) => {
           }));
 
         case "widgets":
-          return (widgetsData || []).map((d) => ({
+          return (Array.isArray(widgetsData) ? widgetsData : []).map((d) => ({
             id: d._id,
             title: d.name || d._id,
             subtitle: "Widget",
