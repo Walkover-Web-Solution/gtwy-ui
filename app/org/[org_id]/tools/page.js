@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, use, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronRight, Wrench, Bot, Settings, Loader, Clock, RefreshCw } from "lucide-react";
+import { Plus, ChevronRight, Wrench, Bot, Settings } from "lucide-react";
 import { toast } from "react-toastify";
 import PageHeader from "@/components/Pageheader";
 import MainLayout from "@/components/layoutComponents/MainLayout";
@@ -23,228 +23,221 @@ const FEATURED_APPS = [
   { domain: "drive.google.com", name: "Google Drive" },
 ];
 
-const ToolCard = React.memo(({
-  fn,
-  integrationData,
-  idLookup,
-  onOpen,
-  onConfig,
-  onConnectionsToggle,
-  isConnectionsOpen,
-  orgId,
-  router,
-}) => {
-  const scriptId = fn?.script_id;
-  const integration = integrationData?.[scriptId];
-  const title = fn?.title || integration?.title || scriptId || "Untitled tool";
-  const icons = integration?.serviceIcons || [];
+const ToolCard = React.memo(
+  ({ fn, integrationData, idLookup, onOpen, onConfig, onConnectionsToggle, isConnectionsOpen, orgId, router }) => {
+    const scriptId = fn?.script_id;
+    const integration = integrationData?.[scriptId];
+    const title = fn?.title || integration?.title || scriptId || "Untitled tool";
+    const icons = integration?.serviceIcons || [];
 
-  const rawConnectionIds = [
-    ...(Array.isArray(fn?.bridge_ids) ? fn.bridge_ids : []),
-    ...(Array.isArray(fn?.version_ids) ? fn.version_ids : []),
-  ];
+    const rawConnectionIds = [
+      ...(Array.isArray(fn?.bridge_ids) ? fn.bridge_ids : []),
+      ...(Array.isArray(fn?.version_ids) ? fn.version_ids : []),
+    ];
 
-  const connectionsMap = new Map();
-  rawConnectionIds.forEach((id) => {
-    const info = idLookup[id];
-    if (!info) return;
-    const existing = connectionsMap.get(info.bridgeId);
-    if (existing) {
-      if (info.versionLabel && !existing.versions.some((v) => v.versionId === info.versionId)) {
-        existing.versions.push({ versionLabel: info.versionLabel, versionId: info.versionId });
+    const connectionsMap = new Map();
+    rawConnectionIds.forEach((id) => {
+      const info = idLookup[id];
+      if (!info) return;
+      const existing = connectionsMap.get(info.bridgeId);
+      if (existing) {
+        if (info.versionLabel && !existing.versions.some((v) => v.versionId === info.versionId)) {
+          existing.versions.push({ versionLabel: info.versionLabel, versionId: info.versionId });
+        }
+      } else {
+        connectionsMap.set(info.bridgeId, {
+          bridgeId: info.bridgeId,
+          bridgeName: info.bridgeName,
+          versions: info.versionLabel ? [{ versionLabel: info.versionLabel, versionId: info.versionId }] : [],
+        });
       }
-    } else {
-      connectionsMap.set(info.bridgeId, {
-        bridgeId: info.bridgeId,
-        bridgeName: info.bridgeName,
-        versions: info.versionLabel ? [{ versionLabel: info.versionLabel, versionId: info.versionId }] : [],
-      });
-    }
-  });
+    });
 
-  const connections = Array.from(connectionsMap.values()).map((c) => ({
-    ...c,
-    versions: c.versions
-      .slice()
-      .sort((a, b) =>
-        (a.versionLabel || "").localeCompare(b.versionLabel || "", undefined, { numeric: true })
-      ),
-  }));
+    const connections = Array.from(connectionsMap.values()).map((c) => ({
+      ...c,
+      versions: c.versions
+        .slice()
+        .sort((a, b) => (a.versionLabel || "").localeCompare(b.versionLabel || "", undefined, { numeric: true })),
+    }));
 
-  const toolKey = fn?._id || scriptId;
+    const toolKey = fn?._id || scriptId;
 
-  return (
-    <div
-      key={fn?._id || scriptId}
-      className="relative group/card rounded bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow flex flex-col"
-      style={{ borderRadius: 4 }}
-    >
-      <div className="w-full flex items-center gap-2.5 px-3 py-3 relative" data-connections-dropdown>
-        <button
-          type="button"
-          onClick={() => onOpen(fn)}
-          className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer border-0 text-left bg-transparent hover:opacity-80 transition-opacity"
-          aria-label={`Open ${title} tool`}
-        >
-          <div
-            className="w-8 h-8 flex items-center justify-center shrink-0 bg-base-100 border border-base-300 rounded-sm"
-            style={{ boxShadow: "rgba(0,0,0,0.04) 0px 1px 3px" }}
+    return (
+      <div
+        key={fn?._id || scriptId}
+        className="relative group/card rounded bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+        style={{ borderRadius: 4 }}
+      >
+        <div className="w-full flex items-center gap-2.5 px-3 py-3 relative" data-connections-dropdown>
+          <button
+            type="button"
+            onClick={() => onOpen(fn)}
+            className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer border-0 text-left bg-transparent hover:opacity-80 transition-opacity"
+            aria-label={`Open ${title} tool`}
           >
-            {icons.length > 0 ? (
-              <img
-                src={icons[0]}
-                alt={title}
-                className="w-[22px] h-[22px] object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            ) : (
-              <Wrench size={16} className="text-base-content/70" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className="truncate m-0 text-base-content"
-              style={{ fontWeight: 700, fontSize: 13, letterSpacing: "-0.01em" }}
-              title={title}
-            >
-              {title}
-            </p>
-            {connections.length > 0 && (
-              <p className="text-xs text-base-content/60 m-0">
-                Connected to {connections.length} agent{connections.length === 1 ? "" : "s"}
-              </p>
-            )}
-            <div className="m-0 mt-2 space-y-1.5">
-              {fn?.createdAt && (
-                <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded bg-base-300/20 hover:bg-base-300/40 transition-colors">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[9px] font-medium text-base-content/40">Created at</span>
-                    <span className="text-[10px] font-medium text-base-content/50 group-hover:hidden">
-                      {formatRelativeTime(fn.createdAt)}
-                    </span>
-                    <span className="text-[10px] font-medium text-base-content/50 hidden group-hover:inline">
-                      {formatDate(fn.createdAt)}
-                    </span>
-                  </div>
+            <div className="flex items-center shrink-0">
+              {icons.length > 0 ? (
+                <div className="flex items-center -space-x-2 flex-shrink-0">
+                  {icons.slice(0, 5).map((icon, idx) => (
+                    <img
+                      key={idx}
+                      src={icon}
+                      alt={`${title} icon ${idx + 1}`}
+                      className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5"
+                      style={{ zIndex: 5 - idx }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  ))}
                 </div>
-              )}
-              {fn?.updatedAt && (
-                <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded bg-base-300/20 hover:bg-base-300/40 transition-colors">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[9px] font-medium text-base-content/40">Updated at</span>
-                    <span className="text-[10px] font-medium text-base-content/50 group-hover:hidden">
-                      {formatRelativeTime(fn.updatedAt)}
-                    </span>
-                    <span className="text-[10px] font-medium text-base-content/50 hidden group-hover:inline">
-                      {formatDate(fn.updatedAt)}
-                    </span>
-                  </div>
-                </div>
+              ) : (
+                <Wrench size={16} className="text-base-content/70" />
               )}
             </div>
-          </div>
-        </button>
+            <div className="flex-1 min-w-0">
+              <p
+                className="truncate m-0 text-base-content"
+                style={{ fontWeight: 700, fontSize: 13, letterSpacing: "-0.01em" }}
+                title={title}
+              >
+                {title}
+              </p>
+              {connections.length > 0 && (
+                <p className="text-xs text-base-content/60 m-0">
+                  Connected to {connections.length} agent{connections.length === 1 ? "" : "s"}
+                </p>
+              )}
+              <div className="m-0 mt-2 space-y-1.5">
+                {fn?.createdAt && (
+                  <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] font-medium text-base-content/40">Created at</span>
+                      <span className="text-[10px] font-medium text-base-content/50 group-hover:hidden">
+                        {formatRelativeTime(fn.createdAt)}
+                      </span>
+                      <span className="text-[10px] font-medium text-base-content/50 hidden group-hover:inline">
+                        {formatDate(fn.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {fn?.updatedAt && (
+                  <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] font-medium text-base-content/40">Updated at</span>
+                      <span className="text-[10px] font-medium text-base-content/50 group-hover:hidden">
+                        {formatRelativeTime(fn.updatedAt)}
+                      </span>
+                      <span className="text-[10px] font-medium text-base-content/50 hidden group-hover:inline">
+                        {formatDate(fn.updatedAt)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </button>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {connections.length > 0 && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {connections.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConnectionsToggle(toolKey);
+                }}
+                className="inline-flex items-center justify-center gap-1 font-bold hover:opacity-80 transition-opacity"
+                style={{
+                  minWidth: 22,
+                  height: 22,
+                  padding: "0 7px",
+                  borderRadius: 11,
+                  background: "rgb(59,130,246)",
+                  color: "rgb(244,244,245)",
+                  fontFamily: '"Geist Mono", monospace',
+                  fontSize: 11,
+                  lineHeight: 1,
+                  letterSpacing: "0.04em",
+                }}
+                title={`Connected to ${connections.length} agent${connections.length === 1 ? "" : "s"}`}
+                aria-label={`Show connections for ${title}`}
+              >
+                <Bot size={10} />+{connections.length}
+              </button>
+            )}
+
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onConnectionsToggle(toolKey);
+                onConfig(fn);
               }}
-              className="inline-flex items-center justify-center gap-1 font-bold hover:opacity-80 transition-opacity"
-              style={{
-                minWidth: 22,
-                height: 22,
-                padding: "0 7px",
-                borderRadius: 11,
-                background: "rgb(59,130,246)",
-                color: "rgb(244,244,245)",
-                fontFamily: '"Geist Mono", monospace',
-                fontSize: 11,
-                lineHeight: 1,
-                letterSpacing: "0.04em",
-              }}
-              title={`Connected to ${connections.length} agent${connections.length === 1 ? "" : "s"}`}
-              aria-label={`Show connections for ${title}`}
+              className="p-1 rounded hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content"
+              title="Configure tool"
+              aria-label={`Configure ${title} tool`}
             >
-              <Bot size={10} />+{connections.length}
+              <Settings size={14} />
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onConfig(fn);
-            }}
-            className="p-1 rounded hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content"
-            title="Configure tool"
-            aria-label={`Configure ${title} tool`}
-          >
-            <Settings size={14} />
-          </button>
-
-          <ChevronRight
-            size={11}
-            strokeWidth={2.5}
-            className="text-base-content/40 group-hover/card:text-base-content/70 transition-all"
-          />
-        </div>
-
-        {isConnectionsOpen && connections.length > 0 && (
-          <div
-            className="absolute left-3 right-3 top-full mt-1 z-30 bg-base-100 border border-base-300 shadow-lg rounded"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="px-3 py-2 border-b border-base-200 text-base-content/60 uppercase tracking-wider"
-              style={{ fontSize: 10 }}
-            >
-              Connected agents
-            </div>
-            <ul className="max-h-56 overflow-y-auto py-1">
-              {connections.map((conn) => {
-                const defaultVersion = conn.versions[0];
-                return (
-                  <li key={conn.bridgeId}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const url = defaultVersion?.versionId
-                          ? `/org/${orgId}/agents/configure/${conn.bridgeId}?version=${defaultVersion.versionId}`
-                          : `/org/${orgId}/agents/configure/${conn.bridgeId}`;
-                        
-                        if (e.metaKey || e.ctrlKey) {
-                          window.open(url, '_blank');
-                        } else {
-                          onConnectionsToggle(null);
-                          router.push(url);
-                        }
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-base-200 transition-colors text-left"
-                      style={{ fontSize: 12 }}
-                    >
-                      <Bot size={12} className="text-base-content/60 shrink-0" />
-                      <span className="flex-1 min-w-0 truncate text-base-content" title={conn.bridgeName}>
-                        {conn.bridgeName}
-                      </span>
-                      <ChevronRight size={11} strokeWidth={2.5} className="text-base-content/40 shrink-0" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <ChevronRight
+              size={11}
+              strokeWidth={2.5}
+              className="text-base-content/40 group-hover/card:text-base-content/70 transition-all"
+            />
           </div>
-        )}
+
+          {isConnectionsOpen && connections.length > 0 && (
+            <div
+              className="absolute left-3 right-3 top-full mt-1 z-30 bg-base-100 border border-base-300 shadow-lg rounded"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="px-3 py-2 border-b border-base-200 text-base-content/60 uppercase tracking-wider"
+                style={{ fontSize: 10 }}
+              >
+                Connected agents
+              </div>
+              <ul className="max-h-56 overflow-y-auto py-1">
+                {connections.map((conn) => {
+                  const defaultVersion = conn.versions[0];
+                  return (
+                    <li key={conn.bridgeId}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const url = defaultVersion?.versionId
+                            ? `/org/${orgId}/agents/configure/${conn.bridgeId}?version=${defaultVersion.versionId}`
+                            : `/org/${orgId}/agents/configure/${conn.bridgeId}`;
+
+                          if (e.metaKey || e.ctrlKey) {
+                            window.open(url, "_blank");
+                          } else {
+                            onConnectionsToggle(null);
+                            router.push(url);
+                          }
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-base-200 transition-colors text-left"
+                        style={{ fontSize: 12 }}
+                      >
+                        <Bot size={12} className="text-base-content/60 shrink-0" />
+                        <span className="flex-1 min-w-0 truncate text-base-content" title={conn.bridgeName}>
+                          {conn.bridgeName}
+                        </span>
+                        <ChevronRight size={11} strokeWidth={2.5} className="text-base-content/40 shrink-0" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 ToolCard.displayName = "ToolCard";
 
@@ -291,39 +284,6 @@ const EmptyState = ({ onAddTool }) => (
   </div>
 );
 
-const AddToolCard = ({ onAddTool }) => (
-  <button
-    type="button"
-    onClick={onAddTool}
-    className="relative overflow-hidden group/add cursor-pointer border-0 text-left rounded transition-colors hover:border-base-content/40"
-    style={{
-      background: "var(--fallback-b1,oklch(var(--b1)/1))",
-      border: "2px dashed var(--fallback-bc,oklch(var(--bc)/0.25))",
-      borderRadius: 4,
-    }}
-  >
-    <div className="flex items-center gap-2.5 px-3 py-3">
-      <div
-        className="w-8 h-8 flex items-center justify-center shrink-0 rounded-full"
-        style={{
-          background: "var(--fallback-b3,oklch(var(--b3)/1))",
-          border: "1.5px solid var(--fallback-bc,oklch(var(--bc)/0.3))",
-        }}
-      >
-        <Plus size={16} className="text-base-content/70 group-hover/add:text-base-content" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p
-          className="truncate m-0 text-base-content"
-          style={{ fontWeight: 500, fontSize: 13, letterSpacing: "-0.01em" }}
-        >
-          Add new tool
-        </p>
-      </div>
-    </div>
-  </button>
-);
-
 const ToolsPage = ({ params }) => {
   const resolvedParams = use(params);
   const orgId = resolvedParams?.org_id;
@@ -366,7 +326,7 @@ const ToolsPage = ({ params }) => {
   const [toolData, setToolData] = useState({});
   const [functionName, setFunctionName] = useState("");
   const [openConnectionsFor, setOpenConnectionsFor] = useState(null);
-  const [sortBy, setSortBy] = useState("name");
+  const [sortBy] = useState("name");
 
   const allTools = useMemo(() => {
     return Object.values(functionData || {}).filter(Boolean);
@@ -430,23 +390,26 @@ const ToolsPage = ({ params }) => {
     });
   }, [embedToken]);
 
-  const handleOpenTool = useCallback((fn) => {
-    const scriptId = fn?.script_id;
-    if (typeof window !== "undefined" && typeof window.openViasocket === "function" && scriptId) {
-      window.openViasocket(scriptId, {
-        embedToken,
-        meta: {
-          type: "tool",
-        },
-      });
-      return;
-    }
-    setFunctionId(fn?._id);
-    setFunctionDetails(fn);
-    setToolData(fn);
-    setFunctionName(fn?.script_id);
-    openModal(MODAL_TYPE.TOOL_FUNCTION_PARAMETER_MODAL);
-  }, [embedToken]);
+  const handleOpenTool = useCallback(
+    (fn) => {
+      const scriptId = fn?.script_id;
+      if (typeof window !== "undefined" && typeof window.openViasocket === "function" && scriptId) {
+        window.openViasocket(scriptId, {
+          embedToken,
+          meta: {
+            type: "tool",
+          },
+        });
+        return;
+      }
+      setFunctionId(fn?._id);
+      setFunctionDetails(fn);
+      setToolData(fn);
+      setFunctionName(fn?.script_id);
+      openModal(MODAL_TYPE.TOOL_FUNCTION_PARAMETER_MODAL);
+    },
+    [embedToken]
+  );
 
   const handleConfigTool = useCallback((fn) => {
     setFunctionId(fn?._id);
@@ -493,11 +456,7 @@ const ToolsPage = ({ params }) => {
 
       <div className="px-4 pb-3 flex flex-row gap-4 items-center">
         {allTools?.length > 5 && <SearchItems data={allTools} setFilterItems={setFilteredTools} item="Tool" />}
-        <button
-          type="button"
-          onClick={handleAddNewTool}
-          className="btn btn-primary btn-sm"
-        >
+        <button type="button" onClick={handleAddNewTool} className="btn btn-primary btn-sm">
           <Plus size={16} strokeWidth={2.5} />
           Create New Tool
         </button>

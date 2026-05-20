@@ -51,13 +51,22 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
     if (filterParam && data && !userClearedSearch.current) {
       // Find the item that matches the filter parameter
       const matchedItem = data.find(
-        (item) => item?._id === filterParam || item?.id === filterParam || item?.id?.toString() === filterParam
+        (item) =>
+          item?._id === filterParam ||
+          item?.id === filterParam ||
+          item?.id?.toString() === filterParam ||
+          item?.script_id === filterParam
       );
 
       if (matchedItem) {
         // Prefer human-readable labels (like Knowledge Base title) over IDs.
         const displayName =
-          matchedItem.title || matchedItem.name || matchedItem.slugName || matchedItem._id || matchedItem.id;
+          matchedItem.title ||
+          matchedItem.name ||
+          matchedItem.slugName ||
+          matchedItem.flow_name ||
+          matchedItem._id ||
+          matchedItem.id;
         setSearchTerm(displayName);
       }
     } else if (!filterParam) {
@@ -89,6 +98,7 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
           (item?.service && item?.service?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?._id && item?._id?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?.flow_name && item?.flow_name?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
+          (item?.script_id && item?.script_id?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
           (item?.id && item?.id?.toString()?.toLowerCase()?.includes(searchTerm.toLowerCase().trim()))
       ) || [];
     return filtered;

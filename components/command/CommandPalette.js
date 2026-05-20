@@ -335,6 +335,28 @@ const CommandPalette = ({ isEmbedUser }) => {
     type: "widgets",
   }));
 
+  const toolsGroup = filterBy(functions, ["title", "script_id"]).map((fn) => ({
+    id: fn._id || fn.script_id,
+    title: fn.title || fn.script_id || "Untitled tool",
+    subtitle: (
+      <div className="flex items-center gap-2">
+        <span>Tool</span>
+        {fn.updatedAt && (
+          <>
+            <span>•</span>
+            <span className="text-xs opacity-70">Updated:</span>
+            <div className="group cursor-help inline-flex">
+              <span className="group-hover:hidden">{formatRelativeTime(fn.updatedAt)}</span>
+              <span className="hidden group-hover:inline text-xs">{formatDate(fn.updatedAt)}</span>
+            </div>
+          </>
+        )}
+      </div>
+    ),
+    type: "tools",
+    script_id: fn.script_id,
+  }));
+
   const items = useMemo(
     () => ({
       agents: [...apiAgentsGroup, ...chatbotAgentsGroup, ...agentsVersionMatches],
@@ -345,6 +367,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       auths: authGroup,
       rag_embed: ragEmbedGroup,
       widgets: widgetsGroup,
+      tools: toolsGroup,
     }),
     [query, agentList, apikeys, knowledgeBase, functions, integrationData, authData, widgetsData]
   );
@@ -361,6 +384,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
       ...items.rag_embed.map((it) => ({ group: "RAG Embeds", ...it })),
       ...items.widgets.map((it) => ({ group: "Widgets", ...it })),
+      ...items.tools.map((it) => ({ group: "Tools", ...it })),
     ],
     [items]
   );
