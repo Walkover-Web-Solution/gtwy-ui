@@ -24,6 +24,7 @@ function getCurrentCategoryGroup(currentCategory) {
     integrations: "Integrations",
     rag_embed: "RAG Embeds",
     widgets: "Widgets",
+    tools: "Tools",
   };
   return categoryGroupMap[currentCategory] || null;
 }
@@ -53,6 +54,7 @@ const CommandPalette = ({ isEmbedUser }) => {
     if (parts.includes("integration")) return "integrations";
     if (parts.includes("RAG_embed")) return "rag_embed";
     if (parts.includes("widgets")) return "widgets";
+    if (parts.includes("tools")) return "tools";
     if (parts.includes("orchestratal_model")) return "flows";
     return null;
   }, [pathname]);
@@ -169,11 +171,34 @@ const CommandPalette = ({ isEmbedUser }) => {
             type: "widgets",
           }));
 
+        case "tools":
+          return (Array.isArray(functions) ? functions : []).map((fn) => ({
+            id: fn._id || fn.script_id,
+            title: fn.title || fn.script_id || "Untitled tool",
+            subtitle: (
+              <div className="flex items-center gap-2">
+                <span>Tool</span>
+                {fn.updatedAt && (
+                  <>
+                    <span>•</span>
+                    <span className="text-xs opacity-70">Updated:</span>
+                    <div className="group cursor-help inline-flex">
+                      <span className="group-hover:hidden">{formatRelativeTime(fn.updatedAt)}</span>
+                      <span className="hidden group-hover:inline text-xs">{formatDate(fn.updatedAt)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            ),
+            type: "tools",
+            script_id: fn.script_id,
+          }));
+
         default:
           return [];
       }
     },
-    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData, widgetsData]
+    [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData, widgetsData, functions]
   );
 
   const createAgentItem = (a, type) => ({
@@ -398,6 +423,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       { key: "integrations", label: "Gtwy as Embed", desc: "Configure integrations" },
       { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
       { key: "widgets", label: "Widgets", desc: "Create and manage UI widgets" },
+      { key: "tools", label: "Tools", desc: "Custom tools and integrations" },
     ];
 
     // When on agents page, order based on type query parameter
@@ -549,6 +575,9 @@ const CommandPalette = ({ isEmbedUser }) => {
         case "widgets":
           router.push(`/org/${orgId}/widgets${item.id ? `?filter=${item.id}` : ""}`);
           break;
+        case "tools":
+          router.push(`/org/${orgId}/tools${item.id ? `?filter=${item.id}` : ""}`);
+          break;
         default:
           router.push("/");
       }
@@ -572,6 +601,7 @@ const CommandPalette = ({ isEmbedUser }) => {
         rag_embed: `/org/${orgId}/RAG_embed`,
         Auths: `/org/${orgId}/pauthkey`,
         widgets: `/org/${orgId}/widgets`,
+        tools: `/org/${orgId}/tools`,
         flows: `/org/${orgId}/orchestratal_model`,
       };
       router.push(routes[key] || "/");

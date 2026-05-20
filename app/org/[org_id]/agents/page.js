@@ -1148,7 +1148,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                         <button
                           type="button"
                           data-testid="agents-usage-filter-button"
-                          className="btn btn-outline btn-ghost btn-sm text-sm btn-sm border border-base-300 gap-1"
+                          className="btn btn-outline btn-ghost text-sm btn-sm border border-base-300 gap-1"
                           onClick={handleUsageFilterDropdownClick}
                         >
                           <Funnel size={14} />
