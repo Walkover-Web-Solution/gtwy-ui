@@ -64,7 +64,7 @@ export const runTestCaseApi = async ({ versionIds, testcase_id, testCaseData, br
       error?.response?.data?.detail?.error ? error?.response?.data?.detail?.error : "Error while running the testcases"
     );
     console.error(error);
-    return error;
+    throw error;
   }
 };
 

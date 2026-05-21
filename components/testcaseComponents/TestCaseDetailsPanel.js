@@ -85,8 +85,12 @@ const TestCaseDetailsPanel = ({
   }, [selectedTestCase?._id]);
 
   const handleMatchingTypeChange = async (newType) => {
-    setMatchingType(newType);
     setIsMatchingDropdownOpen(false);
+    const nextType = newType.toLowerCase();
+    const currentType = (selectedTestCase?.matching_type || "").toLowerCase();
+    // Skip API call if user re-selected the same matching type.
+    if (nextType === currentType) return;
+    setMatchingType(newType);
     await dispatch(
       updateTestCaseAction({
         testCaseId: selectedTestCase?._id,
@@ -94,44 +98,84 @@ const TestCaseDetailsPanel = ({
           conversation: selectedTestCase?.conversation,
           type: selectedTestCase?.type,
           expected: selectedTestCase?.expected,
-          matching_type: newType.toLowerCase(),
+          matching_type: nextType,
           variables: selectedTestCase?.variables,
         },
       })
     );
   };
 
-  // Detect unsaved changes
+  const trimConversation = (conv) =>
+    (conv || []).map((m) => ({
+      ...m,
+      content: typeof m?.content === "string" ? m.content.trim() : m?.content,
+    }));
+
+  // Detect unsaved changes (compare trimmed values to avoid whitespace-only diffs).
   useEffect(() => {
     if (!selectedTestCase) return;
-    const originalConv = JSON.stringify(selectedTestCase?.conversation || []);
-    const editedConv = JSON.stringify(editedConversation);
-    const originalExp = getExpectedValue(selectedTestCase);
-    setHasUnsavedChanges(originalConv !== editedConv || originalExp !== editedExpected);
+    const originalConv = JSON.stringify(trimConversation(selectedTestCase?.conversation || []));
+    const editedConv = JSON.stringify(trimConversation(editedConversation));
+    const originalExp = (getExpectedValue(selectedTestCase) || "").trim();
+    const editedExp = (editedExpected || "").trim();
+    setHasUnsavedChanges(originalConv !== editedConv || originalExp !== editedExp);
   }, [editedConversation, editedExpected, selectedTestCase]);
 
   const handleConversationChange = (idx, newContent) => {
     setEditedConversation((prev) => prev.map((m, i) => (i === idx ? { ...m, content: newContent } : m)));
   };
 
+  const handleConversationBlur = (idx) => {
+    setEditedConversation((prev) =>
+      prev.map((m, i) => {
+        if (i !== idx) return m;
+        if (typeof m?.content !== "string") return m;
+        const trimmed = m.content.trim();
+        return trimmed === m.content ? m : { ...m, content: trimmed };
+      })
+    );
+    if (hasUnsavedChanges) handleSaveChanges();
+  };
+
+  const handleExpectedBlur = () => {
+    const trimmed = (editedExpected || "").trim();
+    if (trimmed !== editedExpected) setEditedExpected(trimmed);
+    if (hasUnsavedChanges) handleSaveChanges();
+  };
+
   const handleSaveChanges = async () => {
+    const trimmedConversation = trimConversation(editedConversation);
+    const trimmedExpected = (editedExpected || "").trim();
+
+    const originalConv = JSON.stringify(trimConversation(selectedTestCase?.conversation || []));
+    const editedConv = JSON.stringify(trimmedConversation);
+    const originalExp = (getExpectedValue(selectedTestCase) || "").trim();
+    if (originalConv === editedConv && originalExp === trimmedExpected) {
+      setHasUnsavedChanges(false);
+      return;
+    }
+
     const isToolCallType = selectedTestCase?.type === "function" || selectedTestCase?.expected?.tool_calls;
     let updatedExpected;
     if (isToolCallType) {
       try {
-        updatedExpected = { tool_calls: JSON.parse(editedExpected) };
+        updatedExpected = { tool_calls: JSON.parse(trimmedExpected) };
       } catch {
-        updatedExpected = { response: editedExpected };
+        updatedExpected = { response: trimmedExpected };
       }
     } else {
-      updatedExpected = { response: editedExpected };
+      updatedExpected = { response: trimmedExpected };
     }
+
+    // Reflect trimmed values locally so the inputs don't keep stale whitespace.
+    setEditedConversation(trimmedConversation);
+    setEditedExpected(trimmedExpected);
 
     await dispatch(
       updateTestCaseAction({
         testCaseId: selectedTestCase?._id,
         dataToUpdate: {
-          conversation: editedConversation,
+          conversation: trimmedConversation,
           type: selectedTestCase?.type,
           expected: updatedExpected,
           matching_type: selectedTestCase?.matching_type,
@@ -225,7 +269,9 @@ const TestCaseDetailsPanel = ({
     setVersionVariables(mergedVersionVariables);
   }, [selectedVersions, bridgeVersionMapping, dispatch]);
 
-  // Function to merge variables intelligently
+  // Function to merge variables intelligently. `pre_function` is an
+  // internal/system-managed variable; exclude it from the user-facing merged
+  // set so it doesn't trigger the empty-variables alert or get sent on run.
   const getMergedVariables = () => {
     const merged = {};
 
@@ -233,6 +279,7 @@ const TestCaseDetailsPanel = ({
     Object.entries(versionVariables || {}).forEach(([versionId, versionVars]) => {
       if (typeof versionVars === "object" && versionVars !== null) {
         Object.entries(versionVars).forEach(([key, varData]) => {
+          if (key === "pre_function") return;
           // Use test case value if available, otherwise use version value
           merged[key] = testCaseVariables[key] || varData?.value || "";
         });
@@ -241,6 +288,7 @@ const TestCaseDetailsPanel = ({
 
     // Add any test case variables that aren't in version variables
     Object.entries(testCaseVariables || {}).forEach(([key, value]) => {
+      if (key === "pre_function") return;
       if (!merged[key]) {
         merged[key] = value;
       }
@@ -446,9 +494,7 @@ const TestCaseDetailsPanel = ({
                             <AutoResizeTextarea
                               value={message?.content || ""}
                               onChange={(e) => handleConversationChange(idx, e.target.value)}
-                              onBlur={() => {
-                                if (hasUnsavedChanges) handleSaveChanges();
-                              }}
+                              onBlur={() => handleConversationBlur(idx)}
                               className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-1 focus:ring-primary/30 rounded p-1"
                             />
                           ) : (
@@ -480,9 +526,7 @@ const TestCaseDetailsPanel = ({
                   <AutoResizeTextarea
                     value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
                     onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
-                    onBlur={() => {
-                      if (hasUnsavedChanges) handleSaveChanges();
-                    }}
+                    onBlur={() => handleConversationBlur(lastUserIdx)}
                     className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
                   />
                 </div>
@@ -500,33 +544,12 @@ const TestCaseDetailsPanel = ({
               <AutoResizeTextarea
                 value={editedExpected}
                 onChange={(e) => setEditedExpected(e.target.value)}
-                onBlur={() => {
-                  if (hasUnsavedChanges) handleSaveChanges();
-                }}
+                onBlur={handleExpectedBlur}
                 minRows={2}
                 className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
               />
             </div>
           </div>
-
-          {/* Variables Response */}
-          {selectedTestCase?.variables && Object.keys(selectedTestCase.variables).length > 0 && (
-            <div className="mb-6">
-              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">Variables</div>
-              <div className="bg-base-50 rounded-lg px-4 py-3 border border-base-200 space-y-2">
-                {Object.entries(selectedTestCase.variables).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between py-1.5 px-2 bg-base-100 rounded border border-base-200"
-                  >
-                    <span className="text-sm font-medium text-base-content">{key}:</span>
-                    <span className="text-sm text-base-content/70">{String(value)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Version Comparison (independent of run-version selection) */}
           <div ref={dropdownRef}>
             <div className="mb-5 flex items-center gap-2 flex-wrap">
@@ -620,7 +643,10 @@ const TestCaseDetailsPanel = ({
                               Error
                             </span>
                           ) : (
-                            <span className={`text-lg font-bold ${getScoreColor(score, matchingTypeFromResult)}`}>
+                            <span
+                              className={`text-lg font-bold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
+                              title={getScoreMessage(score, matchingTypeFromResult)}
+                            >
                               {getScoreDisplay(score, matchingTypeFromResult)}
                             </span>
                           )}
@@ -635,32 +661,6 @@ const TestCaseDetailsPanel = ({
                       ) : (
                         <div className="text-sm text-base-content leading-relaxed mb-3">
                           {typeof modelOutput === "string" ? modelOutput : JSON.stringify(modelOutput)}
-                        </div>
-                      )}
-
-                      {/* Variables Response */}
-                      {selectedTestCase?.variables && Object.keys(selectedTestCase.variables).length > 0 && (
-                        <div className="pt-3 border-t border-base-200">
-                          <div className="text-xs font-semibold text-base-content/60 mb-2 uppercase tracking-wide">
-                            Variables Response
-                          </div>
-                          <div className="space-y-1.5">
-                            {Object.entries(selectedTestCase.variables).map(([key, value]) => {
-                              const variableResult =
-                                versionArray?.[versionArray?.length - 1]?.variables_response?.[key];
-                              const variableScore = variableResult?.score || 0;
-                              const matchingType = selectedTestCase?.matching_type || "cosine";
-                              const displayValue = getScoreDisplay(variableScore, matchingType);
-                              const colorClass = getScoreColor(variableScore, matchingType);
-
-                              return (
-                                <div key={key} className="flex items-center justify-between text-xs">
-                                  <span className="text-base-content/70">{key}:</span>
-                                  <span className={`font-semibold ${colorClass}`}>{displayValue}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
                         </div>
                       )}
                     </div>

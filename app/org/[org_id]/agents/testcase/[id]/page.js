@@ -226,10 +226,10 @@ function TestCases({ params }) {
 
   const getScoreDisplay = (score, matchingType) => {
     const type = (matchingType || "cosine").toLowerCase();
-    if (type === "exact" || type === "ai") {
+    if (type === "exact") {
       return score === 1 ? "Pass" : "Fail";
     }
-    // Cosine shows percentage
+    // AI and Cosine both show percentage (backend returns a fractional score).
     return `${(score * 100).toFixed(0)}%`;
   };
 
@@ -388,19 +388,25 @@ function TestCases({ params }) {
                   scrollableTarget="testcase-list-scrollable"
                   style={{ overflow: "visible" }}
                 >
-                  <table className="w-full border-collapse bg-base-100">
-                    <thead className="bg-base-50 sticky top-0 z-20">
+                  <table className="w-full border-separate border-spacing-0 bg-base-100">
+                    <thead className="bg-base-50">
                       <tr className="border-b border-base-200">
-                        <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-0 bg-base-50 w-[40px] z-30">
+                        <th
+                          style={{ left: 0, width: 48, minWidth: 48 }}
+                          className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
+                        >
                           #
                         </th>
-                        <th className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky left-[40px] bg-base-50 w-[140px] z-30">
+                        <th
+                          style={{ left: 48, width: 140, minWidth: 140 }}
+                          className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
+                        >
                           Input
                         </th>
                         {selectedVersions.map((version, idx) => (
                           <th
                             key={idx}
-                            className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 z-20"
+                            className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 "
                           >
                             v{versions.indexOf(version) + 1}
                           </th>
@@ -427,12 +433,14 @@ function TestCases({ params }) {
                               className={`cursor-pointer transition-all ${isSelected ? "bg-base-200" : "bg-base-100 hover:bg-base-50"}`}
                             >
                               <td
-                                className={`px-2 py-3.5 text-sm sticky left-0 z-10 w-[40px] ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content`}
+                                style={{ left: 0, width: 48, minWidth: 48 }}
+                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content`}
                               >
                                 {index + 1}
                               </td>
                               <td
-                                className={`px-2 py-3.5 text-sm sticky left-[40px] z-10 w-[140px] ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content whitespace-nowrap overflow-hidden text-ellipsis`}
+                                style={{ left: 48, width: 140, minWidth: 140 }}
+                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold" : "bg-base-100 font-medium"} text-base-content whitespace-nowrap overflow-hidden text-ellipsis`}
                               >
                                 {lastUserMessage?.substring(0, 20)}
                                 {lastUserMessage?.length > 20 ? "..." : ""}
@@ -462,7 +470,8 @@ function TestCases({ params }) {
                                         </span>
                                       ) : (
                                         <span
-                                          className={`text-xs font-semibold ${getScoreColor(score, matchingTypeFromResult)}`}
+                                          className={`text-xs font-semibold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
+                                          title={getScoreMessage(score, matchingTypeFromResult)}
                                         >
                                           {getScoreDisplay(score, matchingTypeFromResult)}
                                         </span>

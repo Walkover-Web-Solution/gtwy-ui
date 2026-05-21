@@ -14,12 +14,12 @@ const TestCaseVariablesModal = ({
 }) => {
   const [editableVariables, setEditableVariables] = useState({});
 
-  // Compute merged source variables (stable as long as inputs don't change)
   const mergedSource = useMemo(() => {
     const merged = {};
     Object.entries(versionVariables || {}).forEach(([, versionVars]) => {
       if (typeof versionVars === "object" && versionVars !== null) {
         Object.entries(versionVars).forEach(([key, varData]) => {
+          if (key === "pre_function") return;
           if (!(key in merged)) {
             merged[key] = varData?.value || "";
           }
@@ -27,6 +27,7 @@ const TestCaseVariablesModal = ({
       }
     });
     Object.entries(testCaseVariables || {}).forEach(([key, value]) => {
+      if (key === "pre_function") return;
       merged[key] = value ?? "";
     });
     return merged;
@@ -45,8 +46,38 @@ const TestCaseVariablesModal = ({
     }));
   };
 
+  const handleVariableBlur = (key) => {
+    setEditableVariables((prev) => {
+      const current = prev[key];
+      if (typeof current !== "string") return prev;
+      const trimmed = current.trim();
+      if (trimmed === current) return prev;
+      return { ...prev, [key]: trimmed };
+    });
+  };
+
+  // Build the trimmed payload that will be saved
+  const trimmedVariables = useMemo(() => {
+    const out = {};
+    Object.entries(editableVariables).forEach(([key, value]) => {
+      out[key] = typeof value === "string" ? value.trim() : value;
+    });
+    return out;
+  }, [editableVariables]);
+
+  // Detect whether anything actually changed vs. the merged source
+  const isDirty = useMemo(() => {
+    const sourceKeys = Object.keys(mergedSource || {});
+    const editedKeys = Object.keys(trimmedVariables || {});
+    if (sourceKeys.length !== editedKeys.length) return true;
+    return editedKeys.some((key) => {
+      const sourceVal = typeof mergedSource[key] === "string" ? mergedSource[key].trim() : mergedSource[key];
+      return trimmedVariables[key] !== sourceVal;
+    });
+  }, [trimmedVariables, mergedSource]);
+
   const handleSave = () => {
-    onSave(editableVariables);
+    onSave(trimmedVariables);
     closeModal(MODAL_TYPE.TEST_CASE_VARIABLES_MODAL);
   };
 
@@ -99,6 +130,7 @@ const TestCaseVariablesModal = ({
                         <AutoResizeTextarea
                           value={typeof value === "string" ? value : JSON.stringify(value)}
                           onChange={(e) => handleVariableChange(key, e.target.value)}
+                          onBlur={() => handleVariableBlur(key)}
                           placeholder="Enter value"
                           className="textarea textarea-bordered textarea-sm bg-base-100 text-sm w-full leading-relaxed"
                         />
@@ -126,7 +158,7 @@ const TestCaseVariablesModal = ({
                 </button>
               )}
             {Object.keys(editableVariables).length > 0 && (
-              <button onClick={handleSave} className="btn btn-primary btn-sm">
+              <button onClick={handleSave} disabled={!isDirty} className="btn btn-primary btn-sm">
                 Save Variables
               </button>
             )}

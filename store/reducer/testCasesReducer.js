@@ -76,8 +76,17 @@ const testCasesReducer = createSlice({
       if (bridgeId && state.testCases[bridgeId]) {
         const index = state.testCases[bridgeId].findIndex((testCase) => testCase._id === testCaseId);
         if (index !== -1) {
-          // Update the test case with new data while preserving the _id
-          state.testCases[bridgeId][index] = dataToUpdate;
+          // Update the test case with new data while preserving fields the
+          // backend response doesn't echo back (version_history, execution).
+          // Otherwise the previously cached per-version run results would be
+          // wiped from the UI on every edit until a page refresh re-fetches.
+          const existing = state.testCases[bridgeId][index] || {};
+          state.testCases[bridgeId][index] = {
+            ...existing,
+            ...dataToUpdate,
+            version_history: dataToUpdate?.version_history ?? existing.version_history,
+            execution: dataToUpdate?.execution ?? existing.execution,
+          };
         }
       }
       return state;
