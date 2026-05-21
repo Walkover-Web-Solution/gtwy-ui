@@ -29,6 +29,7 @@ import {
   ExternalLink,
   RotateCcw,
   ChevronRight,
+  BookOpen,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
@@ -341,20 +342,6 @@ const ThreadItem = ({
     [allBridgesMap, orgBridges, integrationData]
   );
 
-  // Returns true only if the tool exists in the available tools/integration data
-  // (i.e., resolvable via integrationData, allBridgesMap, or orgBridges).
-  // Tools that are not present in the tools API are hidden from history.
-  const isToolKnown = useCallback(
-    (tool) => {
-      if (!tool) return false;
-      const lookupKey = tool.type === "pre_function" ? tool.id || tool.name : tool.name || tool.id;
-      if (!lookupKey) return false;
-      const resolved = getToolName(lookupKey, allBridgesMap, orgBridges, integrationData);
-      return Boolean(resolved) && resolved !== lookupKey;
-    },
-    [allBridgesMap, orgBridges, integrationData]
-  );
-
   const flattenTools = useCallback((toolsData) => {
     const flattened = [];
     (toolsData || []).forEach((entry) => {
@@ -375,11 +362,49 @@ const ThreadItem = ({
     return flattened;
   }, []);
 
+  // Check if a tool exists in integration data (flows) or bridges
+  const isToolAvailable = useCallback(
+    (tool) => {
+      if (!tool) {
+        return false;
+      }
+
+      // Always show RAG/knowledge base tools and agent tools
+      if (tool?.data?.metadata?.type === "RAG" || tool?.data?.metadata?.type === "agent") {
+        return true;
+      }
+
+      const toolIdentifier = tool.name || tool.id;
+
+      if (!toolIdentifier) {
+        return false;
+      }
+      // Check in integrationData (flows) - integrationData is an object with flow IDs as keys
+      if (integrationData && typeof integrationData === "object") {
+        // Check if the tool identifier matches any flow ID (key)
+        if (integrationData[toolIdentifier]) {
+          return true;
+        }
+
+        // Check if the tool identifier matches any flow title
+        for (const integrationId in integrationData) {
+          const integration = integrationData[integrationId];
+          if (integration?.title === toolIdentifier) {
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+    [integrationData, allBridgesMap, orgBridges]
+  );
+
   const preFunctionEntry = useMemo(() => {
     const allTools = flattenTools(item?.tools_call_data);
-    const found = allTools.find((tool) => tool?.type === "pre_function" && isToolKnown(tool));
+    // Don't filter by isToolAvailable for pre_function - show all pre_function tools
+    const found = allTools.find((tool) => tool?.type === "pre_function");
     return found || null;
-  }, [item?.tools_call_data, flattenTools, isToolKnown]);
+  }, [item?.tools_call_data, flattenTools]);
 
   const {
     preTools,
@@ -393,20 +418,30 @@ const ThreadItem = ({
 
     allTools.forEach((tool) => {
       if (!tool) return;
-      // Hide tools that are not present in the tools API / integration data
-      if (!isToolKnown(tool)) return;
+
       const type = tool.type;
+
+      // Apply isToolAvailable filter ONLY to tools, pre_tool, and post_tool
+      // Do NOT filter pre_function or other types
       if (type === "pre_tool") {
-        pre.push(tool);
+        if (isToolAvailable(tool)) {
+          pre.push(tool);
+        }
       } else if (type === "post_tool") {
-        post.push(tool);
+        if (isToolAvailable(tool)) {
+          post.push(tool);
+        }
+      } else if (type === "tool" || !type) {
+        if (isToolAvailable(tool)) {
+          other.push(tool);
+        }
       } else {
-        // All other types (pre_function, post_function, etc.) go to otherTools
+        // All other types (pre_function, post_function, etc.) - no filter
         other.push(tool);
       }
     });
     return { preTools: pre, postTools: post, otherTools: other };
-  }, [item?.tools_call_data, flattenTools, isToolKnown]);
+  }, [item?.tools_call_data, flattenTools, isToolAvailable]);
 
   const preFunctionStripText = useMemo(() => {
     if (!preFunctionEntry) return "";
@@ -493,6 +528,13 @@ const ThreadItem = ({
 
   const handleToolPrimaryClick = useCallback(
     async (event, tool) => {
+      // Check if this is a RAG tool - don't call openViasocket for RAG tools
+      if (tool?.data?.metadata?.type === "RAG") {
+        // RAG tools are knowledge base tools, handle them separately if needed
+        // For now, just return without calling openViasocket
+        return;
+      }
+
       // Check if this is a knowledge database tool
       const toolName = typeof tool?.name === "string" ? tool.name.toLowerCase() : "";
       const isKnowledgeDbTool =
@@ -872,7 +914,7 @@ const ThreadItem = ({
           // Find the pre_tool from tools_call_data
           const preFunction = item.tools_call_data
             .flatMap((tools) => Object.values(tools || {}))
-            .find((tool) => tool?.type === "pre_tool" && isToolKnown(tool));
+            .find((tool) => tool?.type === "pre_tool");
 
           if (!preFunction) return null;
           return (
@@ -997,8 +1039,9 @@ const ThreadItem = ({
 
                 // Filter based on mode
                 const allToolEntries = allTools.filter(([, tool]) => {
-                  // Hide tools that are not present in the tools API / integration data
-                  if (!isToolKnown(tool)) return false;
+                  // Filter out tools not available in integration data or bridges
+                  if (!isToolAvailable(tool)) return false;
+
                   // In stateful mode: include ALL tools (including pre_tool)
                   if (!isSingleQuery) return true;
                   // In stateless mode: exclude pre_tool (it's shown separately)
@@ -1026,31 +1069,44 @@ const ThreadItem = ({
 
                 const renderToolChip = ([toolKey, tool], chipIndex) => {
                   const isPreTool = tool?.type === "pre_tool";
+                  const isRAGTool = tool?.data?.metadata?.type === "RAG";
                   const toolLabel = isPreTool ? `Pre Tool: ${getToolNameHelper(tool)}` : getToolNameHelper(tool);
+
                   return (
                     <div
                       key={toolKey || chipIndex}
                       data-testid={`thread-item-tool-${toolKey || chipIndex}`}
                       id={`thread-item-tool-${toolKey || chipIndex}`}
-                      onClick={(event) => handleToolPrimaryClick(event, tool)}
-                      className={`flex items-center gap-1.5 border rounded-lg px-3 py-1.5 cursor-pointer transition-colors text-sm ${
-                        isPreTool
-                          ? "bg-warning/10 border-warning/30 hover:bg-warning/20"
-                          : "bg-base-100 border-base-300 hover:bg-base-300"
+                      onClick={(event) => !isRAGTool && handleToolPrimaryClick(event, tool)}
+                      className={`flex items-center gap-1.5 border rounded-lg px-3 py-1.5 transition-colors text-sm ${
+                        isRAGTool
+                          ? "bg-info/10 border-info/30 hover:bg-info/20 cursor-default"
+                          : isPreTool
+                            ? "bg-warning/10 border-warning/30 hover:bg-warning/20 cursor-pointer"
+                            : "bg-base-100 border-base-300 hover:bg-base-300 cursor-pointer"
                       }`}
                     >
-                      <span className="font-medium truncate max-w-[120px]" title={toolLabel}>
-                        {truncate(toolLabel, 20)}
+                      {isRAGTool && <BookOpen size={14} className="text-info mr-1" title="Knowledge Base" />}
+                      <span
+                        className={`font-medium truncate max-w-[120px] ${isRAGTool ? "text-info" : ""}`}
+                        title={toolLabel}
+                      >
+                        {truncate(isRAGTool ? "Knowledge Base" : toolLabel, 20)}
                       </span>
                       <div className="flex items-center gap-1 ml-0.5">
-                        <div className="tooltip tooltip-top" data-tip="function logs">
-                          <SquareFunctionIcon
-                            size={14}
-                            onClick={(event) => handleToolPrimaryClick(event, tool)}
-                            className="opacity-50 hover:opacity-100 cursor-pointer"
-                          />
-                        </div>
-                        <div className="tooltip tooltip-top" data-tip="function data">
+                        {!isRAGTool && (
+                          <div className="tooltip tooltip-top" data-tip="function logs">
+                            <SquareFunctionIcon
+                              size={14}
+                              onClick={(event) => handleToolPrimaryClick(event, tool)}
+                              className="opacity-50 hover:opacity-100 cursor-pointer"
+                            />
+                          </div>
+                        )}
+                        <div
+                          className="tooltip tooltip-top"
+                          data-tip={isRAGTool ? "knowledge base data" : "function data"}
+                        >
                           <FileClockIcon
                             data-testid={`thread-item-tool-data-${toolKey || chipIndex}`}
                             id={`thread-item-tool-data-${toolKey || chipIndex}`}
@@ -1114,41 +1170,64 @@ const ThreadItem = ({
                             const displayEntries =
                               stepToolEntries.length > 0 ? stepToolEntries : stepNames.map((n) => [n, { name: n }]);
 
-                            const toolChips = displayEntries.map(([toolKey, tool], i) => (
-                              <div
-                                key={toolKey || i}
-                                data-testid={`thread-item-tool-${toolKey || i}`}
-                                id={`thread-item-tool-${toolKey || i}`}
-                                onClick={(event) => handleToolPrimaryClick(event, tool)}
-                                className="flex items-center gap-1.5 bg-base-100 border border-base-300 rounded-lg px-2.5 py-1.5 cursor-pointer hover:bg-base-300 transition-colors text-sm"
-                              >
-                                <span className="font-medium truncate max-w-[120px]" title={getToolNameHelper(tool)}>
-                                  {truncate(getToolNameHelper(tool), 20)}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <div className="tooltip tooltip-top" data-tip="function logs">
-                                    <SquareFunctionIcon
-                                      size={13}
-                                      onClick={(event) => handleToolPrimaryClick(event, tool)}
-                                      className="opacity-50 hover:opacity-100 cursor-pointer"
-                                    />
-                                  </div>
-                                  <div className="tooltip tooltip-top" data-tip="function data">
-                                    <FileClockIcon
-                                      data-testid={`thread-item-tool-data-${toolKey || i}`}
-                                      id={`thread-item-tool-data-${toolKey || i}`}
-                                      size={13}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setToolsData(tool);
-                                        toolsDataModalRef.current?.showModal();
-                                      }}
-                                      className="opacity-50 hover:opacity-100 cursor-pointer"
-                                    />
+                            const toolChips = displayEntries.map(([toolKey, tool], i) => {
+                              const isPreTool = tool?.type === "pre_tool";
+                              const isRAGTool = tool?.data?.metadata?.type === "RAG";
+                              const toolLabel = getToolNameHelper(tool);
+
+                              return (
+                                <div
+                                  key={toolKey || i}
+                                  data-testid={`thread-item-tool-${toolKey || i}`}
+                                  id={`thread-item-tool-${toolKey || i}`}
+                                  onClick={(event) => !isRAGTool && handleToolPrimaryClick(event, tool)}
+                                  className={`flex items-center gap-1.5 border rounded-lg px-2.5 py-1.5 transition-colors text-sm ${
+                                    isRAGTool
+                                      ? "bg-info/10 border-info/30 hover:bg-info/20 cursor-default"
+                                      : isPreTool
+                                        ? "bg-warning/10 border-warning/30 hover:bg-warning/20 cursor-pointer"
+                                        : "bg-base-100 border-base-300 hover:bg-base-300 cursor-pointer"
+                                  }`}
+                                >
+                                  {isRAGTool && (
+                                    <BookOpen size={13} className="text-info mr-1" title="Knowledge Base" />
+                                  )}
+                                  <span
+                                    className={`font-medium truncate max-w-[120px] ${isRAGTool ? "text-info" : ""}`}
+                                    title={toolLabel}
+                                  >
+                                    {truncate(isRAGTool ? "Knowledge Base" : toolLabel, 20)}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    {!isRAGTool && (
+                                      <div className="tooltip tooltip-top" data-tip="function logs">
+                                        <SquareFunctionIcon
+                                          size={13}
+                                          onClick={(event) => handleToolPrimaryClick(event, tool)}
+                                          className="opacity-50 hover:opacity-100 cursor-pointer"
+                                        />
+                                      </div>
+                                    )}
+                                    <div
+                                      className="tooltip tooltip-top"
+                                      data-tip={isRAGTool ? "knowledge base data" : "function data"}
+                                    >
+                                      <FileClockIcon
+                                        data-testid={`thread-item-tool-data-${toolKey || i}`}
+                                        id={`thread-item-tool-data-${toolKey || i}`}
+                                        size={13}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setToolsData(tool);
+                                          toolsDataModalRef.current?.showModal();
+                                        }}
+                                        className="opacity-50 hover:opacity-100 cursor-pointer"
+                                      />
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ));
+                              );
+                            });
 
                             const toolBox = isParallel ? (
                               /* Parallel: bordered box with absolute time badge top-right */
@@ -1527,8 +1606,9 @@ const ThreadItem = ({
 
                 // Filter based on mode
                 const allToolEntries = allTools.filter(([, tool]) => {
-                  // Hide tools that are not present in the tools API / integration data
-                  if (!isToolKnown(tool)) return false;
+                  // Filter out tools not available in integration data or bridges
+                  if (!isToolAvailable(tool)) return false;
+
                   // In stateful mode: include ALL tools (including pre_tool)
                   if (!isSingleQuery) return true;
                   // In stateless mode: exclude pre_tool (it's shown separately)
@@ -1545,31 +1625,44 @@ const ThreadItem = ({
 
                 const renderToolChip = ([toolKey, tool], chipIndex) => {
                   const isPreTool = tool?.type === "pre_tool";
+                  const isRAGTool = tool?.data?.metadata?.type === "RAG";
                   const toolLabel = isPreTool ? `Pre Tool: ${getToolNameHelper(tool)}` : getToolNameHelper(tool);
+
                   return (
                     <div
                       key={toolKey || chipIndex}
                       data-testid={`thread-item-tool-${toolKey || chipIndex}`}
                       id={`thread-item-tool-${toolKey || chipIndex}`}
-                      onClick={(event) => handleToolPrimaryClick(event, tool)}
-                      className={`flex items-center gap-1.5 border rounded-lg px-3 py-1.5 cursor-pointer transition-colors text-sm ${
-                        isPreTool
-                          ? "bg-warning/10 border-warning/30 hover:bg-warning/20"
-                          : "bg-base-100 border-base-300 hover:bg-base-300"
+                      onClick={(event) => !isRAGTool && handleToolPrimaryClick(event, tool)}
+                      className={`flex items-center gap-1.5 border rounded-lg px-3 py-1.5 transition-colors text-sm ${
+                        isRAGTool
+                          ? "bg-info/10 border-info/30 hover:bg-info/20 cursor-default"
+                          : isPreTool
+                            ? "bg-warning/10 border-warning/30 hover:bg-warning/20 cursor-pointer"
+                            : "bg-base-100 border-base-300 hover:bg-base-300 cursor-pointer"
                       }`}
                     >
-                      <span className="font-medium truncate max-w-[120px]" title={toolLabel}>
-                        {truncate(toolLabel, 20)}
+                      {isRAGTool && <BookOpen size={14} className="text-info mr-1" title="Knowledge Base" />}
+                      <span
+                        className={`font-medium truncate max-w-[120px] ${isRAGTool ? "text-info" : ""}`}
+                        title={toolLabel}
+                      >
+                        {truncate(isRAGTool ? "Knowledge Base" : toolLabel, 20)}
                       </span>
                       <div className="flex items-center gap-1 ml-0.5">
-                        <div className="tooltip tooltip-top" data-tip="function logs">
-                          <SquareFunctionIcon
-                            size={14}
-                            onClick={(event) => handleToolPrimaryClick(event, tool)}
-                            className="opacity-50 hover:opacity-100 cursor-pointer"
-                          />
-                        </div>
-                        <div className="tooltip tooltip-top" data-tip="function data">
+                        {!isRAGTool && (
+                          <div className="tooltip tooltip-top" data-tip="function logs">
+                            <SquareFunctionIcon
+                              size={14}
+                              onClick={(event) => handleToolPrimaryClick(event, tool)}
+                              className="opacity-50 hover:opacity-100 cursor-pointer"
+                            />
+                          </div>
+                        )}
+                        <div
+                          className="tooltip tooltip-top"
+                          data-tip={isRAGTool ? "knowledge base data" : "function data"}
+                        >
                           <FileClockIcon
                             data-testid={`thread-item-tool-data-${toolKey || chipIndex}`}
                             id={`thread-item-tool-data-${toolKey || chipIndex}`}

@@ -369,14 +369,23 @@ const ThreadContainer = ({
         return;
       }
 
-      // Skip if we've already fetched this exact thread/subThread/filter combination
-      const fetchKey = `${thread_id}|${subThreadId}|${version}|${error}|${filterOption}`;
-      if (lastFetchedThreadKeyRef.current === fetchKey) {
+      const messageIdFromURL = searchParamsHook.get("message_id");
+      const fetchKey = `${thread_id}|${subThreadId}|${version}|${error}|${filterOption}|${messageIdFromURL}`;
+      if (lastFetchedThreadKeyRef.current === fetchKey && thread.length > 0) {
         return;
       }
+
+      // Detect thread switch and set flag immediately (synchronous)
+      const isThreadSwitch = lastFetchedThreadKeyRef.current && lastFetchedThreadKeyRef.current !== fetchKey;
+      if (isThreadSwitch) {
+        setLoadingData(true);
+      }
+
       lastFetchedThreadKeyRef.current = fetchKey;
 
-      setLoadingData(true);
+      if (!isThreadSwitch) {
+        setLoadingData(true);
+      }
       try {
         // small debounce to absorb rapid filter/URL changes
         await new Promise((r) => setTimeout(r, 150));
@@ -413,7 +422,14 @@ const ThreadContainer = ({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadIdFromURL, filterOption, availableThreads, errorFromURL, subThreadIdFromURL]);
+  }, [
+    threadIdFromURL,
+    filterOption,
+    availableThreads,
+    errorFromURL,
+    subThreadIdFromURL,
+    searchParamsHook.get("message_id"),
+  ]);
 
   // Fetch more (pagination)
   const fetchMoreThreadData = useCallback(async () => {
@@ -526,14 +542,10 @@ const ThreadContainer = ({
             flexDirection,
           }}
         >
-          {/* Loading skeleton overlay */}
-          {loadingData && (
-            <div className="absolute inset-0 z-10 bg-base-100/80 backdrop-blur-sm">
-              <ChatLoadingSkeleton />
-            </div>
-          )}
-
-          {!loadingData && (!thread || thread.length === 0) ? (
+          {/* Show loading skeleton when switching threads, loading, or thread mismatch */}
+          {loadingData ? (
+            <ChatLoadingSkeleton />
+          ) : !loadingData ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-gray-500 text-lg">No history present</p>
             </div>

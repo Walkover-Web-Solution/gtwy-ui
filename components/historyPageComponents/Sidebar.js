@@ -241,6 +241,8 @@ const Sidebar = memo(
           const rawSubThreadId = firstResult.sub_thread?.[0]?.sub_thread_id || rawThreadId;
           finalUrl.searchParams.set("thread_id", rawThreadId);
           finalUrl.searchParams.set("subThread_id", rawSubThreadId);
+          dispatch(clearThreadData());
+
           router.push(finalUrl.pathname + finalUrl.search, undefined, { shallow: true });
         } else {
           finalUrl.searchParams.delete("thread_id");

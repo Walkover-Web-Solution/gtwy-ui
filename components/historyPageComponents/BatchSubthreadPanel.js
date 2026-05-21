@@ -28,24 +28,6 @@ const BatchSubthreadPanel = ({
   const isVisible = showBatches || showSubThreads;
   const showBoth = showBatches && showSubThreads;
   const panelWidth = showBoth ? 384 : 192;
-
-  // DEBUG: Track panel visibility transitions
-  if (typeof window !== "undefined") {
-    console.log("[BatchSubthreadPanel] render", {
-      threadLength: Array.isArray(thread) ? thread.length : 0,
-      batchMessagesCount: batchMessages.length,
-      subThreadsCount: subThreads.length,
-      showBatches,
-      showSubThreads,
-      showBoth,
-      isVisible,
-      panelWidth,
-      subThreadIdFromURL,
-      selectedBatchMessageId,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
   const sortedSubThreads = [...subThreads].sort(
     (a, b) => new Date(b?.created_at || b?.updated_at || 0) - new Date(a?.created_at || a?.updated_at || 0)
   );
