@@ -38,7 +38,8 @@ const Page = ({ params }) => {
   }, [knowledgeBaseData]);
   const tableData = filterKnowledgeBase.map((item) => ({
     ...item,
-    actualName: item?.name,
+    actualName: item?.title,
+    createdAt_original: item?.createdAt,
     name: (
       <div
         className="flex gap-2 cursor-pointer"

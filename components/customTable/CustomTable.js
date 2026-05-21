@@ -54,7 +54,7 @@ const CustomTable = ({
         const valueA =
           activeColumn === "name"
             ? a.actualName
-            : activeColumn === "createdAt"
+            : activeColumn === "createdAt" || activeColumn === "created"
               ? (a.createdAt_original ?? a.created_at_original)
               : activeColumn === "updatedAt"
                 ? (a.updatedAt_original ?? a.updated_at_original)
@@ -68,7 +68,7 @@ const CustomTable = ({
         const valueB =
           activeColumn === "name"
             ? b.actualName
-            : activeColumn === "createdAt"
+            : activeColumn === "createdAt" || activeColumn === "created"
               ? (b.createdAt_original ?? b.created_at_original)
               : activeColumn === "updatedAt"
                 ? (b.updatedAt_original ?? b.updated_at_original)
@@ -118,13 +118,14 @@ const CustomTable = ({
           return ascending ? limitA - limitB : limitB - limitA;
         }
 
-        // Special handling for date columns (last_used, created_at, createdAt)
-        if (["last_used", "created_at", "createdAt", "updated_at", "updatedAt"].includes(activeColumn)) {
+        // Special handling for date columns (last_used, created_at, createdAt, created)
+        if (["last_used", "created_at", "createdAt", "created", "updated_at", "updatedAt"].includes(activeColumn)) {
           const getOriginalTimestamp = (row) => {
             switch (activeColumn) {
               case "last_used":
                 return row.last_used_original || row.last_used_orignal;
               case "createdAt":
+              case "created":
                 return row.createdAt_original ?? row.created_at_original;
               case "created_at":
                 return row.created_at_original;
