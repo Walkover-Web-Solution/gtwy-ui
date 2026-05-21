@@ -77,7 +77,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
     if (styleValue !== reduxResponseStyle?.value) {
       setSelectedStyle(styleValue);
       if (styleValue === "" || styleValue === "{}") {
-        saveToRedux("", "");
+        saveToRedux({}, "");
       } else {
         const style = RESPONSE_STYLES.find((s) => s.value === styleValue);
         if (style) saveToRedux(style.value, style.prompt);

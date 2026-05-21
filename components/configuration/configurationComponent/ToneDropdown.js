@@ -72,7 +72,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
     if (toneValue !== reduxTone?.value) {
       setSelectedTone(toneValue);
       if (toneValue === "" || toneValue === "{}") {
-        saveToRedux("", "");
+        saveToRedux({}, "");
       } else {
         const tone = TONES.find((t) => t.value === toneValue);
         if (tone) saveToRedux(tone.value, tone.prompt);
