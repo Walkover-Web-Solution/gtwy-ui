@@ -150,6 +150,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const [isLoadingTestCase, setIsLoadingTestCase] = useState(false);
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState("");
+  const originalEditContentRef = useRef("");
   const testCaseResultRef = useRef(null);
   const [testCaseConversation, setTestCaseConversation] = useState([]);
   const [pendingTestIndex, setPendingTestIndex] = useState(null);
@@ -273,19 +274,28 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const handleEditMessage = (messageId, currentContent) => {
     setEditingMessage(messageId);
     setEditContent(currentContent);
+    originalEditContentRef.current = currentContent;
   };
 
   const handleSaveEdit = (messageId) => {
+    if (!editContent.trim()) {
+      return;
+    }
+    if (editContent === originalEditContentRef.current) {
+      return;
+    }
     if (channelIdentifier) {
       dispatch(editChatMessage(channelIdentifier, messageId, editContent));
     }
     setEditingMessage(null);
     setEditContent("");
+    originalEditContentRef.current = "";
   };
 
   const handleCancelEdit = () => {
     setEditingMessage(null);
     setEditContent("");
+    originalEditContentRef.current = "";
   };
 
   const handleTestCaseClick = async (testCaseConversation, expected, testcase_id, matching_type) => {
@@ -910,7 +920,8 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       data-testid="chat-save-edit-button"
                                       id="chat-save-edit-button"
                                       onClick={() => handleSaveEdit(message.id)}
-                                      className="btn btn-sm btn-success"
+                                      disabled={!editContent.trim() || editContent === originalEditContentRef.current}
+                                      className="btn btn-sm btn-success disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       <Save className="h-3 w-3" />
                                       Save
