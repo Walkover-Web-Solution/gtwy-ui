@@ -236,7 +236,7 @@ export const chatReducer = createSlice({
 
     // RT Layer: Update streaming message
     updateRtLayerMessage: (state, action) => {
-      const { channelId, messageId, content, isComplete } = action.payload;
+      const { channelId, messageId, content, isComplete, llmUrls } = action.payload;
 
       if (state.messagesByChannel[channelId]) {
         const messageIndex = state.messagesByChannel[channelId].findIndex((msg) => msg.id === messageId);
@@ -246,6 +246,7 @@ export const chatReducer = createSlice({
             content,
             isLoading: !isComplete,
             isStreaming: !isComplete,
+            ...(llmUrls && llmUrls.length > 0 ? { llm_urls: llmUrls } : {}),
           };
         }
       }

@@ -45,4 +45,24 @@ const buildLlmUrls = (images = [], files = []) => {
   return [...imageEntries, ...fileEntries];
 };
 
-export { getUrlIdentifier, haveSameItems, createUserUrlEntry, buildUserUrls, createLlmUrlEntry, buildLlmUrls };
+const extractImageUrlsFromResponse = (parsed) => {
+  let rawImages = [];
+  if (parsed.response?.data?.image_urls && Array.isArray(parsed.response.data.image_urls)) {
+    rawImages = parsed.response.data.image_urls
+      .map((imageObj) => {
+        return imageObj.permanent_url || imageObj.image_url || imageObj;
+      })
+      .filter(Boolean);
+  }
+  return buildLlmUrls(rawImages, []);
+};
+
+export {
+  getUrlIdentifier,
+  haveSameItems,
+  createUserUrlEntry,
+  buildUserUrls,
+  createLlmUrlEntry,
+  buildLlmUrls,
+  extractImageUrlsFromResponse,
+};
