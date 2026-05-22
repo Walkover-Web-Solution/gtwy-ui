@@ -598,6 +598,7 @@ function FunctionParameterModal({
   const [isTextareaVisible, setIsTextareaVisible] = useState(false);
   const [isOldFieldViewTrue, setIsOldFieldViewTrue] = useState(false);
   const [showNameDescription, setShowNameDescription] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const threadIdChecked = Boolean(toolData?.thread_id ?? function_details?.thread_id ?? false);
 
   useEffect(() => {
@@ -989,6 +990,7 @@ function FunctionParameterModal({
     setIsDescriptionEditing(false);
     setIsModified(false);
     setIsToolNameManuallyChanged(false);
+    setResetKey((prev) => prev + 1);
   }, [function_details]);
 
   const handleCloseModal = useCallback(() => {
@@ -1583,7 +1585,7 @@ function FunctionParameterModal({
                   Object.entries(toolData?.fields || {}).map(([key, param]) => (
                     <ParameterCard
                       isPublished={isPublished}
-                      key={key}
+                      key={`${key}-${resetKey}`}
                       paramKey={key}
                       param={param}
                       depth={0}

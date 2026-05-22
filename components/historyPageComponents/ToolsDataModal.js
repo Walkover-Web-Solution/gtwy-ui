@@ -36,10 +36,7 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
                     <span className="w-28 shrink-0 capitalize">{key}:</span>
                     <span className="flex-1 min-w-0">
                       {key === "name" && integrationData?.[value] ? (
-                        <p>
-                          {integrationData[value]?.title}
-                          <span>({value})</span>
-                        </p>
+                        <p>{integrationData[value]?.title}</p>
                       ) : (
                         <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
                           {formatValue(value)}

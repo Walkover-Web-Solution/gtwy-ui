@@ -30,7 +30,7 @@ import {
   RotateCcw,
   ChevronRight,
   BookOpen,
-  ArrowRight,
+  ArrowDown,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
@@ -1054,6 +1054,9 @@ const ThreadItem = ({
                   return tool?.type !== "pre_tool";
                 });
 
+                // Track which tools have been matched by index
+                let matchedToolIndex = 0;
+
                 // Handle function_time_logs as both object and array
                 let functionTimeLogsArr = [];
                 if (Array.isArray(item?.latency?.function_time_logs)) {
@@ -1143,12 +1146,9 @@ const ThreadItem = ({
                     <>
                       {/* Arrow above the row of steps with first execution time */}
                       <div className="flex flex-row items-center justify-center my-2 w-full max-w-xl gap-3">
-                        <div className="flex flex-col items-center">
-                          <div className="w-px h-4 bg-base-content/20" />
-                          <ChevronDown size={12} className="text-base-content/30" />
-                        </div>
+                        <ArrowDown size={20} className="text-base-content/50" />
                         {firstExecutionTime > 0 && (
-                          <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
+                          <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1 w-20 justify-center">
                             <Clock3 size={12} /> {firstExecutionTime.toFixed(2)}s
                           </span>
                         )}
@@ -1161,8 +1161,8 @@ const ThreadItem = ({
                             Functions Executed
                           </span>
                         </div>
-                        {/* Step boxes side by side with arrows */}
-                        <div className="flex flex-row items-center gap-2 flex-wrap">
+                        {/* Step boxes in column with arrows */}
+                        <div className="flex flex-col items-center gap-2">
                           {functionTimeLogsArr.map((logEntry, stepIndex) => {
                             const stepNames = (logEntry.step || "")
                               .split(",")
@@ -1170,9 +1170,15 @@ const ThreadItem = ({
                               .filter(Boolean);
                             const isParallel = stepNames.length > 1;
                             const stepTime = parseFloat(logEntry.time_taken) || 0;
-                            const stepToolEntries = allToolEntries.filter(([, tool]) =>
-                              stepNames.some((n) => n === tool?.name)
-                            );
+
+                            // Match tools sequentially by index to prevent duplicates
+                            const stepToolEntries = allToolEntries
+                              .filter(([, tool]) => stepNames.some((n) => n === tool?.name))
+                              .slice(matchedToolIndex, matchedToolIndex + stepNames.length);
+
+                            // Update matched index for next step
+                            matchedToolIndex += stepNames.length;
+
                             const displayEntries =
                               stepToolEntries.length > 0 ? stepToolEntries : stepNames.map((n) => [n, { name: n }]);
 
@@ -1234,15 +1240,14 @@ const ThreadItem = ({
                                 </div>
                               );
                             });
-
                             const toolBox = isParallel ? (
                               /* Parallel: bordered box with absolute time badge top-right */
                               <div
                                 key={stepIndex}
-                                className="flex-1 relative border border-base-300 rounded-xl px-3 py-2.5 bg-base-200 min-w-0"
+                                className="relative border border-base-300 rounded-xl px-3 py-2.5 bg-base-200 min-w-0"
                               >
                                 {stepTime > 0 && (
-                                  <span className="absolute -top-2 -right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
+                                  <span className="absolute -top-2 -right-2 z-0 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
                                     <Clock3 size={10} /> {stepTime.toFixed(2)}s
                                   </span>
                                 )}
@@ -1255,10 +1260,10 @@ const ThreadItem = ({
                               /* Single: bordered box with time badge absolute top-right */
                               <div
                                 key={stepIndex}
-                                className="flex-1 relative border border-base-300 rounded-xl px-3 py-2.5 bg-base-200 min-w-0"
+                                className="relative border border-base-300 rounded-xl px-3 py-2.5 bg-base-200 min-w-0"
                               >
                                 {stepTime > 0 && (
-                                  <span className="absolute -top-2 -right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
+                                  <span className="absolute -top-2 -right-2 z-0 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
                                     <Clock3 size={10} /> {stepTime.toFixed(2)}s
                                   </span>
                                 )}
@@ -1274,13 +1279,13 @@ const ThreadItem = ({
                                 {toolBox}
                                 {/* Arrow between tools with execution time */}
                                 {stepIndex < functionTimeLogsArr.length - 1 && (
-                                  <div className="shrink-0 flex flex-col items-center gap-1">
+                                  <div className="shrink-0 flex flex-row items-center justify-center gap-2 w-full">
+                                    <ArrowDown size={20} className="text-base-content/50 shrink-0" />
                                     {arrowExecutionTime > 0 && (
-                                      <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
+                                      <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1 shrink-0 w-20 justify-center">
                                         <Clock3 size={12} /> {arrowExecutionTime.toFixed(2)}s
                                       </span>
                                     )}
-                                    <ArrowRight size={20} className="text-base-content/50" />
                                   </div>
                                 )}
                               </React.Fragment>
@@ -1344,26 +1349,15 @@ const ThreadItem = ({
             {/* Arrow connector to AI response with final execution time */}
             {!item.error &&
               (() => {
-                // Extract execution_time_logs for the final arrow
-                const executionTimeLogs = (() => {
-                  const executionLogs = item?.latency?.execution_time_logs;
-                  if (!Array.isArray(executionLogs)) return [];
-
-                  return executionLogs.filter((log) => log?.step && !log.step.toLowerCase().includes("retry"));
-                })();
-
-                // Last execution time goes on arrow from Tools to AI Response
-                const lastExecutionTime = executionTimeLogs[executionTimeLogs.length - 1]?.time_taken;
+                // Model execution time goes on arrow from Tools to AI Response
+                const modelExecutionTime = parseFloat(item?.latency?.model_execution_time) || 0;
 
                 return (
                   <div className="flex flex-row items-center justify-center my-2 w-full max-w-xl gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="w-px h-4 bg-base-content/20" />
-                      <ChevronDown size={12} className="text-base-content/30" />
-                    </div>
-                    {lastExecutionTime > 0 && (
-                      <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1">
-                        <Clock3 size={12} /> {lastExecutionTime.toFixed(2)}s
+                    <ArrowDown size={20} className="text-base-content/50" />
+                    {modelExecutionTime > 0 && (
+                      <span className="text-xs px-2.5 py-1 rounded-md bg-base-200 text-base-content border border-base-300 whitespace-nowrap font-medium flex items-center gap-1 w-20 justify-center">
+                        <Clock3 size={12} /> {modelExecutionTime.toFixed(2)}s
                       </span>
                     )}
                   </div>
