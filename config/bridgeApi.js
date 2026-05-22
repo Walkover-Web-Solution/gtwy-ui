@@ -130,9 +130,11 @@ export const updateBridgeVersionApi = async ({ versionId, dataToSend }) => {
   }
 };
 
-export const publishBridgeVersionApi = async ({ versionId }) => {
+export const publishBridgeVersionApi = async ({ versionId, generate_summary = false }) => {
   try {
-    const response = await axios.post(`${URL}/api/versions/publish/${versionId}`);
+    const response = await axios.post(`${URL}/api/versions/publish/${versionId}`, {
+      generate_summary,
+    });
     return response?.data;
   } catch (error) {
     console.error(error);

@@ -748,10 +748,10 @@ export const updateApiAction = (bridge_id, dataFromEmbed) => async (dispatch) =>
 };
 
 export const publishBridgeVersionAction =
-  ({ bridgeId, versionId, orgId }) =>
+  ({ bridgeId, versionId, orgId, generate_summary = false }) =>
   async (dispatch) => {
     try {
-      const data = await publishBridgeVersionApi({ versionId });
+      const data = await publishBridgeVersionApi({ versionId, generate_summary });
       if (data?.success) {
         dispatch(publishBrigeVersionReducer({ versionId: data?.version_id, bridgeId, orgId }));
         toast.success("Agent Version published successfully");

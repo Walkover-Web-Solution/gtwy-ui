@@ -629,11 +629,32 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       setIsLoading(true);
 
       try {
+        const oldConfig = filteredBridgeData.configuration || {};
+        const newConfig = filteredVersionData.configuration || {};
+
+        const oldPromptStr = oldConfig.prompt
+          ? typeof oldConfig.prompt === "object"
+            ? JSON.stringify(oldConfig.prompt)
+            : String(oldConfig.prompt)
+          : "";
+        const newPromptStr = newConfig.prompt
+          ? typeof newConfig.prompt === "object"
+            ? JSON.stringify(newConfig.prompt)
+            : String(newConfig.prompt)
+          : "";
+        const promptChanged = oldPromptStr !== newPromptStr;
+
+        const functionIdsChanged =
+          JSON.stringify(filteredBridgeData.function_ids || []) !==
+          JSON.stringify(filteredVersionData.function_ids || []);
+        const shouldGenerateSummary = promptChanged || functionIdsChanged;
+
         const data = await dispatch(
           publishBridgeVersionAction({
             bridgeId: params?.id,
             versionId: searchParams?.get("version"),
             orgId: params?.org_id,
+            ...(shouldGenerateSummary && { generate_summary: true }),
           })
         );
 
@@ -683,7 +704,17 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         setIsLoading(false);
       }
     },
-    [dispatch, params, searchParams, agent_name, agent_description, isEmbedUser, selectedAgentsToPublish]
+    [
+      dispatch,
+      params,
+      searchParams,
+      agent_name,
+      agent_description,
+      isEmbedUser,
+      selectedAgentsToPublish,
+      filteredBridgeData,
+      filteredVersionData,
+    ]
   );
 
   return (
