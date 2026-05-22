@@ -30,6 +30,7 @@ import {
   RotateCcw,
   ChevronRight,
   BookOpen,
+  ArrowRight,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
@@ -462,7 +463,7 @@ const ThreadItem = ({
       embedToken,
       meta: { type: "pre_function" },
     });
-  }, [preFunctionEntry, openViasocket, embedToken]);
+  }, [preFunctionEntry, embedToken]);
 
   // Helper function to detect if content contains HTML
   const containsHTML = (str) => {
@@ -823,16 +824,22 @@ const ThreadItem = ({
     >
       {/* Sticky header */}
       {isSingleQuery && (
-        <div className="sticky top-0 z-20 bg-base-100 px-4 py-1 mb-3 flex items-center justify-between gap-2 border-b border-base-300 overflow-x-auto">
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex sticky top-0 z-20 bg-base-100 px-4 py-1 mb-3 items-center justify-between gap-2 border-b border-base-300">
+          <div
+            className="flex items-center gap-2 overflow-x-auto min-w-0"
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
             {item?.service && (
-              <span className="flex items-center" title={item.service}>
+              <span className="flex items-center shrink-0" title={item.service}>
                 {getIconOfService(item.service, 14, 14)}
               </span>
             )}
-            {item?.model && <span className="text-xs font-medium text-base-content/60">{item.model}</span>}
+            {item?.model && <span className="text-xs font-medium text-base-content/60 shrink-0">{item.model}</span>}
             {(item?.tokens?.input_tokens != null || item?.tokens?.output_tokens != null) && (
-              <span className="text-xs text-base-content/40 flex items-center gap-1">
+              <span className="text-xs text-base-content/40 flex items-center gap-1 shrink-0">
                 <span className="text-base-content/20">·</span>
                 <span>Tokens:</span>
                 <span className="font-medium text-base-content/60">{item.tokens.input_tokens ?? 0} input</span>
@@ -841,7 +848,7 @@ const ThreadItem = ({
               </span>
             )}
             {item?.tokens?.expected_cost && (
-              <span className="text-xs text-base-content/40 flex items-center gap-1">
+              <span className="text-xs text-base-content/40 flex items-center gap-1 shrink-0">
                 <span className="text-base-content/20">·</span>
                 <span>Cost:</span>
                 <span className="font-medium text-base-content/60">
@@ -850,23 +857,23 @@ const ThreadItem = ({
               </span>
             )}
             {item?.version_id && (
-              <span className="text-xs text-base-content/40 flex items-center gap-1">
+              <span className="text-xs text-base-content/40 flex items-center gap-1 shrink-0">
                 <span className="text-base-content/20">·</span>
                 <span>Version:</span>
                 <span className="font-medium text-base-content/60">{item.version_id}</span>
               </span>
             )}
             {item?.message_id && (
-              <span className="text-xs text-base-content/40 flex items-center gap-1">
+              <span className="text-xs text-base-content/40 flex items-center gap-1 shrink-0">
                 <span className="text-base-content/20">·</span>
                 <span>Message ID:</span>
                 <span className="font-medium text-base-content/60">{item.message_id}</span>
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 bg-base-200 rounded-lg p-1 shrink-0">
             <button
-              className="btn btn-ghost btn-xs rounded-md gap-1.5"
+              className="btn btn-ghost btn-xs rounded-md gap-1.5 shrink-0"
               onClick={handleRerun}
               disabled={isRerunning}
               title="Rerun this message"
@@ -874,35 +881,34 @@ const ThreadItem = ({
               <RotateCcw className={`h-3 w-3 ${isRerunning ? "animate-spin" : ""}`} />
               <span>{isRerunning ? "Running..." : "Rerun"}</span>
             </button>
-            <div className="flex items-center gap-0.5 bg-base-200 rounded-lg p-1 shrink-0">
-              <button
-                data-testid="thread-item-user-aiconfig-button-sticky"
-                className="btn btn-ghost btn-xs rounded-md gap-1.5"
-                onClick={() => handleUserButtonClick("AiConfig")}
-              >
-                <SquareFunctionIcon className="h-3 w-3" />
-                <span>AI Config</span>
-              </button>
-              <div className="w-px h-4 bg-base-300 mx-0.5" />
-              <button
-                id="thread-item-add-test-case-button-sticky"
-                className="btn btn-ghost btn-xs rounded-md gap-1.5"
-                onClick={() => handleAddTestCase(item, index)}
-              >
-                <AddIcon className="h-3 w-3" />
-                <span>Test Case</span>
-              </button>
-              <div className="w-px h-4 bg-base-300 mx-0.5" />
-              <button
-                data-testid="thread-item-user-variables-button-sticky"
-                id="thread-item-user-variables-button-sticky"
-                className="btn btn-ghost btn-xs rounded-md gap-1.5"
-                onClick={() => handleUserButtonClick("variables")}
-              >
-                <Braces className="h-3 w-3" />
-                <span>Variables</span>
-              </button>
-            </div>
+            <div className="w-px h-4 bg-base-300 mx-0.5 shrink-0" />
+            <button
+              data-testid="thread-item-user-aiconfig-button-sticky"
+              className="btn btn-ghost btn-xs rounded-md gap-1.5 shrink-0"
+              onClick={() => handleUserButtonClick("AiConfig")}
+            >
+              <SquareFunctionIcon className="h-3 w-3" />
+              <span>AI Config</span>
+            </button>
+            <div className="w-px h-4 bg-base-300 mx-0.5 shrink-0" />
+            <button
+              id="thread-item-add-test-case-button-sticky"
+              className="btn btn-ghost btn-xs rounded-md gap-1.5 shrink-0"
+              onClick={() => handleAddTestCase(item, index)}
+            >
+              <AddIcon className="h-3 w-3" />
+              <span>Test Case</span>
+            </button>
+            <div className="w-px h-4 bg-base-300 mx-0.5 shrink-0" />
+            <button
+              data-testid="thread-item-user-variables-button-sticky"
+              id="thread-item-user-variables-button-sticky"
+              className="btn btn-ghost btn-xs rounded-md gap-1.5 shrink-0"
+              onClick={() => handleUserButtonClick("variables")}
+            >
+              <Braces className="h-3 w-3" />
+              <span>Variables</span>
+            </button>
           </div>
         </div>
       )}
@@ -919,7 +925,7 @@ const ThreadItem = ({
           if (!preFunction) return null;
           return (
             <div className="mb-2 px-4">
-              <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-2 bg-base-200/30 border border-base-300 rounded-xl px-4 py-2">
                 <span className="text-xs font-medium text-base-content/70 shrink-0">Pre Function:</span>
                 <div
                   onClick={(e) => handleToolPrimaryClick(e, preFunction)}
@@ -1149,14 +1155,14 @@ const ThreadItem = ({
                       </div>
 
                       {/* Parent container with border around all tools */}
-                      <div className="w-full max-w-xl border border-base-300 rounded-xl px-4 py-4 bg-base-200/30">
+                      <div className="w-fit border border-base-300 rounded-xl px-4 py-4 bg-base-200/30">
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-xs font-semibold text-base-content/40 uppercase tracking-wide">
                             Functions Executed
                           </span>
                         </div>
                         {/* Step boxes side by side with arrows */}
-                        <div className="flex flex-row items-center gap-2">
+                        <div className="flex flex-row items-center gap-2 flex-wrap">
                           {functionTimeLogsArr.map((logEntry, stepIndex) => {
                             const stepNames = (logEntry.step || "")
                               .split(",")
@@ -1274,7 +1280,7 @@ const ThreadItem = ({
                                         <Clock3 size={12} /> {arrowExecutionTime.toFixed(2)}s
                                       </span>
                                     )}
-                                    <ChevronRight size={16} className="text-base-content/30" />
+                                    <ArrowRight size={20} className="text-base-content/50" />
                                   </div>
                                 )}
                               </React.Fragment>
