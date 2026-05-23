@@ -14,6 +14,8 @@ const CustomTable = ({
   handleRowSelection = () => {},
   endComponent = null,
   customGetColumnLabel = null,
+  customCellRenderers = {},
+  filterFunction = null,
 }) => {
   const keys = useMemo(() => Object.keys(data[0] || {}), [data]);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -49,8 +51,9 @@ const CustomTable = ({
 
   // Sort the data based on active column and direction
   const sortedData = useMemo(() => {
+    let processedData = filterFunction ? data.filter(filterFunction) : data;
     if (sorting && activeColumn) {
-      return [...data].sort((a, b) => {
+      return [...processedData].sort((a, b) => {
         const valueA =
           activeColumn === "name"
             ? a.actualName
@@ -168,8 +171,8 @@ const CustomTable = ({
         return 0;
       });
     }
-    return data;
-  }, [data, sorting, activeColumn, ascending]);
+    return processedData;
+  }, [data, sorting, activeColumn, ascending, filterFunction]);
 
   const sortByColumn = (column) => {
     if (!sorting || !sortableColumns.includes(column)) return;
@@ -423,13 +426,15 @@ const CustomTable = ({
                   {visibleColumns?.map((column) => (
                     <td
                       key={column}
-                      className={`px-4 py-2 text-left whitespace-nowrap ${
+                      className={`px-4 py-2 text-left ${
                         ["last_used", "created_at", "createdAt", "updated_at", "updatedAt"].includes(column)
                           ? "w-40 min-w-40 max-w-40"
-                          : ""
+                          : column === "agents"
+                            ? "min-w-64"
+                            : "whitespace-nowrap"
                       }`}
                     >
-                      {getDisplayValue(row, column)}
+                      {customCellRenderers[column] ? customCellRenderers[column](row) : getDisplayValue(row, column)}
                     </td>
                   ))}
                   {endComponent && (

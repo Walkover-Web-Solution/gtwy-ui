@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect, useMemo, useState, use, useCallback } from "react";
 import { useDispatch } from "react-redux";
-import { useRouter } from "next/navigation";
-import { Plus, ChevronRight, Wrench, Bot, Settings } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, ChevronRight, Wrench, Bot, Settings, Funnel, Clock, Layers, Link2 } from "lucide-react";
 import { toast } from "react-toastify";
 import PageHeader from "@/components/Pageheader";
 import MainLayout from "@/components/layoutComponents/MainLayout";
@@ -13,6 +13,8 @@ import { isEqual } from "lodash";
 import FunctionParameterModal from "@/components/configuration/configurationComponent/FunctionParameterModal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, formatRelativeTime, formatDate } from "@/utils/utility";
+import CustomTable from "@/components/customTable/CustomTable";
+import usePortalDropdown from "@/customHooks/usePortalDropdown";
 
 export const runtime = "edge";
 
@@ -23,223 +25,24 @@ const FEATURED_APPS = [
   { domain: "drive.google.com", name: "Google Drive" },
 ];
 
-const ToolCard = React.memo(
-  ({ fn, integrationData, idLookup, onOpen, onConfig, onConnectionsToggle, isConnectionsOpen, orgId, router }) => {
-    const scriptId = fn?.script_id;
-    const integration = integrationData?.[scriptId];
-    const title = fn?.title || integration?.title || scriptId || "Untitled tool";
-    const icons = integration?.serviceIcons || [];
-
-    const rawConnectionIds = [
-      ...(Array.isArray(fn?.bridge_ids) ? fn.bridge_ids : []),
-      ...(Array.isArray(fn?.version_ids) ? fn.version_ids : []),
-    ];
-
-    const connectionsMap = new Map();
-    rawConnectionIds.forEach((id) => {
-      const info = idLookup[id];
-      if (!info) return;
-      const existing = connectionsMap.get(info.bridgeId);
-      if (existing) {
-        if (info.versionLabel && !existing.versions.some((v) => v.versionId === info.versionId)) {
-          existing.versions.push({ versionLabel: info.versionLabel, versionId: info.versionId });
-        }
-      } else {
-        connectionsMap.set(info.bridgeId, {
-          bridgeId: info.bridgeId,
-          bridgeName: info.bridgeName,
-          versions: info.versionLabel ? [{ versionLabel: info.versionLabel, versionId: info.versionId }] : [],
-        });
-      }
-    });
-
-    const connections = Array.from(connectionsMap.values()).map((c) => ({
-      ...c,
-      versions: c.versions
-        .slice()
-        .sort((a, b) => (a.versionLabel || "").localeCompare(b.versionLabel || "", undefined, { numeric: true })),
-    }));
-
-    const toolKey = fn?._id || scriptId;
-
-    return (
-      <div
-        key={fn?._id || scriptId}
-        className="relative group/card rounded bg-base-200 border border-base-300 shadow-sm hover:shadow-md transition-shadow flex flex-col"
-        style={{ borderRadius: 4 }}
-      >
-        <div className="w-full flex items-center gap-2.5 px-3 py-3 relative" data-connections-dropdown>
-          <button
-            type="button"
-            onClick={() => onOpen(fn)}
-            className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer border-0 text-left bg-transparent hover:opacity-80 transition-opacity"
-            aria-label={`Open ${title} tool`}
-          >
-            <div className="flex items-center shrink-0">
-              {icons.length > 0 ? (
-                <div className="flex items-center -space-x-2 flex-shrink-0">
-                  {icons.slice(0, 5).map((icon, idx) => (
-                    <img
-                      key={idx}
-                      src={icon}
-                      alt={`${title} icon ${idx + 1}`}
-                      className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5"
-                      style={{ zIndex: 5 - idx }}
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <Wrench size={16} className="text-base-content/70" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className="truncate m-0 text-base-content"
-                style={{ fontWeight: 700, fontSize: 13, letterSpacing: "-0.01em" }}
-                title={title}
-              >
-                {title}
-              </p>
-              {connections.length > 0 && (
-                <p className="text-xs text-base-content/60 m-0">
-                  Connected to {connections.length} agent{connections.length === 1 ? "" : "s"}
-                </p>
-              )}
-              <div className="m-0 mt-2 space-y-1.5">
-                {fn?.createdAt && (
-                  <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] font-medium text-base-content/40">Created at</span>
-                      <span className="text-[10px] font-medium text-base-content/50 group-hover:hidden">
-                        {formatRelativeTime(fn.createdAt)}
-                      </span>
-                      <span className="text-[10px] font-medium text-base-content/50 hidden group-hover:inline">
-                        {formatDate(fn.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {fn?.updatedAt && (
-                  <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] font-medium text-base-content/40">Updated at</span>
-                      <span className="text-[10px] font-medium text-base-content/50 group-hover:hidden">
-                        {formatRelativeTime(fn.updatedAt)}
-                      </span>
-                      <span className="text-[10px] font-medium text-base-content/50 hidden group-hover:inline">
-                        {formatDate(fn.updatedAt)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </button>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {connections.length > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onConnectionsToggle(toolKey);
-                }}
-                className="inline-flex items-center justify-center gap-1 font-bold hover:opacity-80 transition-opacity"
-                style={{
-                  minWidth: 22,
-                  height: 22,
-                  padding: "0 7px",
-                  borderRadius: 11,
-                  background: "rgb(59,130,246)",
-                  color: "rgb(244,244,245)",
-                  fontFamily: '"Geist Mono", monospace',
-                  fontSize: 11,
-                  lineHeight: 1,
-                  letterSpacing: "0.04em",
-                }}
-                title={`Connected to ${connections.length} agent${connections.length === 1 ? "" : "s"}`}
-                aria-label={`Show connections for ${title}`}
-              >
-                <Bot size={10} />+{connections.length}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConfig(fn);
-              }}
-              className="p-1 rounded hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content"
-              title="Configure tool"
-              aria-label={`Configure ${title} tool`}
-            >
-              <Settings size={14} />
-            </button>
-
-            <ChevronRight
-              size={11}
-              strokeWidth={2.5}
-              className="text-base-content/40 group-hover/card:text-base-content/70 transition-all"
-            />
-          </div>
-
-          {isConnectionsOpen && connections.length > 0 && (
-            <div
-              className="absolute left-3 right-3 top-full mt-1 z-30 bg-base-100 border border-base-300 shadow-lg rounded"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="px-3 py-2 border-b border-base-200 text-base-content/60 uppercase tracking-wider"
-                style={{ fontSize: 10 }}
-              >
-                Connected agents
-              </div>
-              <ul className="max-h-56 overflow-y-auto py-1">
-                {connections.map((conn) => {
-                  const defaultVersion = conn.versions[0];
-                  return (
-                    <li key={conn.bridgeId}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const url = defaultVersion?.versionId
-                            ? `/org/${orgId}/agents/configure/${conn.bridgeId}?version=${defaultVersion.versionId}`
-                            : `/org/${orgId}/agents/configure/${conn.bridgeId}`;
-
-                          if (e.metaKey || e.ctrlKey) {
-                            window.open(url, "_blank");
-                          } else {
-                            onConnectionsToggle(null);
-                            router.push(url);
-                          }
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-base-200 transition-colors text-left"
-                        style={{ fontSize: 12 }}
-                      >
-                        <Bot size={12} className="text-base-content/60 shrink-0" />
-                        <span className="flex-1 min-w-0 truncate text-base-content" title={conn.bridgeName}>
-                          {conn.bridgeName}
-                        </span>
-                        <ChevronRight size={11} strokeWidth={2.5} className="text-base-content/40 shrink-0" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+const getColumnLabel = (column) => {
+  switch (column) {
+    case "title":
+      return "Tool Name";
+    case "script_id":
+      return "Script ID";
+    case "agents":
+      return "Connected Agents";
+    case "versions":
+      return "Versions";
+    case "createdAt":
+      return "Created At";
+    case "updatedAt":
+      return "Updated At";
+    default:
+      return column.replace(/_/g, " ");
   }
-);
-
-ToolCard.displayName = "ToolCard";
+};
 
 const EmptyState = ({ onAddTool }) => (
   <div className="w-full flex justify-center">
@@ -289,6 +92,8 @@ const ToolsPage = ({ params }) => {
   const orgId = resolvedParams?.org_id;
   const dispatch = useDispatch();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const filterParam = searchParams?.get("filter");
 
   const { functionData, integrationData, embedToken, descriptions, linksData, allBridges } = useCustomSelector(
     (state) => ({
@@ -312,7 +117,7 @@ const ToolsPage = ({ params }) => {
         map[versionId] = {
           bridgeId: bridge._id,
           bridgeName: bridge.name || "Untitled bridge",
-          versionLabel: `v${idx + 1}`,
+          versionLabel: `version ${idx + 1}`,
           versionId,
         };
       });
@@ -325,48 +130,28 @@ const ToolsPage = ({ params }) => {
   const [functionDetails, setFunctionDetails] = useState({});
   const [toolData, setToolData] = useState({});
   const [functionName, setFunctionName] = useState("");
-  const [openConnectionsFor, setOpenConnectionsFor] = useState(null);
-  const [sortBy] = useState("name");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [openDropdownToolId, setOpenDropdownToolId] = useState(null);
+  const [expandedAgentId, setExpandedAgentId] = useState(null);
 
-  const allTools = useMemo(() => {
-    return Object.values(functionData || {}).filter(Boolean);
-  }, [functionData]);
-
-  const sortedAndFilteredTools = useMemo(() => {
-    let tools = [...allTools];
-    if (sortBy === "name") {
-      tools.sort((a, b) => {
-        const aTitle = a?.title || a?.script_id || "Untitled";
-        const bTitle = b?.title || b?.script_id || "Untitled";
-        return aTitle.localeCompare(bTitle);
-      });
-    } else if (sortBy === "connections") {
-      tools.sort((a, b) => {
-        const aConnections = (a?.bridge_ids?.length || 0) + (a?.version_ids?.length || 0);
-        const bConnections = (b?.bridge_ids?.length || 0) + (b?.version_ids?.length || 0);
-        return bConnections - aConnections;
-      });
-    }
-    return tools;
-  }, [allTools, sortBy]);
+  const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown({
+    offsetX: -100,
+    offsetY: 5,
+  });
 
   useEffect(() => {
-    setFilteredTools(sortedAndFilteredTools);
-  }, [sortedAndFilteredTools]);
-
-  useEffect(() => {
-    dispatch(getAllFunctions());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (!openConnectionsFor) return;
+    if (!openDropdownToolId) return;
     const handleClickOutside = (e) => {
-      if (!e.target.closest?.("[data-connections-dropdown]")) {
-        setOpenConnectionsFor(null);
+      if (!e.target.closest?.("[data-agents-dropdown]")) {
+        setOpenDropdownToolId(null);
+        setExpandedAgentId(null);
       }
     };
     const handleEscape = (e) => {
-      if (e.key === "Escape") setOpenConnectionsFor(null);
+      if (e.key === "Escape") {
+        setOpenDropdownToolId(null);
+        setExpandedAgentId(null);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
@@ -374,7 +159,74 @@ const ToolsPage = ({ params }) => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [openConnectionsFor]);
+  }, [openDropdownToolId]);
+
+  const allTools = useMemo(() => {
+    return Object.values(functionData || {}).filter(Boolean);
+  }, [functionData]);
+
+  const tableData = useMemo(() => {
+    return allTools.map((fn) => {
+      const scriptId = fn?.script_id;
+      const integration = integrationData?.[scriptId];
+      const title = fn?.title || integration?.title || scriptId || "Untitled tool";
+      const icons = integration?.serviceIcons || [];
+
+      const rawConnectionIds = [
+        ...(Array.isArray(fn?.bridge_ids) ? fn.bridge_ids : []),
+        ...(Array.isArray(fn?.version_ids) ? fn.version_ids : []),
+      ];
+
+      const connectionsMap = new Map();
+      rawConnectionIds.forEach((id) => {
+        const info = idLookup[id];
+        if (!info) return;
+        const existing = connectionsMap.get(info.bridgeId);
+        if (existing) {
+          if (info.versionLabel && !existing.versions.some((v) => v.versionId === info.versionId)) {
+            existing.versions.push({ versionLabel: info.versionLabel, versionId: info.versionId });
+          }
+        } else {
+          connectionsMap.set(info.bridgeId, {
+            bridgeId: info.bridgeId,
+            bridgeName: info.bridgeName,
+            versions: info.versionLabel ? [{ versionLabel: info.versionLabel, versionId: info.versionId }] : [],
+          });
+        }
+      });
+
+      const connections = Array.from(connectionsMap.values()).map((c) => ({
+        ...c,
+        versions: c.versions
+          .slice()
+          .sort((a, b) => (a.versionLabel || "").localeCompare(b.versionLabel || "", undefined, { numeric: true })),
+      }));
+
+      return {
+        _id: fn?._id,
+        title, // Plain string for proper custom table sorting
+        icons, // Service icons passed separately
+        script_id: scriptId,
+        agents: connections,
+        agentsCount: connections.length,
+        createdAt: fn?.createdAt ? formatRelativeTime(fn.createdAt) : "-",
+        updatedAt: fn?.updatedAt ? formatRelativeTime(fn.updatedAt) : "-",
+        createdAtOriginal: fn?.createdAt ? formatDate(fn.createdAt) : "-",
+        updatedAtOriginal: fn?.updatedAt ? formatDate(fn.updatedAt) : "-",
+        createdAt_original: fn?.createdAt || null, // Chronological sorting parameter
+        updatedAt_original: fn?.updatedAt || null, // Chronological sorting parameter
+        originalData: fn,
+      };
+    });
+  }, [allTools, integrationData, idLookup]);
+
+  useEffect(() => {
+    setFilteredTools(tableData);
+  }, [tableData]);
+
+  useEffect(() => {
+    dispatch(getAllFunctions());
+  }, [dispatch]);
 
   const handleAddNewTool = useCallback(() => {
     if (typeof window === "undefined" || typeof window.openViasocket !== "function") {
@@ -389,6 +241,57 @@ const ToolsPage = ({ params }) => {
       },
     });
   }, [embedToken]);
+
+  const handleFilterDropdownClick = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const dropdownContent = (
+        <ul className="menu bg-base-100 rounded-box w-56 p-2 shadow text-sm">
+          <li>
+            <button
+              onClick={() => {
+                setActiveFilter("all");
+                handlePortalCloseImmediate();
+              }}
+              className="flex items-center gap-2"
+            >
+              <Layers size={14} />
+              <span>All</span>
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => {
+                setActiveFilter("connected");
+                handlePortalCloseImmediate();
+              }}
+              className="flex items-center gap-2"
+            >
+              <Link2 size={14} />
+              <span>Connected</span>
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => {
+                setActiveFilter("recent");
+                handlePortalCloseImmediate();
+              }}
+              className="flex items-center gap-2"
+            >
+              <Clock size={14} />
+              <span>Recent</span>
+            </button>
+          </li>
+        </ul>
+      );
+
+      handlePortalOpen(e.currentTarget, dropdownContent);
+    },
+    [handlePortalOpen, handlePortalCloseImmediate]
+  );
 
   const handleOpenTool = useCallback(
     (fn) => {
@@ -419,10 +322,6 @@ const ToolsPage = ({ params }) => {
     openModal(MODAL_TYPE.TOOL_FUNCTION_PARAMETER_MODAL);
   }, []);
 
-  const handleConnectionsToggle = useCallback((toolKey) => {
-    setOpenConnectionsFor((prev) => (prev === toolKey ? null : toolKey));
-  }, []);
-
   const handleSaveFunctionData = useCallback(() => {
     if (!functionId) return;
     if (!isEqual(toolData, functionDetails)) {
@@ -436,6 +335,203 @@ const ToolsPage = ({ params }) => {
       );
     }
   }, [functionId, toolData, functionDetails, dispatch, embedToken]);
+
+  const customCellRenderers = useMemo(
+    () => ({
+      title: (row) => {
+        const title = row.title || "Untitled tool";
+        const icons = row.icons || [];
+        return (
+          <div className="flex gap-3 items-center">
+            <div className="flex items-center shrink-0">
+              {icons.length > 0 ? (
+                <div className="flex items-center -space-x-2 flex-shrink-0">
+                  {icons.slice(0, 5).map((icon, idx) => (
+                    <img
+                      key={idx}
+                      src={icon}
+                      alt={`${title} icon ${idx + 1}`}
+                      className="w-6 h-6 rounded-full border-2 border-base-100 flex-shrink-0 object-contain bg-white p-0.5"
+                      style={{ zIndex: 5 - idx }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Wrench size={16} className="text-base-content/70" />
+              )}
+            </div>
+            <span className="truncate" title={title}>
+              {title}
+            </span>
+          </div>
+        );
+      },
+      createdAt: (row) => (
+        <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs text-base-content group-hover:hidden">{row.createdAt}</span>
+            <span className="text-xs text-base-content hidden group-hover:inline">{row.createdAtOriginal}</span>
+          </div>
+        </div>
+      ),
+      updatedAt: (row) => (
+        <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs text-base-content group-hover:hidden">{row.updatedAt}</span>
+            <span className="text-xs text-base-content hidden group-hover:inline">{row.updatedAtOriginal}</span>
+          </div>
+        </div>
+      ),
+      agents: (row) => {
+        const count = row.agents?.length || 0;
+        if (count === 0) {
+          return <span className="text-base-content/60 text-xs">No agents</span>;
+        }
+
+        const isOpen = openDropdownToolId === row._id;
+
+        return (
+          <div className="relative inline-block" data-agents-dropdown>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenDropdownToolId(isOpen ? null : row._id);
+                setExpandedAgentId(null);
+              }}
+              className="inline-flex items-center justify-center gap-1 font-bold hover:opacity-80 transition-opacity"
+              style={{
+                minWidth: 32,
+                height: 24,
+                padding: "0 8px",
+                borderRadius: 12,
+                background: "rgb(59,130,246)",
+                color: "rgb(244,244,245)",
+                fontSize: 11,
+                lineHeight: 1,
+                letterSpacing: "0.04em",
+              }}
+              title={`Connected to ${count} agent${count === 1 ? "" : "s"}`}
+            >
+              <Bot size={12} />+{count}
+            </button>
+
+            {isOpen && (
+              <div
+                className="absolute left-0 top-full mt-1 z-50 bg-base-100 border border-base-300 shadow-lg rounded min-w-[240px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className="px-3 py-2 border-b border-base-200 text-base-content/60 uppercase tracking-wider"
+                  style={{ fontSize: 10 }}
+                >
+                  Connected agents
+                </div>
+                <ul className="max-h-72 overflow-y-auto py-1">
+                  {row.agents.map((agent) => {
+                    const isExpanded = expandedAgentId === agent.bridgeId;
+                    const hasVersions = agent.versions.length > 0;
+                    return (
+                      <li key={agent.bridgeId} className="border-b border-base-200 last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (hasVersions) {
+                              setExpandedAgentId(isExpanded ? null : agent.bridgeId);
+                            } else {
+                              const url = `/org/${orgId}/agents/configure/${agent.bridgeId}`;
+                              setOpenDropdownToolId(null);
+                              if (e.metaKey || e.ctrlKey) {
+                                window.open(url, "_blank");
+                              } else {
+                                router.push(url);
+                              }
+                            }
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-base-200 transition-colors text-left text-sm"
+                        >
+                          <Bot size={12} className="text-base-content/60 shrink-0" />
+                          <span className="flex-1 min-w-0 truncate" title={agent.bridgeName}>
+                            {agent.bridgeName}
+                          </span>
+                          {hasVersions ? (
+                            <ChevronRight
+                              size={12}
+                              strokeWidth={2.5}
+                              className={`text-base-content/40 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                            />
+                          ) : (
+                            <ChevronRight size={12} strokeWidth={2.5} className="text-base-content/40 shrink-0" />
+                          )}
+                        </button>
+
+                        {hasVersions && isExpanded && (
+                          <ul className="bg-base-200/40 py-1">
+                            {agent.versions.map((version) => (
+                              <li key={version.versionId}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const url = `/org/${orgId}/agents/configure/${agent.bridgeId}?version=${version.versionId}`;
+                                    setOpenDropdownToolId(null);
+                                    setExpandedAgentId(null);
+                                    if (e.metaKey || e.ctrlKey) {
+                                      window.open(url, "_blank");
+                                    } else {
+                                      router.push(url);
+                                    }
+                                  }}
+                                  className="w-full flex items-center justify-between gap-2 pl-9 pr-3 py-1.5 hover:bg-base-300 transition-colors text-left text-xs group"
+                                >
+                                  <span className="truncate">{version.versionLabel}</span>
+                                  <ChevronRight
+                                    size={10}
+                                    className="text-base-content/40 shrink-0 group-hover:translate-x-0.5 transition-transform"
+                                  />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        );
+      },
+    }),
+    [openDropdownToolId, expandedAgentId, orgId, router]
+  );
+
+  const EndComponent = useCallback(
+    ({ row }) => {
+      return (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleConfigTool(row.originalData);
+            }}
+            className="btn btn-outline-none btn-ghost btn-sm"
+            title="Configure tool"
+          >
+            <Settings size={14} />
+          </button>
+        </div>
+      );
+    },
+    [handleConfigTool]
+  );
 
   return (
     <div className="w-full h-screen flex flex-col">
@@ -455,8 +551,26 @@ const ToolsPage = ({ params }) => {
       </div>
 
       {allTools.length > 0 && (
-        <div className="px-4 pb-3 flex flex-row gap-4 items-center">
-          {allTools?.length > 5 && <SearchItems data={allTools} setFilterItems={setFilteredTools} item="Tool" />}
+        <div className="px-4 pb-3 flex flex-row gap-4 items-center flex-wrap">
+          {(allTools?.length > 5 || filterParam) && (
+            <SearchItems
+              data={tableData}
+              setFilterItems={setFilteredTools}
+              item="Tool"
+              containerClass="max-w-xs"
+              inputContainerClass="relative"
+            />
+          )}
+          <button
+            className="btn btn-outline btn-ghost text-sm btn-sm border border-base-300 gap-1"
+            onClick={handleFilterDropdownClick}
+          >
+            <Funnel size={14} />
+            <span>Filter</span>
+            <span className="text-xs text-gray-500">
+              {activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}
+            </span>
+          </button>
           <button type="button" onClick={handleAddNewTool} className="btn btn-primary btn-sm">
             <Plus size={16} strokeWidth={2.5} />
             Create New Tool
@@ -468,22 +582,31 @@ const ToolsPage = ({ params }) => {
         {allTools.length === 0 ? (
           <EmptyState onAddTool={handleAddNewTool} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            {filteredTools.map((fn) => (
-              <ToolCard
-                key={fn?._id || fn?.script_id}
-                fn={fn}
-                integrationData={integrationData}
-                idLookup={idLookup}
-                onOpen={handleOpenTool}
-                onConfig={handleConfigTool}
-                onConnectionsToggle={handleConnectionsToggle}
-                isConnectionsOpen={openConnectionsFor === (fn?._id || fn?.script_id)}
-                orgId={orgId}
-                router={router}
-              />
-            ))}
-          </div>
+          <CustomTable
+            data={filteredTools}
+            columnsToShow={["title", "agents", "createdAt", "updatedAt"]}
+            sorting
+            sortingColumns={["title", "createdAt", "updatedAt"]}
+            customGetColumnLabel={getColumnLabel}
+            customCellRenderers={customCellRenderers}
+            endComponent={EndComponent}
+            handleRowClick={(row) => {
+              handleOpenTool(row.originalData);
+            }}
+            keysToExtractOnRowClick={["_id", "originalData"]}
+            filterFunction={(item) => {
+              const RECENT_DAYS = 7;
+              const cutoff = Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000;
+              if (activeFilter === "connected") {
+                return (item.agentsCount || 0) > 0;
+              }
+              if (activeFilter === "recent") {
+                const ts = item.originalData?.updatedAt || item.originalData?.createdAt;
+                return ts && new Date(ts).getTime() >= cutoff;
+              }
+              return true;
+            }}
+          />
         )}
 
         {allTools.length > 0 && filteredTools.length === 0 && (
@@ -507,7 +630,11 @@ const ToolsPage = ({ params }) => {
         functionName={functionName}
         setVariablesPath={() => {}}
         variablesPath={{}}
+        disableValuePath={true}
       />
+
+      <PortalDropdown />
+      <PortalStyles />
     </div>
   );
 };

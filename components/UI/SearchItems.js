@@ -2,7 +2,15 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import Protected from "../Protected";
-const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) => {
+const SearchItems = ({
+  data,
+  setFilterItems,
+  item,
+  style = "",
+  isEmbedUser,
+  containerClass = "",
+  inputContainerClass = "",
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -109,12 +117,13 @@ const SearchItems = ({ data, setFilterItems, item, style = "", isEmbedUser }) =>
     setFilterItems(filtered);
   }, [filterData, setFilterItems]);
 
-  const containerClasses = isWorkspaceItem ? `${item === "org" ? "w-full mt-2" : "max-w-xs ml-2"}` : "max-w-xs ml-2";
+  const containerClasses =
+    containerClass || (isWorkspaceItem ? `${item === "org" ? "w-full mt-2" : "max-w-xs ml-2"}` : "max-w-xs ml-2");
   const inputClasses = style ? style : "input input-sm w-full border bg-base-200 border-base-content/50 pr-16";
 
   return (
     <div className={containerClasses}>
-      <div className="relative mb-2">
+      <div className={inputContainerClass || "relative mb-2"}>
         <input
           autoComplete="off"
           data-testid="search-items-input"

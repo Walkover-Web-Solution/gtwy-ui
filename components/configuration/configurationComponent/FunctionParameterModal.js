@@ -115,6 +115,7 @@ const ParameterCard = ({
   isMasterAgent,
   background_color,
   toolData,
+  disableValuePath,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [editingName, setEditingName] = useState(paramKey);
@@ -371,7 +372,7 @@ const ParameterCard = ({
                 autoComplete="off"
                 data-testid={`param-value-path-input-${currentPath}`}
                 id={`param-value-path-input-${currentPath}`}
-                disabled={isReadOnly}
+                disabled={isReadOnly || disableValuePath}
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${
@@ -472,7 +473,7 @@ const ParameterCard = ({
                 autoComplete="off"
                 data-testid={`param-value-path-input-${currentPath}`}
                 id={`param-value-path-input-${currentPath}`}
-                disabled={isReadOnly}
+                disabled={isReadOnly || disableValuePath}
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${
@@ -539,6 +540,7 @@ const ParameterCard = ({
                   isMasterAgent={isMasterAgent}
                   background_color={index % 2 === 1 ? "bg-black" : "bg-base-200"}
                   toolData={toolData}
+                  disableValuePath={disableValuePath}
                 />
               ))}
             </div>
@@ -567,6 +569,7 @@ function FunctionParameterModal({
   isMasterAgent = false,
   params = {},
   tool_name = "",
+  disableValuePath = false,
 }) {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
@@ -1602,6 +1605,7 @@ function FunctionParameterModal({
                       name={name}
                       isMasterAgent={isMasterAgent}
                       toolData={toolData}
+                      disableValuePath={disableValuePath}
                     />
                   ))
                 ) : (
