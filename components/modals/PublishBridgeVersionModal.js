@@ -647,7 +647,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         const functionIdsChanged =
           JSON.stringify(filteredBridgeData.function_ids || []) !==
           JSON.stringify(filteredVersionData.function_ids || []);
-        const shouldGenerateSummary = promptChanged || functionIdsChanged;
+        const shouldGenerateSummary = !bridgeData?.published_version_id || promptChanged || functionIdsChanged;
 
         const data = await dispatch(
           publishBridgeVersionAction({
