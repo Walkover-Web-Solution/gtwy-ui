@@ -26,7 +26,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
   const [promptToUpdate, setPromptToUpdate] = useState("");
   const dispatch = useDispatch();
 
-  const { testCases, versions, prompt, variablesKeyValue, isEmbedUser, showVariables, currentPrompt } =
+  const { testCases, versions, prompt, variablesKeyValue, isEmbedUser, showVariables, currentPrompt, testRun } =
     useCustomSelector((state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[resolvedParams?.version];
       return {
@@ -40,6 +40,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
         currentProßßßßßßmpt:
           state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[resolvedParams?.version]?.configuration?.prompt ||
           "",
+        testRun: state?.testCasesReducer?.testRuns?.[params?.id] || null,
       };
     });
   useEffect(() => {
@@ -62,6 +63,18 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
     window.addEventListener("runAnyway", handleRunAnyway);
     return () => window.removeEventListener("runAnyway", handleRunAnyway);
   }, [pendingTestId, pendingRunAll]);
+
+  // Handle test run completion - reset running state when run is completed
+  useEffect(() => {
+    if (!testRun) return;
+
+    const { status, total, completed } = testRun;
+
+    // If run is completed, clear all running tests
+    if (status === "completed" && total > 0 && completed >= total) {
+      setRunningTests(new Set());
+    }
+  }, [testRun]);
 
   // Validate missing variables in prompt (using shared utility)
   const validateVariables = useCallback(
@@ -101,7 +114,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
     try {
       await dispatch(
         runTestCaseAction({
-          versionId: resolvedParams?.version,
+          versionIds: resolvedParams?.version,
           bridgeId: params?.id,
           testcase_id: testId,
           variables,
@@ -109,9 +122,10 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
         })
       );
       // No need to refetch - runTestCaseAction now updates Redux store directly
+      // Running state will be reset by useEffect when RT layer completes the run
     } catch (error) {
       console.error("Error running test case:", error);
-    } finally {
+      // Reset running state on error
       setRunningTests((prev) => {
         const newSet = new Set(prev);
         newSet.delete(testId);
@@ -148,16 +162,22 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
 
     const testIds = Array.isArray(testCases) ? testCases.map((test) => test._id) : [];
     setRunningTests(new Set(testIds));
-    await dispatch(
-      runTestCaseAction({
-        versionId: resolvedParams?.version,
-        bridgeId: params?.id,
-        variables,
-        matching_type,
-      })
-    );
-    // No need to refetch - runTestCaseAction now updates Redux store directly
-    setRunningTests(new Set());
+    try {
+      await dispatch(
+        runTestCaseAction({
+          versionIds: resolvedParams?.version,
+          bridgeId: params?.id,
+          variables,
+          matching_type,
+        })
+      );
+      // No need to refetch - runTestCaseAction now updates Redux store directly
+      // Running state will be reset by useEffect when RT layer completes the run
+    } catch (error) {
+      console.error("Error running all tests:", error);
+      // Reset running state on error
+      setRunningTests(new Set());
+    }
   };
 
   const generateMoreTestCases = async () => {

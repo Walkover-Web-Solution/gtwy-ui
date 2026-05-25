@@ -179,6 +179,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     variablesKeyValue,
     prompt,
     showVariables: showVariablesFromRedux,
+    testRun,
+    testCases,
+    directTestResults,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     return {
@@ -188,6 +191,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
         state?.variableReducer?.VariableMapping?.[params?.id]?.[searchParams?.version]?.variables || [],
       prompt: versionData?.configuration?.prompt,
       showVariables: state?.appInfoReducer?.embedUserDetails?.showVariables || false,
+      testRun: state?.testCasesReducer?.testRuns?.[params?.id] || null,
+      testCases: state?.testCasesReducer?.testCases?.[params?.id] || [],
+      directTestResults: state?.testCasesReducer?.directTestResults?.[params?.id] || {},
     };
   });
 
@@ -199,6 +205,101 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   }, [channelIdentifier, dispatch]);
 
   useRtLayerEventHandler(channelIdentifier);
+
+  // Handle testcase results from RT layer
+  useEffect(() => {
+    if (!testRun) return;
+
+    // Find the message that corresponds to this testcase run
+    const messageIndex = messages.findIndex(
+      (msg) =>
+        msg.sender === "assistant" &&
+        isRunningTestCase &&
+        currentRunIndex !== null &&
+        messages.indexOf(msg) === currentRunIndex + 1
+    );
+
+    if (messageIndex === -1) return;
+
+    const { testcaseId, status, perTestcase } = testRun;
+    const versionId = searchParams.version;
+
+    // Try to get result from testcase version_history first (for database testcases)
+    let latestResult = null;
+    if (testcaseId && testCases.length > 0) {
+      const testCase = testCases.find((tc) => tc._id === testcaseId);
+      if (testCase?.version_history?.[versionId]?.length > 0) {
+        latestResult = testCase.version_history[versionId][testCase.version_history[versionId].length - 1];
+      }
+    }
+
+    // If no result from version_history, check directTestResults (for direct testcases)
+    if (!latestResult && testcaseId && directTestResults?.[versionId]?.[testcaseId]) {
+      latestResult = directTestResults[versionId][testcaseId];
+    }
+
+    // For direct testcases where testcaseId is null, check perTestcase and directTestResults
+    if (!latestResult && !testcaseId && perTestcase) {
+      // Get the first testcase_id from perTestcase
+      const tcIds = Object.keys(perTestcase);
+      if (tcIds.length > 0) {
+        const actualTestCaseId = tcIds[0];
+        // Check directTestResults with this testcase_id
+        if (directTestResults?.[versionId]?.[actualTestCaseId]) {
+          latestResult = directTestResults[versionId][actualTestCaseId];
+        }
+      }
+    }
+
+    // If no result yet and run is not completed, wait
+    if (!latestResult && status !== "completed") {
+      return;
+    }
+
+    // If still no result after completion, return
+    if (!latestResult) {
+      return;
+    }
+
+    // Update the message with the test case result
+    const updatedMessages = [...messages];
+    const messageToUpdate = updatedMessages[messageIndex];
+    const updatedMessage = {
+      ...messageToUpdate,
+      testCaseResult: {
+        score: latestResult.score,
+        actual_result: latestResult.actual_result,
+        expected: latestResult.expected,
+        matching_type: latestResult.matching_type,
+        success: latestResult.success,
+        error: latestResult.error,
+      },
+    };
+
+    dispatch(editChatMessage(channelIdentifier, messageToUpdate.id, updatedMessage));
+
+    // Show the test case results card
+    setShowTestCaseResults((prev) => ({
+      ...prev,
+      [messageToUpdate.id]: true,
+    }));
+
+    // Reset running state only when run is completed
+    if (status === "completed") {
+      setIsRunningTestCase(false);
+      setCurrentRunIndex(null);
+    }
+  }, [
+    testRun,
+    testCases,
+    directTestResults,
+    messages,
+    isRunningTestCase,
+    currentRunIndex,
+    searchParams.version,
+    channelIdentifier,
+    dispatch,
+  ]);
 
   // Build variables object from variablesKeyValue (using shared utility)
   const variables = useMemo(() => buildVariablesObject(variablesKeyValue), [variablesKeyValue]);
@@ -392,27 +493,36 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     try {
       const data = await dispatch(
         runTestCaseAction({
-          versionId: searchParams.version,
-          bridgeId: null,
+          versionIds: searchParams.version,
+          bridgeId: params?.id,
           testcase_id: null,
           testCaseData,
           variables,
         })
       );
-      const updatedMessages = [...messages];
-      const nextMessage = updatedMessages[index + 1];
-      const nextMessageId = nextMessage.id;
-      const updatedNextMessage = {
-        ...nextMessage,
-        testCaseResult: data?.results?.[0],
-      };
-      // Automatically show the test case results card after running the test
-      dispatch(editChatMessage(channelIdentifier, nextMessageId, updatedNextMessage));
-      setShowTestCaseResults((prev) => ({
-        ...prev,
-        [nextMessageId]: true,
-      }));
-    } finally {
+      // If we got synchronous results (legacy path), update the message immediately
+      if (data?.results?.[0]) {
+        const updatedMessages = [...messages];
+        const nextMessage = updatedMessages[index + 1];
+        const nextMessageId = nextMessage.id;
+        const updatedNextMessage = {
+          ...nextMessage,
+          testCaseResult: data?.results?.[0],
+        };
+        // Automatically show the test case results card after running the test
+        dispatch(editChatMessage(channelIdentifier, nextMessageId, updatedNextMessage));
+        setShowTestCaseResults((prev) => ({
+          ...prev,
+          [nextMessageId]: true,
+        }));
+        // Reset running state for synchronous response
+        setIsRunningTestCase(false);
+        setCurrentRunIndex(null);
+      }
+      // If no synchronous results, RT layer will handle the result asynchronously
+      // The running state will be reset by the useEffect when RT layer results arrive
+    } catch {
+      // Reset running state on error
       setIsRunningTestCase(false);
       setCurrentRunIndex(null);
     }

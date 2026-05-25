@@ -155,7 +155,7 @@ const testCasesReducer = createSlice({
       if (!bridgeId) return;
       // Apply any straggler results from final payload (skipped/cached testcases live here).
       const run = state.testRuns[bridgeId];
-      const resultsByVersion = payload?.results_by_version || payload?.results || null;
+      const resultsByVersion = payload?.results_by_version || payload?.results || payload?.version_results || null;
       if (resultsByVersion && typeof resultsByVersion === "object" && !Array.isArray(resultsByVersion)) {
         Object.entries(resultsByVersion).forEach(([versionId, results]) => {
           if (!Array.isArray(results)) return;
@@ -168,6 +168,11 @@ const testCasesReducer = createSlice({
               run.seen[seenKey] = true;
               if (applied) run.completed = (run.completed || 0) + 1;
             }
+            // Also store in directTestResults for testcases that don't exist in database
+            if (!state.directTestResults) state.directTestResults = {};
+            if (!state.directTestResults[bridgeId]) state.directTestResults[bridgeId] = {};
+            if (!state.directTestResults[bridgeId][versionId]) state.directTestResults[bridgeId][versionId] = {};
+            state.directTestResults[bridgeId][versionId][result.testcase_id] = result;
           });
         });
       }
@@ -191,6 +196,15 @@ const testCasesReducer = createSlice({
       const { bridgeId } = action.payload || {};
       if (bridgeId) delete state.testRuns[bridgeId];
     },
+    // Store direct testcase results (testcases that don't exist in database)
+    directTestResultReducer: (state, action) => {
+      const { bridgeId, versionId, result } = action.payload || {};
+      if (!bridgeId || !versionId || !result?.testcase_id) return;
+      if (!state.directTestResults) state.directTestResults = {};
+      if (!state.directTestResults[bridgeId]) state.directTestResults[bridgeId] = {};
+      if (!state.directTestResults[bridgeId][versionId]) state.directTestResults[bridgeId][versionId] = {};
+      state.directTestResults[bridgeId][versionId][result.testcase_id] = result;
+    },
   },
 });
 
@@ -206,6 +220,7 @@ export const {
   testRunCompletedReducer,
   testRunFailedReducer,
   testRunResetReducer,
+  directTestResultReducer,
 } = testCasesReducer.actions;
 
 export default testCasesReducer.reducer;

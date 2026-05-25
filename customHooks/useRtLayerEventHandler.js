@@ -13,6 +13,7 @@ import {
   testRunResultReducer,
   testRunCompletedReducer,
   testRunFailedReducer,
+  directTestResultReducer,
 } from "@/store/reducer/testCasesReducer";
 
 import { usePathname } from "next/navigation";
@@ -125,6 +126,14 @@ function useRtLayerEventHandler(channelIdentifier = "") {
           } else if (event === "testcase_result") {
             dispatch(
               testRunResultReducer({
+                bridgeId: runBridgeId,
+                versionId: parsedData.version_id,
+                result: parsedData.result,
+              })
+            );
+            // Also store in direct test results for testcases that don't exist in database
+            dispatch(
+              directTestResultReducer({
                 bridgeId: runBridgeId,
                 versionId: parsedData.version_id,
                 result: parsedData.result,
