@@ -180,13 +180,15 @@ const ThreadItem = ({
   const [messageType, setMessageType] = useState(getInitialMessageType());
   const [toolsData, setToolsData] = useState([]);
   const toolsDataModalRef = useRef(null);
-  const { embedToken, knowledgeBaseData, isEmbedUser, orgBridges, allBridgesMap } = useCustomSelector((state) => ({
-    embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token,
-    knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
-    isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
-    orgBridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
-    allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
-  }));
+  const { embedToken, knowledgeBaseData, isEmbedUser, orgBridges, allBridgesMap, publishedVersionId } =
+    useCustomSelector((state) => ({
+      embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token,
+      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
+      isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
+      orgBridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
+      allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
+      publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[item?.bridge_id]?.published_version_id,
+    }));
   const [isDropupOpen, setIsDropupOpen] = useState(false);
   const [isRerunning, setIsRerunning] = useState(false);
   const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
@@ -875,8 +877,8 @@ const ThreadItem = ({
             <button
               className="btn btn-ghost btn-xs rounded-md gap-1.5 shrink-0"
               onClick={handleRerun}
-              disabled={isRerunning}
-              title="Rerun this message"
+              disabled={isRerunning || !publishedVersionId}
+              title={!publishedVersionId ? "No published version available" : "Rerun this message"}
             >
               <RotateCcw className={`h-3 w-3 ${isRerunning ? "animate-spin" : ""}`} />
               <span>{isRerunning ? "Running..." : "Rerun"}</span>
