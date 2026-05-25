@@ -696,7 +696,7 @@ const ThreadItem = ({
             window.Chatbot.askAi({ message: debugQuery });
           }
         }, 300);
-      }, 100);
+      }, 1000);
     } else {
       console.warn("Chatbot embed script not loaded. SendDataToChatbot is unavailable.");
     }
@@ -1045,20 +1045,6 @@ const ThreadItem = ({
                   ? item.tools_call_data.flatMap((toolObj) => Object.entries(toolObj || {}))
                   : [];
 
-                // Filter based on mode
-                const allToolEntries = allTools.filter(([, tool]) => {
-                  // Filter out tools not available in integration data or bridges
-                  if (!isToolAvailable(tool)) return false;
-
-                  // In stateful mode: include ALL tools (including pre_tool)
-                  if (!isSingleQuery) return true;
-                  // In stateless mode: exclude pre_tool (it's shown separately)
-                  return tool?.type !== "pre_tool";
-                });
-
-                // Track which tools have been matched by index
-                let matchedToolIndex = 0;
-
                 // Handle function_time_logs as both object and array
                 let functionTimeLogsArr = [];
                 if (Array.isArray(item?.latency?.function_time_logs)) {
@@ -1067,6 +1053,30 @@ const ThreadItem = ({
                   // If it's an object, convert to array
                   functionTimeLogsArr = Object.values(item.latency.function_time_logs);
                 }
+
+                // Get tool names from function_time_logs to know which tools should be displayed
+                const toolNamesInLogs = new Set();
+                functionTimeLogsArr.forEach((logEntry) => {
+                  (logEntry.step || "")
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .forEach((name) => toolNamesInLogs.add(name));
+                });
+
+                // Filter based on mode
+                const allToolEntries = allTools.filter(([, tool]) => {
+                  // If tool is in function_time_logs, always include it
+                  if (toolNamesInLogs.has(tool?.name)) return true;
+
+                  // Otherwise, filter out tools not available in integration data or bridges
+                  if (!isToolAvailable(tool)) return false;
+
+                  // In stateful mode: include ALL tools (including pre_tool)
+                  if (!isSingleQuery) return true;
+                  // In stateless mode: exclude pre_tool (it's shown separately)
+                  return tool?.type !== "pre_tool";
+                });
 
                 // Extract execution_time_logs from latency object and filter out retry times
                 const executionTimeLogs = (() => {
@@ -1173,22 +1183,18 @@ const ThreadItem = ({
                             const isParallel = stepNames.length > 1;
                             const stepTime = parseFloat(logEntry.time_taken) || 0;
 
-                            // Match tools sequentially by index to prevent duplicates
-                            const stepToolEntries = allToolEntries
-                              .filter(([, tool]) => stepNames.some((n) => n === tool?.name))
-                              .slice(matchedToolIndex, matchedToolIndex + stepNames.length);
-
-                            // Update matched index for next step
-                            matchedToolIndex += stepNames.length;
-
-                            const displayEntries =
-                              stepToolEntries.length > 0 ? stepToolEntries : stepNames.map((n) => [n, { name: n }]);
+                            // Match tools by name - create entries for all step names
+                            const displayEntries = stepNames.map((stepName) => {
+                              // Find the matching tool entry
+                              const matchedEntry = allToolEntries.find(([, tool]) => tool?.name === stepName);
+                              // If found, use it; otherwise create a placeholder
+                              return matchedEntry || [stepName, { name: stepName }];
+                            });
 
                             const toolChips = displayEntries.map(([toolKey, tool], i) => {
                               const isPreTool = tool?.type === "pre_tool";
                               const isRAGTool = tool?.data?.metadata?.type === "RAG";
                               const toolLabel = getToolNameHelper(tool);
-
                               return (
                                 <div
                                   key={toolKey || i}
@@ -1254,7 +1260,7 @@ const ThreadItem = ({
                                   </span>
                                 )}
                                 <p className="text-xs font-semibold text-base-content/40 uppercase tracking-wide mb-2">
-                                  Parallel
+                                  Parallel Tools
                                 </p>
                                 <div className="flex flex-row flex-wrap gap-1.5">{toolChips}</div>
                               </div>
