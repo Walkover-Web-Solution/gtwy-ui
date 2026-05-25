@@ -365,14 +365,14 @@ const ParameterCard = ({
               ))}
             </select>
           )}
-          {(name === "Pre Tool" || name === "Post Tool") && (
+          {(name === "Pre Tool" || name === "Post Tool") && !disableValuePath && (
             <div className="flex flex-row items-center">
               <label className="text-xs mb-0 mr-1 whitespace-nowrap">Value Path:</label>
               <input
                 autoComplete="off"
                 data-testid={`param-value-path-input-${currentPath}`}
                 id={`param-value-path-input-${currentPath}`}
-                disabled={isReadOnly || disableValuePath}
+                disabled={isReadOnly}
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${
@@ -466,6 +466,7 @@ const ParameterCard = ({
         )}
         {name !== "Pre Tool" &&
           name !== "Post Tool" &&
+          !disableValuePath &&
           ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
             <div className="mb-1 flex flex-row ml-1 items-center justify-end">
               <label className="block text-xs mb-0 mr-1">Value Path:</label>
@@ -473,7 +474,7 @@ const ParameterCard = ({
                 autoComplete="off"
                 data-testid={`param-value-path-input-${currentPath}`}
                 id={`param-value-path-input-${currentPath}`}
-                disabled={isReadOnly || disableValuePath}
+                disabled={isReadOnly}
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${

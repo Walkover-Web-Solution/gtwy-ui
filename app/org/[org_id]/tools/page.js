@@ -8,7 +8,7 @@ import PageHeader from "@/components/Pageheader";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import SearchItems from "@/components/UI/SearchItems";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getAllFunctions, updateFuntionApiAction } from "@/store/action/bridgeAction";
+import { updateFuntionApiAction } from "@/store/action/bridgeAction";
 import { isEqual } from "lodash";
 import FunctionParameterModal from "@/components/configuration/configurationComponent/FunctionParameterModal";
 import { MODAL_TYPE } from "@/utils/enums";
@@ -31,6 +31,8 @@ const getColumnLabel = (column) => {
       return "Tool Name";
     case "script_id":
       return "Script ID";
+    case "description":
+      return "Description";
     case "agents":
       return "Connected Agents";
     case "versions":
@@ -207,6 +209,7 @@ const ToolsPage = ({ params }) => {
         title, // Plain string for proper custom table sorting
         icons, // Service icons passed separately
         script_id: scriptId,
+        description: fn?.description || "-",
         agents: connections,
         agentsCount: connections.length,
         createdAt: fn?.createdAt ? formatRelativeTime(fn.createdAt) : "-",
@@ -221,12 +224,13 @@ const ToolsPage = ({ params }) => {
   }, [allTools, integrationData, idLookup]);
 
   useEffect(() => {
-    setFilteredTools(tableData);
-  }, [tableData]);
-
-  useEffect(() => {
-    dispatch(getAllFunctions());
-  }, [dispatch]);
+    if (filterParam) {
+      const filtered = tableData.filter((item) => item?._id === filterParam);
+      setFilteredTools(filtered);
+    } else {
+      setFilteredTools(tableData);
+    }
+  }, [tableData, filterParam]);
 
   const handleAddNewTool = useCallback(() => {
     if (typeof window === "undefined" || typeof window.openViasocket !== "function") {
@@ -369,6 +373,20 @@ const ToolsPage = ({ params }) => {
           </div>
         );
       },
+      description: (row) => (
+        <div className="text-sm text-base-content max-w-xs">
+          {row?.description && row.description !== "-" ? (
+            <div className="tooltip" data-tip={row.description}>
+              <span className="truncate block">
+                {row.description.split(" ").slice(0, 5).join(" ")}
+                {row.description.split(" ").length > 5 ? "..." : ""}
+              </span>
+            </div>
+          ) : (
+            <span className="text-gray-400 italic">No description</span>
+          )}
+        </div>
+      ),
       createdAt: (row) => (
         <div className="group cursor-help inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors">
           <div className="flex flex-col min-w-0">
@@ -584,7 +602,7 @@ const ToolsPage = ({ params }) => {
         ) : (
           <CustomTable
             data={filteredTools}
-            columnsToShow={["title", "agents", "createdAt", "updatedAt"]}
+            columnsToShow={["title", "description", "agents", "createdAt", "updatedAt"]}
             sorting
             sortingColumns={["title", "createdAt", "updatedAt"]}
             customGetColumnLabel={getColumnLabel}
