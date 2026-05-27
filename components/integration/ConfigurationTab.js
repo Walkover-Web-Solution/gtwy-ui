@@ -17,6 +17,10 @@ import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
 import { MODAL_TYPE } from "@/utils/enums";
 import { getServiceDisplayName } from "@/utils/utility";
+import CodeMirror from "@uiw/react-codemirror";
+import { json, jsonParseLinter } from "@codemirror/lang-json";
+import { linter, lintGutter } from "@codemirror/lint";
+import { useThemeManager } from "@/customHooks/useThemeManager";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -114,6 +118,14 @@ const CONFIG_SCHEMA = [
     label: "Show Playground",
     description: "Show the playground",
     defaultValue: true,
+    section: "Interface Options",
+  },
+  {
+    key: "showTestcases",
+    type: "toggle",
+    label: "Show Test Cases",
+    description: "Display test cases tab in the embedded interface",
+    defaultValue: false,
     section: "Interface Options",
   },
   {
@@ -280,6 +292,7 @@ const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
 
 const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) => {
   const dispatch = useDispatch();
+  const { actualTheme } = useThemeManager();
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -630,6 +643,54 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                           </select>
                         )}
                       </div>
+                      {/* JSON Schema textarea when showResponseType is toggled off */}
+                      {config.key === "showResponseType" && !configuration.showResponseType && (
+                        <div className="p-2 bg-base-200 rounded-lg border border-base-300">
+                          <label className="text-xs font-medium block mb-2">JSON Schema</label>
+                          <div
+                            data-testid="embed-config-json-schema-codemirror"
+                            className="border border-base-300 rounded-md overflow-hidden"
+                          >
+                            <CodeMirror
+                              value={(() => {
+                                const schemaValue = configuration?.response_type?.json_schema;
+                                if (schemaValue === undefined || schemaValue === null) return "";
+                                return typeof schemaValue === "object"
+                                  ? JSON.stringify(schemaValue, null, 2)
+                                  : schemaValue;
+                              })()}
+                              height="160px"
+                              extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
+                              theme={actualTheme}
+                              placeholder=""
+                              className="text-xs"
+                              onChange={(val) => {
+                                const raw = val ?? "";
+                                if (raw.trim() === "") {
+                                  // Remove response_type key entirely when empty
+                                  setConfiguration((prev) => {
+                                    const { response_type, ...rest } = prev;
+                                    return rest;
+                                  });
+                                  setHasUnsavedChanges(true);
+                                  window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
+                                  return;
+                                }
+                                let schemaToStore = raw;
+                                try {
+                                  schemaToStore = JSON.parse(raw);
+                                } catch {
+                                  // keep raw string while user is typing invalid JSON
+                                }
+                                handleConfigChange("response_type", {
+                                  type: "json_schema",
+                                  json_schema: schemaToStore,
+                                });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
                       {/* Pre-Tool config inline after showPreTool toggle */}
                       {config.key === "showPreTool" && !configuration.showPreTool && (
                         <div className="p-2 bg-base-200 rounded-lg border border-base-300">

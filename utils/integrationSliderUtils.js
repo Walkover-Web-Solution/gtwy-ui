@@ -130,6 +130,14 @@ export const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
+    key: "showTestcases",
+    type: "toggle",
+    label: "Show Test Cases",
+    description: "Display test cases tab in the embedded interface",
+    defaultValue: true,
+    section: "Interface Options",
+  },
+  {
     key: "showAgentName",
     type: "toggle",
     label: "Show Agent Name",

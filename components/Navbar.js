@@ -90,6 +90,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     publicAgentConfig,
     bridgeVersionsArray,
     statelessConversation,
+    showTestcases,
   } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
@@ -128,6 +129,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       publicAgentConfig: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
       bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.versions || [],
       statelessConversation: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.stateless_conversation ?? false,
+      showTestcases: state?.appInfoReducer?.embedUserDetails?.showTestcases !== false,
     };
   });
   // Define tabs based on user type
@@ -140,10 +142,9 @@ const Navbar = ({ isEmbedUser, params }) => {
         shortLabel: `${bridgeData.bridgeType === "api" ? "Agent" : "Chatbot"} Config`,
         shortcut: "G C",
       },
-      { id: "history", label: "History", icon: MessageCircleMore, shortLabel: "History", shortcut: "G H" },
     ];
-    if (!isEmbedUser) {
-      baseTabs.splice(1, 0, {
+    if (!isEmbedUser || (isEmbedUser && showTestcases)) {
+      baseTabs.push({
         id: "testcase",
         label: "Test Cases",
         icon: TestTube,
@@ -151,9 +152,17 @@ const Navbar = ({ isEmbedUser, params }) => {
         shortcut: "G T",
       });
     }
+    if (!isEmbedUser || (isEmbedUser && showHistory)) {
+      baseTabs.push({
+        id: "history",
+        label: "History",
+        icon: MessageCircleMore,
+        shortLabel: "History",
+        shortcut: "G H",
+      });
+    }
     return baseTabs;
-  }, [isEmbedUser, bridgeType]);
-
+  }, [isEmbedUser, bridgeType, showTestcases, showHistory]);
   const agentName = useMemo(() => bridgeName || bridgeData?.name || "Agent not Found", [bridgeName, bridgeData?.name]);
 
   // Get published version number (e.g., "V2")
@@ -642,7 +651,7 @@ const Navbar = ({ isEmbedUser, params }) => {
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
             {/* Navigation Tabs - Fixed Position with Sliding Animation */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {(isEmbedUser && showHistory) || !isEmbedUser ? (
+              {TABS.length > 1 ? (
                 <div className="relative flex items-center gap-1" style={{ width: `${TAB_WIDTH * TABS.length}px` }}>
                   {/* Sliding background indicator */}
                   <span
