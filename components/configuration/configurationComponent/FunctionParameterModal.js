@@ -12,8 +12,9 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { PlusCircleIcon, CircleQuestionMark } from "lucide-react";
 import { PARAMETER_TYPES } from "@/utils/enums";
 import CodeMirror from "@uiw/react-codemirror";
-import { json } from "@codemirror/lang-json";
+import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
+import { linter, lintGutter } from "@codemirror/lint";
 
 const normalizeFieldSchema = (field = {}) => {
   if (!field || typeof field !== "object") return field;
@@ -1629,7 +1630,7 @@ function FunctionParameterModal({
                 <CodeMirror
                   value={objectFieldValue}
                   height="400px"
-                  extensions={[json()]}
+                  extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
                   theme={actualTheme}
                   editable={!isReadOnly}
                   onChange={(val) => setObjectFieldValue(val)}
@@ -1642,7 +1643,7 @@ function FunctionParameterModal({
                   <CodeMirror
                     value={toolData?.old_fields ? JSON.stringify(toolData["old_fields"], undefined, 4) : ""}
                     height="400px"
-                    extensions={[json()]}
+                    extensions={[json(), linter(jsonParseLinter), lintGutter()]}
                     theme={actualTheme}
                     editable={false}
                     className="border border-base-300 rounded overflow-hidden text-sm opacity-80"

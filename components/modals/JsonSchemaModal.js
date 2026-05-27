@@ -10,8 +10,9 @@ import Canvas from "../Canvas";
 import Modal from "../UI/Modal";
 import { closeModal } from "@/utils/utility";
 import CodeMirror from "@uiw/react-codemirror";
-import { json } from "@codemirror/lang-json";
+import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
+import { linter, lintGutter } from "@codemirror/lint";
 
 function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_id, onResetThreadId = () => {} }) {
   const dispatch = useDispatch();
@@ -112,7 +113,7 @@ function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_i
                 <CodeMirror
                   value={jsonSchemaRequirements}
                   height="100%"
-                  extensions={[json()]}
+                  extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
                   theme={actualTheme}
                   editable={false}
                   className="h-full text-sm"

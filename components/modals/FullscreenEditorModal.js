@@ -3,8 +3,9 @@ import { Maximize2 } from "lucide-react";
 import Modal from "../UI/Modal";
 import { openModal, closeModal } from "@/utils/utility";
 import CodeMirror from "@uiw/react-codemirror";
-import { json } from "@codemirror/lang-json";
+import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
+import { linter, lintGutter } from "@codemirror/lint";
 
 /**
  * A reusable fullscreen editor modal for textareas (prompt, JSON schema, etc.)
@@ -128,7 +129,7 @@ function FullscreenEditorModal({
               <CodeMirror
                 value={localValue}
                 height="100%"
-                extensions={[json()]}
+                extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
                 theme={actualTheme}
                 editable={!disabled}
                 onChange={(val) => {

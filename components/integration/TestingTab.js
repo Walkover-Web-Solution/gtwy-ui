@@ -7,6 +7,9 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import EmbedPreview from "./EmbedPreview";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import EventLogs, { createAddLog } from "@/components/integration/EventLogs";
+import CodeMirror from "@uiw/react-codemirror";
+import { json, jsonParseLinter } from "@codemirror/lang-json";
+import { linter, lintGutter } from "@codemirror/lint";
 
 const TestingTab = ({ data, isTestingMode }) => {
   const [eventLogs, setEventLogs] = useState([]);
@@ -174,14 +177,19 @@ const TestingTab = ({ data, isTestingMode }) => {
         <div className="card-body p-3">
           <h4 className="card-title text-sm">Send Data</h4>
           <div className="space-y-2">
-            <textarea
+            <div
               data-testid="integration-testing-send-data-input"
-              placeholder='{"agent_id": "..."}'
-              className="textarea textarea-bordered textarea-xs font-mono text-xs w-full"
-              rows={5}
-              value={sendData}
-              onChange={(e) => setSendData(e.target.value)}
-            />
+              className="border border-base-300 rounded overflow-hidden"
+            >
+              <CodeMirror
+                value={sendData ?? ""}
+                height="120px"
+                extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
+                onChange={(val) => setSendData(val)}
+                placeholder='{"agent_id": "..."}'
+                className="text-xs"
+              />
+            </div>
             <button
               data-testid="integration-testing-send-data-button"
               onClick={testSendDataToGtwy}

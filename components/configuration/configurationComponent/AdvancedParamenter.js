@@ -19,10 +19,11 @@ import { Check, CircleQuestionMark, ExternalLink } from "lucide-react";
 import RenderNode from "@/components/richUI/RenderNode";
 import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
 import CodeMirror from "@uiw/react-codemirror";
-import { json } from "@codemirror/lang-json";
+import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
+import { linter, lintGutter } from "@codemirror/lint";
 
 const AdvancedParameters = ({
   params,
@@ -949,7 +950,7 @@ const AdvancedParameters = ({
                           <CodeMirror
                             id={`advanced-param-json-schema-textarea-${key}`}
                             value={getJsonSchemaEditorValue(key)}
-                            extensions={[json()]}
+                            extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
                             theme={actualTheme}
                             editable={!isReadOnly}
                             onChange={(val) => setObjectFieldValue(val)}
