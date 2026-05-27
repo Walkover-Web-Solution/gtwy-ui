@@ -793,7 +793,7 @@ const ThreadItem = ({
     let parts;
     try {
       const pattern = entries.map((e) => e.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-      const regex = new RegExp(`(${pattern})`, "g");
+      const regex = new RegExp(`\\b(${pattern})\\b`, "g");
       parts = content.split(regex);
     } catch {
       return <span>{content}</span>;
@@ -963,7 +963,7 @@ const ThreadItem = ({
         })()}
 
       {/* System Prompt Banner - Below Header */}
-      {isSingleQuery && item?.AiConfig?.input?.[0]?.content && (
+      {isSingleQuery && item?.prompt && (
         <div className="mb-3 px-4">
           <div className="bg-base-200 border border-base-300 rounded-lg hover:border-base-content/20 hover:shadow-sm">
             <div
@@ -974,7 +974,7 @@ const ThreadItem = ({
                 <FileTextIcon size={14} className="text-base-content/60 shrink-0" />
                 <span className="text-xs font-medium text-base-content/70">System Prompt:</span>
                 {!isSystemPromptExpanded && (
-                  <span className="text-xs text-base-content/50 truncate flex-1">{item.AiConfig.input[0].content}</span>
+                  <span className="text-xs text-base-content/50 truncate flex-1">{item.prompt}</span>
                 )}
               </div>
               <ChevronDown
@@ -989,7 +989,7 @@ const ThreadItem = ({
             >
               <div className="px-3 pb-3 pt-2 border-t border-base-300">
                 <div className="text-xs text-base-content whitespace-pre-wrap max-h-64 overflow-y-auto bg-base-100 rounded p-2.5 border border-base-300 leading-relaxed">
-                  {renderHighlightedSystemPrompt(item.AiConfig.input[0].content)}
+                  {renderHighlightedSystemPrompt(item.prompt)}
                 </div>
               </div>
             </div>
