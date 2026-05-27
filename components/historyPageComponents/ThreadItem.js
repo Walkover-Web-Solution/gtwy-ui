@@ -816,6 +816,24 @@ const ThreadItem = ({
     });
   };
 
+  const firstAttemptErrorNotice = item?.firstAttemptError ? (
+    <div className="w-full mb-2">
+      <details className="group/fae rounded-lg border border-warning/30 bg-error/10 text-base-content">
+        <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs list-none">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-error" />
+          <span className="font-semibold uppercase tracking-wide text-error shrink-0">First attempt failed:</span>
+          <span className="flex-1 min-w-0 truncate text-error group-open/fae:hidden" title={item.firstAttemptError}>
+            {item.firstAttemptError}
+          </span>
+          <ChevronDown className="w-3.5 h-3.5 shrink-0 transition-transform group-open/fae:rotate-180" />
+        </summary>
+        <div className="px-3 pb-2 pt-0 text-xs">
+          <p className="whitespace-pre-wrap break-words text-error">{item.firstAttemptError}</p>
+        </div>
+      </details>
+    </div>
+  ) : null;
+
   return (
     <div
       data-testid={`message-${messageId}`}
@@ -1372,11 +1390,10 @@ const ThreadItem = ({
                 );
               })()}
 
-            {/* AI Response card */}
             {!item.error && (
               <div className="w-full relative">
                 {/* Total time badge — top right outside card */}
-
+                {firstAttemptErrorNotice}
                 <span className="absolute -top-2 right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-base-content/20 text-base-content/50 bg-base-100 whitespace-nowrap flex items-center gap-1">
                   <Clock3 size={10} /> {(parseFloat(item?.latency?.over_all_time) || 0).toFixed(2)}s total
                 </span>
@@ -1769,6 +1786,7 @@ const ThreadItem = ({
             {/* Other tools (pre_function, post_function, etc.) rendered using renderToolData */}
 
             {/* 3. Third: Render Assistant Message if exists */}
+            {firstAttemptErrorNotice}
             {!item.error && (
               <div className="chat group chat-start">
                 <div className="chat-image avatar flex justify-center items-center">
@@ -1972,7 +1990,7 @@ const ThreadItem = ({
               <div className="flex flex-row items-center justify-center my-2 w-full max-w-xl gap-3">
                 <ArrowDown size={20} className="text-base-content/50" />
               </div>
-
+              {firstAttemptErrorNotice}
               {/* Error card — mirrors the AI Response card */}
               <div className="w-full relative">
                 <span className="absolute -top-2 right-2 z-10 text-xs px-2 py-0.5 rounded-full border border-error/30 text-error/70 bg-base-100 whitespace-nowrap flex items-center gap-1">
