@@ -8,6 +8,22 @@ import { MODAL_TYPE } from "@/utils/enums";
 import Protected from "../Protected";
 import { isPaletteOpen } from "@/components/PaletteFocusGuard";
 
+const BRIDGE_STATUS = { ACTIVE: 1, PAUSED: 0 };
+
+const getAgentStateLabel = (agent) => {
+  if (!agent) return null;
+  if (agent.deletedAt) return "Deleted";
+  if (agent.bridge_status === BRIDGE_STATUS.PAUSED) return "Paused";
+  return null;
+};
+
+const AgentStateBadge = ({ state }) => {
+  if (!state) return null;
+  const cls =
+    state === "Deleted" ? "badge badge-error badge-xs p-2 text-white" : "badge p-2 badge-warning text-white badge-xs";
+  return <span className={cls}>{state}</span>;
+};
+
 function getOrgIdFromPath(pathname) {
   const parts = (pathname || "").split("/").filter(Boolean);
   const orgIdx = parts.indexOf("org");
@@ -71,12 +87,9 @@ const CommandPalette = ({ isEmbedUser }) => {
     })
   );
   const apiAgents = (Array.isArray(agentList) ? agentList : []).filter(
-    (agent) =>
-      (!agent.deletedAt && agent.bridgeType === "api") || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
+    (agent) => agent.bridgeType === "api" || agent.bridgeType === "trigger" || agent.bridgeType === "batch"
   );
-  const chatbotAgents = (Array.isArray(agentList) ? agentList : []).filter(
-    (agent) => !agent.deletedAt && agent.bridgeType === "chatbot"
-  );
+  const chatbotAgents = (Array.isArray(agentList) ? agentList : []).filter((agent) => agent.bridgeType === "chatbot");
 
   const functions = useMemo(() => Object.values(functionData || {}), [functionData]);
 
@@ -85,26 +98,46 @@ const CommandPalette = ({ isEmbedUser }) => {
     (categoryKey) => {
       switch (categoryKey) {
         case "api-agents":
-          return (Array.isArray(apiAgents) ? apiAgents : []).map((a) => ({
-            id: a._id,
-            title: a.name || a.slugName || a._id,
-            subtitle: "API Agent",
-            type: "agents",
-            bridgeType: "api",
-            published_version_id: a.published_version_id,
-            versions: a.versions,
-          }));
+          return (Array.isArray(apiAgents) ? apiAgents : []).map((a) => {
+            const state = getAgentStateLabel(a);
+            return {
+              id: a._id,
+              title: a.name || a.slugName || a._id,
+              subtitle: (
+                <div className="flex items-center gap-2">
+                  {state && <AgentStateBadge state={state} />}
+                  <span>API Agent</span>
+                </div>
+              ),
+              type: "agents",
+              bridgeType: "api",
+              published_version_id: a.published_version_id,
+              versions: a.versions,
+              deletedAt: a.deletedAt,
+              status: a.bridge_status,
+            };
+          });
 
         case "chatbot-agents":
-          return (Array.isArray(chatbotAgents) ? chatbotAgents : []).map((a) => ({
-            id: a._id,
-            title: a.name || a.slugName || a._id,
-            subtitle: "Chatbot Agent",
-            type: "agents",
-            bridgeType: "chatbot",
-            published_version_id: a.published_version_id,
-            versions: a.versions,
-          }));
+          return (Array.isArray(chatbotAgents) ? chatbotAgents : []).map((a) => {
+            const state = getAgentStateLabel(a);
+            return {
+              id: a._id,
+              title: a.name || a.slugName || a._id,
+              subtitle: (
+                <div className="flex items-center gap-2">
+                  <AgentStateBadge state={state} />
+                  <span>Chatbot Agent</span>
+                </div>
+              ),
+              type: "agents",
+              bridgeType: "chatbot",
+              published_version_id: a.published_version_id,
+              versions: a.versions,
+              deletedAt: a.deletedAt,
+              status: a.bridge_status,
+            };
+          });
 
         case "apikeys":
           return (Array.isArray(apikeys) ? apikeys : []).map((k) => ({
@@ -201,33 +234,39 @@ const CommandPalette = ({ isEmbedUser }) => {
     [apiAgents, chatbotAgents, apikeys, knowledgeBase, integrationData, authData, widgetsData, functions]
   );
 
-  const createAgentItem = (a, type) => ({
-    id: a._id,
-    title: a.name || a.slugName || a._id,
-    subtitle: (
-      <div className="flex items-center gap-2">
-        <span>
-          {a.service || ""}
-          {a.configuration?.model ? " · " + a.configuration?.model : ""}
-          {a.total_tokens ? " · " + a.total_tokens + " tokens" : ""}
-        </span>
-        {a.last_used && (
-          <>
-            <span>•</span>
-            <span className="text-xs opacity-70">Last used:</span>
-            <div className="group cursor-help inline-flex">
-              <span className="group-hover:hidden">{formatRelativeTime(a.last_used)}</span>
-              <span className="hidden group-hover:inline text-xs">{formatDate(a.last_used)}</span>
-            </div>
-          </>
-        )}
-      </div>
-    ),
-    type: "agents",
-    bridgeType: type,
-    published_version_id: a.published_version_id,
-    versions: a.versions,
-  });
+  const createAgentItem = (a, type) => {
+    const state = getAgentStateLabel(a);
+    return {
+      id: a._id,
+      title: a.name || a.slugName || a._id,
+      subtitle: (
+        <div className="flex items-center gap-2">
+          <span>
+            {a.service || ""}
+            {a.configuration?.model ? " · " + a.configuration?.model : ""}
+            {a.total_tokens ? " · " + a.total_tokens + " tokens" : ""}
+          </span>
+          {a.last_used && (
+            <>
+              <span>•</span>
+              <span className="text-xs opacity-70">Last used:</span>
+              <div className="group cursor-help inline-flex">
+                <span className="group-hover:hidden">{formatRelativeTime(a.last_used)}</span>
+                <span className="hidden group-hover:inline text-xs">{formatDate(a.last_used)}</span>
+              </div>
+            </>
+          )}
+          <AgentStateBadge state={state} />
+        </div>
+      ),
+      type: "agents",
+      bridgeType: type,
+      published_version_id: a.published_version_id,
+      versions: a.versions,
+      deletedAt: a.deletedAt,
+      status: a.bridge_status,
+    };
+  };
 
   const filterBy = (list, fields) => {
     if (!query) return [];
@@ -256,22 +295,26 @@ const CommandPalette = ({ isEmbedUser }) => {
 
   const agentsVersionMatches = !query
     ? []
-    : (agentList || [])
-        .filter((agent) => !agent.deletedAt)
-        .flatMap((a) => {
-          const versionsArr = Array.isArray(a?.versions) ? a.versions : [];
-          const published = a?.published_version_id ? [a.published_version_id] : [];
-          const candidates = [...versionsArr, ...published].map((v) => String(v || ""));
-          const matches = candidates.filter((v) => v.toLowerCase() === query.toLowerCase());
-          const unique = Array.from(new Set(matches));
-          return unique.map((v) => ({
-            id: a._id,
-            title: a.name || a.slugName || a._id,
-            subtitle: `Version ${v}`,
-            type: "agents",
-            versionId: v,
-          }));
-        });
+    : (agentList || []).flatMap((a) => {
+        const versionsArr = Array.isArray(a?.versions) ? a.versions : [];
+        const published = a?.published_version_id ? [a.published_version_id] : [];
+        const candidates = [...versionsArr, ...published].map((v) => String(v || ""));
+        const matches = candidates.filter((v) => v.toLowerCase() === query.toLowerCase());
+        const unique = Array.from(new Set(matches));
+        return unique.map((v) => ({
+          id: a._id,
+          title: a.name || a.slugName || a._id,
+          subtitle: (
+            <div className="flex items-center gap-2">
+              <span>{`Version ${v}`}</span>
+              <AgentStateBadge state={getAgentStateLabel(a)} />
+            </div>
+          ),
+          type: "agents",
+          versionId: v,
+          deletedAt: a.deletedAt,
+        }));
+      });
 
   const apikeysGroup = filterBy(apikeys, ["name", "service", "_id"]).map((k) => ({
     id: k._id,
@@ -564,6 +607,13 @@ const CommandPalette = ({ isEmbedUser }) => {
     (item) => {
       if (!orgId) {
         router.push("/");
+        return;
+      }
+      // For deleted agents, navigate to the agents listing page with filter
+      if (item.type === "agents" && item.deletedAt) {
+        const agentType = item.bridgeType === "chatbot" ? "chatbot" : "api";
+        router.push(`/org/${orgId}/agents?type=${agentType}&filter=${item.id}`);
+        closePalette();
         return;
       }
       switch (item.type) {
