@@ -600,3 +600,58 @@ export const setChatTestCaseIdAction = (channelId, testCaseId) => (dispatch) => 
 export const clearChatTestCaseIdAction = (channelId) => (dispatch) => {
   dispatch(clearChatTestCaseId({ channelId }));
 };
+
+// Handle intermediate RT layer function call / status updates
+export const handleRtLayerFunctionCall = (channelId, response) => (dispatch, getState) => {
+  const state = getState();
+  const messages = state?.chatReducer?.messagesByChannel?.[channelId] || [];
+
+  // Find the last assistant message (which is typically the loading one)
+  const lastAssistantIndex = messages.findLastIndex((msg) => msg.sender === "assistant" || msg.role === "assistant");
+
+  if (lastAssistantIndex !== -1) {
+    const lastAssistantMsg = messages[lastAssistantIndex];
+    const messageId = lastAssistantMsg.id;
+
+    // Create a copy of existing toolCalls or initialize an empty array
+    let updatedToolCalls = lastAssistantMsg.toolCalls ? [...lastAssistantMsg.toolCalls] : [];
+    let updatedContent = lastAssistantMsg.content || "";
+
+    let hasChanges = false;
+
+    if (response.Name && Array.isArray(response.Name)) {
+      response.Name.forEach((name) => {
+        // Check if this toolCall already exists
+        const exists = updatedToolCalls.some((tc) => tc.name === name);
+        if (!exists) {
+          updatedToolCalls.push({
+            call_id: name,
+            name: name,
+            status: "calling",
+            result: null,
+          });
+          hasChanges = true;
+        }
+      });
+    }
+
+    if (response.message) {
+      // Update content to show reasoning status (e.g. "Continuing AI reasoning…")
+      updatedContent = response.message;
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      dispatch(
+        editMessage({
+          channelId,
+          messageId,
+          newContent: {
+            content: updatedContent,
+            toolCalls: updatedToolCalls,
+          },
+        })
+      );
+    }
+  }
+};

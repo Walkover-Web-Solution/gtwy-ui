@@ -6,6 +6,7 @@ import {
   handleRtLayerStreamChunk,
   setChatTestCaseIdAction,
   addChatErrorMessage,
+  handleRtLayerFunctionCall,
 } from "@/store/action/chatAction";
 import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
 import {
@@ -102,6 +103,15 @@ function useRtLayerEventHandler(channelIdentifier = "") {
       try {
         const parsedData = typeof message === "string" ? JSON.parse(message) : message;
         const { response, error, event } = parsedData;
+
+        // Intercept intermediate function calls/reasoning updates
+        if (response && response.function_call === true && !response.data) {
+          const channelId = channelIdentifier;
+          if (channelId) {
+            dispatch(handleRtLayerFunctionCall(channelId, response));
+          }
+          return;
+        }
 
         // ---------- Testcase run events (RTLayer-driven) ----------
         // Channel name from backend is `${org_id}_${bridge_id}`. We trust the
@@ -286,6 +296,18 @@ function useRtLayerEventHandler(channelIdentifier = "") {
                 .filter(Boolean);
             }
 
+            const toolCalls = [];
+            if (response.data.tools_data) {
+              Object.entries(response.data.tools_data).forEach(([toolName, toolResult]) => {
+                toolCalls.push({
+                  call_id: toolName,
+                  name: toolName,
+                  status: "done",
+                  result: typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult),
+                });
+              });
+            }
+
             const llmUrls = buildLlmUrls(rawImages, []);
             const messageData = {
               id: response.data.id || response.data.message_id || parsedData.message_id,
@@ -298,6 +320,7 @@ function useRtLayerEventHandler(channelIdentifier = "") {
               images: rawImages,
               llm_urls: llmUrls,
               tools_data: response.data.tools_data || {},
+              toolCalls: toolCalls,
               annotations: response.data.annotations,
               fromRTLayer: true,
               usage: parsedData.response?.usage || parsedData.usage, // Include usage data if available
