@@ -154,6 +154,8 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const testCaseResultRef = useRef(null);
   const [testCaseConversation, setTestCaseConversation] = useState([]);
   const [pendingTestIndex, setPendingTestIndex] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const uploadRef = useRef(null);
 
   // Get published version ID from Redux store
   const publishedVersionId = useCustomSelector(
@@ -561,6 +563,32 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     }
   };
 
+  // ----------------- DRAG AND DROP HANDLERS -----------------
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    if (e.dataTransfer?.types?.includes("Files")) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (uploadRef.current && uploadRef.current.uploadFiles) {
+      const files = Array.from(e.dataTransfer.files);
+      uploadRef.current.uploadFiles(files);
+    }
+  }, []);
+
   const _renderMessageAttachments = (message) => {
     // Check for both image_urls (user images) and llm_urls (assistant images)
     const isAssistant = message?.sender === "assistant" || message?.role === "assistant";
@@ -677,7 +705,29 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   };
 
   return (
-    <div data-testid="chat-container" id="chat-container" className="flex flex-col h-full w-full bg-base-100">
+    <div
+      data-testid="chat-container"
+      id="chat-container"
+      className="flex flex-col h-full w-full bg-base-100 relative"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+    >
+      {/* Drag and Drop Overlay */}
+      {isDragging && (
+        <div
+          data-testid="chat-drag-overlay"
+          id="chat-drag-overlay"
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          className="absolute inset-0 bg-base-200/90 border-4 border-dashed border-primary flex items-center justify-center z-50 backdrop-blur-sm"
+        >
+          <div className="pointer-events-none flex flex-col items-center gap-3 bg-base-100 p-6 rounded-xl shadow-2xl border border-primary/20">
+            <span className="loading loading-spinner loading-md text-primary"></span>
+            <span className="text-primary font-semibold text-lg">Drop files here to upload to Chat</span>
+          </div>
+        </div>
+      )}
       <div
         data-testid="chat-header"
         id="chat-header"
@@ -1237,6 +1287,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                     handleSendMessageRef={handleSendMessageRef}
                     showTestCases={showTestCases}
                     draftPrompt={draftPrompt}
+                    uploadRef={uploadRef}
                   />
                 </div>
               </div>
