@@ -215,6 +215,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
             thread_id: response.thread_id,
             sub_thread_id: response.sub_thread_id || response.thread_id,
             bridge_id: response.bridge_id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
 
           const llmUrls = buildLlmUrls(response.image_urls || [], []);
