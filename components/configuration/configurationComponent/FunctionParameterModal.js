@@ -576,24 +576,27 @@ function FunctionParameterModal({
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const [toolName, setToolName] = useState(
-    name === "Agent" || name === "orchestralAgent" ? tool_name : toolData?.title
+    name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent" ? tool_name : toolData?.title
   );
   const [isToolNameManuallyChanged, setIsToolNameManuallyChanged] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDescriptionEditing, setIsDescriptionEditing] = useState(false);
   const dispatch = useDispatch();
-  const { versions, publishedVersion } = useCustomSelector((state) => {
+  const { environmentConfig } = useCustomSelector((state) => {
     const agent = state?.bridgeReducer.org[params?.org_id]?.orgs?.find((item) => item._id === functionId);
     return {
       versions: agent?.versions || [],
       publishedVersion: agent?.published_version_id || null,
+      environmentConfig: agent?.settings?.environment_config || {},
     };
   });
 
   useEffect(() => {
     // Only reset toolName if user hasn't manually changed it
     if (!isToolNameManuallyChanged) {
-      setToolName(name === "Agent" ? tool_name : toolData?.title);
+      setToolName(
+        name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent" ? tool_name : toolData?.title
+      );
     }
   }, [toolData, tool_name, isToolNameManuallyChanged]);
 
@@ -609,15 +612,22 @@ function FunctionParameterModal({
   useEffect(() => {
     if (!isEqual(toolData, function_details)) {
       const thread_id = toolData?.thread_id ?? function_details?.thread_id ?? false;
-      const version_id = function_details?.version_id ?? toolData?.version_id;
-      setToolData({ ...function_details, thread_id, version_id });
+      if (name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent") {
+        const environment = function_details?.environment ?? toolData?.environment;
+        setToolData({ ...function_details, thread_id, environment });
+      } else {
+        const version_id = function_details?.version_id ?? toolData?.version_id;
+        setToolData({ ...function_details, thread_id, version_id });
+      }
     }
-  }, [function_details]);
+  }, [function_details, name]);
 
   useEffect(() => {
     // Only reset toolName if user hasn't manually changed it
     if (!isToolNameManuallyChanged) {
-      setToolName(name === "Agent" ? tool_name : toolData?.title);
+      setToolName(
+        name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent" ? tool_name : toolData?.title
+      );
     }
   }, [tool_name, isToolNameManuallyChanged]);
 
@@ -1412,54 +1422,46 @@ function FunctionParameterModal({
                     />
                   </label>
                 </div>
-
-                {Array.isArray(versions) && versions.length > 0 && (
-                  <div id="function-param-version-wrapper" className="flex flex-row ml-2">
-                    <div className="form-control flex flex-row w-full max-w-xs items-center">
-                      <label className="label flex items-center gap-1">
-                        <span className="label-text">Agent's Version</span>
-                        <InfoTooltip
-                          id="function-param-version-tooltip"
-                          tooltipContent="Select the version of the agent you want to use."
-                        >
-                          <CircleQuestionMark
-                            id="function-param-version-icon"
-                            size={14}
-                            className="text-gray-500 hover:text-gray-700 cursor-help"
-                          />
-                        </InfoTooltip>
-                      </label>
-                      <select
-                        id="function-param-version-select"
-                        disabled={isReadOnly}
-                        className="select select-xs select-bordered ml-2"
-                        value={toolData?.version_id || (publishedVersion ? "published" : "")}
-                        onChange={(e) => {
-                          if (e.target.value === "published") {
-                            // Remove version_id key when published version is selected
-                            const { version_id, ...updatedToolData } = toolData;
-                            setToolData(updatedToolData);
-                          } else {
-                            setToolData({ ...toolData, version_id: e.target.value });
-                          }
-                          setIsModified(true);
-                        }}
+                <div id="function-param-environment-wrapper" className="flex flex-row ml-2">
+                  <div className="form-control flex flex-row w-full max-w-xs items-center">
+                    <label className="label flex items-center gap-1">
+                      <span className="label-text">Agent's Environment</span>
+                      <InfoTooltip
+                        id="function-param-environment-tooltip"
+                        tooltipContent="Select the environment of the agent you want to use."
                       >
-                        {/* Published Version Option - only show if published version exists */}
-                        {publishedVersion && (
-                          <option id="function-param-version-select-published" value="published">
-                            Published Version
-                          </option>
-                        )}
-                        {versions.map((v, idx) => (
-                          <option key={v} value={v}>
-                            Version {idx + 1}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        <CircleQuestionMark
+                          id="function-param-environment-icon"
+                          size={14}
+                          className="text-gray-500 hover:text-gray-700 cursor-help"
+                        />
+                      </InfoTooltip>
+                    </label>
+                    <select
+                      id="function-param-environment-select"
+                      disabled={isReadOnly}
+                      className="select select-xs select-bordered ml-2"
+                      value={toolData?.environment || ""}
+                      onChange={(e) => {
+                        setToolData({ ...toolData, environment: e.target.value });
+                        setIsModified(true);
+                      }}
+                    >
+                      {Object.keys(environmentConfig || {}).length > 0 ? (
+                        <>
+                          <option value="">Published Version</option>
+                          {Object.keys(environmentConfig).map((env) => (
+                            <option key={env} value={env}>
+                              {env}
+                            </option>
+                          ))}
+                        </>
+                      ) : (
+                        <option value="">No environments configured</option>
+                      )}
+                    </select>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>

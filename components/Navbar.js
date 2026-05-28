@@ -481,6 +481,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       isEmbedUser={isEmbedUser}
       isAdminOrOwner={isAdminOrOwner}
       orgId={orgId}
+      bridgeId={bridgeId}
       statelessConversation={statelessConversation}
       onStatelessToggle={handleStatelessToggle}
       onSetSelectedAgent={setSelectedAgentForAccess}

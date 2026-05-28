@@ -516,11 +516,14 @@ function Flow({
         // Check if this agent is being connected to the master agent (bridge-node-root or master agent)
         const isConnectingToMaster = sourceNodeId === "bridge-node-root" || sourceData?.isFirstAgent;
 
+        const envConfig =
+          agentData?.settings?.environment_config || agentData?.bridgeData?.settings?.environment_config || {};
+        const firstEnv = Object.keys(envConfig)[0] || "";
+
         connectedAgentsData[agentName] = {
           bridge_id: agentData._id || agentData.bridge_id,
           thread_id: agentData.thread_id || false,
-          version_id:
-            agentData?.bridgeData?.published_version_id || agentData.published_version_id || agentData?.versions?.[0],
+          environment: firstEnv,
         };
 
         // Process nested connected agents if they exist
@@ -528,10 +531,15 @@ function Flow({
           agentData.connected_agents.forEach((connectedAgent) => {
             const connectedAgentName =
               connectedAgent.name || connectedAgent.agent_name || `Agent_${connectedAgent._id}`;
+            const connEnvConfig =
+              connectedAgent?.settings?.environment_config ||
+              connectedAgent?.bridgeData?.settings?.environment_config ||
+              {};
+            const connFirstEnv = Object.keys(connEnvConfig)[0] || "";
             connectedAgentsData[connectedAgentName] = {
               bridge_id: connectedAgent._id || connectedAgent.bridge_id,
               thread_id: connectedAgent.thread_id || false,
-              version_id: connectedAgent.published_version_id || connectedAgent?.versions?.[0],
+              environment: connFirstEnv,
             };
 
             // Process deeply nested connections recursively
@@ -540,10 +548,15 @@ function Flow({
                 if (depth > 3) return; // Prevent infinite recursion
                 nestedAgents.forEach((nestedAgent) => {
                   const nestedAgentName = nestedAgent.name || nestedAgent.agent_name || `Agent_${nestedAgent._id}`;
+                  const nestEnvConfig =
+                    nestedAgent?.settings?.environment_config ||
+                    nestedAgent?.bridgeData?.settings?.environment_config ||
+                    {};
+                  const nestFirstEnv = Object.keys(nestEnvConfig)[0] || "";
                   connectedAgentsData[nestedAgentName] = {
                     bridge_id: nestedAgent._id || nestedAgent.bridge_id,
                     thread_id: nestedAgent.thread_id || false,
-                    version_id: nestedAgent.published_version_id || nestedAgent?.versions?.[0],
+                    environment: nestFirstEnv,
                   };
                   if (nestedAgent.connected_agents) {
                     processNestedAgents(nestedAgent.connected_agents, depth + 1);
@@ -616,7 +629,7 @@ function Flow({
             setToolData({
               ...base,
               thread_id: sel?.variables?.thread_id || !!sel?.thread_id,
-              version_id: sel?.published_version_id || !!sel?.version_id,
+              environment: sel?.variables?.environment || sel?.environment || "",
             });
             setVariablesPath({ ...(parentVariablesPath[sel._id] || parentVariablesPath || {}) });
           });
@@ -692,8 +705,8 @@ function Flow({
           agent_status: "1",
         },
       };
-      if (toolData?.version_id) {
-        dataToSend.agents.connected_agents[selectedAgent?.name].version_id = toolData?.version_id;
+      if (toolData?.environment) {
+        dataToSend.agents.connected_agents[selectedAgent?.name].environment = toolData?.environment;
       }
       // on Save the bridge and thread id in version only
       // Use the source agent's (parent node's) published_version_id instead of selected agent's

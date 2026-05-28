@@ -181,8 +181,17 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
           continue;
         }
 
+        // Retrieve version_id mapping from environment config if available
+        const childAgent =
+          agentList?.find((a) => a._id === connectedId) || (allBridgesMap && allBridgesMap[connectedId]);
+        let resolvedVersionId = agentInfo?.version_id;
+        if (agentInfo?.environment && childAgent?.settings?.environment_config) {
+          resolvedVersionId = childAgent.settings.environment_config[agentInfo.environment];
+        }
+
         // Check if this connection has a specific version
-        const hasVersionId = agentInfo?.version_id && agentInfo.version_id.trim() !== "";
+        const hasVersionId =
+          resolvedVersionId && typeof resolvedVersionId === "string" && resolvedVersionId.trim() !== "";
 
         let childVersionData = null;
         let shouldUseVersionData = false;
@@ -192,7 +201,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
             // Fetch the specific version data
             const fetchedData = await dispatch(
               getBridgeVersionAction({
-                versionId: agentInfo.version_id,
+                versionId: resolvedVersionId,
               })
             );
 
@@ -201,7 +210,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
               shouldUseVersionData = true;
             }
           } catch (error) {
-            console.error(`Error fetching version data for ${agentInfo.version_id}:`, error);
+            console.error(`Error fetching version data for ${resolvedVersionId}:`, error);
             // Continue with regular agent data if version fetch fails
           }
         } else {

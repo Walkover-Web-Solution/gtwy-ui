@@ -1,12 +1,23 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { ArchiveRestore, MessageSquareOff, MoreVertical, Pause, Play, Settings2, Trash2, Users } from "lucide-react";
+import {
+  ArchiveRestore,
+  MessageSquareOff,
+  MoreVertical,
+  Pause,
+  Play,
+  Settings2,
+  Trash2,
+  Users,
+  Globe,
+} from "lucide-react";
 import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import { toast } from "react-toastify";
 import { UsageSummaryPopover } from "@/app/org/[org_id]/agents/page";
+import ConfigureEnvironmentModal from "../modals/ConfigureEnvironmentModal";
 
 const BRIDGE_STATUS = {
   ACTIVE: 1,
@@ -142,6 +153,12 @@ export const AgentMenuItems = ({
     }
   }, [dispatch, bridge, isStatelessReadOnly, onStatelessToggle, statelessConversation]);
 
+  const handleConfigureEnvironment = useCallback(() => {
+    onClose?.();
+    if (onSetSelectedAgent) onSetSelectedAgent(bridge);
+    setTimeout(() => openModal(MODAL_TYPE.CONFIGURE_ENVIRONMENT_MODAL), 10);
+  }, [bridge, onClose, onSetSelectedAgent]);
+
   return (
     <>
       {bridgeType !== "chatbot" && !isEmbedUser && !hideStateless && (
@@ -224,6 +241,19 @@ export const AgentMenuItems = ({
           >
             <Settings2 size={14} />
             Usage &​ Limits
+          </button>
+
+          <button
+            data-testid="agent-action-configure-environment"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleConfigureEnvironment();
+            }}
+            className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
+          >
+            <Globe size={14} />
+            Configure Environment
           </button>
 
           <button
@@ -316,6 +346,7 @@ const AgentActionMenu = (props) => {
           <AgentMenuItems {...props} onClose={() => setShowMenu(false)} />
         </div>
       )}
+      <ConfigureEnvironmentModal bridgeId={props.bridgeId} orgId={props.orgId} bridgeData={props.bridgeData} />
     </div>
   );
 };

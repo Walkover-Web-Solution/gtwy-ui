@@ -31,6 +31,7 @@ import AgentEmptyState from "@/components/AgentEmptyState";
 import { Funnel, Undo2, Infinity } from "lucide-react";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
+import ConfigureEnvironmentModal from "@/components/modals/ConfigureEnvironmentModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 export const runtime = "edge";
@@ -1335,6 +1336,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       {/* Powered By Footer pinned to bottom */}
       {isEmbedUser && <PoweredByFooter />}
       <AccessManagementModal agent={selectedAgentForAccess} />
+      <ConfigureEnvironmentModal />
 
       {/* Portal components from hook */}
       <PortalStyles />

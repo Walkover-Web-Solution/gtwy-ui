@@ -124,7 +124,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         fields: fields || {},
         required: required,
         thread_id: item?.thread_id ?? false,
-        version_id: item?.version_id ?? "",
+        environment: item?.environment ?? "",
       };
       flushSync(() => {
         setCurrentVariable(agentData);
@@ -172,8 +172,8 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           agent_status: "1",
         },
       };
-      if (agentTools?.version_id) {
-        dataToSend.agents.connected_agents[selectedBridge?.name].version_id = agentTools?.version_id;
+      if (agentTools?.environment) {
+        dataToSend.agents.connected_agents[selectedBridge?.name].environment = agentTools?.environment;
       }
       // on Save the bridge and thread id in version only
       dispatch(
