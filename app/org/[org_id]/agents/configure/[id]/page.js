@@ -12,7 +12,6 @@ import { updateTitle, generateRandomID, extractPromptVariables, openModal, close
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { useRouter } from "next/navigation";
-import Chatbot from "@/components/configuration/Chatbot";
 import AgentSetupGuide from "@/components/AgentSetupGuide";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { RefreshIcon } from "@/components/Icons";
@@ -119,7 +118,6 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const promptTextAreaRef = useRef(null);
   const apiKeySectionRef = useRef(null);
   const router = useRouter();
-  const mountRef = useRef(false);
   const dispatch = useDispatch();
 
   // Panel refs for programmatic resizing
@@ -615,21 +613,6 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [bridgeType]);
 
-  useEffect(() => {
-    if (mountRef.current) {
-      if (bridgeType === "chatbot") {
-        if (typeof openChatbot !== "undefined" && document.getElementById("parentChatbot")) {
-          openChatbot();
-        }
-      } else {
-        if (typeof closeChatbot !== "undefined") {
-          closeChatbot();
-        }
-      }
-    }
-    mountRef.current = true;
-  }, [bridgeType]);
-
   // Show skeleton loading state only for initial load (when no data exists)
   if (isLoading && !hasData && !hasError) {
     return (
@@ -823,8 +806,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                             setApiKeyError={setApiKeyError}
                           />
-                          {/* Only show experimental Chat for non-chatbot types */}
-                          {bridgeType !== "chatbot" && !isGuideVisible && (
+                          {!isGuideVisible && (
                             <>
                               {!sessionStorage.getItem("orchestralUser") ? (
                                 <div id="chat-content-container" className="flex-1 min-h-0">
@@ -857,7 +839,6 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                           )}
                         </div>
                       </div>
-                      <Chatbot id="chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
                     </div>
                   )}
                 </Panel>
@@ -1060,8 +1041,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   setApiKeyError={setApiKeyError}
                 />
 
-                {/* Only show experimental Chat for non-chatbot types */}
-                {bridgeType !== "chatbot" && !isGuideVisible && (
+                {!isGuideVisible && (
                   <>
                     {!sessionStorage.getItem("orchestralUser") ? (
                       <div id="mobile-chat-content-container" className="flex-1 min-h-0">
@@ -1093,7 +1073,6 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   </>
                 )}
               </div>
-              <Chatbot id="mobile-chatbot-component" params={resolvedParams} searchParams={resolvedSearchParams} />
             </div>
           )}
         </div>
