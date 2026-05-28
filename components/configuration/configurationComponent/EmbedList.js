@@ -20,7 +20,7 @@ import { AddIcon, TrashIcon, SettingsIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import PrebuiltToolsConfigModal from "@/components/modals/PrebuiltToolsConfigModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
-import { AlertTriangle, CircleQuestionMark } from "lucide-react";
+import { CircleAlert, CircleQuestionMark } from "lucide-react";
 
 function getStatusClass(status) {
   switch (status?.toString().trim().toLowerCase()) {
@@ -466,7 +466,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                                   aria-label="Web Search token usage warning"
                                   className="btn btn-ghost btn-sm p-1 text-warning hover:bg-warning/10"
                                 >
-                                  <AlertTriangle size={16} />
+                                  <CircleAlert size={16} />
                                 </button>
                               </InfoTooltip>
                             </span>

@@ -16,6 +16,7 @@ const DeleteModal = ({
   modalType = MODAL_TYPE.DELETE_MODAL,
   loading = false,
   isAsync = false, // New prop to indicate if onConfirm is async
+  warning = null, // Optional warning message to display
 }) => {
   const [internalLoading, setInternalLoading] = useState(false);
 
@@ -65,6 +66,11 @@ const DeleteModal = ({
           <div className="flex flex-col space-y-2 text-center sm:text-left">
             <h2 className="text-lg font-semibold text-base-content">{title}</h2>
             <p className="text-sm text-base-content">{description}</p>
+            {warning && (
+              <div className="mt-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                <p className="text-sm text-warning font-medium">{warning}</p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6">

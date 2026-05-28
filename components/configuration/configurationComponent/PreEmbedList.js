@@ -27,6 +27,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [showChangePicker, setShowChangePicker] = useState(false);
   const [isAddPreToolDropdownFocused, setIsAddPreToolDropdownFocused] = useState(false);
   const [selectedPreTool, setSelectedPreTool] = useState(null); // for built-in modal
+  const [deleteWarning, setDeleteWarning] = useState(null); // Warning message for delete modal
 
   // Pending action to run after the user confirms leaving unsaved prompt changes
   const pendingActionRef = useRef(null);
@@ -40,8 +41,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
       action();
     }
   };
-  const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path } = useCustomSelector(
-    (state) => {
+  const { integrationData, function_data, bridge_pre_tools, model, embedToken, variables_path, prompt } =
+    useCustomSelector((state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
       const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
       const isPublished = searchParams?.isPublished === "true";
@@ -62,9 +63,9 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         service: serviceName,
         embedToken: orgData?.embed_token,
         variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
+        prompt: isPublished ? bridgeDataFromState?.configuration?.prompt : versionData?.configuration?.prompt,
       };
-    }
-  );
+    });
   const dispatch = useDispatch();
 
   // Delete operation hook
@@ -122,6 +123,18 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
 
       setPreFunctionId(itemId);
       setPreFunctionName(toolItem._type !== PRE_TOOL_TYPES.custom_function ? toolItem._type : itemScriptId || itemId);
+
+      // Check if prompt contains {{pre_function}} variable
+      let warning = null;
+      if (prompt) {
+        const promptText = typeof prompt === "string" ? prompt : JSON.stringify(prompt);
+        if (promptText.includes("{{pre_function}}")) {
+          warning = "This pre tool is used in the prompt via {{pre_function}} variable.";
+        }
+      }
+
+      // Store warning in state to pass to DeleteModal
+      setDeleteWarning(warning);
       openModal(MODAL_TYPE.DELETE_PRE_TOOL_MODAL);
     });
   };
@@ -309,6 +322,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
           modalType={MODAL_TYPE.DELETE_PRE_TOOL_MODAL}
           loading={isDeleting}
           isAsync={true}
+          warning={deleteWarning}
         />
 
         <PrebuiltPreToolConfigModal
