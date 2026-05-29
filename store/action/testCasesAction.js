@@ -40,21 +40,20 @@ export const getAllTestCasesOfBridgeAction =
       const response = await getAllTestCasesOfBridgeApi({ bridgeId, page, limit });
       if (response?.success) {
         const data = Array.isArray(response?.data) ? response.data : [];
+        const total = response?.total || 0;
         if (append && page > 1) {
-          dispatch(appendTestCasesReducer({ bridgeId, data }));
+          dispatch(appendTestCasesReducer({ bridgeId, data, total }));
         } else {
-          dispatch(getAllTestCasesReducer({ bridgeId, data }));
+          dispatch(getAllTestCasesReducer({ bridgeId, data, total }));
         }
-        // Backend doesn't return pagination metadata — infer hasMore from the
-        // page size: a full page means there might be more, anything less is
-        // the last page.
-        const hasMore = data.length >= limit;
-        return { success: true, data, hasMore, page };
+        // Backend now returns total count — use it to determine hasMore
+        const hasMore = data.length >= limit && page * limit < total;
+        return { success: true, data, hasMore, page, total };
       }
-      return { success: false, data: [], hasMore: false, page };
+      return { success: false, data: [], hasMore: false, page, total: 0 };
     } catch (error) {
       console.error(error);
-      return { success: false, data: [], hasMore: false, page };
+      return { success: false, data: [], hasMore: false, page, total: 0 };
     }
   };
 

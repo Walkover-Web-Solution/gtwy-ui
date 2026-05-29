@@ -77,10 +77,11 @@ function TestCases({ params }) {
   const allBridges = useCustomSelector((state) => state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.orgs || [])
     .slice()
     .reverse();
-  const { testCases, isFirstTestcase, testRun } = useCustomSelector((state) => ({
+  const { testCases, isFirstTestcase, testRun, testCasesTotal } = useCustomSelector((state) => ({
     testCases: state?.testCasesReducer?.testCases?.[resolvedParams?.id] || {},
     isFirstTestcase: state?.userDetailsReducer?.userDetails?.meta?.onboarding?.TestCasesSetup || "",
     testRun: state?.testCasesReducer?.testRuns?.[resolvedParams?.id] || null,
+    testCasesTotal: state?.testCasesReducer?.testCasesTotal?.[resolvedParams?.id] || 0,
   }));
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
@@ -447,7 +448,7 @@ function TestCases({ params }) {
                               </td>
                               {selectedVersions.map((version, vIdx) => {
                                 const versionArray = testCase?.version_history?.[version];
-                                const latestResult = versionArray?.[versionArray?.length - 1];
+                                const latestResult = versionArray?.[0];
                                 const score = latestResult?.score || 0;
                                 const matchingTypeFromResult = testCase?.matching_type || "cosine";
                                 const runError = latestResult?.error;
@@ -487,7 +488,7 @@ function TestCases({ params }) {
                 </InfiniteScroll>
               </div>
               <div className="px-4 py-3 border-t border-base-200 text-xs text-base-content/60 bg-base-50">
-                {Array.isArray(testCases) ? `${testCases.length} testcases` : "0 testcases"}
+                {testCasesTotal > 0 ? `${testCasesTotal} testcases` : "0 testcases"}
               </div>
             </div>
 

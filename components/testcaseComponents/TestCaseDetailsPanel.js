@@ -617,7 +617,7 @@ const TestCaseDetailsPanel = ({
               >
                 {comparisonVersions.map((version, idx) => {
                   const versionArray = selectedTestCase?.version_history?.[version];
-                  const latestRun = versionArray?.[versionArray?.length - 1];
+                  const latestRun = versionArray?.[0];
                   const hasRun = !!latestRun;
                   const score = latestRun?.score || 0;
                   const modelOutput = latestRun?.model_output;

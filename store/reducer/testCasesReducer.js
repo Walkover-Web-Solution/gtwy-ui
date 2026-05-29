@@ -18,7 +18,8 @@ const applyResultToTestCase = (state, bridgeId, versionId, result) => {
   if (!tc.version_history) tc.version_history = {};
   if (!Array.isArray(tc.version_history[versionId])) tc.version_history[versionId] = [];
   const nowIso = new Date().toISOString();
-  tc.version_history[versionId].push({
+  // Use unshift to add at index 0 (newest) to match API structure
+  tc.version_history[versionId].unshift({
     score: result.score,
     model_output: result.actual_result,
     expected: result.expected,
@@ -49,11 +50,44 @@ const testCasesReducer = createSlice({
       return state;
     },
     getAllTestCasesReducer: (state, action) => {
-      const { data, bridgeId } = action.payload;
+      const { data, bridgeId, total } = action.payload;
       state.testCases[bridgeId] = data;
+      // Store total count
+      if (!state.testCasesTotal) state.testCasesTotal = {};
+      state.testCasesTotal[bridgeId] = total;
+      // Transform embedded history to version_history structure
+      if (Array.isArray(data)) {
+        data.forEach((testCase) => {
+          if (testCase?.history && Array.isArray(testCase.history)) {
+            if (!testCase.version_history) testCase.version_history = {};
+            testCase.history.forEach((historyItem) => {
+              const versionId = historyItem?.version_id;
+              if (versionId) {
+                if (!testCase.version_history[versionId]) {
+                  testCase.version_history[versionId] = [];
+                }
+                // Transform history item to match expected version_history structure
+                testCase.version_history[versionId].push({
+                  score: historyItem?.testcase_data?.score || 0,
+                  model_output: historyItem?.llm_message,
+                  error: historyItem?.error,
+                  matching_type: historyItem?.testcase_data?.matching_type || testCase?.matching_type || "cosine",
+                  actual: historyItem?.testcase_data?.actual,
+                  expected: historyItem?.testcase_data?.expected,
+                  success: historyItem?.testcase_data?.success,
+                  created_at: historyItem?.created_at,
+                  updated_at: historyItem?.updated_at,
+                  // Keep original data for reference
+                  _original: historyItem,
+                });
+              }
+            });
+          }
+        });
+      }
     },
     appendTestCasesReducer: (state, action) => {
-      const { data, bridgeId } = action.payload;
+      const { data, bridgeId, total } = action.payload;
       if (!Array.isArray(data) || data.length === 0) return;
       if (Array.isArray(state.testCases[bridgeId])) {
         const existingIds = new Set(state.testCases[bridgeId].map((tc) => tc?._id));
@@ -62,6 +96,37 @@ const testCasesReducer = createSlice({
       } else {
         state.testCases[bridgeId] = data;
       }
+      // Update total count
+      if (!state.testCasesTotal) state.testCasesTotal = {};
+      state.testCasesTotal[bridgeId] = total;
+      // Transform embedded history to version_history structure
+      data.forEach((testCase) => {
+        if (testCase?.history && Array.isArray(testCase.history)) {
+          if (!testCase.version_history) testCase.version_history = {};
+          testCase.history.forEach((historyItem) => {
+            const versionId = historyItem?.version_id;
+            if (versionId) {
+              if (!testCase.version_history[versionId]) {
+                testCase.version_history[versionId] = [];
+              }
+              // Transform history item to match expected version_history structure
+              testCase.version_history[versionId].push({
+                score: historyItem?.testcase_data?.score || 0,
+                model_output: historyItem?.llm_message,
+                error: historyItem?.error,
+                matching_type: historyItem?.testcase_data?.matching_type || testCase?.matching_type || "cosine",
+                actual: historyItem?.testcase_data?.actual,
+                expected: historyItem?.testcase_data?.expected,
+                success: historyItem?.testcase_data?.success,
+                created_at: historyItem?.created_at,
+                updated_at: historyItem?.updated_at,
+                // Keep original data for reference
+                _original: historyItem,
+              });
+            }
+          });
+        }
+      });
     },
     deleteTestCaseReducer: (state, action) => {
       const { testCaseId, bridgeId } = action.payload;
@@ -106,7 +171,8 @@ const testCasesReducer = createSlice({
             if (!testCase.version_history[versionId]) {
               testCase.version_history[versionId] = [];
             }
-            testCase.version_history[versionId].push(testcases_result[testCaseId]?.result);
+            // Use unshift to add at index 0 (newest) to match API structure
+            testCase.version_history[versionId].unshift(testcases_result[testCaseId]?.result);
           }
         });
       }
