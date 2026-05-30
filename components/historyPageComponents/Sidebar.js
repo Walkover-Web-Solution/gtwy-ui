@@ -74,7 +74,7 @@ const Sidebar = memo(
 
     useEffect(() => {
       if (
-        expandedThreads?.length &&
+        expandedThreads?.includes(searchParams?.thread_id) &&
         subThreads?.length > 0 &&
         searchParams?.thread_id &&
         searchParams?.subThread_id === searchParams?.thread_id
@@ -126,14 +126,14 @@ const Sidebar = memo(
       if (!liveThreadId || !liveVersion || versionMismatch) {
         return;
       }
-      if (subThreads?.length > 0) {
+      if (subThreads?.length > 0 && expandedThreads?.includes(liveThreadId)) {
         const firstSubThreadId = subThreads[0]?.sub_thread_id;
         if (firstSubThreadId) {
           const url = `${pathName}?version=${liveVersion}&thread_id=${liveThreadId}&subThread_id=${firstSubThreadId}&start=${p.get("start") || ""}&end=${p.get("end") || ""}${p.get("message_id") ? `&message_id=${p.get("message_id")}` : ""}&type=${p.get("type") || ""}`;
           router.push(url, undefined, { shallow: true });
         }
       }
-    }, [subThreads, selectedVersion]);
+    }, [subThreads, selectedVersion, expandedThreads]);
     const debounce = (func, delay) => {
       let timeoutId;
       return (...args) => {
@@ -671,7 +671,9 @@ const Sidebar = memo(
                                                 ? "cursor-pointer hover:bg-base-primary hover:text-base-100 rounded-md transition-all duration-200 text-xs bg-primary text-base-100"
                                                 : "cursor-pointer hover:bg-base-300 hover:text-base-content rounded-md transition-all duration-200 text-xs"
                                             } flex-grow group`}
-                                            onClick={() => handleSelectSubThread(subThread?.sub_thread_id)}
+                                            onClick={() =>
+                                              handleSelectSubThread(subThread?.sub_thread_id, item?.thread_id)
+                                            }
                                           >
                                             <a className="w-full h-full flex items-center justify-between relative">
                                               <span className="truncate flex-1 mr-1.5 text-xs flex items-center">

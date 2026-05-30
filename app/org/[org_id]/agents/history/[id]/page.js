@@ -26,14 +26,22 @@ function Page({ params, searchParams }) {
   const sidebarRef = useRef(null);
   const searchRef = useRef();
   const activeFilterByRef = useRef(undefined);
-  const { historyData, thread, selectedVersion, previousPrompt } = useCustomSelector((state) => ({
-    historyData: state?.historyReducer?.history || [],
-    thread: state?.historyReducer?.thread || [],
-    selectedVersion: state?.historyReducer?.selectedVersion || "all",
-    previousPrompt:
-      state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id]?.[resolvedSearchParams?.version]?.configuration
-        ?.prompt || "",
-  }));
+  const { historyData, thread, selectedVersion, previousPrompt, isSingleQuery } = useCustomSelector((state) => {
+    const threadData = state?.historyReducer?.thread || [];
+    const bridgeInfo = state?.bridgeReducer?.allBridgesMap?.[resolvedParams?.id];
+    const isStateless = bridgeInfo?.settings?.stateless_conversation === true;
+    const isEmbedUser = state?.appInfoReducer?.embedUserDetails?.isEmbedUser;
+
+    return {
+      historyData: state?.historyReducer?.history || [],
+      thread: threadData,
+      selectedVersion: state?.historyReducer?.selectedVersion || "all",
+      previousPrompt:
+        state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id]?.[resolvedSearchParams?.version]?.configuration
+          ?.prompt || "",
+      isSingleQuery: !isEmbedUser && isStateless && threadData.filter((msg) => msg?.user).length <= 1,
+    };
+  });
   const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [page, setPage] = useState(1);
@@ -229,7 +237,7 @@ function Page({ params, searchParams }) {
           {batchPanel}
           <div className="flex-1 overflow-hidden">
             {isLoadingState ? (
-              <ChatLoadingSkeleton />
+              <ChatLoadingSkeleton isSingleQuery={isSingleQuery} />
             ) : (
               <React.Suspense>
                 <ThreadContainer
