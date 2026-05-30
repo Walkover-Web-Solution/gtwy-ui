@@ -5,7 +5,7 @@ import { UserIcon, BotIcon } from "@/components/Icons";
 export const StatelessChatLoadingSkeleton = () => {
   return (
     <div data-testid="stateless-loading-skeleton" className="w-full h-full overflow-y-auto pb-16 px-3 pt-4">
-      <div className="animate-pulse space-y-4 max-w-3xl mx-auto">
+      <div className="animate-pulse space-y-4 w-full">
         {/* System Prompt Banner Skeleton */}
         <div className="mb-3 px-4">
           <div className="bg-base-200 border border-base-300 rounded-lg p-3">
