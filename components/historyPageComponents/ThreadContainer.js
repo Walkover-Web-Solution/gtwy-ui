@@ -542,10 +542,10 @@ const ThreadContainer = ({
             flexDirection,
           }}
         >
-          {/* Show loading skeleton when loading with no data */}
-          {loadingData && (!thread || thread.length === 0) ? (
-            <ChatLoadingSkeleton />
-          ) : !loadingData && (!thread || thread.length === 0) ? (
+          {/* Show loading skeleton when loading */}
+          {loadingData ? (
+            <ChatLoadingSkeleton isSingleQuery={isSingleQuery} />
+          ) : !thread || thread.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-gray-500 text-lg">No history present</p>
             </div>
