@@ -100,6 +100,9 @@
         }
 
         flushQueue() {
+            if ((this.config.defaultOpen === 'true' || this.config.defaultOpen === true) && !this.state.fullscreen) {
+                this.openGtwy();
+            }
             if (this.state.isConfigReady) return; // already flushed
             this.state.isConfigReady = true;
             this.state.pendingQueue.forEach(msg => sendMessageToGtwy(msg));
