@@ -43,7 +43,7 @@ export const AgentMenuItems = ({
   onStatelessToggle,
   isStatelessReadOnly,
   bridgeType,
-  hideStateless,
+  isTableListPage,
 }) => {
   const dispatch = useDispatch();
   const getUsageStatsForRow = (row) => {
@@ -161,7 +161,7 @@ export const AgentMenuItems = ({
 
   return (
     <>
-      {bridgeType !== "chatbot" && !isEmbedUser && !hideStateless && (
+      {bridgeType !== "chatbot" && !isEmbedUser && !isTableListPage && (
         <div
           data-testid="agent-action-stateless-conversation"
           title="When enabled, the agent responds without carrying previous conversation context forward."
@@ -195,6 +195,20 @@ export const AgentMenuItems = ({
             />
           </label>
         </div>
+      )}
+      {!isEmbedUser && !isTableListPage && (
+        <button
+          data-testid="agent-action-configure-environment"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleConfigureEnvironment();
+          }}
+          className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
+        >
+          <Globe size={14} />
+          Environment
+        </button>
       )}
       {isEmbedUser ? (
         <>
@@ -241,19 +255,6 @@ export const AgentMenuItems = ({
           >
             <Settings2 size={14} />
             Usage &​ Limits
-          </button>
-
-          <button
-            data-testid="agent-action-configure-environment"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleConfigureEnvironment();
-            }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center gap-2 cursor-pointer"
-          >
-            <Globe size={14} />
-            Configure Environment
           </button>
 
           <button

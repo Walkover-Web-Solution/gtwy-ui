@@ -1007,7 +1007,7 @@ function Home({ params, searchParams, isEmbedUser }) {
               setItemToDelete(row);
               setTimeout(() => openModal(MODAL_TYPE.DELETE_MODAL), 10);
             }}
-            hideStateless={true}
+            isTableListPage={true}
           />
         </div>
       );
