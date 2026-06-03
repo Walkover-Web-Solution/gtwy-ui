@@ -1326,7 +1326,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
                               onBlur={(event) => handleFieldCommit(index, "defaultValue", event.target.value)}
-                              placeholder="Optional fallback"
+                              placeholder="Default Value"
                             />
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
@@ -1336,7 +1336,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
                               onBlur={(event) => handleFieldCommit(index, "defaultValue", event.target.value)}
-                              placeholder="Optional JSON fallback"
+                              placeholder="Default Value"
                             />
                           ) : (
                             <input
@@ -1348,7 +1348,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
                               onBlur={(event) => handleFieldCommit(index, "defaultValue", event.target.value)}
-                              placeholder="default value"
+                              placeholder="Default Value"
                             />
                           )}
 
