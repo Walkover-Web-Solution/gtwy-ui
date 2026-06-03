@@ -42,6 +42,7 @@ import {
   loadTestCaseIntoChat,
   clearChatTestCaseIdAction,
   clearTestCaseConversationAction,
+  setChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
 import ReasoningAccordion from "./ReasoningAccordion";
@@ -412,7 +413,12 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       if (channelIdentifier) {
-        dispatch(loadTestCaseIntoChat(channelIdentifier, testCaseConversation, expected, testCaseId));
+        // Pass the correct testcase_id from the clicked test case
+        dispatch(loadTestCaseIntoChat(channelIdentifier, testCaseConversation, expected, testcase_id));
+        // Store the test case ID in Redux so the next API call sends it in testcase_data
+        if (testcase_id) {
+          dispatch(setChatTestCaseIdAction(channelIdentifier, testcase_id));
+        }
       }
 
       // Close testcase sidebar
