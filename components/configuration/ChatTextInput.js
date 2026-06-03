@@ -10,6 +10,7 @@ import {
   sendMessageWithRtLayer,
   sendMessageWithApiStreaming,
   setChatTestCaseIdAction,
+  clearTestCaseConversationAction,
 } from "@/store/action/chatAction";
 import Image from "next/image";
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -105,13 +106,15 @@ function ChatTextInput({
   });
 
   // Redux selectors for chat state
-  const { threadId, loading, uploadedFiles, uploadedImages, storedTestCaseId } = useCustomSelector((state) => ({
-    threadId: state?.chatReducer?.threadIdByChannel?.[channelIdentifier] || null,
-    loading: state?.chatReducer?.loadingByChannel?.[channelIdentifier] || false,
-    uploadedFiles: state?.chatReducer?.uploadedFilesByChannel?.[channelIdentifier] || [],
-    uploadedImages: state?.chatReducer?.uploadedImagesByChannel?.[channelIdentifier] || [],
-    storedTestCaseId: state?.chatReducer?.testCaseIdByChannel?.[channelIdentifier] || null,
-  }));
+  const { threadId, loading, uploadedFiles, uploadedImages, storedTestCaseId, testCaseConversation } =
+    useCustomSelector((state) => ({
+      threadId: state?.chatReducer?.threadIdByChannel?.[channelIdentifier] || null,
+      loading: state?.chatReducer?.loadingByChannel?.[channelIdentifier] || false,
+      uploadedFiles: state?.chatReducer?.uploadedFilesByChannel?.[channelIdentifier] || [],
+      uploadedImages: state?.chatReducer?.uploadedImagesByChannel?.[channelIdentifier] || [],
+      storedTestCaseId: state?.chatReducer?.testCaseIdByChannel?.[channelIdentifier] || null,
+      testCaseConversation: state?.chatReducer?.testCaseConversationByChannel?.[channelIdentifier] || null,
+    }));
   const dataToSend = useMemo(
     () => ({
       configuration: {
@@ -357,6 +360,7 @@ function ChatTextInput({
               testcase_data,
               configuration: {
                 type: modelType,
+                ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
               },
               thread_id: threadId,
               user: data.content,
@@ -401,6 +405,7 @@ function ChatTextInput({
               testcase_data,
               configuration: {
                 type: modelType,
+                ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
               },
               thread_id: threadId,
               text: newMessage,
@@ -439,6 +444,7 @@ function ChatTextInput({
               testcase_data,
               configuration: {
                 ...localDataToSend.configuration,
+                ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
               },
               input: bridge?.inputConfig?.input?.input,
               is_playground: true,
@@ -467,6 +473,11 @@ function ChatTextInput({
         if (setTestCaseId) {
           setTestCaseId(responseData?.response?.testcase_id);
         }
+      }
+      // After a successful API call with a loaded test case conversation, clear it
+      // so subsequent user messages don't re-send the same conversation context.
+      if (testCaseConversation) {
+        dispatch(clearTestCaseConversationAction(channelIdentifier));
       }
     } catch {
       dispatch(setChatError(channelIdentifier, "Something went wrong. Please try again."));

@@ -41,6 +41,7 @@ import {
   clearChatMessages,
   loadTestCaseIntoChat,
   clearChatTestCaseIdAction,
+  clearTestCaseConversationAction,
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
 import ReasoningAccordion from "./ReasoningAccordion";
@@ -362,6 +363,8 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       dispatch(setChatLoading(channelIdentifier, false));
       // Clear testcase_id from Redux
       dispatch(clearChatTestCaseIdAction(channelIdentifier));
+      // Clear stored test case conversation so it isn't re-sent on next message
+      dispatch(clearTestCaseConversationAction(channelIdentifier));
     }
     setEditingMessage(null);
     setEditContent("");

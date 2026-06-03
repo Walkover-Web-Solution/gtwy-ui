@@ -17,6 +17,8 @@ const initialState = {
   uploadedImagesByChannel: {},
   // Test case IDs by channel (persisted until manual clear)
   testCaseIdByChannel: {},
+  // Raw test case conversation [{role, content}] to send in configuration.conversation
+  testCaseConversationByChannel: {},
 };
 
 export const chatReducer = createSlice({
@@ -112,17 +114,25 @@ export const chatReducer = createSlice({
         state.messagesByChannel[channelId] = [];
         state.errorsByChannel[channelId] = "";
         state.testCasesByChannel[channelId] = {};
+        state.testCaseConversationByChannel[channelId] = null;
         state.threadIdByChannel[channelId] = crypto.randomUUID();
       }
     },
 
     // Load test case messages
     loadTestCaseMessages: (state, action) => {
-      const { channelId, messages, testCaseId } = action.payload;
+      const { channelId, messages, testCaseId, rawConversation } = action.payload;
       if (state.messagesByChannel[channelId]) {
         state.messagesByChannel[channelId] = messages;
         state.testCasesByChannel[channelId] = { testCaseId };
+        state.testCaseConversationByChannel[channelId] = rawConversation || null;
       }
+    },
+
+    // Clear loaded test case conversation for channel
+    clearTestCaseConversation: (state, action) => {
+      const { channelId } = action.payload;
+      state.testCaseConversationByChannel[channelId] = null;
     },
 
     // Set uploaded files
@@ -398,6 +408,7 @@ export const chatReducer = createSlice({
       delete state.uploadedImagesByChannel[channelId];
       delete state.testCaseIdByChannel[channelId];
       delete state.threadIdByChannel[channelId];
+      delete state.testCaseConversationByChannel[channelId];
     },
   },
 });
@@ -413,6 +424,7 @@ export const {
   setChannelError,
   clearChannelMessages,
   loadTestCaseMessages,
+  clearTestCaseConversation,
   setUploadedFiles,
   setUploadedImages,
   addRtLayerMessage,

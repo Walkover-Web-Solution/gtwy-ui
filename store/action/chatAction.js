@@ -9,6 +9,7 @@ import {
   setChannelError,
   clearChannelMessages,
   loadTestCaseMessages,
+  clearTestCaseConversation,
   setUploadedFiles,
   setUploadedImages,
   addRtLayerMessage,
@@ -182,13 +183,28 @@ export const loadTestCaseIntoChat = (channelId, testCaseConversation, expected, 
     convertedMessages.push(expectedMessage);
   }
 
+  // Build the raw conversation (all messages except the expected answer) in the
+  // [{role, content}] format expected by the completion API's configuration.conversation.
+  const rawConversation = testCaseConversation
+    .filter((msg) => msg.content !== null && msg.content !== undefined && msg.content !== "")
+    .map((msg) => ({
+      role: msg.role,
+      content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
+    }));
+
   dispatch(
     loadTestCaseMessages({
       channelId,
       messages: convertedMessages,
       testCaseId,
+      rawConversation,
     })
   );
+};
+
+// Clear the stored raw test case conversation for a channel
+export const clearTestCaseConversationAction = (channelId) => (dispatch) => {
+  dispatch(clearTestCaseConversation({ channelId }));
 };
 
 // Set uploaded files
