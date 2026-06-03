@@ -373,7 +373,7 @@ const ThreadItem = ({
       }
 
       // Always show RAG/knowledge base tools and agent tools
-      if (tool?.data?.metadata?.type === "RAG" || tool?.data?.metadata?.type === "agent") {
+      if (tool?.data?.metadata?.type === "RAG" || tool?.data?.metadata?.type === "agent" || !isEmbedUser) {
         return true;
       }
 
