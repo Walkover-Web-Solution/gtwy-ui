@@ -78,6 +78,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     currrentOrgDetail,
     themeMode,
     functionData,
+    tools,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -89,6 +90,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     organizations: state.userDetailsReducer.organizations,
     preTools:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.pre_tools || [],
+    SERVICES: state?.serviceReducer?.services,
+    tools:
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.function_ids || [],
     SERVICES: state?.serviceReducer?.services,
     currentUser: state.userDetailsReducer.userDetails,
     doctstar_embed_token: state?.bridgeReducer?.org?.[resolvedParams.org_id]?.doctstar_embed_token || "",
@@ -456,39 +460,43 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           openaiToolJson: e?.data?.openaiToolJson,
         };
         dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
-          if (
-            !versionData?.[data?._id] &&
-            (!Array.isArray(preTools) || !preTools?.includes(data?._id)) &&
-            pathName.includes("agents")
-          ) {
-            {
-              e?.data?.metadata?.createFrom && e.data.metadata.createFrom === "preFunction"
-                ? dispatch(
-                    updateApiAction(path[5], {
-                      pre_tools: {
-                        type: "custom_function",
-                        config: {
-                          function_id: data?._id,
-                          script_id: data?.script_id,
-                          required: data?.required || [],
-                        },
+          if (pathName.includes("agents")) {
+            if (e?.data?.metadata?.createFrom === "preFunction") {
+              // Only add as pre-tool if not already present (preTools is an array of objects)
+              const alreadyPreTool =
+                Array.isArray(preTools) && preTools.some((pt) => pt?.config?.function_id === data?._id);
+              if (!alreadyPreTool) {
+                dispatch(
+                  updateApiAction(path[5], {
+                    pre_tools: {
+                      type: "custom_function",
+                      config: {
+                        function_id: data?._id,
+                        script_id: data?.script_id,
+                        required: data?.required || [],
                       },
-                      status: "1",
-                      version_id: resolvedSearchParams?.get("version"),
-                    })
-                  )
-                : dispatch(
-                    updateBridgeVersionAction({
-                      bridgeId: path[5],
-                      versionId: resolvedSearchParams?.get("version"),
-                      dataToSend: {
-                        functionData: {
-                          function_id: data?._id,
-                          function_operation: "1",
-                        },
+                    },
+                    status: "1",
+                    version_id: resolvedSearchParams?.get("version"),
+                  })
+                );
+              }
+            } else {
+              // Only add as regular tool if not already in versionData
+              if (!tools?.includes(data?._id)) {
+                dispatch(
+                  updateBridgeVersionAction({
+                    bridgeId: path[5],
+                    versionId: resolvedSearchParams?.get("version"),
+                    dataToSend: {
+                      functionData: {
+                        function_id: data?._id,
+                        function_operation: "1",
                       },
-                    })
-                  );
+                    },
+                  })
+                );
+              }
             }
           }
           if (
