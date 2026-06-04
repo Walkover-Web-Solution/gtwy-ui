@@ -33,15 +33,11 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
               <div className="mt-4">
                 {Object.entries(toolsData || {})?.map(([key, value], index) => (
                   <div key={index} className="flex items-start gap-2 mb-2">
-                    <span className="w-28 shrink-0 capitalize">{key === "data" ? "response" : key}:</span>
+                    <span className="w-28 shrink-0 capitalize">{key}:</span>
                     <span className="flex-1 min-w-0">
                       {key === "name" && integrationData?.[value] ? (
                         <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
                           {integrationData[value]?.title}
-                        </pre>
-                      ) : key === "data" && value?.response !== undefined ? (
-                        <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
-                          {formatValue(value.response)}
                         </pre>
                       ) : (
                         <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
