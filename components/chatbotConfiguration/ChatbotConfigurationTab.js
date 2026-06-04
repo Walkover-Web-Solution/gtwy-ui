@@ -104,6 +104,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     allowBridgeSwitch: false,
     bridges: [],
     side: "left",
+    hide_tool: false,
   });
 
   const { chatBotConfig } = useCustomSelector((state) => ({
@@ -132,6 +133,21 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
         const updatedFormData = {
           ...prevFormData,
           [name]: value,
+        };
+        dispatch(updateChatBotConfigAction(chatBotId, updatedFormData));
+        return updatedFormData;
+      });
+    },
+    [dispatch, chatBotId]
+  );
+
+  // Handler for boolean toggle fields (e.g. hide_tool)
+  const handleToggleChange = useCallback(
+    (name) => {
+      setFormData((prevFormData) => {
+        const updatedFormData = {
+          ...prevFormData,
+          [name]: !prevFormData[name],
         };
         dispatch(updateChatBotConfigAction(chatBotId, updatedFormData));
         return updatedFormData;
@@ -222,6 +238,33 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               name="iconUrl"
             />
           </label>
+
+          {/* Show Tool Calls Toggle */}
+          <div className="form-control">
+            <label
+              data-testid="chatbot-config-hide-tool-toggle"
+              className="label cursor-pointer justify-between gap-8 px-0"
+            >
+              <div className="flex flex-col">
+                <span className="label-text font-medium text-xs">Hide Tool Calls</span>
+                <span className="text-xs text-base-content/50">
+                  {formData.hide_tool ? "Hidden from chat" : "Shown in chat"}
+                </span>
+              </div>
+              <input
+                autoComplete="off"
+                data-testid="chatbot-config-hide-tool-checkbox"
+                id="chatbot-config-hide-tool-checkbox"
+                type="checkbox"
+                className="toggle toggle-sm toggle-primary"
+                checked={formData.hide_tool}
+                onChange={(event) => {
+                  event.preventDefault();
+                  handleToggleChange("hide_tool");
+                }}
+              />
+            </label>
+          </div>
         </div>
 
         {/* Dimensions */}
