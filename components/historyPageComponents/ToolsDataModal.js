@@ -39,6 +39,20 @@ const ToolsDataModal = ({ toolsData, handleClose, toolsDataModalRef, integration
                         <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
                           {integrationData[value]?.title}
                         </pre>
+                      ) : key === "data" ? (
+                        toolsData?.data?.metadata?.type === "agent" ? (
+                          <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
+                            {formatValue(value)}
+                          </pre>
+                        ) : value?.response !== undefined ? (
+                          <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
+                            {formatValue(value.response)}
+                          </pre>
+                        ) : (
+                          <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
+                            {formatValue(value)}
+                          </pre>
+                        )
                       ) : (
                         <pre className="text-sm bg-base-200 p-2 rounded whitespace-pre-wrap break-all">
                           {formatValue(value)}
