@@ -24,7 +24,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
         do: versionId,
       }));
       const initial = environmentsArray.length > 0 ? environmentsArray : [{ when: "", do: "" }];
-      initialEnvironments.current = initial;
+      initialEnvironments.current = JSON.parse(JSON.stringify(initial));
       setEnvironments(initial);
 
       const versions = bridgeData?.versions || [];
@@ -50,8 +50,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
   };
 
   const handleEnvironmentChange = (index, field, value) => {
-    const updated = [...environments];
-    updated[index][field] = value;
+    const updated = environments.map((env, i) => (i === index ? { ...env, [field]: value } : env));
     setEnvironments(updated);
 
     if (field === "when") {
@@ -108,9 +107,14 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
     }
   };
 
-  const hasChanges =
-    initialEnvironments.current !== null &&
-    JSON.stringify(environments) !== JSON.stringify(initialEnvironments.current);
+  const allRowsFilled = environments.length > 0 && environments.every((env) => env.when.trim() && env.do);
+  const hasDuplicateWhenErrors = Object.values(whenErrors).some(Boolean);
+  const dataChanged =
+    initialEnvironments.current === null
+      ? allRowsFilled // no initial snapshot yet — enable if form is valid
+      : JSON.stringify(environments) !== JSON.stringify(initialEnvironments.current);
+
+  const isSaveDisabled = isLoading || !bridgeId || !allRowsFilled || hasDuplicateWhenErrors || !dataChanged;
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.CONFIGURE_ENVIRONMENT_MODAL} onClose={handleClose}>
@@ -231,7 +235,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
                 id="configure-environment-save-button"
                 type="submit"
                 className="btn btn-primary btn-sm"
-                disabled={isLoading || !bridgeId || !hasChanges}
+                disabled={isSaveDisabled}
               >
                 {isLoading ? "Saving..." : "Save"}
               </button>
