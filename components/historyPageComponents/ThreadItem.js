@@ -819,11 +819,15 @@ const ThreadItem = ({
   const firstAttemptErrorNotice = item?.firstAttemptError ? (
     <div className="w-full mb-2">
       <details className="group/fae rounded-lg border border-warning/30 bg-error/10 text-base-content">
-        <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs list-none">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-error" />
-          <span className="font-semibold uppercase tracking-wide text-error shrink-0">First attempt failed:</span>
-          <span className="flex-1 min-w-0 truncate text-error group-open/fae:hidden" title={item.firstAttemptError}>
-            {item.firstAttemptError}
+        <summary className="flex justify-between cursor-pointer items-center gap-2 px-3 py-2 text-xs list-none">
+          <>
+            <span className="font-semibold uppercase tracking-wide text-error shrink-0">
+              <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1 mb-1" /> First attempt failed:
+            </span>
+          </>
+          <span className="flex-1 min-w-0 truncate text-error group-open/fae:hidden">
+            {item.firstAttemptError?.substring(0, 200)}
+            {item.firstAttemptError?.length > 200 ? "..." : ""}
           </span>
           <ChevronDown className="w-3.5 h-3.5 shrink-0 transition-transform group-open/fae:rotate-180" />
         </summary>
@@ -1786,7 +1790,7 @@ const ThreadItem = ({
             {/* Other tools (pre_function, post_function, etc.) rendered using renderToolData */}
 
             {/* 3. Third: Render Assistant Message if exists */}
-            {firstAttemptErrorNotice}
+            {!item.error && firstAttemptErrorNotice}
             {!item.error && (
               <div className="chat group chat-start">
                 <div className="chat-image avatar flex justify-center items-center">
@@ -2006,10 +2010,6 @@ const ThreadItem = ({
                       <BotIcon size={13} className="text-error" />
                     </div>
                     <span className="text-xs font-semibold text-error/70 uppercase tracking-wide">AI Response</span>
-                    <span className="badge badge-xs badge-error text-white gap-1">
-                      <CircleAlertIcon className="w-2.5 h-2.5" />
-                      Error
-                    </span>
                   </div>
                   <p className="text-sm whitespace-pre-wrap">{item?.error}</p>
                 </div>
@@ -2021,6 +2021,7 @@ const ThreadItem = ({
               <div>
                 <div className="flex flex-row-reverse items-end justify-end gap-1">
                   <div className="bg-error/10 text-error border border-error/20 pr-10 chat-bubble transition-all ease-in-out duration-300">
+                    {firstAttemptErrorNotice}
                     <div className="flex items-center gap-2 mb-2">
                       <CircleAlertIcon className="w-4 h-4" />
                       <span className="font-bold">Error</span>
