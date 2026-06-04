@@ -14,19 +14,36 @@ import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
 import { linter, lintGutter } from "@codemirror/lint";
 
-function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_id, onResetThreadId = () => {} }) {
+function JsonSchemaModal({
+  params = null,
+  searchParams = null,
+  messages,
+  setMessages,
+  thread_id,
+  onResetThreadId = () => {},
+  schema = null,
+  onSaveSchema = null,
+}) {
   const dispatch = useDispatch();
   const { actualTheme } = useThemeManager();
-  const { json_schema } = useCustomSelector((state) => ({
-    json_schema:
-      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type
-        ?.json_schema,
-  }));
+  const { json_schema } = useCustomSelector((state) => {
+    if (!params?.id || !searchParams?.version) {
+      return { json_schema: null };
+    }
+    return {
+      json_schema:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type
+          ?.json_schema,
+    };
+  });
+
+  // Use provided schema or fall back to Redux schema
+  const effectiveSchema = schema !== null ? schema : json_schema;
 
   // Use useMemo to always get the latest formatted JSON schema
   const jsonSchemaRequirements = useMemo(() => {
-    return typeof json_schema === "object" ? JSON.stringify(json_schema, null, 4) : json_schema || "";
-  }, [json_schema]);
+    return typeof effectiveSchema === "object" ? JSON.stringify(effectiveSchema, null, 4) : effectiveSchema || "";
+  }, [effectiveSchema]);
 
   const handleOptimizeApi = async (instructionText) => {
     const result = await optimizeSchemaApi({
@@ -44,21 +61,30 @@ function JsonSchemaModal({ params, searchParams, messages, setMessages, thread_i
       // Ensure we're parsing only if it's a string and not already an object
       const parsedSchema = typeof schemaToApply === "string" ? JSON.parse(schemaToApply) : schemaToApply;
 
-      await dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.version,
-          dataToSend: {
-            configuration: {
-              response_type: {
-                type: "json_schema",
-                json_schema: parsedSchema,
+      // Use custom save handler if provided, otherwise use Redux dispatch
+      if (onSaveSchema) {
+        onSaveSchema(parsedSchema);
+      } else if (params?.id && searchParams?.version) {
+        await dispatch(
+          updateBridgeVersionAction({
+            bridgeId: params?.id,
+            versionId: searchParams?.version,
+            dataToSend: {
+              configuration: {
+                response_type: {
+                  type: "json_schema",
+                  json_schema: parsedSchema,
+                },
               },
             },
-          },
-        })
-      );
+          })
+        );
+      } else {
+        toast.error("Missing required parameters for saving schema");
+        return;
+      }
       toast.success("Schema applied successfully");
+      // Keep modal open to show the updated schema in "Current Schema" section
     } catch (error) {
       toast.error("Invalid JSON Schema");
       console.error("JSON parse error:", error);

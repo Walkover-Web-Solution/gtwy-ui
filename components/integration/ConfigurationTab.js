@@ -16,17 +16,15 @@ import ApiKeysInput from "../sliders/ApiKeysInput";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
 import { MODAL_TYPE } from "@/utils/enums";
-import { getServiceDisplayName, openModal, closeModal, generateRandomID } from "@/utils/utility";
+import { getServiceDisplayName, openModal, generateRandomID } from "@/utils/utility";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
 import { useThemeManager } from "@/customHooks/useThemeManager";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
+import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
-import Canvas from "@/components/Canvas";
-import { optimizeSchemaApi } from "@/config/utilityApi";
 import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
-import Modal from "@/components/UI/Modal";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -352,34 +350,6 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     response_type: config?.response_type || {},
   }));
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
-
-  // AI Schema optimization handler
-  const handleOptimizeApi = async (instructionText) => {
-    const currentSchema = configuration?.response_type?.json_schema || {};
-    const result = await optimizeSchemaApi({
-      data: {
-        thread_id: aiThreadId,
-        query: instructionText,
-        json_schema: JSON.stringify(currentSchema, null, 4),
-      },
-    });
-    return result;
-  };
-
-  const handleApplyAISchema = async (schemaToApply) => {
-    try {
-      const parsedSchema = typeof schemaToApply === "string" ? JSON.parse(schemaToApply) : schemaToApply;
-      handleConfigChange("response_type", {
-        type: "json_schema",
-        json_schema: parsedSchema,
-      });
-      setHasUnsavedChanges(true);
-      toast.success("Schema applied successfully");
-      closeModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
-    } catch (error) {
-      console.error("JSON parse error:", error);
-    }
-  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -707,8 +677,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                                         })
                                       );
                                   }
-                                  openModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
-                                  setIsJsonSchemaAIMode(true);
+                                  openModal(MODAL_TYPE.JSON_SCHEMA);
                                 }}
                               >
                                 Build with AI
@@ -785,35 +754,21 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                           setHasUnsavedChanges(true);
                         }}
                       />
-                      {/* AI Builder Modal */}
-                      <Modal MODAL_ID={MODAL_TYPE.JSON_SCHEMA_AI_BUILDER}>
-                        <div className="modal-box max-w-screen-2xl h-[calc(100%-10rem)] w-[calc(100%-2rem)] bg-base-100 overflow-hidden flex flex-col">
-                          <div className="flex justify-between items-center mb-2 pt-3 px-4">
-                            <h3 className="font-bold text-lg">Build JSON Schema with AI</h3>
-                            <button
-                              onClick={() => {
-                                closeModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
-                              }}
-                              className="btn btn-sm"
-                              type="button"
-                            >
-                              Close
-                            </button>
-                          </div>
-                          <div className="flex-1 flex gap-4 px-4 pb-4 overflow-hidden">
-                            <div className="flex-1 flex flex-col min-w-0 bg-base-200 rounded-lg overflow-hidden">
-                              <Canvas
-                                OptimizePrompt={handleOptimizeApi}
-                                messages={aiMessages}
-                                setMessages={setAiMessages}
-                                handleApplyOptimizedPrompt={handleApplyAISchema}
-                                label="Schema"
-                                width="100%"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </Modal>
+                      {/* AI Builder Modal - Using JsonSchemaModal */}
+                      <JsonSchemaModal
+                        messages={aiMessages}
+                        setMessages={setAiMessages}
+                        thread_id={aiThreadId}
+                        onResetThreadId={() => setAiThreadId("")}
+                        schema={configuration?.response_type?.json_schema}
+                        onSaveSchema={(schema) => {
+                          handleConfigChange("response_type", {
+                            type: "json_schema",
+                            json_schema: schema,
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                      />
                       {/* Fullscreen JSON Schema Editor Modal */}
                       {isJsonSchemaFullscreen && (
                         <FullscreenEditorModal
