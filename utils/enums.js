@@ -107,6 +107,9 @@ export const MODAL_TYPE = {
   CUSTOM_RESPONSE_STYLE_MODAL: "CUSTOM_RESPONSE_STYLE_MODAL",
   MAKE_PUBLIC_AGENT: "MAKE_PUBLIC_AGENT",
   CONFIGURE_ENVIRONMENT_MODAL: "CONFIGURE_ENVIRONMENT_MODAL",
+  JSON_SCHEMA_VISUAL_BUILDER: "json-schema-visual-builder",
+  JSON_SCHEMA_AI_BUILDER: "json-schema-ai-builder",
+  JSON_SCHEMA_FULLSCREEN: "json-schema-fullscreen",
 };
 
 export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];

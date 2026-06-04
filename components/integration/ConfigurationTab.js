@@ -16,11 +16,17 @@ import ApiKeysInput from "../sliders/ApiKeysInput";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
 import { MODAL_TYPE } from "@/utils/enums";
-import { getServiceDisplayName } from "@/utils/utility";
+import { getServiceDisplayName, openModal, closeModal, generateRandomID } from "@/utils/utility";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
 import { useThemeManager } from "@/customHooks/useThemeManager";
+import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
+import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
+import Canvas from "@/components/Canvas";
+import { optimizeSchemaApi } from "@/config/utilityApi";
+import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
+import Modal from "@/components/UI/Modal";
 
 // Configuration Schema
 const CONFIG_SCHEMA = [
@@ -296,6 +302,9 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
   const [reloadTrigger, setReloadTrigger] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isJsonSchemaFullscreen, setIsJsonSchemaFullscreen] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiThreadId, setAiThreadId] = useState("");
 
   useEffect(() => {
     onUnsavedChanges?.(hasUnsavedChanges);
@@ -340,8 +349,36 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     models: config?.models || {},
     apikey_object_id: integrationData?.apikey_object_id || {},
     prompt: config.prompt || {},
+    response_type: config?.response_type || {},
   }));
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
+
+  // AI Schema optimization handler
+  const handleOptimizeApi = async (instructionText) => {
+    const currentSchema = configuration?.response_type?.json_schema || {};
+    const result = await optimizeSchemaApi({
+      data: {
+        thread_id: aiThreadId,
+        query: instructionText,
+        json_schema: JSON.stringify(currentSchema, null, 4),
+      },
+    });
+    return result;
+  };
+
+  const handleApplyAISchema = async (schemaToApply) => {
+    try {
+      const parsedSchema = typeof schemaToApply === "string" ? JSON.parse(schemaToApply) : schemaToApply;
+      handleConfigChange("response_type", {
+        type: "json_schema",
+        json_schema: parsedSchema,
+      });
+      setHasUnsavedChanges(true);
+      toast.success("Schema applied successfully");
+    } catch (error) {
+      console.error("JSON parse error:", error);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -382,8 +419,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
         setReloadTrigger((prev) => prev + 1);
         toast.success("Configuration saved");
       } catch (error) {
-        console.error("Failed to save configuration:", error);
-        toast.error("Failed to save configuration");
+        console.error(error);
       } finally {
         setIsSaving(false);
       }
@@ -647,6 +683,44 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                       {config.key === "showResponseType" && !configuration.showResponseType && (
                         <div className="p-2 bg-base-200 rounded-lg border border-base-300">
                           <label className="text-xs font-medium block mb-2">JSON Schema</label>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                                onClick={() => openModal(MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER)}
+                              >
+                                Build Visually
+                              </span>
+                              <span className="text-xs text-base-content/50">|</span>
+                              <span
+                                className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                                onClick={() => {
+                                  if (!aiThreadId) {
+                                    const newThreadId = generateRandomID();
+                                    setAiThreadId(newThreadId);
+                                    setThreadIdForVersionReducer &&
+                                      dispatch(
+                                        setThreadIdForVersionReducer({
+                                          bridgeId: data?.folder_id,
+                                          threadId: newThreadId,
+                                        })
+                                      );
+                                  }
+                                  openModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
+                                  setIsJsonSchemaAIMode(true);
+                                }}
+                              >
+                                Build with AI
+                              </span>
+                              <span className="text-xs text-base-content/50">|</span>
+                              <FullscreenEditorButton
+                                tooltip="Open JSON schema in fullscreen"
+                                className=""
+                                onClick={() => setIsJsonSchemaFullscreen(true)}
+                                isjson={true}
+                              />
+                            </div>
+                          </div>
                           <div
                             data-testid="embed-config-json-schema-codemirror"
                             className="border border-base-300 rounded-md overflow-hidden"
@@ -690,6 +764,115 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                             />
                           </div>
                         </div>
+                      )}
+                      {/* Visual Builder Modal */}
+                      <JsonSchemaBuilderModal
+                        params={{ id: data?.folder_id }}
+                        searchParams={{ version: "latest" }}
+                        isReadOnly={false}
+                        schemaKey="json_schema"
+                        modalId={MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER}
+                        title="Build JSON Schema Visually"
+                        hideName={false}
+                        schema={configuration?.response_type?.json_schema}
+                        responseType={configuration?.response_type}
+                        onSave={(schema) => {
+                          handleConfigChange("response_type", {
+                            type: "json_schema",
+                            json_schema: schema,
+                          });
+                          setHasUnsavedChanges(true);
+                        }}
+                      />
+                      {/* AI Builder Modal */}
+                      <Modal MODAL_ID={MODAL_TYPE.JSON_SCHEMA_AI_BUILDER}>
+                        <div className="modal-box max-w-screen-2xl h-[calc(100%-10rem)] w-[calc(100%-2rem)] bg-base-100 overflow-hidden flex flex-col">
+                          <div className="flex justify-between items-center mb-2 pt-3 px-4">
+                            <h3 className="font-bold text-lg">Build JSON Schema with AI</h3>
+                            <button
+                              onClick={() => {
+                                setIsJsonSchemaAIMode(false);
+                                closeModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
+                              }}
+                              className="btn btn-sm"
+                              type="button"
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <div className="flex-1 flex gap-4 px-4 pb-4 overflow-hidden">
+                            <div className="flex-1 flex flex-col min-w-0 bg-base-200 rounded-lg overflow-hidden">
+                              <Canvas
+                                OptimizePrompt={handleOptimizeApi}
+                                messages={aiMessages}
+                                setMessages={setAiMessages}
+                                handleApplyOptimizedPrompt={handleApplyAISchema}
+                                label="Schema"
+                                width="100%"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </Modal>
+                      {/* Fullscreen JSON Schema Editor Modal */}
+                      {isJsonSchemaFullscreen && (
+                        <FullscreenEditorModal
+                          modalId={MODAL_TYPE.JSON_SCHEMA_FULLSCREEN}
+                          isOpen={isJsonSchemaFullscreen}
+                          onClose={() => setIsJsonSchemaFullscreen(false)}
+                          title="JSON Schema Editor"
+                          value={(() => {
+                            const schemaValue = configuration?.response_type?.json_schema;
+                            if (schemaValue === undefined || schemaValue === null) return "";
+                            return typeof schemaValue === "object" ? JSON.stringify(schemaValue, null, 2) : schemaValue;
+                          })()}
+                          onChange={(val) => {
+                            const raw = val ?? "";
+                            if (raw.trim() === "") {
+                              setConfiguration((prev) => {
+                                const { response_type, ...rest } = prev;
+                                return rest;
+                              });
+                              setHasUnsavedChanges(true);
+                              window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
+                              return;
+                            }
+                            let schemaToStore = raw;
+                            try {
+                              schemaToStore = JSON.parse(raw);
+                            } catch {
+                              // keep raw string while user is typing invalid JSON
+                            }
+                            handleConfigChange("response_type", {
+                              type: "json_schema",
+                              json_schema: schemaToStore,
+                            });
+                          }}
+                          onSave={(val) => {
+                            const raw = val ?? "";
+                            if (raw.trim() === "") {
+                              setConfiguration((prev) => {
+                                const { response_type, ...rest } = prev;
+                                return rest;
+                              });
+                              setHasUnsavedChanges(true);
+                              window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
+                              return;
+                            }
+                            let schemaToStore = raw;
+                            try {
+                              schemaToStore = JSON.parse(raw);
+                            } catch {
+                              // keep raw string while user is typing invalid JSON
+                            }
+                            handleConfigChange("response_type", {
+                              type: "json_schema",
+                              json_schema: schemaToStore,
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                          isJson={true}
+                        />
                       )}
                       {/* Pre-Tool config inline after showPreTool toggle */}
                       {config.key === "showPreTool" && !configuration.showPreTool && (

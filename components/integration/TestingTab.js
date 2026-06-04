@@ -10,8 +10,10 @@ import EventLogs, { createAddLog } from "@/components/integration/EventLogs";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
+import { useThemeManager } from "@/customHooks/useThemeManager";
 
 const TestingTab = ({ data, isTestingMode }) => {
+  const { actualTheme } = useThemeManager();
   const [eventLogs, setEventLogs] = useState([]);
   const addLog = createAddLog(setEventLogs);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
@@ -188,6 +190,7 @@ const TestingTab = ({ data, isTestingMode }) => {
                 onChange={(val) => setSendData(val)}
                 placeholder='{"agent_id": "..."}'
                 className="text-xs"
+                theme={actualTheme}
               />
             </div>
             <button

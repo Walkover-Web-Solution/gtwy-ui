@@ -284,6 +284,11 @@ function JsonSchemaBuilderModal({
   hideName = false,
   // When provided, shows a button dropdown and filters schema to only the selected button's vars
   widgetButtons = EMPTY_WIDGET_BUTTONS,
+  // Custom onSave callback for integration config (ConfigurationTab)
+  onSave = null,
+  // Direct schema prop for ConfigurationTab (embed config)
+  schema = null,
+  responseType = null,
 }) {
   const dispatch = useDispatch();
 
@@ -295,6 +300,10 @@ function JsonSchemaBuilderModal({
       response_type: rt,
     };
   });
+
+  // Use provided schema/responseType if available (from ConfigurationTab), otherwise use Redux data
+  const finalJsonSchema = schema !== null ? schema : json_schema;
+  const finalResponseType = responseType !== null ? responseType : response_type;
 
   const [schemaName, setSchemaName] = useState("");
   const [schemaData, setSchemaData] = useState({
@@ -353,8 +362,8 @@ function JsonSchemaBuilderModal({
   }, []);
 
   useEffect(() => {
-    if (!json_schema || widgetButtons.length === 0) return;
-    const rootSchema = json_schema.schema || json_schema;
+    if (!finalJsonSchema || widgetButtons.length === 0) return;
+    const rootSchema = finalJsonSchema.schema || finalJsonSchema;
     const types = {};
     widgetButtons.forEach((btn) => {
       const node = getOnClickTypeNode(rootSchema, btn);
@@ -365,10 +374,10 @@ function JsonSchemaBuilderModal({
       }
     });
     setButtonOnClickTypes(types);
-  }, [widgetButtons]); // intentionally excludes json_schema & getOnClickTypeNode to avoid resetting on schema changes
+  }, [widgetButtons]); // intentionally excludes finalJsonSchema & getOnClickTypeNode to avoid resetting on schema changes
 
   useEffect(() => {
-    if (!json_schema || typeof json_schema !== "object") return;
+    if (!finalJsonSchema || typeof finalJsonSchema !== "object") return;
 
     if (widgetButtons.length > 0) {
       // Resolve the active button from the primitive key — avoids stale derived-ref issues
@@ -378,7 +387,7 @@ function JsonSchemaBuilderModal({
         setSchemaName("ActionData");
         setSchemaData(schemaCacheRef.current[activeBtn.key]);
       } else {
-        const dataNode = getActionDataNode(json_schema.schema || json_schema, activeBtn);
+        const dataNode = getActionDataNode(finalJsonSchema.schema || finalJsonSchema, activeBtn);
         setSchemaName("ActionData");
         setSchemaData(
           dataNode
@@ -393,22 +402,22 @@ function JsonSchemaBuilderModal({
       }
     } else {
       // Normal (non-widget-button) mode
-      const fullProps = json_schema.schema?.properties || json_schema.properties || {};
-      const fullRequired = json_schema.schema?.required || json_schema.required || [];
-      setSchemaName(json_schema.name);
+      const fullProps = finalJsonSchema.schema?.properties || finalJsonSchema.properties || {};
+      const fullRequired = finalJsonSchema.schema?.required || finalJsonSchema.required || [];
+      setSchemaName(finalJsonSchema.name);
       setSchemaData({
-        type: json_schema.schema?.type || json_schema.type || "object",
+        type: finalJsonSchema.schema?.type || finalJsonSchema.type || "object",
         properties: fullProps,
         required: fullRequired,
         additionalProperties:
-          json_schema.schema?.additionalProperties !== undefined
-            ? json_schema.schema.additionalProperties
-            : json_schema.additionalProperties !== undefined
-              ? json_schema.additionalProperties
+          finalJsonSchema.schema?.additionalProperties !== undefined
+            ? finalJsonSchema.schema.additionalProperties
+            : finalJsonSchema.additionalProperties !== undefined
+              ? finalJsonSchema.additionalProperties
               : false,
       });
     }
-  }, [json_schema, selectedButtonKey, widgetButtons, getActionDataNode]);
+  }, [finalJsonSchema, selectedButtonKey, widgetButtons, getActionDataNode]);
 
   const updateProperty = useCallback((properties, keyParts, updateFn) => {
     const propertiesClone = JSON.parse(JSON.stringify(properties));
@@ -810,9 +819,24 @@ function JsonSchemaBuilderModal({
 
     const trimmedProperties = trimPropertyNames(schemaData.properties);
 
+    // If custom onSave callback is provided (from ConfigurationTab), use it instead of API call
+    if (onSave) {
+      const schemaToSave = {
+        name: schemaName?.trim().replace(/\s+/g, "_"),
+        schema: { ...schemaData, properties: trimmedProperties },
+        strict: true,
+      };
+      onSave(schemaToSave);
+      toast.success("JSON Schema saved successfully");
+      schemaCacheRef.current = {};
+      setSelectedButtonKey(widgetButtons.length > 0 ? (widgetButtons[0]?.key ?? null) : null);
+      closeModal(modalId);
+      return;
+    }
+
     if (widgetButtons.length > 0) {
       const activeBtn = widgetButtons.find((b) => b.key === selectedButtonKey) ?? widgetButtons[0];
-      let mergedSchema = JSON.parse(JSON.stringify(json_schema));
+      let mergedSchema = JSON.parse(JSON.stringify(finalJsonSchema));
       const mergedRoot = mergedSchema.schema || mergedSchema;
 
       // Update current active button to cache
@@ -848,7 +872,7 @@ function JsonSchemaBuilderModal({
           versionId: searchParams?.version,
           dataToSend: {
             configuration: {
-              response_type: { ...response_type, json_schema: mergedSchema },
+              response_type: { ...finalResponseType, json_schema: mergedSchema },
             },
           },
         })
@@ -867,8 +891,8 @@ function JsonSchemaBuilderModal({
                   schema: { ...schemaData, properties: trimmedProperties },
                   strict: true,
                 },
-                is_template: response_type?.is_template ?? false,
-                template_id: response_type?.template_id,
+                is_template: finalResponseType?.is_template ?? false,
+                template_id: finalResponseType?.template_id,
               }),
             },
           },
@@ -889,11 +913,12 @@ function JsonSchemaBuilderModal({
     modalId,
     selectedButtonKey,
     widgetButtons,
-    json_schema,
-    response_type,
+    finalJsonSchema,
+    finalResponseType,
     getActionDataNode,
     getOnClickTypeNode,
     buttonOnClickTypes,
+    onSave,
   ]);
 
   const handleCloseModal = () => {
@@ -919,7 +944,7 @@ function JsonSchemaBuilderModal({
                 {(() => {
                   const activeKey = selectedButtonKey ?? widgetButtons[0]?.key;
                   const activeBtn = widgetButtons.find((b) => b.key === activeKey) ?? widgetButtons[0];
-                  const rootSchema = json_schema?.schema || json_schema;
+                  const rootSchema = finalJsonSchema?.schema || finalJsonSchema;
                   const onClickNode = activeBtn ? getOnClickTypeNode(rootSchema, activeBtn) : null;
                   const currentType = activeBtn
                     ? (buttonOnClickTypes[activeBtn.key] ??

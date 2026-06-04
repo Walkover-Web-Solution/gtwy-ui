@@ -53,6 +53,8 @@ export const updateIntegrationDataAction = (orgId, dataToSend) => async (dispatc
       return response;
     }
   } catch (error) {
+    const errorMessage = error?.response?.data?.message || error?.message || "Failed to update configuration";
+    toast.error(errorMessage);
     console.error(error);
     throw error;
   }
