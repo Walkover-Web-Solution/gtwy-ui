@@ -11,7 +11,9 @@ import EventLogs, { createAddLog } from "@/components/integration/EventLogs";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
+import { useThemeManager } from "@/customHooks/useThemeManager";
 const ChatbotTestingControlsInner = ({ chatBotId }) => {
+  const { actualTheme } = useThemeManager();
   const [eventLogs, setEventLogs] = useState([]);
   const addLog = createAddLog(setEventLogs);
   const [sendDataJson, setSendDataJson] = useState();
@@ -173,6 +175,7 @@ const ChatbotTestingControlsInner = ({ chatBotId }) => {
               onChange={(val) => setSendDataJson(val)}
               placeholder="Enter JSON data"
               className="text-xs"
+              theme={actualTheme}
             />
           </div>
           <button

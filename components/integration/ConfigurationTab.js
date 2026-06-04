@@ -375,6 +375,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
       });
       setHasUnsavedChanges(true);
       toast.success("Schema applied successfully");
+      closeModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
     } catch (error) {
       console.error("JSON parse error:", error);
     }
@@ -791,7 +792,6 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                             <h3 className="font-bold text-lg">Build JSON Schema with AI</h3>
                             <button
                               onClick={() => {
-                                setIsJsonSchemaAIMode(false);
                                 closeModal(MODAL_TYPE.JSON_SCHEMA_AI_BUILDER);
                               }}
                               className="btn btn-sm"
