@@ -1,5 +1,5 @@
 import React from "react";
-import CopyButton from "../copyButton/CopyButton";
+import CodeBlock from "@/components/codeBlock/CodeBlock";
 import GenericTable from "../table/Table";
 import { extractPromptVariables } from "@/utils/utility";
 
@@ -50,15 +50,6 @@ const data = [
   ["defaultOpen", "boolean", "Whether the chatbot should be open by default.", "false"],
 ];
 
-const CodeBlock = ({ label, code }) => (
-  <div className="mockup-code">
-    <CopyButton data={code} />
-    <pre data-prefix=">" className="">
-      <code>{code}</code>
-    </pre>
-  </div>
-);
-
 const Section = ({ title, caption, children }) => (
   <div className="flex items-start flex-col justify-center">
     <h3 className="text-lg font-semibold">{title}</h3>
@@ -107,51 +98,18 @@ ${variablesObject}
   return (
     <div data-testid="second-step-container" id="second-step-container" className="flex w-full flex-col gap-4 p-4">
       <Section title="Step 2" caption="Add below code in your product." />
-      <div data-testid="second-step-main-script-code" id="second-step-main-script-code" className="mockup-code">
-        <CopyButton data={DataObject.script} />
-        <pre data-prefix=">" className="text-error">
-          <code>&lt;script </code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code className="text-error"> id= </code>
-          <code className="text-warning">"chatbot-main-script"</code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code> embedToken=</code>
-          <code className="text-warning">"Enter Embed Token here"</code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code> src=</code>
-          <code className="text-warning">
-            "{process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC || "https://chatbot-embed.viasocket.com/chatbot-prod.js"}"
-          </code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code> threadId=</code>
-          <code className="text-warning">"Enter Thread ID here"</code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code> bridgeName=</code>
-          <code className="text-warning">{`"${slugName || "Your Agent Name"}"`}</code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code> theme=</code>
-          <code className="text-warning"> "dark/light"</code>
-          <code className="text-error">&gt;</code>
-        </pre>
-        <pre data-prefix=">" className="text-error">
-          <code>&lt;/script&gt;</code>
-        </pre>
+      <div data-testid="second-step-main-script-code" id="second-step-main-script-code">
+        <CodeBlock className="language-jsx">{DataObject.script}</CodeBlock>
       </div>
 
       <Section title="Usage" caption="Use this methods to receive data." />
-      <CodeBlock code={DataObject.event} />
+      <CodeBlock className="language-javascript">{DataObject.event}</CodeBlock>
 
       <Section title="Available functions" caption="Use this methods to interact with chatbot" />
       {methods?.map((method, index) => (
         <div data-testid={`second-step-method-${index}`} id={`second-step-method-${index}`} key={index}>
           <small>{method.label}</small>
-          <CodeBlock code={method.code} />
+          <CodeBlock className="language-javascript">{method.code}</CodeBlock>
           {index == 0 && (
             <div className=" my-5">
               <small>Variables, you can pass to the chatbot using SendDataToChatbot method.</small>

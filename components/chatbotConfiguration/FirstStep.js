@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createOrgToken } from "@/config/index";
 import { CopyIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import CopyButton from "../copyButton/CopyButton";
+import CodeBlock from "@/components/codeBlock/CodeBlock";
 
 function InputWithCopyButton({ label, placeholder, value, disabled }) {
   const copyToClipboard = () => {
@@ -81,40 +81,7 @@ export default function PrivateFormSection({ params, ChooseChatbot, setChatBotId
           />
         </div>
       )}
-      <div className="mockup-code">
-        <CopyButton data={chatbotPayload} />
-        <pre data-prefix=">">
-          <code className="text-error">{`{`}</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error"> "org_id": </code>
-          <code className="text-warning">"{params?.org_id}"</code>
-          <code>,</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error"> "chatbot_id": </code>
-          <code className="text-warning">"{params.chatbot_id || chatbotId}"</code>
-          <code>,</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error"> "user_id": </code>
-          <code className="text-warning">"// Add your User Id here"</code>
-          <code>,</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error"> "variables": {`{`}</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error"> "key": </code>
-          <code className="text-warning">"value"</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error"> {`}`}</code>
-        </pre>
-        <pre data-prefix=">">
-          <code className="text-error">{`}`}</code>
-        </pre>
-      </div>
+      <CodeBlock className="language-json">{chatbotPayload}</CodeBlock>
       <div className="flex flex-col gap-2">
         {showInput ? (
           <InputWithCopyButton label="Access Key" placeholder="Access Key" value={accessKey} />

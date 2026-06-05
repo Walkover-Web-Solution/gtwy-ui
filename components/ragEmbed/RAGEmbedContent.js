@@ -1,4 +1,4 @@
-import CopyButton from "@/components/copyButton/CopyButton";
+import CodeBlock from "@/components/codeBlock/CodeBlock";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { generateAccessKeyAction } from "@/store/action/orgAction";
 import React, { useEffect } from "react";
@@ -33,46 +33,12 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 1: Connect Knowledge Base" caption="Use the following API configuration and access key." />
-        <div className="relative">
-          <div id="rag-embed-step1-api-config" className="mockup-code">
-            <pre data-prefix=">">
-              <code className="text-error">{`{`}</code>
-            </pre>
-            <pre data-prefix=">">
-              <code className="text-error"> "org_id": </code>
-              <code className="text-warning">"{orgId}"</code>
-              <code>,</code>
-            </pre>
-            <pre data-prefix=">">
-              <code className="text-error"> "user_id": </code>
-              <code className="text-warning">"unique_user_id"</code>
-              {folderId && <code>,</code>}
-            </pre>
-            {folderId && (
-              <pre data-prefix=">">
-                <code className="text-error"> "folder_id": </code>
-                <code className="text-warning">"{folderId}"</code>
-              </pre>
-            )}
-            <pre data-prefix=">">
-              <code className="text-error">{`}`}</code>
-            </pre>
-          </div>
-          <CopyButton data={apiConfig} />
-        </div>
+        <CodeBlock className="language-json">{apiConfig}</CodeBlock>
         <div className="form-control">
           <label className="label">
             <span className="label-text font-medium">JWT Access Key</span>
           </label>
-          <div className="relative">
-            <div id="rag-embed-access-key-display" className="mockup-code">
-              <pre data-prefix=">" className="text-error">
-                <code>Access Key: </code>
-                <code className="text-warning">{access_key || "Generating..."}</code>
-              </pre>
-            </div>
-            {access_key && <CopyButton data={access_key} />}
-          </div>
+          <CodeBlock className="language-text">{access_key || "Generating..."}</CodeBlock>
         </div>
       </div>
     );
@@ -86,41 +52,7 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 2" caption="Add below code in your product." />
-        <div className="relative">
-          <div className="mockup-code">
-            <pre data-prefix=">" className="text-error">
-              <code>&lt;script </code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code className="text-error"> id= </code>
-              <code className="text-warning">"rag-main-script"</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code> embedToken=</code>
-              <code className="text-warning pr-4">Add your embed token here</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code> src=</code>
-              <code className="text-warning">"{process?.env?.NEXT_PUBLIC_KNOWLEDGEBASE_SCRIPT_SRC}"</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code> parentId=</code>
-              <code className="text-warning">"Id of parent Container"</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code> theme=</code>
-              <code className="text-warning">"dark/light"</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code> defaultOpen=</code>
-              <code className="text-warning">"true/false" /* true for open list by default */</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code>&lt;/script&gt;</code>
-            </pre>
-          </div>
-          <CopyButton data={DataObject.script} />
-        </div>
+        <CodeBlock className="language-jsx">{DataObject.script}</CodeBlock>
       </div>
     );
   };
@@ -133,20 +65,7 @@ window.showDocuments() /* to show document list */`;
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 3" caption="Use this function to show list or add Document modal" />
-        <div className="relative">
-          <div className="mockup-code">
-            <pre data-prefix=">" className="text-error">
-              <code className="text-warning">window.openRag() /* to open add document modal */</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code className="text-warning">window.closeRag() /* to close add document modal */</code>
-            </pre>
-            <pre data-prefix=">" className="text-error">
-              <code className="text-warning">window.showDocuments() /* to show document list */</code>
-            </pre>
-          </div>
-          <CopyButton data={ragFunctions} />
-        </div>
+        <CodeBlock className="language-javascript">{ragFunctions}</CodeBlock>
       </div>
     );
   };

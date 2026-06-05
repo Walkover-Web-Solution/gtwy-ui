@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import CopyButton from "../copyButton/CopyButton";
+import CodeBlock from "@/components/codeBlock/CodeBlock";
 
 const IntegrationTab = ({ data }) => {
   const embedToken = "";
@@ -71,31 +71,7 @@ window.addEventListener('message', (event) => {
               <label className="label">
                 <span className="label-text font-medium">JWT Payload</span>
               </label>
-              <div className="relative">
-                <div className="mockup-code">
-                  <pre data-prefix=">">
-                    <code className="text-error">{`{`}</code>
-                  </pre>
-                  <pre data-prefix=">">
-                    <code className="text-error"> "org_id": </code>
-                    <code className="text-warning">"{data?.org_id}"</code>
-                    <code>,</code>
-                  </pre>
-                  <pre data-prefix=">">
-                    <code className="text-error"> "folder_id": </code>
-                    <code className="text-warning">"{data?.folder_id}"</code>
-                    <code>,</code>
-                  </pre>
-                  <pre data-prefix=">">
-                    <code className="text-error"> "user_id": </code>
-                    <code className="text-warning">"Your_user_id"</code>
-                  </pre>
-                  <pre data-prefix=">">
-                    <code className="text-error">{`}`}</code>
-                  </pre>
-                </div>
-                <CopyButton data={jwtPayload} />
-              </div>
+              <CodeBlock className="language-json">{jwtPayload}</CodeBlock>
             </div>
 
             {/* Access Token */}
@@ -115,14 +91,8 @@ window.addEventListener('message', (event) => {
                 </a>
               </div>
               {gtwyAccessToken ? (
-                <div className="relative mt-3">
-                  <div className="mockup-code">
-                    <pre data-prefix=">">
-                      <code className="text-error">Access Token: </code>
-                      <code className="text-warning">{gtwyAccessToken}</code>
-                    </pre>
-                  </div>
-                  <CopyButton data={gtwyAccessToken} />
+                <div className="mt-3">
+                  <CodeBlock className="language-text">{gtwyAccessToken}</CodeBlock>
                 </div>
               ) : (
                 <div className="text-sm text-warning mt-3">Access token not available</div>
@@ -140,45 +110,7 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Add this script tag to your HTML</span>
             </label>
-            <div className="relative">
-              <div className="mockup-code">
-                <pre data-prefix=">">
-                  <code className="text-error">&lt;script</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> id=</code>
-                  <code className="text-warning">"gtwy-main-script"</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> embedToken=</code>
-                  <code className="text-warning pr-4">{embedToken || "Add your embed token here"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> src=</code>
-                  <code className="text-warning">
-                    {process.env.NEXT_PUBLIC_ENV !== "PROD"
-                      ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_dev.js`
-                      : `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy.js`}
-                  </code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> parentId=</code>
-                  <code className="text-warning">"Your_parent_id"</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> agent_id=</code>
-                  <code className="text-warning">"Your_agent_id"</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> agent_name=</code>
-                  <code className="text-warning">"Your_agent_name"</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error">&gt;&lt;/script&gt;</code>
-                </pre>
-              </div>
-              <CopyButton data={integrationScript} />
-            </div>
+            <CodeBlock className="language-jsx">{integrationScript}</CodeBlock>
           </div>
           <div className="overflow-x-auto mt-4">
             <table className="table table-sm">
@@ -209,32 +141,7 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Send Data to GTWY</span>
             </label>
-            <div className="relative">
-              <div className="mockup-code">
-                <pre data-prefix=">">
-                  <code className="text-error"> window.GtwyEmbed.sendDataToGtwy({`{`}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> agent_name: </code>
-                  <code className="text-warning">"New Agent"</code>
-                  <code>{", // Create Agent with agent name"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> agent_id: </code>
-                  <code className="text-warning">"your_agent_id"</code>
-                  <code>{" // Redirect to specific agent"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> agent_purpose: </code>
-                  <code className="text-warning">"your_agent_purpose"</code>
-                  <code>{" // Create Agent with given purpose"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> {`});`}</code>
-                </pre>
-              </div>
-              <CopyButton data={interfaceData} />
-            </div>
+            <CodeBlock className="language-javascript">{interfaceData}</CodeBlock>
           </div>
         </div>
       </div>
@@ -247,31 +154,7 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Available Functions</span>
             </label>
-            <div className="relative">
-              <div className="mockup-code">
-                <pre data-prefix=">">
-                  <code className="text-warning"> window.openGtwy()</code>
-                  <code>{" //To open GTWY"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-warning"> window.closeGtwy()</code>
-                  <code>{" //To Close GTWY"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-warning"> window.openGtwy({`{"agent_id":"your gtwy agentid"}`})</code>
-                  <code>{" // Open GTWY with specific agent"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-warning"> window.openGtwy({`{"agent_name":"your agent name"}`})</code>
-                  <code>{" // Create agent with specific name"}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-warning"> window.openGtwy({`{"agent_purpose":"your agent purpose"}`})</code>
-                  <code>{" // Create agent with specific purpose"}</code>
-                </pre>
-              </div>
-              <CopyButton data={helperFunctions} />
-            </div>
+            <CodeBlock className="language-javascript">{helperFunctions}</CodeBlock>
           </div>
         </div>
       </div>
@@ -285,35 +168,13 @@ window.addEventListener('message', (event) => {
               <label className="label">
                 <span className="label-text font-medium">Merge meta (spreads new meta over existing)</span>
               </label>
-              <div className="relative">
-                <div className="mockup-code">
-                  <pre data-prefix=">">
-                    <code className="text-error">window.openGtwy(</code>
-                    <code className="text-warning">{`{"agent_id":"your_agent_id", "meta": {"key": "value"}}`}</code>
-                    <code className="text-error">)</code>
-                  </pre>
-                </div>
-                <CopyButton
-                  data={`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "meta": {\n    "key": "value"\n  }\n});`}
-                />
-              </div>
+              <CodeBlock className="language-javascript">{`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "meta": {\n    "key": "value"\n  }\n});`}</CodeBlock>
             </div>
             <div>
               <label className="label">
                 <span className="label-text font-medium">Replace meta (overwrites all existing meta)</span>
               </label>
-              <div className="relative">
-                <div className="mockup-code">
-                  <pre data-prefix=">">
-                    <code className="text-error">window.openGtwy(</code>
-                    <code className="text-warning">{`{"agent_id":"your_agent_id", "replaceMeta": {"key": "value"}}`}</code>
-                    <code className="text-error">)</code>
-                  </pre>
-                </div>
-                <CopyButton
-                  data={`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "replaceMeta": {\n    "key": "value"\n  }\n});`}
-                />
-              </div>
+              <CodeBlock className="language-javascript">{`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "replaceMeta": {\n    "key": "value"\n  }\n});`}</CodeBlock>
             </div>
           </div>
         </div>
@@ -327,17 +188,12 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Use this script to get data using user id</span>
             </label>
-            <div className="relative">
-              <div className="mockup-code">
-                <pre data-prefix=">">
-                  <code className="text-error"> {getDataUsingUserId}</code>
-                </pre>
-              </div>
+            <div>
+              <CodeBlock className="language-bash">{getDataUsingUserId}</CodeBlock>
               <p className="text-sm text-base-content/70 mt-4">
-                Note: Pass <code className="bg-base-300 px-1 rounded">agent_id="your_agent_id"</code> in the params if
-                you want to get the data of specific agent.
+                Note: Pass <CodeBlock inline>agent_id="your_agent_id"</CodeBlock> in the params if you want to get the
+                data of specific agent.
               </p>
-              <CopyButton data={getDataUsingUserId} />
             </div>
           </div>
         </div>
@@ -351,32 +207,7 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Add this script to receive GTWY events</span>
             </label>
-            <div className="relative">
-              <div className="mockup-code">
-                <pre data-prefix=">">
-                  <code className="text-error">&lt;script&gt;</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> window.addEventListener('message', (event) =&gt; {`{`}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> if (event.data.type === 'gtwy') {`{`}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> console.log('Received gtwy event:', event.data);</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> {`}`}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error"> {`});`}</code>
-                </pre>
-                <pre data-prefix=">">
-                  <code className="text-error">&lt;/script&gt;</code>
-                </pre>
-              </div>
-              <CopyButton data={eventListenerScript} />
-            </div>
+            <CodeBlock className="language-jsx">{eventListenerScript}</CodeBlock>
           </div>
         </div>
       </div>
