@@ -1,22 +1,32 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { useDispatch } from "react-redux";
 import InfoTooltip from "@/components/InfoTooltip";
-import { CircleQuestionMark } from "lucide-react";
+import { CircleQuestionMark, Plus, InfoIcon, TrashIcon } from "lucide-react";
 
 const StarterQuestionToggle = ({ params, searchParams, isPublished, isEditor = true }) => {
-  // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const dispatch = useDispatch();
-  const IsstarterQuestionEnable = useCustomSelector((state) => {
+
+  const { IsstarterQuestionEnable, starterQuestions } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
 
-    return isPublished
-      ? bridgeDataFromState?.IsstarterQuestionEnable || false
-      : versionData?.IsstarterQuestionEnable || false;
+    return {
+      IsstarterQuestionEnable: isPublished
+        ? bridgeDataFromState?.IsstarterQuestionEnable || false
+        : versionData?.IsstarterQuestionEnable || false,
+      starterQuestions: isPublished ? bridgeDataFromState.starterQuestion : versionData?.starterQuestion || [],
+    };
   });
+  console.log(starterQuestions, "staterqeustokn");
+  const [localQuestions, setLocalQuestions] = useState(starterQuestions || []);
+
+  // Sync local state with redux when starterQuestions changes externally
+  useEffect(() => {
+    setLocalQuestions(starterQuestions || []);
+  }, [starterQuestions]);
 
   const handleToggle = () => {
     dispatch(
@@ -28,29 +38,105 @@ const StarterQuestionToggle = ({ params, searchParams, isPublished, isEditor = t
     );
   };
 
+  const persistQuestions = (questions) => {
+    const filtered = questions.filter((q) => q.trim() !== "");
+    // Avoid redundant dispatches when nothing actually changed
+    if (JSON.stringify(filtered) === JSON.stringify(starterQuestions)) return;
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend: { starterQuestion: filtered },
+      })
+    );
+  };
+
+  const handleAddQuestion = () => {
+    setLocalQuestions([...localQuestions, ""]);
+  };
+
+  const handleQuestionChange = (index, value) => {
+    const updated = [...localQuestions];
+    updated[index] = value;
+    setLocalQuestions(updated);
+  };
+
+  const handleBlur = () => {
+    persistQuestions(localQuestions);
+  };
+
+  const handleRemoveQuestion = (index) => {
+    const updated = localQuestions.filter((_, i) => i !== index);
+    setLocalQuestions(updated);
+    persistQuestions(updated);
+  };
+
   return (
-    <div
-      data-testid="starter-question-container"
-      id="starter-question-container"
-      className="flex items-center mt-2 gap-2"
-    >
-      <div className="flex items-center gap-1 cursor-pointer ml-1">
-        <span className="text-sm font-medium">Starter Question Suggestions</span>
-        <InfoTooltip tooltipContent={"Toggle to enable/disable starter questions suggestions"}>
-          <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
-        </InfoTooltip>
+    <div data-testid="starter-question-container" id="starter-question-container" className="form-control mb-4">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1">
+          <label className="label font-medium whitespace-nowrap">Starter Questions</label>
+          <InfoTooltip tooltipContent={"Predefined questions shown to users to help them start a conversation"}>
+            <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
+          </InfoTooltip>
+        </div>
+        <input
+          autoComplete="off"
+          data-testid="starter-question-toggle"
+          id="starter-question-toggle"
+          type="checkbox"
+          checked={IsstarterQuestionEnable}
+          onChange={handleToggle}
+          className="toggle toggle-xs"
+          disabled={isReadOnly}
+        />
       </div>
-      <input
-        autoComplete="off"
-        data-testid="starter-question-toggle"
-        id="starter-question-toggle"
-        type="checkbox"
-        checked={IsstarterQuestionEnable}
-        onChange={handleToggle}
-        className="toggle mr-2 toggle-xs"
-        defaultValue={IsstarterQuestionEnable ? "true" : "false"}
-        disabled={isReadOnly}
-      />
+
+      {IsstarterQuestionEnable && (
+        <div className="flex flex-col gap-1.5">
+          {localQuestions.length === 0 && (
+            <div className="flex items-start gap-1.5 text-xs text-base-content/60 py-1 px-2 bg-primary/5 border border-primary/20 rounded-md">
+              <InfoIcon size={14} className="text-primary mt-0.5 flex-shrink-0" />
+              <span>If you don&apos;t add any starter questions, they will be automatically generated by AI.</span>
+            </div>
+          )}
+
+          {localQuestions.map((question, index) => (
+            <div key={index} className="flex items-center gap-1.5 group">
+              <span className="text-xs text-base-content/40 w-4 text-center select-none">{index + 1}.</span>
+              <input
+                type="text"
+                placeholder="e.g. What can you help me with?"
+                value={question}
+                onChange={(e) => handleQuestionChange(index, e.target.value)}
+                onBlur={handleBlur}
+                disabled={isReadOnly}
+                className="input input-bordered input-xs flex-1 text-sm focus:outline-none focus:border-primary"
+              />
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveQuestion(index)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-base-content/50 hover:text-error p-1"
+                  title="Remove"
+                >
+                  <TrashIcon size={14} />
+                </button>
+              )}
+            </div>
+          ))}
+
+          {!isReadOnly && !localQuestions.some((q) => q.trim() === "") && (
+            <button
+              type="button"
+              onClick={handleAddQuestion}
+              className="flex items-center justify-center gap-1.5 text-xs text-base-content/60 hover:border-primary border border-dashed border-base-content/30 bg-base-50 rounded-md py-2.5 px-3 transition-colors w-full"
+            >
+              <Plus size={14} /> Add a new starter question
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
