@@ -2,9 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
+import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getChatBotDetailsAction, updateChatBotConfigAction } from "@/store/action/chatBotAction";
 import ChatbotPreview from "./ChatbotPreview";
+import { ExternalLink } from "lucide-react";
 
 function RadioGroup({ onChange, name, value }) {
   const options = [
@@ -80,6 +82,7 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
 
 const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { chatbots } = useCustomSelector((state) => ({
     chatbots: state?.ChatBot?.org?.[params?.org_id] || [],
   }));
@@ -104,6 +107,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     allowBridgeSwitch: false,
     bridges: [],
     side: "left",
+    defaultErrorMessage: "",
     hide_tool: false,
   });
 
@@ -236,6 +240,30 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               onChange={handleInputChange}
               onBlur={handleBlur}
               name="iconUrl"
+            />
+          </label>
+
+          <label className="form-control w-full">
+            <div className="label justify-between">
+              <span className="label-text font-medium text-xs">Default Error Message</span>
+              <button
+                type="button"
+                onClick={() => router.push(`/org/${params?.org_id}/alerts`)}
+                className="btn btn-xs btn-ghost text-primary hover:bg-primary/10 gap-1"
+              >
+                <ExternalLink size={12} />
+                Configure Alerts
+              </button>
+            </div>
+            <textarea
+              autoComplete="off"
+              placeholder="Enter default error message to show when something goes wrong"
+              className="textarea textarea-bordered w-full textarea-sm"
+              value={formData.defaultErrorMessage}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
+              name="defaultErrorMessage"
+              rows="3"
             />
           </label>
 
