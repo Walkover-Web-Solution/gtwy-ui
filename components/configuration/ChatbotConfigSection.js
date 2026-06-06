@@ -1,5 +1,6 @@
 import React from "react";
 import StarterQuestionToggle from "./configurationComponent/StarterQuestion";
+import SuggestionCustomPrompt from "./configurationComponent/SuggestionCustomPrompt";
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const ChatbotConfigSection = ({ isPublished, isEditor = true }) => {
@@ -14,6 +15,12 @@ const ChatbotConfigSection = ({ isPublished, isEditor = true }) => {
   return (
     <div className="z-very-low mt-2 text-base-content w-full max-w-md cursor-pointer" tabIndex={0}>
       <StarterQuestionToggle
+        params={params}
+        searchParams={searchParams}
+        isPublished={isPublished}
+        isEditor={isEditor}
+      />
+      <SuggestionCustomPrompt
         params={params}
         searchParams={searchParams}
         isPublished={isPublished}
