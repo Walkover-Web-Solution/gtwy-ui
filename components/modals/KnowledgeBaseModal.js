@@ -376,7 +376,7 @@ const KnowledgeBaseModal = ({
                     onChange={handleFileUpload}
                     className="file-input file-input-bordered file-input-sm w-full"
                     disabled={isCreatingResource || isUploading}
-                    accept=".pdf,.txt"
+                    accept=".pdf,.txt,.md"
                   />
                   {isUploading && (
                     <div className="flex items-center gap-2 mt-2">
@@ -384,7 +384,7 @@ const KnowledgeBaseModal = ({
                       <span className="text-sm text-gray-600">Uploading file...</span>
                     </div>
                   )}
-                  <span className="label-text-alt text-gray-400 mt-1">Supported formats: .pdf, .txt</span>
+                  <span className="label-text-alt text-gray-400 mt-1">Supported formats: .pdf, .txt, .md</span>
                 </>
               )}
 

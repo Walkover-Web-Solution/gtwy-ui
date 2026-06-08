@@ -195,6 +195,7 @@ export const AUTH_COLUMNS = ["name", "redirection_url", "client_id"];
 export const MIME_EXTENSION_MAP = {
   "application/pdf": ".pdf",
   "text/plain": ".txt",
+  "text/markdown": ".md",
 };
 
 export const AGENT_SETUP_GUIDE_STEPS = [

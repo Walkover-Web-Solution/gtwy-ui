@@ -384,12 +384,14 @@ const ModelDropdown = ({
                 className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
                 placeholder="Select basis"
                 size="sm"
+                key={selectedAutoModelBasedOn}
               />
             ) : (
               <Dropdown
                 testId="model-dropdown"
                 disabled={isReadOnly || autoModelSelect}
                 options={modelOptions}
+                key={modelOptions}
                 value={model || ""}
                 onChange={handleSelect}
                 onOptionHover={handleOptionHover}
