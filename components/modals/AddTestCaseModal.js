@@ -3,7 +3,7 @@ import { createTestCaseAction } from "@/store/action/testCasesAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import { CloseIcon } from "@/components/Icons";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronDown as ChevronDownIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -124,6 +124,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
   const [finalTestCases, setFinalTestCases] = useState(initialTestCases);
   const [responseType, setResponseType] = useState("cosine");
   const [showFullConversation, setShowFullConversation] = useState(false);
+  const [isExpectedExpanded, setIsExpectedExpanded] = useState(false);
   // Filter out unwanted variables
   const filterVariables = (vars) => {
     const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
@@ -240,8 +241,27 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     });
   };
 
-  const removeMessage = (index) => {
-    setFinalTestCases((prevTestCases) => prevTestCases.filter((_, i) => i !== index));
+  const removeConversationPair = (pairIndex) => {
+    // Remove both user and assistant messages (2 messages per pair)
+    const startIndex = pairIndex * 2;
+    setFinalTestCases((prevTestCases) => {
+      const updated = [...prevTestCases];
+      updated.splice(startIndex, 2);
+      return updated;
+    });
+  };
+
+  // Group messages into user+assistant pairs
+  const getConversationPairs = () => {
+    const pairs = [];
+    for (let i = 0; i < finalTestCases.length - 1; i += 2) {
+      pairs.push({
+        user: finalTestCases[i],
+        assistant: finalTestCases[i + 1],
+        startIndex: i,
+      });
+    }
+    return pairs;
   };
   const handleClose = () => {
     closeModal(MODAL_TYPE.ADD_TEST_CASE_MODAL);
@@ -250,14 +270,14 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
 
   return (
     <Modal MODAL_ID={MODAL_TYPE.ADD_TEST_CASE_MODAL} onClose={handleClose}>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-start z-low-medium min-w-[100vw] min-h-[100vh] overflow-auto py-4">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-low-medium overflow-auto h-auto bg-base-100">
         <form
           id="add-testcase-modal-form"
           onSubmit={handleSubmit}
-          className="bg-base-200 rounded-lg shadow-2xl max-w-5xl w-[90vw] relative flex flex-col"
+          className="bg-base-100 mb-auto mt-auto rounded-lg shadow-2xl max-w-6xl w-[90vw] my-8 flex flex-col p-6 md:p-10 transition-all duration-300 ease-in-out animate-fadeIn"
         >
-          <div className="flex justify-between items-center p-6 pb-0  top-0 bg-base-100 z-low">
-            <h3 className="text-xl font-semibold">Add Test Case</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Add Test Case</h2>
             <button
               data-testid="add-testcase-close-x-button"
               id="add-testcase-close-x-button"
@@ -269,7 +289,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </button>
           </div>
 
-          <div className="px-6 py-4 space-y-6">
+          <div className="space-y-4">
             {/* Variables Section */}
             {Object.keys(editableVariables).length > 0 && (
               <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
@@ -299,94 +319,72 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
               </div>
             )}
 
-            {/* Show Conversations Button - Only when there are conversations to show */}
-            {finalTestCases && finalTestCases.length > 2 && !showFullConversation && (
-              <div className="flex xs">
+            {/* Conversation History - Accordion Format */}
+            {getConversationPairs().length > 0 && (
+              <div className="mb-6">
                 <button
-                  data-testid="add-testcase-show-conversations-button"
-                  id="add-testcase-show-conversations-button"
+                  data-testid="add-testcase-conversation-toggle"
                   type="button"
-                  onClick={() => setShowFullConversation(true)}
-                  className="btn btn-outline btn-sm"
+                  onClick={() => setShowFullConversation(!showFullConversation)}
+                  className="w-full flex items-center justify-between bg-base-50 hover:bg-base-100 rounded-lg px-4 py-3 border border-base-200 transition-colors"
                 >
-                  Conversations ({Math.ceil(finalTestCases.slice(0, -2).length / 2)})
-                </button>
-              </div>
-            )}
-
-            {/* Conversations Section - Show all conversations when expanded */}
-            {showFullConversation && finalTestCases && finalTestCases.length > 2 && (
-              <div id="add-testcase-conversations-section" className="space-y-4">
-                <div className="flex items-center justify-between border-b border-base-300 pb-2">
-                  <button
-                    id="add-testcase-hide-conversations-button"
-                    type="button"
-                    onClick={() => setShowFullConversation(false)}
-                    className="btn btn-ghost btn-sm"
-                  >
-                    Hide Conversations
-                  </button>
-                </div>
-
-                {finalTestCases.slice(0, -2).map((message, index) => (
-                  <div key={index} id={`add-testcase-conversation-${index}`} className="space-y-2 mb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-medium uppercase text-base-content tracking-wide">
-                        {message?.role?.replace("_", " ") || message?.sender?.replace("_", " ")}
-                      </div>
-                      <button
-                        id={`add-testcase-remove-message-${index}`}
-                        type="button"
-                        onClick={() => removeMessage(index)}
-                        className="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                        title="Remove this message"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    {message.role === "tools_call" || message.sender === "tools_call" ? (
-                      <div className="space-y-3">
-                        {message.tools?.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
-                          >
-                            <textarea
-                              id={`add-testcase-tool-textarea-${index}-${idx}`}
-                              defaultValue={JSON.stringify(item, null, 2)}
-                              className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
-                              onInput={handleTextareaInput}
-                              onBlur={(e) => handleChange(e.target.value, index, idx)}
-                              rows={4}
-                            />
-                            {message.tools.length > 1 && (
-                              <button
-                                id={`add-testcase-remove-tool-${index}-${idx}`}
-                                className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => removeTool(index, idx)}
-                              >
-                                <CloseIcon size={16} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <textarea
-                        id={`add-testcase-content-textarea-${index}`}
-                        defaultValue={message.content}
-                        className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
-                        onInput={handleTextareaInput}
-                        onBlur={(e) => handleChange(e.target.value, index, null)}
-                        rows={3}
-                      />
-                    )}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-medium text-base-content">Conversation History</span>
+                    <span className="text-xs text-base-content/60">({getConversationPairs().length})</span>
                   </div>
-                ))}
+                  <ChevronDownIcon
+                    size={16}
+                    className={`text-base-content/40 transition-transform ${showFullConversation ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {showFullConversation && (
+                  <div className="mt-3 bg-white rounded-lg px-6 py-4 border border-base-200 space-y-4">
+                    {getConversationPairs().map((pair, pairIndex) => (
+                      <div key={pairIndex} className="space-y-4">
+                        {/* User Message */}
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">User</span>
+                            <button
+                              type="button"
+                              onClick={() => removeConversationPair(pairIndex)}
+                              className="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                              title="Remove this conversation"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                          <div className="max-w-full bg-blue-500 text-white rounded-lg rounded-br-none px-4 py-3">
+                            <textarea
+                              defaultValue={pair.user?.content || ""}
+                              className="w-full bg-transparent text-sm leading-relaxed break-words focus:outline-none resize-none"
+                              onInput={handleTextareaInput}
+                              onBlur={(e) => handleChange(e.target.value, pair.startIndex, null)}
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                        {/* Assistant Message */}
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
+                          <div className="max-w-full bg-gray-100 text-gray-800 rounded-lg rounded-bl-none px-4 py-3">
+                            <textarea
+                              defaultValue={pair.assistant?.content || ""}
+                              className="w-full bg-transparent text-sm leading-relaxed break-words focus:outline-none resize-none"
+                              onInput={handleTextareaInput}
+                              onBlur={(e) => handleChange(e.target.value, pair.startIndex + 1, null)}
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Last User Message */}
+            {/* User Query - Last user message (always visible) */}
             {finalTestCases && finalTestCases.length >= 2 && (
               <div id="add-testcase-last-user-message" className="space-y-4">
                 {(() => {
@@ -394,20 +392,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                   const secondLastIndex = finalTestCases.length - 2;
                   return (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-medium uppercase text-base-content tracking-wide">
-                          {secondLastMessage?.role?.replace("_", " ") || secondLastMessage?.sender?.replace("_", " ")}
-                        </div>
-                        <button
-                          id="add-testcase-remove-second-last-message"
-                          type="button"
-                          onClick={() => removeMessage(secondLastIndex)}
-                          className="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                          title="Remove this message"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+                      <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
                       {secondLastMessage.role === "tools_call" || secondLastMessage.sender === "tools_call" ? (
                         <div className="space-y-3">
                           {secondLastMessage.tools?.map((item, idx) => (
@@ -437,7 +422,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                         </div>
                       ) : (
                         <textarea
-                          id={`add-testcase-second-last-remove-tool`}
+                          id="add-testcase-user-query-textarea"
                           defaultValue={secondLastMessage.content}
                           className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
                           onInput={handleTextareaInput}
@@ -450,96 +435,137 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 })()}
               </div>
             )}
+          </div>
 
-            {/* User Expected Output Section - Last message (Assistant renamed) */}
+          <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0">
+            {/* User Expected Output Section */}
             {finalTestCases && finalTestCases.length > 0 && (
-              <div id="add-testcase-expected-output" className="space-y-4">
-                {(() => {
-                  const lastMessage = finalTestCases[finalTestCases.length - 1];
-                  const lastIndex = finalTestCases.length - 1;
-                  return (
-                    <div className="space-y-2">
-                      <div className="text-xs font-medium uppercase text-base-content tracking-wide">
-                        User Expected Output
-                      </div>
-                      {lastMessage.role === "tools_call" || lastMessage.sender === "tools_call" ? (
-                        <div className="space-y-3">
-                          {lastMessage.tools?.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
-                            >
-                              <textarea
-                                id={`add-testcase-expected-tool-textarea-${idx}`}
-                                defaultValue={JSON.stringify(item, null, 2)}
-                                className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
-                                onInput={handleTextareaInput}
-                                onBlur={(e) => handleChange(e.target.value, lastIndex, idx)}
-                                rows={4}
-                              />
-                              {lastMessage.tools.length > 1 && (
-                                <button
-                                  id={`add-testcase-expected-remove-tool-${idx}`}
-                                  className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeTool(lastIndex, idx)}
-                                >
-                                  <CloseIcon size={16} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase text-base-content tracking-wide">
+                  User Expected Output
+                </div>
+                <div className="bg-base-50 rounded-lg border border-base-200">
+                  <div
+                    style={{
+                      maxHeight: isExpectedExpanded ? "none" : "calc(6 * 1.625rem)",
+                      overflow: "hidden",
+                    }}
+                    className="px-4 pt-3 pb-1"
+                  >
+                    {(() => {
+                      const lastMessage = finalTestCases[finalTestCases.length - 1];
+                      const lastIndex = finalTestCases.length - 1;
+                      if (lastMessage.role === "tools_call" || lastMessage.sender === "tools_call") {
+                        return (
+                          <div className="space-y-3">
+                            {lastMessage.tools?.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
+                              >
+                                <textarea
+                                  id={`add-testcase-expected-tool-textarea-${idx}`}
+                                  defaultValue={JSON.stringify(item, null, 2)}
+                                  className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
+                                  onInput={handleTextareaInput}
+                                  onBlur={(e) => handleChange(e.target.value, lastIndex, idx)}
+                                  rows={4}
+                                />
+                                {lastMessage.tools.length > 1 && (
+                                  <button
+                                    id={`add-testcase-expected-remove-tool-${idx}`}
+                                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => removeTool(lastIndex, idx)}
+                                  >
+                                    <CloseIcon size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return (
                         <textarea
                           id="add-testcase-expected-content-textarea"
                           defaultValue={lastMessage.content}
-                          className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
+                          className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none resize-none overflow-hidden"
                           onInput={handleTextareaInput}
                           onBlur={(e) => handleChange(e.target.value, lastIndex, null)}
                           rows={3}
                         />
-                      )}
-                    </div>
-                  );
-                })()}
+                      );
+                    })()}
+                  </div>
+                  {/* Show more / Show less row - only show if content exceeds 6 lines */}
+                  {(() => {
+                    const lastMessage = finalTestCases[finalTestCases.length - 1];
+                    const content = lastMessage?.content || "";
+                    return (
+                      content &&
+                      content.split("\n").length > 6 && (
+                        <div className="px-4 pb-2">
+                          {!isExpectedExpanded ? (
+                            <button
+                              type="button"
+                              onClick={() => setIsExpectedExpanded(true)}
+                              className="text-xs text-primary hover:text-primary transition-colors"
+                            >
+                              ... show more
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsExpectedExpanded(false)}
+                              className="text-xs text-base-content/50 hover:text-primary transition-colors"
+                            >
+                              show less
+                            </button>
+                          )}
+                        </div>
+                      )
+                    );
+                  })()}
+                </div>
               </div>
             )}
-          </div>
 
-          <div className="flex justify-between items-center p-6 pt-4 bg-base-200 bottom-0">
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-base-content">Matching strategy:</label>
-              <select
-                data-testid="add-testcase-matching-strategy-select"
-                id="add-testcase-matching-strategy-select"
-                className="select select-sm bg-base-100 focus:outline-none border-none"
-                value={responseType}
-                onChange={(e) => setResponseType(e.target.value)}
-              >
-                <option value="exact">Exact</option>
-                <option value="ai">AI</option>
-                <option value="cosine">Cosine</option>
-              </select>
-            </div>
-            <div className="flex gap-2">
-              <button
-                data-testid="add-testcase-cancel-button"
-                id="add-testcase-cancel-button"
-                type="button"
-                className="btn btn-sm btn-ghost"
-                onClick={handleClose}
-              >
-                Cancel
-              </button>
-              <button
-                data-testid="add-testcase-create-button"
-                id="add-testcase-create-button"
-                type="submit"
-                className="btn btn-sm btn-primary px-6"
-                disabled={isLoading}
-              >
-                {isLoading ? <span className="loading loading-spinner"></span> : "Create"}
-              </button>
+            {/* Footer with matching strategy and buttons */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-base-content">Matching strategy:</label>
+                <select
+                  data-testid="add-testcase-matching-strategy-select"
+                  id="add-testcase-matching-strategy-select"
+                  className="select select-sm bg-base-100 focus:outline-none border-none"
+                  value={responseType}
+                  onChange={(e) => setResponseType(e.target.value)}
+                >
+                  <option value="exact">Exact</option>
+                  <option value="ai">AI</option>
+                  <option value="cosine">Cosine</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  data-testid="add-testcase-cancel-button"
+                  id="add-testcase-cancel-button"
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={handleClose}
+                >
+                  Cancel
+                </button>
+                <button
+                  data-testid="add-testcase-create-button"
+                  id="add-testcase-create-button"
+                  type="submit"
+                  className="btn btn-sm btn-primary px-6"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <span className="loading loading-spinner"></span> : "Create"}
+                </button>
+              </div>
             </div>
           </div>
         </form>
