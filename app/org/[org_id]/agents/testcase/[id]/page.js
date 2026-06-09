@@ -6,11 +6,14 @@ import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { deleteTestCaseAction, getAllTestCasesOfBridgeAction, runTestCaseAction } from "@/store/action/testCasesAction";
+import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { PlayIcon } from "@/components/Icons";
-import { FileText } from "lucide-react";
+import { FileText, Check, ChevronDownIcon } from "lucide-react";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import PageHeader from "@/components/Pageheader";
 import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetailsPanel";
+import MatchingTypeDropdown from "@/components/testcaseComponents/MatchingTypeDropdown";
+import TestCaseModelDropdown from "@/components/testcaseComponents/ModelDropdown";
 
 const TestCaseLoadingSkeleton = () => (
   <div
@@ -80,11 +83,12 @@ function TestCases({ params }) {
   const allBridges = useCustomSelector((state) => state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.orgs || [])
     .slice()
     .reverse();
-  const { testCases, isFirstTestcase, testRun, testCasesTotal } = useCustomSelector((state) => ({
+  const { testCases, isFirstTestcase, testRun, testCasesTotal, currentBridge } = useCustomSelector((state) => ({
     testCases: state?.testCasesReducer?.testCases?.[resolvedParams?.id] || {},
     isFirstTestcase: state?.userDetailsReducer?.userDetails?.meta?.onboarding?.TestCasesSetup || "",
     testRun: state?.testCasesReducer?.testRuns?.[resolvedParams?.id] || null,
     testCasesTotal: state?.testCasesReducer?.testCasesTotal?.[resolvedParams?.id] || 0,
+    currentBridge: state?.bridgeReducer?.allBridgesMap?.[resolvedParams?.id],
   }));
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
@@ -93,10 +97,18 @@ function TestCases({ params }) {
   const versions = useMemo(() => {
     return allBridges.find((bridge) => bridge?._id === resolvedParams?.id)?.versions || [];
   }, [allBridges, resolvedParams?.id]);
-
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [globalMatchingType, setGlobalMatchingType] = useState("AI");
+  const [globalCustomPrompt, setGlobalCustomPrompt] = useState(
+    currentBridge?.agent_info?.ai_matching_custom_prompt || currentBridge?.ai_matching_custom_prompt || ""
+  );
+  const [globalCustomPromptSaved, setGlobalCustomPromptSaved] = useState(
+    currentBridge?.agent_info?.ai_matching_custom_prompt || currentBridge?.ai_matching_custom_prompt || ""
+  );
+  const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
 
   useEffect(() => {
     setIsLoadingTestCases(true);
@@ -153,6 +165,10 @@ function TestCases({ params }) {
         runTestCaseAction({
           versionIds: selectedVersions,
           bridgeId: resolvedParams?.id,
+          matching_type: globalMatchingType.toLowerCase(),
+          ai_matching_custom_prompt: globalCustomPromptSaved || undefined,
+          model: selectedModel || undefined,
+          service: selectedService || undefined,
         })
       );
     } catch (error) {
@@ -164,15 +180,18 @@ function TestCases({ params }) {
   const handleRunSingleTestCase = async (testCaseId, variables = null) => {
     if (!selectedVersions.length) return;
     try {
-      const testCase = Array.isArray(testCases) && testCases.find((tc) => tc._id === testCaseId);
-      const testCaseMatchingType = testCase?.matching_type || "AI";
+      const testCase = testCases.find((tc) => tc._id === testCaseId);
+      const testCaseMatchingType = testCase?.matching_type || globalMatchingType;
 
       await dispatch(
         runTestCaseAction({
           testcase_id: testCaseId,
           versionIds: selectedVersions,
           bridgeId: resolvedParams?.id,
-          matching_type: testCaseMatchingType.toLowerCase(),
+          matching_type: globalMatchingType.toLowerCase(),
+          ai_matching_custom_prompt: globalCustomPromptSaved || undefined,
+          model: selectedModel || undefined,
+          service: selectedService || undefined,
           variables,
           testCaseData: {
             conversation: testCase?.conversation,
@@ -198,7 +217,6 @@ function TestCases({ params }) {
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState(0);
   const [selectedVersions, setSelectedVersions] = useState([]);
   const [runningTestCaseId, setRunningTestCaseId] = useState(null);
-  const [versionSliderStart, setVersionSliderStart] = useState(0);
 
   // Sync local UI state with the RTLayer-driven testRun in redux.
   // `isloading` only represents a Run-All operation (testcaseId is null) so
@@ -235,13 +253,13 @@ function TestCases({ params }) {
     return "Poor match, major deviations from expected output";
   };
 
-  const getScoreDisplay = (score, matchingType) => {
-    const type = (matchingType || "cosine").toLowerCase();
-    if (type === "exact") {
-      return score === 1 ? "Pass" : "Fail";
+  const getScoreDisplay = (score) => {
+    const num = Number(score);
+    if (!Number.isFinite(num)) return "N/A";
+    if (Number.isInteger(num) && (num === 0 || num === 1)) {
+      return num === 1 ? "Pass" : "Fail";
     }
-    // AI and Cosine both show percentage (backend returns a fractional score).
-    return `${(score * 100).toFixed(0)}%`;
+    return `${(num * 100).toFixed(0)}%`;
   };
 
   return (
@@ -267,108 +285,169 @@ function TestCases({ params }) {
         <TestCaseLoadingSkeleton />
       ) : Array.isArray(testCases) && testCases.length > 0 ? (
         <>
-          <div className="px-6 pt-3 pb-3" data-testid="testcase-version-controls">
-            {/* Versions and Run Button Row */}
-            <div className="flex items-center gap-2 flex-wrap justify-between">
-              <span className="text-sm font-medium text-base-content" data-testid="testcase-version-label">
-                Versions:
-              </span>
-              {versions.length > 1 && (
-                <button
-                  data-testid="testcase-version-all-button"
-                  className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                    selectedVersions.length === versions.length
-                      ? "bg-primary text-primary-content shadow-sm"
-                      : "bg-base-200 text-base-content hover:bg-base-300"
-                  }`}
-                  onClick={() => {
-                    // Toggling ALL off would leave zero selected — keep the
-                    // first version selected so a run is always possible.
-                    if (selectedVersions.length === versions.length) {
-                      setSelectedVersions([versions[0]]);
-                    } else {
-                      setSelectedVersions([...versions]);
-                    }
-                  }}
-                >
-                  ALL
-                </button>
-              )}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {versions.slice(versionSliderStart, versionSliderStart + 10).map((version, idx) => (
-                  <button
-                    data-testid={`testcase-version-button-${versionSliderStart + idx + 1}`}
-                    key={versionSliderStart + idx}
-                    className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                      selectedVersions.includes(version)
-                        ? "bg-primary text-primary-content shadow-sm"
-                        : "bg-base-200 text-base-content hover:bg-base-300"
-                    }`}
-                    onClick={() => {
-                      setSelectedVersions((prev) => {
-                        // Never allow zero selected versions.
-                        if (prev.includes(version)) {
-                          if (prev.length <= 1) return prev;
-                          return prev.filter((v) => v !== version);
-                        }
-                        return [...prev, version];
-                      });
-                    }}
-                  >
-                    V{versionSliderStart + idx + 1}
-                  </button>
-                ))}
-              </div>
-              {versions.length > 10 && (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    data-testid="testcase-version-prev-button"
-                    onClick={() => setVersionSliderStart(Math.max(0, versionSliderStart - 10))}
-                    disabled={versionSliderStart === 0}
-                    className="px-2 py-1.5 rounded-md text-xs font-semibold bg-base-200 text-base-content hover:bg-base-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    title="Previous versions"
-                  >
-                    ←
-                  </button>
-                  <span className="text-xs text-base-content/60 px-1">
-                    {versionSliderStart + 1}-{Math.min(versionSliderStart + 10, versions.length)} of {versions.length}
+          {/* Action Bar - Matching Type, Versions, and Run Button */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 22,
+              flexWrap: "wrap",
+              paddingLeft: 24,
+              paddingRight: 24,
+              paddingTop: 12,
+            }}
+          >
+            {/* Global Matching Type Dropdown */}
+            <MatchingTypeDropdown
+              matchingType={globalMatchingType}
+              customPrompt={globalCustomPrompt}
+              customPromptSaved={globalCustomPromptSaved}
+              conversation={selectedTestCase?.conversation || []}
+              onMatchingTypeChange={setGlobalMatchingType}
+              onCustomPromptChange={setGlobalCustomPrompt}
+              onCustomPromptSave={(prompt) => {
+                setGlobalCustomPromptSaved(prompt);
+                // Save custom prompt to bridge
+                dispatch(
+                  updateBridgeAction({
+                    bridgeId: resolvedParams?.id,
+                    dataToSend: { agent_info: { ai_matching_custom_prompt: prompt } },
+                  })
+                );
+              }}
+              onCustomPromptClear={() => {
+                setGlobalCustomPrompt("");
+                setGlobalCustomPromptSaved("");
+                // Clear custom prompt from bridge
+                dispatch(
+                  updateBridgeAction({
+                    bridgeId: resolvedParams?.id,
+                    dataToSend: { agent_info: { ai_matching_custom_prompt: "" } },
+                  })
+                );
+              }}
+              label="Matching"
+            />
+
+            {/* Versions Dropdown - DaisyUI */}
+            <div className="dropdown">
+              <button
+                tabIndex={0}
+                className="flex items-center gap-2 px-2 py-1.5 bg-transparent border border-base-content/20 rounded-lg text-xs font-semibold text-base-content/70 cursor-pointer hover:bg-base-200 transition-colors"
+              >
+                <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-[7px] bg-primary text-primary-content text-xs font-extrabold">
+                  {selectedVersions.length}
+                </span>
+                versions
+                <ChevronDownIcon size={15} className="text-base-content/50" />
+              </button>
+              <div
+                tabIndex={0}
+                className="dropdown-content w-[230px] bg-base-100 border border-base-300 rounded-xl shadow-lg z-50 p-2"
+              >
+                <div className="flex justify-between items-center px-2 pt-1.5 pb-2.5 border-b border-base-200 mb-1.5">
+                  <span className="text-[11px] font-bold tracking-[0.05em] text-base-content/50 uppercase">
+                    Select versions
                   </span>
                   <button
-                    data-testid="testcase-version-next-button"
-                    onClick={() => setVersionSliderStart(Math.min(versions.length - 10, versionSliderStart + 10))}
-                    disabled={versionSliderStart + 10 >= versions.length}
-                    className="px-2 py-1.5 rounded-md text-xs font-semibold bg-base-200 text-base-content hover:bg-base-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    title="Next versions"
+                    onClick={() =>
+                      setSelectedVersions(selectedVersions.length === versions.length ? [versions[0]] : [...versions])
+                    }
+                    className="bg-transparent border-0 text-primary text-[12.5px] font-bold cursor-pointer p-0 hover:underline"
                   >
-                    →
+                    {selectedVersions.length === versions.length ? "Clear" : "Select all"}
                   </button>
                 </div>
+                <div className="grid grid-cols-2 gap-0.5">
+                  {versions.map((version, idx) => {
+                    const isSelected = selectedVersions.includes(version);
+                    const isLast = isSelected && selectedVersions.length === 1;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() =>
+                          !isLast &&
+                          setSelectedVersions((prev) => {
+                            if (prev.includes(version)) {
+                              if (prev.length <= 1) return prev;
+                              return prev.filter((v) => v !== version);
+                            }
+                            return [...prev, version];
+                          })
+                        }
+                        className={`flex items-center gap-2.5 bg-transparent rounded-[9px] px-2.5 py-2 text-sm transition-colors ${
+                          isLast ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-base-200"
+                        }`}
+                      >
+                        <span
+                          className={`inline-flex items-center justify-center w-[18px] h-[18px] rounded-md flex-shrink-0 ${
+                            isSelected ? "bg-primary border-0" : "bg-base-100 border-[1.5px] border-base-300"
+                          }`}
+                        >
+                          {isSelected && <Check size={11} strokeWidth={3.5} className="text-primary-content" />}
+                        </span>
+                        <span
+                          className={isSelected ? "font-bold text-base-content" : "font-medium text-base-content/60"}
+                        >
+                          V{idx + 1}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Run All Button */}
+            <button
+              onClick={handleRunAllTestCases}
+              disabled={
+                !Array.isArray(testCases) ||
+                testCases.length === 0 ||
+                isloading ||
+                !!runningTestCaseId ||
+                selectedVersions.length === 0
+              }
+              title={selectedVersions.length === 0 ? "Select at least one version to run" : ""}
+              className={`flex items-center gap-2 text-primary-content border border-primary rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 ${
+                isloading || selectedVersions.length === 0
+                  ? "bg-primary text-base-content/50 cursor-not-allowed shadow-none"
+                  : "bg-primary cursor-pointer shadow-[0_4px_12px_rgba(37,99,235,0.3)] hover:bg-primary/90"
+              }`}
+            >
+              {isloading ? (
+                <>
+                  <span className="inline-block w-3 h-3 rounded-full border-2 border-primary-content border-t-transparent animate-spin" />
+                  {testRun?.total ? `Running ${testRun?.completed || 0}/${testRun.total}` : "Running"}
+                </>
+              ) : (
+                <>
+                  <PlayIcon size={12} style={{ fill: "currentColor", strokeWidth: 0 }} />
+                  Run All Testcases
+                </>
               )}
-              <button
-                data-testid="testcase-run-all-button"
-                onClick={handleRunAllTestCases}
-                disabled={
-                  !Array.isArray(testCases) ||
-                  testCases.length === 0 ||
-                  isloading ||
-                  !!runningTestCaseId ||
-                  selectedVersions.length === 0
-                }
-                title={selectedVersions.length === 0 ? "Select at least one version to run" : ""}
-                className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-content rounded-lg flex items-center gap-2 font-medium transition-all text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-auto"
-              >
-                {isloading ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    {testRun?.total ? `Running ${testRun?.completed || 0}/${testRun.total}` : "Running"}
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon size={16} />
-                    Run All Testcases
-                  </>
-                )}
-              </button>
+            </button>
+
+            {/* Separator */}
+            <div className="w-px h-8 bg-base-300 mx-1" />
+
+            {/* Model Dropdown with Label */}
+            <div
+              className={`flex items-center gap-2 py-1 pl-2 pr-2.5 rounded-lg ${
+                !selectedModel
+                  ? "bg-transparent border border-base-content/20"
+                  : "bg-primary/10 border border-primary/30"
+              }`}
+            >
+              <span className="text-[10px] font-bold text-base-content/50 tracking-wide uppercase whitespace-nowrap">
+                Run with
+              </span>
+              <TestCaseModelDropdown
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                onServiceChange={setSelectedService}
+              />
             </div>
           </div>
         </>
@@ -463,17 +542,17 @@ function TestCases({ params }) {
                               key={index}
                               data-testid={`testcase-row-${testCase?._id || index}`}
                               onClick={() => setSelectedTestCaseIndex(index)}
-                              className={`cursor-pointer transition-all ${isSelected ? "bg-primary/10" : "bg-base-100 hover:bg-base-50"}`}
+                              className={`cursor-pointer transition-all ${isSelected ? "bg-base-200 border-l-4 border-l-primary" : "bg-base-100 hover:bg-base-50 border-l-4 border-l-transparent"}`}
                             >
                               <td
                                 style={{ left: 0, width: 48, minWidth: 48 }}
-                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-primary/10 font-semibold text-primary border-l-2 border-primary" : "bg-base-100 font-medium border-l-2 border-transparent"} text-base-content`}
+                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"}`}
                               >
                                 {index + 1}
                               </td>
                               <td
                                 style={{ left: 48, width: 140, minWidth: 140 }}
-                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-primary/10 font-semibold" : "bg-base-100 font-medium"} text-base-content whitespace-nowrap overflow-hidden text-ellipsis`}
+                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"} whitespace-nowrap overflow-hidden text-ellipsis`}
                               >
                                 {lastUserMessage?.substring(0, 20)}
                                 {lastUserMessage?.length > 20 ? "..." : ""}
@@ -492,7 +571,7 @@ function TestCases({ params }) {
                                   <td
                                     key={vIdx}
                                     data-testid={`testcase-row-${testCase?._id || index}-version-${versions.indexOf(version) + 1}`}
-                                    className={`px-2 py-3.5 text-center min-w-[60px] ${isSelected ? "bg-primary/10" : "bg-base-100"}`}
+                                    className={`px-2 py-3.5 text-center min-w-[60px] bg-base-100"}`}
                                   >
                                     {versionArray &&
                                       (runErrorMessage ? (

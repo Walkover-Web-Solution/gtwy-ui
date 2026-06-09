@@ -47,9 +47,19 @@ export const deleteTestCaseApi = async ({ testCaseId }) => {
   }
 };
 
-export const runTestCaseApi = async ({ versionIds, testcase_id, testCaseData, bridgeId, variables, matching_type }) => {
+export const runTestCaseApi = async ({
+  versionIds,
+  testcase_id,
+  testCaseData,
+  bridgeId,
+  variables,
+  matching_type,
+  ai_matching_custom_prompt,
+  model,
+  service,
+}) => {
   try {
-    const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, {
+    const payload = {
       version_ids: Array.isArray(versionIds) ? versionIds : [versionIds],
       testcases: true,
       testcase_id: testcase_id,
@@ -57,7 +67,22 @@ export const runTestCaseApi = async ({ versionIds, testcase_id, testCaseData, br
       bridge_id: bridgeId,
       variables: variables,
       matching_type: matching_type,
-    });
+    };
+
+    // Only add optional parameters if they are provided
+    if (ai_matching_custom_prompt) {
+      payload.agent_info = {
+        ai_matching_custom_prompt: ai_matching_custom_prompt,
+      };
+    }
+    if (model) {
+      payload.model = model;
+    }
+    if (service) {
+      payload.service = service;
+    }
+
+    const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, payload);
     return response.data;
   } catch (error) {
     toast.error(

@@ -80,6 +80,9 @@ export const runTestCaseAction =
     testCaseData = null,
     variables = null,
     matching_type = null,
+    ai_matching_custom_prompt = null,
+    model = null,
+    service = null,
   }) =>
   async (dispatch) => {
     try {
@@ -87,10 +90,11 @@ export const runTestCaseAction =
       // for the run_started RTLayer event (which arrives moments later on the bridge channel).
       if (bridgeId) {
         const versionIdsArrayInit = Array.isArray(versionIds) ? versionIds : [versionIds].filter(Boolean);
+        const totalTestCases = testcase_id ? 1 : 0; // Single test case run has total 1, run all will be updated by RTLayer
         dispatch(
           testRunStartedReducer({
             bridgeId,
-            total: 0,
+            total: totalTestCases,
             versionIds: versionIdsArrayInit,
             testcaseId: testcase_id || null,
           })
@@ -104,6 +108,9 @@ export const runTestCaseAction =
         bridgeId,
         variables,
         matching_type,
+        ai_matching_custom_prompt,
+        model,
+        service,
       });
 
       // New flow: backend returns immediately with rtlayer_cred and streams results via RTLayer.
@@ -128,6 +135,7 @@ export const runTestCaseAction =
                   model_output: result.actual_result,
                   expected: result.expected,
                   matching_type: result.matching_type,
+                  tools_call_data: result.tools_call_data || null,
                   metadata: {
                     bridge_id: result.bridge_id,
                   },

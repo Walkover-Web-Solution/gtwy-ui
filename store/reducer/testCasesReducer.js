@@ -5,7 +5,7 @@ const initialState = {
   testRuns: {},
 };
 
-const applyResultToTestCase = (state, bridgeId, versionId, result) => {
+const applyResultToTestCase = (state, bridgeId, versionId, result, payloadModel = null, payloadService = null) => {
   if (!result || !result.testcase_id) return false;
   // Skipped results (no_changes_since_last_execution) carry null score / null
   // actual_result — they are NOT a fresh evaluation and would clobber the
@@ -18,7 +18,17 @@ const applyResultToTestCase = (state, bridgeId, versionId, result) => {
   if (!tc.version_history) tc.version_history = {};
   if (!Array.isArray(tc.version_history[versionId])) tc.version_history[versionId] = [];
   const nowIso = new Date().toISOString();
+
+  const finalModel = result.model || payloadModel;
+  const finalService = result.service || payloadService;
+
   // Use unshift to add at index 0 (newest) to match API structure
+  const inputTokens = result?.tokens?.input_tokens || 0;
+  const outputTokens = result?.tokens?.output_tokens || 0;
+  // RTLayer sends flat total_tokens/cost, history API sends nested tokens object
+  const totalTokens = result?.total_tokens || inputTokens + outputTokens;
+  const cost = result?.cost || result?.tokens?.expected_cost || 0;
+
   tc.version_history[versionId].unshift({
     score: result.score,
     model_output: result.actual_result,
@@ -26,6 +36,15 @@ const applyResultToTestCase = (state, bridgeId, versionId, result) => {
     matching_type: result.matching_type,
     success: result.success,
     error: result.error || null,
+    tools_call_data: result.tools_call_data || null,
+    service: finalService,
+    model: finalModel,
+    tokens: {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      total_tokens: totalTokens,
+    },
+    cost: cost,
     metadata: { bridge_id: result.bridge_id || bridgeId },
     created_at: nowIso,
   });
@@ -67,6 +86,11 @@ const testCasesReducer = createSlice({
                   testCase.version_history[versionId] = [];
                 }
                 // Transform history item to match expected version_history structure
+                const inputTokens = historyItem?.tokens?.input_tokens || 0;
+                const outputTokens = historyItem?.tokens?.output_tokens || 0;
+                const totalTokens = inputTokens + outputTokens;
+                const cost = historyItem?.tokens?.expected_cost || 0;
+
                 testCase.version_history[versionId].push({
                   score: historyItem?.testcase_data?.score || 0,
                   model_output: historyItem?.llm_message,
@@ -75,6 +99,15 @@ const testCasesReducer = createSlice({
                   actual: historyItem?.testcase_data?.actual,
                   expected: historyItem?.testcase_data?.expected,
                   success: historyItem?.testcase_data?.success,
+                  tools_call_data: historyItem?.tools_call_data || null,
+                  service: historyItem?.service,
+                  model: historyItem?.model || historyItem?.testcase_data?.model,
+                  tokens: {
+                    input_tokens: inputTokens,
+                    output_tokens: outputTokens,
+                    total_tokens: totalTokens,
+                  },
+                  cost: cost,
                   created_at: historyItem?.created_at,
                   updated_at: historyItem?.updated_at,
                   // Keep original data for reference
@@ -118,6 +151,9 @@ const testCasesReducer = createSlice({
                 actual: historyItem?.testcase_data?.actual,
                 expected: historyItem?.testcase_data?.expected,
                 success: historyItem?.testcase_data?.success,
+                tools_call_data: historyItem?.tools_call_data || null,
+                service: historyItem?.service,
+                model: historyItem?.model || historyItem?.testcase_data?.model,
                 created_at: historyItem?.created_at,
                 updated_at: historyItem?.updated_at,
                 // Keep original data for reference
@@ -184,24 +220,23 @@ const testCasesReducer = createSlice({
       const { bridgeId, total = 0, versionIds = [], testcaseId = null } = action.payload || {};
       if (!bridgeId) return;
       const existing = state.testRuns[bridgeId];
-      const resolvedTestcaseId = testcaseId || existing?.testcaseId || null;
       state.testRuns[bridgeId] = {
         status: "running",
         total: Number(total) || existing?.total || 0,
         completed: existing?.completed || 0,
         versionIds: Array.isArray(versionIds) && versionIds.length > 0 ? versionIds : existing?.versionIds || [],
-        testcaseId: resolvedTestcaseId,
+        testcaseId: testcaseId || null,
         error: null,
         seen: existing?.seen || {},
       };
     },
     testRunResultReducer: (state, action) => {
-      const { bridgeId, versionId, result } = action.payload || {};
+      const { bridgeId, versionId, result, model, service } = action.payload || {};
       if (!bridgeId || !versionId || !result?.testcase_id) return;
       const run = state.testRuns[bridgeId];
       const seenKey = `${versionId}:${result.testcase_id}`;
       if (run?.seen?.[seenKey]) return; // dedup
-      applyResultToTestCase(state, bridgeId, versionId, result);
+      applyResultToTestCase(state, bridgeId, versionId, result, model, service);
       if (!run) return;
       run.seen[seenKey] = true;
       // Track which versions have reported for each testcase. A testcase only
@@ -221,28 +256,92 @@ const testCasesReducer = createSlice({
     testRunCompletedReducer: (state, action) => {
       const { bridgeId, payload } = action.payload || {};
       if (!bridgeId) return;
+      // Extract model and service from payload level (applies to all results)
+      const payloadModel = payload?.model;
+      const payloadService = payload?.service_name;
+
       // Apply any straggler results from final payload (skipped/cached testcases live here).
       const run = state.testRuns[bridgeId];
       const resultsByVersion = payload?.results_by_version || payload?.results || payload?.version_results || null;
-      if (resultsByVersion && typeof resultsByVersion === "object" && !Array.isArray(resultsByVersion)) {
-        Object.entries(resultsByVersion).forEach(([versionId, results]) => {
-          if (!Array.isArray(results)) return;
-          results.forEach((result) => {
-            if (!result?.testcase_id) return;
-            const seenKey = `${versionId}:${result.testcase_id}`;
-            if (run?.seen?.[seenKey]) return;
-            const applied = applyResultToTestCase(state, bridgeId, versionId, result);
-            if (run) {
-              run.seen[seenKey] = true;
-              if (applied) run.completed = (run.completed || 0) + 1;
-            }
-            // Also store in directTestResults for testcases that don't exist in database
-            if (!state.directTestResults) state.directTestResults = {};
-            if (!state.directTestResults[bridgeId]) state.directTestResults[bridgeId] = {};
-            if (!state.directTestResults[bridgeId][versionId]) state.directTestResults[bridgeId][versionId] = {};
-            state.directTestResults[bridgeId][versionId][result.testcase_id] = result;
+
+      if (resultsByVersion) {
+        if (typeof resultsByVersion === "object" && !Array.isArray(resultsByVersion)) {
+          Object.entries(resultsByVersion).forEach(([versionId, results]) => {
+            if (!Array.isArray(results)) return;
+            results.forEach((result) => {
+              if (!result?.testcase_id) return;
+              const seenKey = `${versionId}:${result.testcase_id}`;
+              if (run?.seen?.[seenKey]) return;
+              const applied = applyResultToTestCase(state, bridgeId, versionId, result, payloadModel, payloadService);
+              if (run) {
+                run.seen[seenKey] = true;
+                if (applied) run.completed = (run.completed || 0) + 1;
+              }
+              // Also store in directTestResults for testcases that don't exist in database
+              if (!state.directTestResults) state.directTestResults = {};
+              if (!state.directTestResults[bridgeId]) state.directTestResults[bridgeId] = {};
+              if (!state.directTestResults[bridgeId][versionId]) state.directTestResults[bridgeId][versionId] = {};
+              state.directTestResults[bridgeId][versionId][result.testcase_id] = result;
+            });
           });
-        });
+        } else if (Array.isArray(resultsByVersion)) {
+          resultsByVersion.forEach((versionGroup) => {
+            const versionId = versionGroup?.version_id;
+            const results = versionGroup?.results;
+            // Model and service can be at versionGroup level or payload level
+            const groupModel = versionGroup?.model || payloadModel;
+            const groupService = versionGroup?.service_name || payloadService;
+            if (!versionId || !Array.isArray(results)) return;
+            results.forEach((result) => {
+              if (!result?.testcase_id) return;
+              const seenKey = `${versionId}:${result.testcase_id}`;
+
+              // If already seen, update with model/service/tokens/cost from versionGroup
+              if (run?.seen?.[seenKey]) {
+                const list = state.testCases[bridgeId];
+                if (Array.isArray(list)) {
+                  const tc = list.find((t) => t._id === result.testcase_id);
+                  if (
+                    tc &&
+                    Array.isArray(tc.version_history?.[versionId]) &&
+                    tc.version_history[versionId].length > 0
+                  ) {
+                    // Update the first (newest) entry with model, service, tokens, cost
+                    const latestRun = tc.version_history[versionId][0];
+                    if (latestRun) {
+                      latestRun.model = latestRun.model || groupModel;
+                      latestRun.service = latestRun.service || groupService;
+                      const resultTotalTokens = result?.total_tokens || 0;
+                      const resultCost = result?.cost || 0;
+                      if (resultTotalTokens > 0 && (!latestRun.tokens || !latestRun.tokens.total_tokens)) {
+                        latestRun.tokens = {
+                          input_tokens: latestRun?.tokens?.input_tokens || 0,
+                          output_tokens: latestRun?.tokens?.output_tokens || 0,
+                          total_tokens: resultTotalTokens,
+                        };
+                      }
+                      if (resultCost > 0 && !latestRun.cost) {
+                        latestRun.cost = resultCost;
+                      }
+                    }
+                  }
+                }
+                return;
+              }
+
+              const applied = applyResultToTestCase(state, bridgeId, versionId, result, groupModel, groupService);
+              if (run) {
+                run.seen[seenKey] = true;
+                if (applied) run.completed = (run.completed || 0) + 1;
+              }
+              // Also store in directTestResults for testcases that don't exist in database
+              if (!state.directTestResults) state.directTestResults = {};
+              if (!state.directTestResults[bridgeId]) state.directTestResults[bridgeId] = {};
+              if (!state.directTestResults[bridgeId][versionId]) state.directTestResults[bridgeId][versionId] = {};
+              state.directTestResults[bridgeId][versionId][result.testcase_id] = result;
+            });
+          });
+        }
       }
       if (run) {
         run.status = "completed";

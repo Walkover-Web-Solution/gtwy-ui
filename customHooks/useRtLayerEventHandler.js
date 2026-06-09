@@ -139,6 +139,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
                 bridgeId: runBridgeId,
                 versionId: parsedData.version_id,
                 result: parsedData.result,
+                model: parsedData.model,
+                service: parsedData.service_name,
               })
             );
             // Also store in direct test results for testcases that don't exist in database
