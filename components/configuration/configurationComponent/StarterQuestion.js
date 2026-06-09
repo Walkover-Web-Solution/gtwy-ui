@@ -20,7 +20,6 @@ const StarterQuestionToggle = ({ params, searchParams, isPublished, isEditor = t
       starterQuestions: isPublished ? bridgeDataFromState.starterQuestion : versionData?.starterQuestion || [],
     };
   });
-  console.log(starterQuestions, "staterqeustokn");
   const [localQuestions, setLocalQuestions] = useState(starterQuestions || []);
 
   // Sync local state with redux when starterQuestions changes externally
