@@ -413,7 +413,9 @@ const TestCaseDetailsPanel = ({
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-sm font-medium text-base-content">Conversation History</span>
-                  <span className="text-xs text-base-content/60">({editedConversation.slice(0, -1).length})</span>
+                  <span className="text-xs text-base-content/60">
+                    ({Math.ceil(editedConversation.slice(0, -1).length / 2)})
+                  </span>
                 </div>
                 <ChevronDownIcon
                   size={16}
@@ -529,7 +531,7 @@ const TestCaseDetailsPanel = ({
             );
           })()}
 
-          {/* Expected Output — collapses to 6 lines with "...show more" */}
+          {/* Expected Output — collapses to 4 lines with "...show more" */}
           <div className="mb-6">
             <div
               className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide flex items-center gap-1.5"
@@ -541,7 +543,7 @@ const TestCaseDetailsPanel = ({
               {/* Clipped content area */}
               <div
                 style={{
-                  maxHeight: isExpectedExpanded ? "none" : "calc(6 * 1.625rem)",
+                  maxHeight: isExpectedExpanded ? "none" : "calc(4 * 1.625rem)",
                   overflow: "hidden",
                 }}
                 className="px-4 pt-3 pb-1"
@@ -556,26 +558,28 @@ const TestCaseDetailsPanel = ({
                 />
               </div>
 
-              {/* Show more / Show less row */}
-              <div className="px-4 pb-2">
-                {!isExpectedExpanded ? (
-                  <button
-                    onClick={() => setIsExpectedExpanded(true)}
-                    className="text-xs text-primary hover:text-primary transition-colors"
-                    data-testid="testcase-expected-show-more"
-                  >
-                    ... show more
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setIsExpectedExpanded(false)}
-                    className="text-xs text-base-content/50 hover:text-primary transition-colors"
-                    data-testid="testcase-expected-show-less"
-                  >
-                    show less
-                  </button>
-                )}
-              </div>
+              {/* Show more / Show less row - only show if content exceeds 4 lines */}
+              {editedExpected && editedExpected.split("\n").length > 4 && (
+                <div className="px-4 pb-2">
+                  {!isExpectedExpanded ? (
+                    <button
+                      onClick={() => setIsExpectedExpanded(true)}
+                      className="text-xs text-primary hover:text-primary transition-colors"
+                      data-testid="testcase-expected-show-more"
+                    >
+                      ... show more
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setIsExpectedExpanded(false)}
+                      className="text-xs text-base-content/50 hover:text-primary transition-colors"
+                      data-testid="testcase-expected-show-less"
+                    >
+                      show less
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           {/* Version Comparison (independent of run-version selection) */}
@@ -648,7 +652,7 @@ const TestCaseDetailsPanel = ({
             {/* Version Outputs Grid */}
             {comparisonVersions.length > 0 ? (
               <div
-                className={`grid gap-4 ${comparisonVersions.length === 1 ? "grid-cols-1" : comparisonVersions.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}
+                className={`grid gap-4 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
                 data-testid="testcase-version-output-grid"
               >
                 {comparisonVersions.map((version, idx) => {
@@ -686,54 +690,12 @@ const TestCaseDetailsPanel = ({
                       className={`bg-base-50 border rounded-lg p-4 h-fit ${runErrorMessage ? "border-error/40" : "border-base-200"}`}
                     >
                       <div className="flex flex-col gap-1.5 mb-3 pb-3 border-b border-base-200">
-                        {/* Top row: version label + score/error */}
-                        <div className="flex items-center justify-between gap-2 min-w-0">
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-primary uppercase tracking-wide">
-                              v{versions.indexOf(version) + 1}
-                            </div>
-                            {(currentRun?.model || currentRun?.metadata?.model) && (
-                              <div
-                                className="flex items-center flex-wrap gap-1 mt-0.5 text-[10px] text-base-content/60 font-medium min-w-0"
-                                title={currentRun?.service || ""}
-                              >
-                                {currentRun?.service && (
-                                  <span className="inline-flex items-center flex-shrink-0">
-                                    {getIconOfService(currentRun.service, 12, 12)}
-                                  </span>
-                                )}
-                                <span className="truncate">{currentRun?.model || currentRun?.metadata?.model}</span>
-
-                                {/* Tokens + cost inline with model — sm/md only */}
-                                {hasRun &&
-                                  !runErrorMessage &&
-                                  (currentRun?.tokens?.total_tokens > 0 || currentRun?.cost > 0) && (
-                                    <>
-                                      {currentRun?.tokens?.total_tokens > 0 && (
-                                        <span
-                                          className="lg:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
-                                          title={`Input: ${currentRun.tokens.input_tokens} • Output: ${currentRun.tokens.output_tokens}`}
-                                        >
-                                          <span className="font-medium text-base-content/70">Tokens</span>
-                                          <span className="font-mono">
-                                            {currentRun.tokens.total_tokens.toLocaleString()}
-                                          </span>
-                                        </span>
-                                      )}
-                                      {currentRun?.cost > 0 && (
-                                        <span
-                                          className="lg:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
-                                          title="Estimated cost"
-                                        >
-                                          <span className="font-medium text-base-content/70">Cost</span>
-                                          <span className="font-mono">${currentRun.cost.toFixed(4)}</span>
-                                        </span>
-                                      )}
-                                    </>
-                                  )}
-                              </div>
-                            )}
+                        {/* Top row: version label + score/error + pagination */}
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <div className="text-xs font-bold text-primary uppercase tracking-wide">
+                            v{versions.indexOf(version) + 1}
                           </div>
+
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {/* Tokens + cost inline — lg screens only */}
                             {hasRun &&
@@ -802,6 +764,51 @@ const TestCaseDetailsPanel = ({
                             )}
                           </div>
                         </div>
+
+                        {/* Bottom row: model name + sm tokens/cost */}
+                        {(currentRun?.model || currentRun?.metadata?.model) && (
+                          <div
+                            className="flex items-center flex-wrap gap-1 mt-0.5 text-[10px] text-base-content/60 font-medium w-full"
+                            title={currentRun?.service || ""}
+                          >
+                            {currentRun?.service && (
+                              <span className="inline-flex items-center flex-shrink-0">
+                                {getIconOfService(currentRun.service, 12, 12)}
+                              </span>
+                            )}
+                            <span className="truncate max-w-[100px] sm:max-w-none">
+                              {currentRun?.model || currentRun?.metadata?.model}
+                            </span>
+
+                            {/* Tokens + cost inline with model — sm/md only */}
+                            {hasRun &&
+                              !runErrorMessage &&
+                              (currentRun?.tokens?.total_tokens > 0 || currentRun?.cost > 0) && (
+                                <>
+                                  {currentRun?.tokens?.total_tokens > 0 && (
+                                    <span
+                                      className="lg:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
+                                      title={`Input: ${currentRun.tokens.input_tokens} • Output: ${currentRun.tokens.output_tokens}`}
+                                    >
+                                      <span className="font-medium text-base-content/70">Tokens</span>
+                                      <span className="font-mono">
+                                        {currentRun.tokens.total_tokens.toLocaleString()}
+                                      </span>
+                                    </span>
+                                  )}
+                                  {currentRun?.cost > 0 && (
+                                    <span
+                                      className="lg:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
+                                      title="Estimated cost"
+                                    >
+                                      <span className="font-medium text-base-content/70">Cost</span>
+                                      <span className="font-mono">${currentRun.cost.toFixed(4)}</span>
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Tool calls display */}
@@ -941,9 +948,7 @@ const TestCaseDetailsPanel = ({
 
                       {/* Expanded Grid of Runs */}
                       {isExpanded && Array.isArray(runs) && runs.length > 0 && (
-                        <div
-                          className={`grid gap-4 ${runs.length === 1 ? "grid-cols-1" : runs.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}
-                        >
+                        <div className={`grid gap-4 ${runs.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
                           {runs.map((run, runIdx) => {
                             const score = run?.score || 0;
                             const modelOutput = run?.model_output;

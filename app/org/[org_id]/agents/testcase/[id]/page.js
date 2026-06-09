@@ -169,6 +169,7 @@ function TestCases({ params }) {
           ai_matching_custom_prompt: globalCustomPromptSaved || undefined,
           model: selectedModel || undefined,
           service: selectedService || undefined,
+          testCaseData: null,
         })
       );
     } catch (error) {
@@ -180,9 +181,6 @@ function TestCases({ params }) {
   const handleRunSingleTestCase = async (testCaseId, variables = null) => {
     if (!selectedVersions.length) return;
     try {
-      const testCase = testCases.find((tc) => tc._id === testCaseId);
-      const testCaseMatchingType = testCase?.matching_type || globalMatchingType;
-
       await dispatch(
         runTestCaseAction({
           testcase_id: testCaseId,
@@ -193,11 +191,7 @@ function TestCases({ params }) {
           model: selectedModel || undefined,
           service: selectedService || undefined,
           variables,
-          testCaseData: {
-            conversation: testCase?.conversation,
-            expected: testCase?.expected,
-            matching_type: testCaseMatchingType.toLowerCase(),
-          },
+          testCaseData: null,
         })
       );
     } catch (error) {
@@ -403,11 +397,7 @@ function TestCases({ params }) {
             <button
               onClick={handleRunAllTestCases}
               disabled={
-                !Array.isArray(testCases) ||
-                testCases.length === 0 ||
-                isloading ||
-                !!runningTestCaseId ||
-                selectedVersions.length === 0
+                !Array.isArray(testCases) || testCases.length === 0 || isloading || selectedVersions.length === 0
               }
               title={selectedVersions.length === 0 ? "Select at least one version to run" : ""}
               className={`flex items-center gap-2 text-primary-content border border-primary rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 ${

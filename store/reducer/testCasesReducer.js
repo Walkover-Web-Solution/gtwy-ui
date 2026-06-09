@@ -168,6 +168,10 @@ const testCasesReducer = createSlice({
       const { testCaseId, bridgeId } = action.payload;
       if (state.testCases[bridgeId]) {
         state.testCases[bridgeId] = state.testCases[bridgeId].filter((testCase) => testCase._id !== testCaseId);
+        // Update total count
+        if (state.testCasesTotal[bridgeId]) {
+          state.testCasesTotal[bridgeId] = Math.max(0, state.testCasesTotal[bridgeId] - 1);
+        }
       }
       return state;
     },
@@ -217,17 +221,30 @@ const testCasesReducer = createSlice({
 
     // ---------- RTLayer-driven test run lifecycle ----------
     testRunStartedReducer: (state, action) => {
-      const { bridgeId, total = 0, versionIds = [], testcaseId = null } = action.payload || {};
+      const {
+        bridgeId,
+        total = 0,
+        versionIds = [],
+        testcaseId = null,
+        preserveTestcaseId = false,
+      } = action.payload || {};
       if (!bridgeId) return;
       const existing = state.testRuns[bridgeId];
+      // If preserveTestcaseId is true and existing testcaseId exists (not null), preserve it
+      // This prevents RT layer from overwriting the testcaseId for single test case runs
+      // For run all (testcaseId is null), we allow RT layer to set it or keep it null
+      const finalTestcaseId =
+        preserveTestcaseId && existing?.testcaseId !== null && existing?.testcaseId !== undefined
+          ? existing.testcaseId
+          : testcaseId;
       state.testRuns[bridgeId] = {
         status: "running",
         total: Number(total) || existing?.total || 0,
-        completed: existing?.completed || 0,
+        completed: 0,
         versionIds: Array.isArray(versionIds) && versionIds.length > 0 ? versionIds : existing?.versionIds || [],
-        testcaseId: testcaseId || null,
+        testcaseId: finalTestcaseId,
         error: null,
-        seen: existing?.seen || {},
+        seen: {}, // Clear seen object on new run to allow reprocessing results
       };
     },
     testRunResultReducer: (state, action) => {
