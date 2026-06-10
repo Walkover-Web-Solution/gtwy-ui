@@ -34,10 +34,10 @@ export const createTestCaseAction =
   };
 
 export const getAllTestCasesOfBridgeAction =
-  ({ bridgeId, page = 1, limit = 30, append = false }) =>
+  ({ bridgeId, page = 1, limit = 30, append = false, keyword }) =>
   async (dispatch) => {
     try {
-      const response = await getAllTestCasesOfBridgeApi({ bridgeId, page, limit });
+      const response = await getAllTestCasesOfBridgeApi({ bridgeId, page, limit, keyword });
       if (response?.success) {
         const data = Array.isArray(response?.data) ? response.data : [];
         const total = response?.total || 0;
