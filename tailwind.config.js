@@ -120,8 +120,6 @@ module.exports = {
     },
   },
   plugins: [
-    require("@tailwindcss/typography"),
-    require("daisyui"),
     function ({ addBase, addUtilities }) {
       addBase({
         /* Custom themed tokens */

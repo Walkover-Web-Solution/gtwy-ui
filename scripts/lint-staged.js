@@ -7,14 +7,11 @@ if (files.length === 0) {
   process.exit(0);
 }
 
-const args = ["lint", "--fix", "--no-cache"];
-files.forEach((file) => {
-  args.push("--file", file);
-});
+const args = ["--fix", "--no-error-on-unmatched-pattern", ...files];
 
-console.log(`Running next lint on ${files.length} files...`);
+console.log(`Running eslint on ${files.length} files...`);
 
-const child = spawn("next", args, {
+const child = spawn("npx", ["eslint", ...args], {
   stdio: "inherit",
   shell: true,
 });
