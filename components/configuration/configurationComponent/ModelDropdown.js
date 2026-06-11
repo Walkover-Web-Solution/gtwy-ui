@@ -1,7 +1,7 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE, AUTO_MODEL_TRADEOFF_OPTIONS } from "@/utils/enums";
-import { openModal } from "@/utils/utility";
+import { openModal, closeModal } from "@/utils/utility";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
@@ -9,6 +9,7 @@ import Dropdown from "@/components/UI/Dropdown";
 import { CircleQuestionMark, Sparkles, CircleAlert, Plus } from "lucide-react";
 import InfoTooltip from "@/components/InfoTooltip";
 import AddNewModelModal from "@/components/modals/AddNewModal";
+import ConfirmationModal from "@/components/UI/ConfirmationModal";
 
 // Model Preview component to display model specifications
 export const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
@@ -153,6 +154,8 @@ const ModelDropdown = ({
     isAutoModelSupported,
     autoModelSelect,
     fallbackModel,
+    configuration,
+    serviceModels,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -176,6 +179,8 @@ const ModelDropdown = ({
         ? (bridgeDataFromState?.auto_model_select ?? null)
         : (versionData?.auto_model_select ?? null),
       fallbackModel: activeData?.settings?.fall_back,
+      configuration: activeData?.configuration,
+      serviceModels: state?.modelReducer?.serviceModels,
     };
   });
 
@@ -275,10 +280,53 @@ const ModelDropdown = ({
     });
     return opts;
   }, [modelsList, bridgeType, modelsConfig, service]);
+  const [pendingSelection, setPendingSelection] = useState(null);
+
+  const confirmModelChange = useCallback(() => {
+    if (!pendingSelection) return;
+    const { val, opt } = pendingSelection;
+    const selectedGroup = opt?.meta?.group;
+    const modelName = opt?.meta?.modelName || val;
+    const configUpdate = { model: modelName, type: selectedGroup, response_type: "default" };
+    const dataToSend = { configuration: configUpdate };
+    if (selectedGroup !== "chat" && isAutoModelSelected) {
+      dataToSend.auto_model_select = null;
+    }
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend,
+      })
+    );
+    setHoveredModel(null);
+    setPendingSelection(null);
+    closeModal(MODAL_TYPE.JSON_SCHEMA_MODEL_WARNING_MODAL);
+  }, [dispatch, isAutoModelSelected, params.id, searchParams?.version, pendingSelection]);
+
   const handleSelect = useCallback(
     (val, opt) => {
-      const selectedGroup = opt?.meta?.group;
+      const selectedGroup = opt?.meta?.group || "chat";
       const modelName = opt?.meta?.modelName || val;
+
+      const hasJsonSchema =
+        configuration?.response_type?.type === "json_schema" ||
+        (configuration?.response_type?.json_schema && Object.keys(configuration.response_type.json_schema).length > 0);
+
+      const newModelInfo = serviceModels?.[service]?.[selectedGroup]?.[modelName];
+      const responseTypeParam = newModelInfo?.configuration?.additional_parameters?.response_type;
+      const options = responseTypeParam?.options || [];
+      const supportsJsonSchema = options.some((opt) => {
+        const optVal = typeof opt === "object" ? opt.type || opt.value : opt;
+        return optVal === "json_schema";
+      });
+
+      if (hasJsonSchema && !supportsJsonSchema) {
+        setPendingSelection({ val, opt });
+        openModal(MODAL_TYPE.JSON_SCHEMA_MODEL_WARNING_MODAL);
+        return;
+      }
+
       const configUpdate = { model: modelName, type: selectedGroup };
       const dataToSend = { configuration: configUpdate };
       if (selectedGroup !== "chat" && isAutoModelSelected) {
@@ -293,7 +341,7 @@ const ModelDropdown = ({
       );
       setHoveredModel(null);
     },
-    [dispatch, isAutoModelSelected, params.id, searchParams?.version]
+    [dispatch, isAutoModelSelected, params.id, searchParams?.version, configuration, serviceModels, service]
   );
 
   const handleAutoSelectModelChange = useCallback(
@@ -470,6 +518,36 @@ const ModelDropdown = ({
         )}
 
         <AddNewModelModal disableServiceChange={true} />
+
+        <ConfirmationModal
+          modalType={MODAL_TYPE.JSON_SCHEMA_MODEL_WARNING_MODAL}
+          title="Unsupported JSON Schema"
+          message={
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-base-content/80 leading-relaxed">
+                The newly selected model does not support <strong>JSON Schema</strong> response format.
+              </p>
+              <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg text-xs text-warning flex items-start gap-2.5">
+                <CircleAlert className="shrink-0 w-4 h-4 mt-0.5 text-warning" />
+                <span className="leading-normal">
+                  The JSON schema will be automatically removed from the configuration if you proceed.
+                </span>
+              </div>
+              <p className="text-sm text-base-content/85">Are you sure you want to change the model?</p>
+            </div>
+          }
+          icon={<CircleAlert size={20} />}
+          iconClass="bg-warning/15 text-warning"
+          confirmText="Yes, Change Model"
+          cancelText="Cancel"
+          confirmButtonClass="btn-warning hover:opacity-90 text-black font-semibold border-none"
+          cancelButtonClass="btn-ghost"
+          onConfirm={confirmModelChange}
+          onCancel={() => {
+            setPendingSelection(null);
+            closeModal(MODAL_TYPE.JSON_SCHEMA_MODEL_WARNING_MODAL);
+          }}
+        />
       </div>
     </>
   );

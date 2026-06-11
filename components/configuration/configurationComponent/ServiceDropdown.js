@@ -5,10 +5,12 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { getServiceAction } from "@/store/action/serviceAction";
 import Protected from "@/components/Protected";
-import { getIconOfService } from "@/utils/utility";
+import { getIconOfService, openModal, closeModal } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, CircleAlert } from "lucide-react";
+import { MODAL_TYPE } from "@/utils/enums";
+import ConfirmationModal from "@/components/UI/ConfirmationModal";
 
 const ServiceDropdown = ({
   params,
@@ -32,6 +34,8 @@ const ServiceDropdown = ({
     shouldPromptShow,
     showDefaultApikeys,
     apiKeyObjectIdData,
+    configuration,
+    serviceModels,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -58,6 +62,8 @@ const ServiceDropdown = ({
       shouldPromptShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.system_prompt,
       apiKeyObjectIdData,
       showDefaultApikeys,
+      configuration: activeData?.configuration,
+      serviceModels: state?.modelReducer?.serviceModels,
     };
   });
 
@@ -140,10 +146,67 @@ const ServiceDropdown = ({
       .filter(Boolean);
   }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData]);
 
+  const [pendingService, setPendingService] = useState(null);
+
+  const confirmServiceChange = useCallback(() => {
+    if (!pendingService) return;
+    const newService = pendingService;
+    const defaultModel = DEFAULT_MODEL?.[newService]?.model;
+    const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
+    setSelectedService(newService);
+
+    const dataToSend = {
+      service: newService,
+      configuration: { model: defaultModel, response_type: "default" },
+    };
+    if (!hasApiKeyForNewService) {
+      dataToSend.auto_model_select = null;
+    }
+
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: searchParams?.version,
+        dataToSend,
+      })
+    );
+    setPendingService(null);
+    closeModal(MODAL_TYPE.JSON_SCHEMA_SERVICE_WARNING_MODAL);
+  }, [dispatch, params.id, searchParams?.version, DEFAULT_MODEL, bridgeApikeyObjectId, pendingService]);
+
   const handleServiceChange = useCallback(
     (serviceValue) => {
       const newService = serviceValue;
       const defaultModel = DEFAULT_MODEL?.[newService]?.model;
+
+      const hasJsonSchema =
+        configuration?.response_type?.type === "json_schema" ||
+        (configuration?.response_type?.json_schema && Object.keys(configuration.response_type.json_schema).length > 0);
+
+      // Find the group/type for defaultModel
+      let foundType = "chat";
+      const types = serviceModels?.[newService] || {};
+      for (const [type, models] of Object.entries(types)) {
+        if (models && models[defaultModel]) {
+          foundType = type;
+          break;
+        }
+      }
+
+      const modelInfo = serviceModels?.[newService]?.[foundType]?.[defaultModel];
+      const responseTypeParam = modelInfo?.configuration?.additional_parameters?.response_type;
+      const options = responseTypeParam?.options || [];
+      const supportsJsonSchema = options.some((opt) => {
+        const optVal = typeof opt === "object" ? opt.type || opt.value : opt;
+        return optVal === "json_schema";
+      });
+
+      if (hasJsonSchema && !supportsJsonSchema) {
+        setPendingService(newService);
+        openModal(MODAL_TYPE.JSON_SCHEMA_SERVICE_WARNING_MODAL);
+        return;
+      }
+
       const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
       setSelectedService(newService);
 
@@ -160,7 +223,7 @@ const ServiceDropdown = ({
         })
       );
     },
-    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL, bridgeApikeyObjectId]
+    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL, bridgeApikeyObjectId, configuration, serviceModels]
   );
 
   const isDisabled = bridgeType === "batch" && service === "openai";
@@ -230,6 +293,37 @@ const ServiceDropdown = ({
           {renderServiceDropdown()}
         </div>
       </div>
+
+      <ConfirmationModal
+        modalType={MODAL_TYPE.JSON_SCHEMA_SERVICE_WARNING_MODAL}
+        title="Unsupported JSON Schema"
+        message={
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-base-content/80 leading-relaxed">
+              The default model for the newly selected service does not support <strong>JSON Schema</strong> response
+              format.
+            </p>
+            <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg text-xs text-warning flex items-start gap-2.5">
+              <CircleAlert className="shrink-0 w-4 h-4 mt-0.5 text-warning" />
+              <span className="leading-normal">
+                The JSON schema will be automatically removed from the configuration if you proceed.
+              </span>
+            </div>
+            <p className="text-sm text-base-content/85">Are you sure you want to change the service?</p>
+          </div>
+        }
+        icon={<CircleAlert size={20} />}
+        iconClass="bg-warning/15 text-warning"
+        confirmText="Yes, Change Service"
+        cancelText="Cancel"
+        confirmButtonClass="btn-warning hover:opacity-90 text-black font-semibold border-none"
+        cancelButtonClass="btn-ghost"
+        onConfirm={confirmServiceChange}
+        onCancel={() => {
+          setPendingService(null);
+          closeModal(MODAL_TYPE.JSON_SCHEMA_SERVICE_WARNING_MODAL);
+        }}
+      />
     </div>
   );
 };
