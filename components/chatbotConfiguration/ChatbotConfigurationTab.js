@@ -171,15 +171,16 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
   const handleAddMcpConfig = useCallback(() => {
     setFormData((prevFormData) => {
+      const newIndex = prevFormData.mcpConfig.length;
+      setMcpEdited((prev) => ({
+        ...prev,
+        [newIndex]: true,
+      }));
       return {
         ...prevFormData,
         mcpConfig: [...prevFormData.mcpConfig, { name: "", url: "" }],
       };
     });
-    // Reset edited state for new MCP
-    setMcpEdited((prev) => ({
-      ...prev,
-    }));
   }, []);
 
   const handleUpdateMcpConfig = useCallback(
@@ -401,78 +402,87 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
             {formData.mcpConfig && formData.mcpConfig.length > 0 ? (
               <div className="space-y-3">
-                {formData.mcpConfig.map((config, index) => {
-                  const isComplete = config.name && config.url;
-                  const isEdited = mcpEdited[index];
+                {(() => {
+                  const hasUnsavedMcp = Object.values(mcpEdited).some((edited) => edited);
                   return (
-                    <div
-                      key={index}
-                      className={`group relative bg-base-200/40 border rounded-lg p-3 space-y-2 transition-all hover:bg-base-200/60 ${
-                        isEdited ? "border-warning" : "border-base-300"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="badge badge-sm badge-primary badge-outline font-medium">
-                            MCP {index + 1}
-                          </span>
-                          {isEdited && <span className="text-[10px] text-warning font-medium">• Unsaved</span>}
-                        </div>
-                        <div className="flex gap-1">
-                          {isEdited && isComplete && (
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateMcpConfig(index)}
-                              className="btn btn-xs gap-1"
-                              title="Save changes"
-                            >
-                              <Save size={12} />
-                              Save
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMcpConfig(index)}
-                            className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10"
-                            title="Remove MCP"
+                    <>
+                      {formData.mcpConfig.map((config, index) => {
+                        const isComplete = config.name && config.url;
+                        const isEdited = mcpEdited[index];
+                        return (
+                          <div
+                            key={index}
+                            className={`group relative bg-base-200/40 border rounded-lg p-3 space-y-2 transition-all hover:bg-base-200/60 ${
+                              isEdited ? "border-warning" : "border-base-300"
+                            }`}
                           >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                      <input
-                        autoComplete="off"
-                        type="text"
-                        placeholder="MCP name (e.g. my-mcp)"
-                        className={`input input-bordered w-full input-sm ${
-                          !config.name ? "input-error input-error/30" : ""
-                        }`}
-                        value={config.name || ""}
-                        onChange={(e) => handleMcpConfigChange(index, "name", e.target.value)}
-                        required
-                      />
-                      <input
-                        autoComplete="off"
-                        type="url"
-                        placeholder="https://mcp.example.com/..."
-                        className={`input input-bordered w-full input-sm ${
-                          !config.url ? "input-error input-error/30" : ""
-                        }`}
-                        value={config.url || ""}
-                        onChange={(e) => handleMcpConfigChange(index, "url", e.target.value)}
-                        required
-                      />
-                    </div>
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <span className="badge badge-sm badge-primary badge-outline font-medium">
+                                  MCP {index + 1}
+                                </span>
+                                {isEdited && <span className="text-[10px] text-warning font-medium">• Unsaved</span>}
+                              </div>
+                              <div className="flex gap-1">
+                                {isEdited && isComplete && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateMcpConfig(index)}
+                                    className="btn btn-xs gap-1"
+                                    title="Save changes"
+                                  >
+                                    <Save size={12} />
+                                    Save
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMcpConfig(index)}
+                                  className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10"
+                                  title="Remove MCP"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                            <input
+                              autoComplete="off"
+                              type="text"
+                              placeholder="MCP name (e.g. my-mcp)"
+                              className={`input input-bordered w-full input-sm ${
+                                !config.name ? "input-error input-error/30" : ""
+                              }`}
+                              value={config.name || ""}
+                              onChange={(e) => handleMcpConfigChange(index, "name", e.target.value)}
+                              required
+                            />
+                            <input
+                              autoComplete="off"
+                              type="url"
+                              placeholder="https://mcp.example.com/..."
+                              className={`input input-bordered w-full input-sm ${
+                                !config.url ? "input-error input-error/30" : ""
+                              }`}
+                              value={config.url || ""}
+                              onChange={(e) => handleMcpConfigChange(index, "url", e.target.value)}
+                              required
+                            />
+                          </div>
+                        );
+                      })}
+                      {!hasUnsavedMcp && (
+                        <button
+                          type="button"
+                          onClick={handleAddMcpConfig}
+                          className="w-full flex items-center justify-center gap-1 py-2 px-3 text-sm rounded-md border-2 border-dashed border-base-200 bg-transparent text-base-content/70 transition-all"
+                        >
+                          <Plus size={14} />
+                          Add Another MCP
+                        </button>
+                      )}
+                    </>
                   );
-                })}
-                <button
-                  type="button"
-                  onClick={handleAddMcpConfig}
-                  className="w-full flex items-center justify-center gap-1 py-2 px-3 text-sm rounded-md border-2 border-dashed border-base-200 bg-transparent text-base-content/70 transition-all"
-                >
-                  <Plus size={14} />
-                  Add Another MCP
-                </button>
+                })()}
               </div>
             ) : (
               <button
