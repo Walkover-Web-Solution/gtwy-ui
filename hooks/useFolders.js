@@ -47,7 +47,6 @@ export const useFolders = (resourceType, orgId, passedIsEmbedUser) => {
         updateFolderAction({
           folder_id: folderId,
           name,
-          type: resourceType,
           config: folder?.config || {},
         })
       );
@@ -108,7 +107,6 @@ export const useFolders = (resourceType, orgId, passedIsEmbedUser) => {
             updateFolderAction({
               folder_id: prevFolder._id,
               name: prevFolder.name,
-              type: "knowledgebase",
               config: { ...prevFolder.config, resourceIds: updatedResourceIds },
             })
           );
@@ -123,7 +121,6 @@ export const useFolders = (resourceType, orgId, passedIsEmbedUser) => {
               updateFolderAction({
                 folder_id: targetFolder._id,
                 name: targetFolder.name,
-                type: "knowledgebase",
                 config: { ...targetFolder.config, resourceIds: updatedResourceIds },
               })
             );
