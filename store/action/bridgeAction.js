@@ -668,7 +668,7 @@ export const updateBridgeVersionAction =
         setTimeout(() => {
           dispatch(setSavingStatus({ status: null }));
         }, 3000);
-        return { success: false, error: data?.error || "Failed to update version" };
+        return { success: false, error: data?.message || data?.error || "Failed to update version" };
       }
     } catch (error) {
       console.error(error);
@@ -696,7 +696,8 @@ export const updateBridgeVersionAction =
       dispatch(setSavingStatus({ status: "failed" }));
 
       // Clear the status after 3 seconds
-      return { success: false, error: error?.message || "Failed to update version" };
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to update version";
+      return { success: false, error: errorMessage };
     }
   };
 
