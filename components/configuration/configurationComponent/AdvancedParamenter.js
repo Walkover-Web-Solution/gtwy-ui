@@ -52,6 +52,9 @@ const AdvancedParameters = ({
   const [activeWidgetButtons, setActiveWidgetButtons] = useState([]);
   const [jsonSchemaFullscreen, setJsonSchemaFullscreen] = useState(false);
   const [jsonSchemaError, setJsonSchemaError] = useState(null);
+  const [jsonSchemaErrorExpanded, setJsonSchemaErrorExpanded] = useState(false);
+  const [isErrorTruncated, setIsErrorTruncated] = useState(false);
+  const errorTextRef = useRef(null);
   const lastSubmittedSchemaRef = useRef(null);
   const dropdownContainerRef = useRef(null);
   const dispatch = useDispatch();
@@ -170,6 +173,14 @@ const AdvancedParameters = ({
     // Reset the last submitted ref when the schema changes externally (e.g. loaded from server)
     lastSubmittedSchemaRef.current = !isEmptyJsonSchema(schema) ? JSON.stringify(schema) : null;
   }, [configuration?.response_type?.json_schema]);
+
+  useEffect(() => {
+    if (errorTextRef.current && !jsonSchemaErrorExpanded) {
+      const element = errorTextRef.current;
+      const isTruncated = element.scrollHeight > element.clientHeight;
+      setIsErrorTruncated(isTruncated);
+    }
+  }, [jsonSchemaError, jsonSchemaErrorExpanded]);
 
   const getJsonSchemaEditorValue = (paramKey) => {
     if (objectFieldValue != null) return objectFieldValue;
@@ -290,9 +301,10 @@ const AdvancedParameters = ({
       } else {
         setObjectFieldValue(null);
       }
-    } catch {
+    } catch (error) {
+      console.error("JSON parsing error in handleSelectChange:", error);
       toast.error("Invalid JSON provided");
-      return { success: false };
+      return { success: false, error: error?.message || "Invalid JSON provided" };
     }
     const existingValue =
       typeof configuration?.[key] === "object" && configuration?.[key] !== null ? configuration?.[key] : {};
@@ -961,6 +973,42 @@ const AdvancedParameters = ({
                       </div>
 
                       <div className="relative" data-testid={`advanced-param-json-schema-editor-wrapper-${key}`}>
+                        {jsonSchemaError && (
+                          <div
+                            className="flex flex-col gap-1 mb-1.5 text-error"
+                            data-testid={`advanced-param-json-schema-error-${key}`}
+                          >
+                            <div className="flex items-start gap-1.5">
+                              <CircleX className="h-3.5 w-3.5 mt-0.5 shrink-0 text-error" />
+                              <div className="flex-1">
+                                <div className="flex items-start gap-1">
+                                  <div
+                                    ref={errorTextRef}
+                                    className={`text-xs text-error whitespace-pre-wrap break-words ${!jsonSchemaErrorExpanded ? "line-clamp-1" : ""}`}
+                                  >
+                                    {jsonSchemaError}
+                                  </div>
+                                  {!jsonSchemaErrorExpanded && isErrorTruncated && (
+                                    <button
+                                      onClick={() => setJsonSchemaErrorExpanded(true)}
+                                      className="text-xs text-error underline shrink-0 hover:opacity-80 whitespace-nowrap"
+                                    >
+                                      more
+                                    </button>
+                                  )}
+                                </div>
+                                {jsonSchemaErrorExpanded && (
+                                  <button
+                                    onClick={() => setJsonSchemaErrorExpanded(false)}
+                                    className="text-xs text-error underline hover:opacity-80 whitespace-nowrap"
+                                  >
+                                    less
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <div
                           data-testid={`advanced-param-json-schema-editor-border-${key}`}
                           className={`w-full text-xs font-mono rounded overflow-hidden border transition-colors duration-200 ${
@@ -1026,15 +1074,26 @@ const AdvancedParameters = ({
                                 );
 
                                 if (result?.success === false) {
-                                  setJsonSchemaError("Invalid JSON schema. Please check the schema and try again.");
+                                  setJsonSchemaErrorExpanded(false);
+                                  setJsonSchemaError(
+                                    result?.error ||
+                                      result?.message ||
+                                      "Invalid JSON schema. Please check the schema and try again."
+                                  );
                                 } else {
                                   lastSubmittedSchemaRef.current = schemaKey;
                                   setJsonSchemaError(null);
-                                  toast.success("JSON schema saved successfully");
                                 }
                               } catch (error) {
-                                console.error(error);
-                                setJsonSchemaError("Invalid JSON schema. Please fix the syntax and try again.");
+                                const errorMessage =
+                                  error?.response?.data?.message ||
+                                  error?.response?.data ||
+                                  error?.message ||
+                                  "Invalid JSON schema. Please fix the syntax and try again.";
+                                setJsonSchemaErrorExpanded(false);
+                                setJsonSchemaError(
+                                  typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage)
+                                );
                               }
                             }}
                             className="w-full"
@@ -1042,22 +1101,13 @@ const AdvancedParameters = ({
                           />
                         </div>
                       </div>
-                      {jsonSchemaError && (
-                        <div
-                          className="flex items-start gap-1.5 mt-1.5 text-error"
-                          data-testid={`advanced-param-json-schema-error-${key}`}
-                        >
-                          <CircleX className="h-3.5 w-3.5 mt-0.5 shrink-0 text-error" />
-                          <span className="text-xs text-error">{jsonSchemaError}</span>
-                        </div>
-                      )}
                       <FullscreenEditorModal
                         modalId={MODAL_TYPE.FULLSCREEN_JSON_SCHEMA}
                         title="JSON Schema"
                         value={getJsonSchemaEditorValue(key)}
                         isOpen={jsonSchemaFullscreen}
                         onClose={() => setJsonSchemaFullscreen(false)}
-                        onSave={(finalVal) => {
+                        onSave={async (finalVal) => {
                           try {
                             const parsedValue = JSON.parse(String(finalVal).trim());
                             const trimmedValue = {
@@ -1072,17 +1122,36 @@ const AdvancedParameters = ({
                             };
                             setObjectFieldValue(JSON.stringify(parsedValue, undefined, 4));
                             setJsonSchemaError(null);
-                            handleSelectChange(
+                            const result = await handleSelectChange(
                               { target: { value: "json_schema" } },
                               key,
                               defaultValue,
                               trimmedValue,
                               true
                             );
+                            if (result?.success === false) {
+                              setJsonSchemaErrorExpanded(false);
+                              setJsonSchemaError(
+                                result?.error ||
+                                  result?.message ||
+                                  "Invalid JSON schema. Please check the schema and try again."
+                              );
+                              toast.error("Invalid JSON schema");
+                              return false;
+                            }
+                            setJsonSchemaError(null);
                             return true;
                           } catch (error) {
                             console.error(error);
-                            setJsonSchemaError("Invalid JSON schema. Please fix the syntax and try again.");
+                            const errorMessage =
+                              error?.response?.data?.message ||
+                              error?.response?.data ||
+                              error?.message ||
+                              "Invalid JSON schema. Please fix the syntax and try again.";
+                            setJsonSchemaErrorExpanded(false);
+                            setJsonSchemaError(
+                              typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage)
+                            );
                             toast.error("Invalid JSON schema");
                             return false;
                           }

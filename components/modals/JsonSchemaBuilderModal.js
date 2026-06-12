@@ -827,7 +827,6 @@ function JsonSchemaBuilderModal({
         strict: true,
       };
       onSave(schemaToSave);
-      toast.success("JSON Schema saved successfully");
       schemaCacheRef.current = {};
       setSelectedButtonKey(widgetButtons.length > 0 ? (widgetButtons[0]?.key ?? null) : null);
       closeModal(modalId);
@@ -899,7 +898,6 @@ function JsonSchemaBuilderModal({
         })
       );
     }
-    toast.success("JSON Schema saved successfully");
     schemaCacheRef.current = {};
     setSelectedButtonKey(widgetButtons.length > 0 ? (widgetButtons[0]?.key ?? null) : null);
     closeModal(modalId);
