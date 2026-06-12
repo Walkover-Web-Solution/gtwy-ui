@@ -609,10 +609,10 @@ const CommandPalette = ({ isEmbedUser }) => {
         router.push("/");
         return;
       }
-      // For deleted agents, navigate to the agents listing page with filter
+      // For deleted agents, navigate to the agents listing page with filter and folder=trash
       if (item.type === "agents" && item.deletedAt) {
         const agentType = item.bridgeType === "chatbot" ? "chatbot" : "api";
-        router.push(`/org/${orgId}/agents?type=${agentType}&filter=${item.id}`);
+        router.push(`/org/${orgId}/agents?type=${agentType}&folder=trash&filter=${item.id}`);
         closePalette();
         return;
       }

@@ -31,10 +31,11 @@ import SearchItems from "@/components/UI/SearchItems";
 import ApiKeyGuideSlider from "@/components/configuration/configurationComponent/ApiKeyGuide";
 import ConnectedAgentsModal from "@/components/modals/ConnectedAgentsModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import Protected from "@/components/Protected";
 
 export const runtime = "edge";
 
-const Page = () => {
+const Page = ({ isEmbedUser = false }) => {
   const pathName = usePathname();
   const dispatch = useDispatch();
   const path = pathName?.split("?")[0].split("/");
@@ -45,7 +46,7 @@ const Page = () => {
     linksData: state.flowDataReducer.flowData.linksData || [],
     SERVICES: state?.serviceReducer?.services || [],
   }));
-  const { folders, createFolder, renameFolder, deleteFolder, moveResource } = useFolders("apikey", orgId);
+  const { folders, createFolder, renameFolder, deleteFolder, moveResource } = useFolders("apikey", orgId, isEmbedUser);
   const { activeFolderId, setDraggedResourceId } = useFolderContext();
   // Filter API keys to only show keys for services that exist in current services
   const [filterApiKeys, setFilterApiKeys] = useState(apikeyData);
@@ -218,7 +219,7 @@ const Page = () => {
             <Folder size={14} />
           </label>
           <div tabIndex={0} className="dropdown-content z-[100] mt-2">
-            <MoveToFolderMenu folders={folders} onMove={(folderId) => moveResource(row._id, folderId)} />
+            <MoveToFolderMenu folders={folders} currentFolderId={row.folder_id} onMove={(folderId) => moveResource(row._id, folderId)} />
           </div>
         </div> */}
       </div>
@@ -333,4 +334,4 @@ const WrappedPage = (props) => (
     <Page {...props} />
   </ResourcePage>
 );
-export default WrappedPage;
+export default Protected(WrappedPage);

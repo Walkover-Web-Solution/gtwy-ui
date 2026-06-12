@@ -310,9 +310,10 @@ function Home({ params, searchParams, isEmbedUser }) {
   const resolvedParams = use(params);
   const { folders, createFolder, renameFolder, deleteFolder, moveResource } = useFolders(
     "agent",
-    resolvedParams.org_id
+    resolvedParams.org_id,
+    isEmbedUser
   );
-  const { activeFolderId, setDraggedResourceId } = useFolderContext();
+  const { activeFolderId, setActiveFolderId, setDraggedResourceId } = useFolderContext();
   // Use the tutorial videos hook
   const { getApiAgentCreationVideo, getChatbotAgentCreationVideo } = useTutorialVideos();
   const resolvedSearchParams = use(searchParams);
@@ -375,6 +376,18 @@ function Home({ params, searchParams, isEmbedUser }) {
     };
   }, [bridgeTypeFilter, descriptions, isEmbedUser]);
   const deletedSectionTitle = bridgeTypeFilter === "chatbot" ? "Deleted Chatbots" : "Deleted Agents";
+
+  useEffect(() => {
+    if (resolvedSearchParams?.folder === "trash") {
+      setActiveFolderId("trash");
+      const url = new URL(window.location);
+      if (url.searchParams.has("folder")) {
+        url.searchParams.delete("folder");
+        router.replace(url.pathname + url.search, { scroll: false });
+      }
+    }
+  }, [resolvedSearchParams?.folder, setActiveFolderId, router]);
+
   // Initialize with empty array instead of typeFilteredBridges to avoid reference error
   const [filterBridges, setFilterBridges] = useState([]);
   const [loadingAgentId, setLoadingAgentId] = useState(null);
@@ -755,10 +768,11 @@ function Home({ params, searchParams, isEmbedUser }) {
         if (!aFolder && !bFolder) return 0;
 
         // Find folder names for alphabetical sorting
-        const folderA = folders.find((f) => getFolderIdStr(f._id) === getFolderIdStr(aFolder));
-        const folderB = folders.find((f) => getFolderIdStr(f._id) === getFolderIdStr(bFolder));
-        const nameA = folderA ? folderA.name.toLowerCase() : "";
-        const nameB = folderB ? folderB.name.toLowerCase() : "";
+        const foldersList = Array.isArray(folders) ? folders : [];
+        const folderA = foldersList.find((f) => f && getFolderIdStr(f._id) === getFolderIdStr(aFolder));
+        const folderB = foldersList.find((f) => f && getFolderIdStr(f._id) === getFolderIdStr(bFolder));
+        const nameA = folderA && folderA.name ? folderA.name.toLowerCase() : "";
+        const nameB = folderB && folderB.name ? folderB.name.toLowerCase() : "";
         return nameA.localeCompare(nameB);
       });
       return sorted;
@@ -770,14 +784,19 @@ function Home({ params, searchParams, isEmbedUser }) {
   }, [UnArchivedBridges, activeFolderId, folders]);
 
   const folderCounts = useMemo(() => {
+    const unarchivedList = Array.isArray(UnArchivedBridges) ? UnArchivedBridges : [];
+    const foldersList = Array.isArray(folders) ? folders : [];
+
     const counts = {
-      all: UnArchivedBridges.length,
-      uncategorized: UnArchivedBridges.filter((b) => !b.folder_id).length,
+      all: unarchivedList.length,
+      uncategorized: unarchivedList.filter((b) => !b.folder_id).length,
     };
-    folders.forEach((folder) => {
-      counts[folder._id] = UnArchivedBridges.filter(
-        (b) => getFolderIdStr(b.folder_id) === getFolderIdStr(folder._id)
-      ).length;
+    foldersList.forEach((folder) => {
+      if (folder && folder._id) {
+        counts[folder._id] = unarchivedList.filter(
+          (b) => getFolderIdStr(b.folder_id) === getFolderIdStr(folder._id)
+        ).length;
+      }
     });
     return counts;
   }, [UnArchivedBridges, folders]);
@@ -1121,6 +1140,7 @@ function Home({ params, searchParams, isEmbedUser }) {
             >
               <MoveToFolderMenu
                 folders={folders}
+                currentFolderId={row.folder_id}
                 onMove={(folderId) => {
                   moveResource(row._id, folderId);
                   handlePortalCloseImmediate();

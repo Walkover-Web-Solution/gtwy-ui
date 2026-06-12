@@ -41,6 +41,7 @@ import { getPrebuiltPromptsAction } from "@/store/action/prebuiltPromptAction";
 import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { getAllAuthData } from "@/store/action/authkeyAction";
+import { getAllChatBotAction } from "@/store/action/chatBotAction";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
 const MainSlider = dynamic(() => import("@/components/sliders/MainSlider"), { loading: () => <LoadingSpinner /> });
@@ -101,6 +102,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   }));
   useEffect(() => {
     if (!isEmbedUser) {
+      dispatch(getAllChatBotAction(resolvedParams.org_id));
       dispatch(getTutorialDataAction());
     }
     if (pathName.endsWith("agents")) {
@@ -115,7 +117,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     if (pathName.endsWith("apikeys") && !isEmbedUser) {
       dispatch(getApiKeyGuideAction());
     }
-  }, [pathName]);
+  }, [pathName, resolvedParams.org_id, isEmbedUser]);
 
   const { changeTheme } = useThemeManager();
 

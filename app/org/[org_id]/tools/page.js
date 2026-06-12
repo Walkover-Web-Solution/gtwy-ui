@@ -22,6 +22,7 @@ import FolderTabs from "@/components/folders/FolderTabs";
 import MoveToFolderMenu from "@/components/folders/MoveToFolderMenu";
 import useFolders from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
+import Protected from "@/components/Protected";
 
 export const runtime = "edge";
 
@@ -98,10 +99,10 @@ const EmptyState = ({ onAddTool }) => (
   </div>
 );
 
-const ToolsPage = ({ params }) => {
+const ToolsPage = ({ params, isEmbedUser = false }) => {
   const resolvedParams = use(params);
   const orgId = resolvedParams?.org_id;
-  const { folders, createFolder, renameFolder, deleteFolder, moveResource } = useFolders("tools", orgId);
+  const { folders, createFolder, renameFolder, deleteFolder, moveResource } = useFolders("tools", orgId, isEmbedUser);
   const { activeFolderId, setDraggedResourceId } = useFolderContext();
   const dispatch = useDispatch();
   const router = useRouter();
@@ -667,7 +668,7 @@ const ToolsPage = ({ params }) => {
               <Folder size={14} />
             </label>
             <div tabIndex={0} className="dropdown-content z-[100] mt-2">
-              <MoveToFolderMenu folders={folders} onMove={(folderId) => moveResource(row._id, folderId)} />
+              <MoveToFolderMenu folders={folders} currentFolderId={row.originalData?.folder_id} onMove={(folderId) => moveResource(row._id, folderId)} />
             </div>
           </div> */}
         </div>
@@ -804,4 +805,4 @@ const WrappedToolsPage = (props) => (
     <ToolsPage {...props} />
   </ResourcePage>
 );
-export default WrappedToolsPage;
+export default Protected(WrappedToolsPage);

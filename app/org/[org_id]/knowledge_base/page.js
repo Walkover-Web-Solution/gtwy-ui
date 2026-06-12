@@ -153,7 +153,14 @@ const Page = ({ params }) => {
             <Folder size={14} />
           </label>
           <div tabIndex={0} className="dropdown-content z-[100] mt-2">
-            <MoveToFolderMenu folders={folders} onMove={(folderId) => moveResource(row._id, folderId)} />
+            <MoveToFolderMenu
+              folders={folders}
+              currentFolderId={(() => {
+                const folder = Array.isArray(folders) ? folders.find((f) => f && f.config?.resourceIds?.includes(row._id)) : null;
+                return folder ? folder._id : null;
+              })()}
+              onMove={(folderId) => moveResource(row._id, folderId)}
+            />
           </div>
         </div> */}
       </div>
