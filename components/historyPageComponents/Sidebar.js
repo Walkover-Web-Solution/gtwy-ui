@@ -740,8 +740,8 @@ const Sidebar = memo(
                     {Object.keys(groupHistoryByDate(historyData)).map((dateGroup) => {
                       const items = groupHistoryByDate(historyData)[dateGroup];
                       return (
-                        <div key={dateGroup} className="mb-4">
-                          <div className="flex items-center gap-2 px-3 pt-3 pb-1 sticky top-0 bg-base-200 z-10">
+                        <div key={dateGroup} className="mb-1">
+                          <div className="flex items-center gap-2 px-3 pt-1 pb-1 sticky top-0 bg-base-200 z-10">
                             <span className="text-[9px] font-bold uppercase tracking-widest text-base-content/50">
                               {dateGroup}
                             </span>
