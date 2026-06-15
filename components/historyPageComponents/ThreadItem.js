@@ -18,7 +18,7 @@ import { ExpandCollapse } from "@/components/UI/ExpandCollapse";
 import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getIconOfService, getToolName, openModal, allowedAttributes } from "@/utils/utility";
+import { getIconOfService, getToolName, openModal, allowedAttributes, extractErrorMessage } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
 import {
@@ -1472,13 +1472,13 @@ const ThreadItem = ({
             </span>
           </>
           <span className="flex-1 min-w-0 truncate text-error group-open/fae:hidden">
-            {item.firstAttemptError?.substring(0, 200)}
-            {item.firstAttemptError?.length > 200 ? "..." : ""}
+            {extractErrorMessage(item.firstAttemptError)?.substring(0, 200)}
+            {extractErrorMessage(item.firstAttemptError)?.length > 200 ? "..." : ""}
           </span>
           <ChevronDown className="w-3.5 h-3.5 shrink-0 transition-transform group-open/fae:rotate-180" />
         </summary>
         <div className="px-3 pb-2 pt-0 text-xs">
-          <p className="whitespace-pre-wrap break-words text-error">{item.firstAttemptError}</p>
+          <p className="whitespace-pre-wrap break-words text-error">{extractErrorMessage(item.firstAttemptError)}</p>
         </div>
       </details>
     </div>
@@ -2558,7 +2558,7 @@ const ThreadItem = ({
                     </span>
                     <span className="truncate text-sm font-semibold text-error">{rootAgentName}</span>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{item?.error}</p>
+                  <p className="text-sm whitespace-pre-wrap">{extractErrorMessage(item?.error)}</p>
                 </div>
               </div>
             </div>
@@ -2582,7 +2582,7 @@ const ThreadItem = ({
                   </span>
                   <span className="truncate text-sm font-semibold text-error">{rootAgentName}</span>
                 </div>
-                <p className="text-sm whitespace-pre-wrap">{item?.error}</p>
+                <p className="text-sm whitespace-pre-wrap">{extractErrorMessage(item?.error)}</p>
               </div>
             </div>
           ))}

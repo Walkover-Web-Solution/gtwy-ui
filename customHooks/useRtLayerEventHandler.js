@@ -16,6 +16,7 @@ import {
   testRunFailedReducer,
   directTestResultReducer,
 } from "@/store/reducer/testCasesReducer";
+import { updateAnalyticsFromRtLayer } from "@/store/reducer/analyticsReducer";
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
@@ -54,7 +55,12 @@ function useRtLayerEventHandler(channelIdentifier = "") {
 
   // Memoize channel ID to prevent unnecessary recalculations
   const channelId = useMemo(() => {
-    if (channelIdentifier != "") {
+    if (
+      channelIdentifier &&
+      channelIdentifier !== "" &&
+      !channelIdentifier.includes("undefined") &&
+      !channelIdentifier.includes("null")
+    ) {
       return channelIdentifier;
     }
     if (!bridgeId || !orgId) return null;
@@ -102,6 +108,16 @@ function useRtLayerEventHandler(channelIdentifier = "") {
     (message) => {
       try {
         const parsedData = typeof message === "string" ? JSON.parse(message) : message;
+
+        if (
+          parsedData.type === "summary" ||
+          parsedData.type === "requests_over_time" ||
+          parsedData.type === "response_time"
+        ) {
+          dispatch(updateAnalyticsFromRtLayer(parsedData));
+          return;
+        }
+
         const { response, error, event } = parsedData;
 
         // Intercept intermediate function calls/reasoning updates
@@ -453,6 +469,11 @@ function useRtLayerEventHandler(channelIdentifier = "") {
     };
   }, [client, initializeWebSocketClient]);
 
+  const processHistoryDataRef = useRef(processHistoryData);
+  useEffect(() => {
+    processHistoryDataRef.current = processHistoryData;
+  }, [processHistoryData]);
+
   // Set up event listener
   useEffect(() => {
     if (!client || !channelId) {
@@ -467,7 +488,7 @@ function useRtLayerEventHandler(channelIdentifier = "") {
 
       // Create new listener
       const listener = client.on(channelId, (message) => {
-        processHistoryData(message);
+        processHistoryDataRef.current(message);
       });
 
       listenerRef.current = listener;
@@ -483,7 +504,7 @@ function useRtLayerEventHandler(channelIdentifier = "") {
       console.error("Error setting up WebSocket listener:", error);
       setConnectionError(error.message);
     }
-  }, [client, channelId, processHistoryData]);
+  }, [client, channelId]);
   // Listen to global channel for model config updates
   useEffect(() => {
     if (!client) return;

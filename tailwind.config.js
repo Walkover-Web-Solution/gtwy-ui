@@ -20,6 +20,18 @@ const buildTheme = (tokens, colorScheme = "light") => ({
   ...(colorScheme === "dark" ? shapeTokensDark : shapeTokens),
 });
 
+const CHART_STYLE = {
+  grid: "#f3f4f6",
+  axis: "#9ca3af",
+  tooltip: {
+    backgroundColor: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    fontSize: "12px",
+    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+  },
+};
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -39,6 +51,7 @@ module.exports = {
   ],
   theme: {
     extend: {
+      chartStyle: CHART_STYLE,
       colors: {
         "base-50": "var(--base-50, oklch(0.985 0.002 247.84))",
         "trace-gold": "oklch(var(--trace-gold) / <alpha-value>)",

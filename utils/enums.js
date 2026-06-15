@@ -1,5 +1,5 @@
 import { BookIcon, BotIcon, KeyIcon, SettingsIcon, TestTubeDiagonalIcon, WrenchIcon } from "@/components/Icons";
-import { DollarSign, Star, Gauge } from "lucide-react";
+import { DollarSign, Star, Gauge, Activity, CheckCircle2, Timer, X, Cpu, ThumbsUp, ThumbsDown } from "lucide-react";
 export const PAUTH_KEY_COLUMNS = ["name", "authkey", "created_at"];
 export const API_KEY_COLUMNS = ["name", "apikey", "apikey_usage", "last_used", "last_used_status"];
 export const WEBHOOKALERT_COLUMNS = ["name", "url", "headers", "alertType", "bridges"];
@@ -382,3 +382,87 @@ export const DEFAULT_STARTER_QUESTIONS = [
   "How do I get started?",
   "What kind of questions can I ask you?",
 ];
+
+export const getStatsConfig = (summary) => {
+  const formatTokens = (tokens) => {
+    if (tokens == null) return 0;
+    if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+    if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;
+    return tokens;
+  };
+
+  return [
+    {
+      title: "Total Requests",
+      value: summary?.total_requests ?? 0,
+      change: "",
+      trend: "up",
+      icon: Activity,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      title: "Success Rate",
+      value: summary?.success_rate != null ? `${summary.success_rate.toFixed(1)}%` : "0%",
+      change: "",
+      trend: "up",
+      icon: CheckCircle2,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      title: "Avg Response",
+      value: summary?.avg_response_ms != null ? `${(summary.avg_response_ms / 1000).toFixed(2)}s` : "0s",
+      change: "",
+      trend: "down",
+      icon: Timer,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      title: "Failed Runs",
+      value: summary?.failed_runs ?? 0,
+      change: "",
+      trend: "down",
+      icon: X,
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+    },
+    {
+      title: "Token Usage",
+      value: formatTokens(summary?.total_tokens),
+      change: "",
+      trend: "up",
+      icon: Cpu,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      title: "Est. Cost",
+      value: summary?.est_cost != null ? `$${summary.est_cost.toFixed(2)}` : "$0.00",
+      change: "",
+      trend: "up",
+      icon: DollarSign,
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+    },
+    {
+      title: "Positive",
+      value: summary?.positive_feedback ?? 0,
+      change: "",
+      trend: "up",
+      icon: ThumbsUp,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      title: "Negative",
+      value: summary?.negative_feedback ?? 0,
+      change: "",
+      trend: "down",
+      icon: ThumbsDown,
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+    },
+  ];
+};

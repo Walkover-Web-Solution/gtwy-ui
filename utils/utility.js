@@ -1179,3 +1179,100 @@ export const getToolName = (toolId, allBridgesMap = {}, orgBridges = [], integra
   // If not found or not an ID, return original name
   return toolId;
 };
+
+export function extractErrorMessage(errorStr) {
+  if (!errorStr) return "";
+  if (typeof errorStr !== "string") {
+    try {
+      return JSON.stringify(errorStr, null, 2);
+    } catch {
+      return String(errorStr);
+    }
+  }
+
+  const trimmed = errorStr.trim();
+
+  // Try parsing as standard JSON first
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object") {
+      if (parsed.error) return extractErrorMessage(parsed.error);
+      if (parsed.message) return parsed.message;
+      return JSON.stringify(parsed, null, 2);
+    }
+  } catch {
+    // Ignore and proceed
+  }
+
+  // Check if it's a python dict representation (starts with { and ends with })
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    // Try to extract the 'error' key using a regex that handles single-quoted string values.
+    // E.g., 'error': '...'
+    const errorMatch = trimmed.match(/'error':\s*'((?:[^'\\]|\\.)*)'/);
+    if (errorMatch && errorMatch[1]) {
+      let extracted = errorMatch[1].replace(/\\'/g, "'").replace(/\\n/g, "\n");
+      return extractErrorMessage(extracted);
+    }
+
+    // Also try double quotes key just in case
+    const errorMatchDouble = trimmed.match(/"error":\s*"((?:[^"\\]|\\.)*)"/);
+    if (errorMatchDouble && errorMatchDouble[1]) {
+      let extracted = errorMatchDouble[1].replace(/\\"/g, '"').replace(/\\n/g, "\n");
+      return extractErrorMessage(extracted);
+    }
+
+    // Fallback if it has a python dictionary look but matches keys
+    try {
+      const converted = trimmed
+        .replace(/'/g, '"')
+        .replace(/:\s*False/g, ": false")
+        .replace(/:\s*True/g, ": true")
+        .replace(/:\s*None/g, ": null");
+      const parsedConverted = JSON.parse(converted);
+      if (parsedConverted && parsedConverted.error) {
+        return extractErrorMessage(parsedConverted.error);
+      }
+      if (parsedConverted && parsedConverted.message) {
+        return parsedConverted.message;
+      }
+    } catch {
+      // Ignore conversion failure
+    }
+  }
+
+  // If the string itself contains a JSON sub-string (like the mistral api response inside),
+  // e.g. "Internal server error" from {"object":"error","message":"Internal server error",...}
+  const jsonStart = trimmed.indexOf('{"object":');
+  if (jsonStart !== -1) {
+    const jsonSub = trimmed.substring(jsonStart);
+    try {
+      let openBraces = 0;
+      let endIdx = 0;
+      for (let i = 0; i < jsonSub.length; i++) {
+        if (jsonSub[i] === "{") openBraces++;
+        else if (jsonSub[i] === "}") {
+          openBraces--;
+          if (openBraces === 0) {
+            endIdx = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIdx > 0) {
+        const parsedSub = JSON.parse(jsonSub.substring(0, endIdx));
+        if (parsedSub && parsedSub.message) {
+          const prefix = trimmed.substring(0, jsonStart).trim();
+          if (prefix) {
+            const cleanPrefix = prefix.replace(/[\s\n,;:]+$/, "");
+            return `${cleanPrefix}: ${parsedSub.message}`;
+          }
+          return parsedSub.message;
+        }
+      }
+    } catch {
+      // Ignore sub-parsing failure
+    }
+  }
+
+  return errorStr;
+}

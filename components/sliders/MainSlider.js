@@ -313,7 +313,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
       const doSwitch = async () => {
         try {
-          const response = await switchOrg(id);
+          await switchOrg(id);
           const localToken = await switchUser({ orgId: id, orgName: name });
           setInCookies("local_token", localToken.token);
 
@@ -322,12 +322,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
           if (isMobile) setIsMobileVisible(false);
           setIsOrgDropdownExpanded(false);
           setIsOrgDropdownOpen(false);
-
-          if (response.status === 200) {
-            console.log("Organization switched successfully", response.data);
-          } else {
-            console.error("Failed to switch organization", response.data);
-          }
         } catch (error) {
           console.error("Error switching organization", error);
         }

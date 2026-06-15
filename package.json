@@ -38,6 +38,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-syntax-highlighter": "^15.5.0",
     "react-toastify": "^10.0.4",
+    "recharts": "^3.8.1",
     "redux-persist": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "rtlayer-client": "^1.5.5"

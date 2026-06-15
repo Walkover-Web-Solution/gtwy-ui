@@ -240,70 +240,71 @@ function Page({ params, searchParams }) {
   const isLoadingState = loading || !historyData;
 
   return (
-    <div className="bg-history-page relative scrollbar-hide text-base-content max-h-[calc(100vh-9rem)]">
-      <div className="drawer drawer-open overflow-hidden bg-history-page">
-        <input autoComplete="off" id="my-drawer-2" type="checkbox" className="drawer-toggle" />
-        <div className="drawer-content flex flex-row overflow-hidden bg-history-page min-h-full">
-          {batchPanel}
-          <div className="flex-1 overflow-hidden bg-history-page min-h-full">
-            {isLoadingState ? (
-              <ChatLoadingSkeleton isSingleQuery={isSingleQuery} />
-            ) : (
-              <React.Suspense>
-                <ThreadContainer
-                  key={`thread-container-${resolvedParams.id}-${resolvedParams.version}`}
-                  thread={displayThread}
-                  filterOption={filterOption}
-                  setFilterOption={setFilterOption}
-                  isFetchingMore={isFetchingMore}
-                  setIsFetchingMore={setIsFetchingMore}
-                  setLoading={setLoading}
-                  searchMessageId={searchMessageId}
-                  setSearchMessageId={setSearchMessageId}
-                  params={resolvedParams}
-                  pathName={pathName}
-                  search={resolvedSearchParams}
-                  historyData={historyData}
-                  threadHandler={threadHandler}
-                  threadPage={threadPage}
-                  setThreadPage={setThreadPage}
-                  hasMoreThreadData={hasMoreThreadData}
-                  setHasMoreThreadData={setHasMoreThreadData}
-                  selectedVersion={selectedVersion}
-                  setIsErrorTrue={setIsErrorTrue}
-                  isErrorTrue={isErrorTrue}
-                  previousPrompt={previousPrompt}
-                />
-              </React.Suspense>
-            )}
-          </div>
-        </div>
+    <div className="bg-history-page relative scrollbar-hide text-base-content h-[calc(100vh-40px)]">
+      <div className="flex flex-row overflow-hidden bg-history-page min-h-full h-full relative">
         <React.Suspense>
-          <Sidebar
-            historyData={historyData}
-            threadHandler={threadHandler}
-            fetchMoreData={fetchMoreData}
-            hasMore={hasMore}
-            loading={loading}
-            params={resolvedParams}
-            searchParams={Object.fromEntries(search.entries())}
-            setSearchMessageId={setSearchMessageId}
-            setPage={setPage}
-            setHasMore={setHasMore}
-            filterOption={filterOption}
-            setFilterOption={setFilterOption}
-            searchRef={searchRef}
-            setIsFetchingMore={setIsFetchingMore}
-            setThreadPage={setThreadPage}
-            threadPage={threadPage}
-            hasMoreThreadData={hasMoreThreadData}
-            setHasMoreThreadData={setHasMoreThreadData}
-            selectedVersion={selectedVersion}
-            setIsErrorTrue={setIsErrorTrue}
-            isErrorTrue={isErrorTrue}
-            activeFilterByRef={activeFilterByRef}
-          />
+          <div className="pl-4 h-full shrink-0 z-50 flex relative">
+            <Sidebar
+              historyData={historyData}
+              threadHandler={threadHandler}
+              fetchMoreData={fetchMoreData}
+              hasMore={hasMore}
+              loading={loading}
+              params={resolvedParams}
+              searchParams={Object.fromEntries(search.entries())}
+              setSearchMessageId={setSearchMessageId}
+              setPage={setPage}
+              setHasMore={setHasMore}
+              filterOption={filterOption}
+              setFilterOption={setFilterOption}
+              searchRef={searchRef}
+              setIsFetchingMore={setIsFetchingMore}
+              setThreadPage={setThreadPage}
+              threadPage={threadPage}
+              hasMoreThreadData={hasMoreThreadData}
+              setHasMoreThreadData={setHasMoreThreadData}
+              selectedVersion={selectedVersion}
+              setIsErrorTrue={setIsErrorTrue}
+              isErrorTrue={isErrorTrue}
+              activeFilterByRef={activeFilterByRef}
+            />
+          </div>
         </React.Suspense>
+
+        {batchPanel}
+
+        <div className="flex-grow flex-1 overflow-hidden bg-history-page min-h-full h-full">
+          {isLoadingState ? (
+            <ChatLoadingSkeleton isSingleQuery={isSingleQuery} />
+          ) : (
+            <React.Suspense>
+              <ThreadContainer
+                key={`thread-container-${resolvedParams.id}-${resolvedParams.version}`}
+                thread={displayThread}
+                filterOption={filterOption}
+                setFilterOption={setFilterOption}
+                isFetchingMore={isFetchingMore}
+                setIsFetchingMore={setIsFetchingMore}
+                setLoading={setLoading}
+                searchMessageId={searchMessageId}
+                setSearchMessageId={setSearchMessageId}
+                params={resolvedParams}
+                pathName={pathName}
+                search={resolvedSearchParams}
+                historyData={historyData}
+                threadHandler={threadHandler}
+                threadPage={threadPage}
+                setThreadPage={setThreadPage}
+                hasMoreThreadData={hasMoreThreadData}
+                setHasMoreThreadData={setHasMoreThreadData}
+                selectedVersion={selectedVersion}
+                setIsErrorTrue={setIsErrorTrue}
+                isErrorTrue={isErrorTrue}
+                previousPrompt={previousPrompt}
+              />
+            </React.Suspense>
+          )}
+        </div>
       </div>
       <ChatDetails selectedItem={selectedItem} setIsSliderOpen={setIsSliderOpen} isSliderOpen={isSliderOpen} />
       <ChatAiConfigDeatilViewModal

@@ -15,6 +15,7 @@ import {
   ChevronDown,
   RefreshCcw,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -114,7 +115,9 @@ const Navbar = ({ isEmbedUser, params }) => {
           ? "history"
           : pathname.includes("testcase")
             ? "testcase"
-            : "configure",
+            : pathname.includes("analytics")
+              ? "analytics"
+              : "configure",
       showHomeButton: state.appInfoReducer?.embedUserDetails?.showHomeButton ?? true,
       showHistory: state.appInfoReducer?.embedUserDetails?.showHistory,
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.name || "",
@@ -160,6 +163,13 @@ const Navbar = ({ isEmbedUser, params }) => {
         shortLabel: "History",
         shortcut: "G H",
       });
+      baseTabs.push({
+        id: "analytics",
+        label: "Analytics",
+        icon: BarChart3,
+        shortLabel: "Analytics",
+        shortcut: "G A",
+      });
     }
     return baseTabs;
   }, [isEmbedUser, bridgeType, showTestcases, showHistory]);
@@ -195,7 +205,7 @@ const Navbar = ({ isEmbedUser, params }) => {
   const shouldShowNavbar = useCallback(() => {
     const depth = pathParts.length;
     if (depth === 3) return false;
-    return ["configure", "history", "testcase"].some((seg) => pathname.includes(seg));
+    return ["configure", "history", "testcase", "analytics"].some((seg) => pathname.includes(seg));
   }, [pathParts.length, pathname]);
 
   // Scroll detection
@@ -430,6 +440,11 @@ const Navbar = ({ isEmbedUser, params }) => {
         } else if (e.key === "h" || e.key === "H") {
           e.preventDefault();
           handleTabChange("history");
+          gPressed = false;
+          if (timeoutId) clearTimeout(timeoutId);
+        } else if (e.key === "a" || e.key === "A") {
+          e.preventDefault();
+          handleTabChange("analytics");
           gPressed = false;
           if (timeoutId) clearTimeout(timeoutId);
         }
