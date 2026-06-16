@@ -711,7 +711,7 @@ function RootExecutionShell({ node, agents, userMessage }) {
 
       {/* Expanded Container */}
       {open && (
-        <div className="w-full border border-base-400 rounded-xl p-4 bg-base-200/10 shadow-sm space-y-2">
+        <div className="w-full border border-base-300 rounded-xl p-4 bg-base-200/10 shadow-sm space-y-2">
           <HistoryExecutionSteps node={node} agents={agents} inRail={false} />
         </div>
       )}
