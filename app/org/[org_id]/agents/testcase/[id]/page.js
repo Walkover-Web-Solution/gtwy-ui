@@ -15,6 +15,57 @@ import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetail
 import MatchingTypeDropdown from "@/components/testcaseComponents/MatchingTypeDropdown";
 import TestCaseModelDropdown from "@/components/testcaseComponents/ModelDropdown";
 
+const TestCaseLoadingSkeleton = () => (
+  <div
+    data-testid="testcase-page-loading-skeleton"
+    className="w-full h-full flex flex-col gap-4 px-6 py-4 animate-pulse"
+  >
+    {/* Header skeleton */}
+    <div className="h-12 bg-base-200 rounded-lg"></div>
+
+    {/* Controls skeleton */}
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-32 bg-base-200 rounded-lg"></div>
+        <div className="h-10 w-px bg-base-300"></div>
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-20 bg-base-200 rounded-lg"></div>
+          <div className="flex gap-1.5">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-10 w-12 bg-base-200 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="h-10 w-32 bg-base-200 rounded-lg"></div>
+    </div>
+
+    {/* Main grid skeleton */}
+    <div className="grid grid-cols-12 gap-4 flex-1 min-h-0">
+      {/* Left panel */}
+      <div className="col-span-4 bg-base-100 border border-base-200 rounded-xl overflow-hidden">
+        <div className="h-full flex flex-col">
+          <div className="flex-1 space-y-2 p-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-12 bg-base-200 rounded-lg"></div>
+            ))}
+          </div>
+          <div className="h-12 border-t border-base-200 bg-base-50"></div>
+        </div>
+      </div>
+
+      {/* Right panel */}
+      <div className="col-span-8 bg-base-100 border border-base-200 rounded-xl p-4">
+        <div className="space-y-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-8 bg-base-200 rounded-lg"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export const runtime = "edge";
 
 function TestCases({ params }) {
@@ -62,6 +113,7 @@ function TestCases({ params }) {
   const [selectedVersions, setSelectedVersions] = useState([]);
   const [runningTestCaseId, setRunningTestCaseId] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const debounceTimer = useRef(null);
 
   useEffect(() => {
@@ -209,7 +261,7 @@ function TestCases({ params }) {
             setHasMore(Array.isArray(res?.data) && res.data.length >= 30);
           })
           .finally(() => {
-            setIsLoadingTestCases(false);
+            setIsSearching(false);
           });
       }, 500); // 500ms debounce delay
     },
@@ -251,6 +303,10 @@ function TestCases({ params }) {
     }
     return `${(num * 100).toFixed(0)}%`;
   };
+
+  if (isLoadingTestCases) {
+    return <TestCaseLoadingSkeleton />;
+  }
 
   return (
     <div data-testid="testcase-page" className="bg-base-50 h-full flex flex-col overflow-hidden">
@@ -465,10 +521,10 @@ function TestCases({ params }) {
                   className="input input-sm input-bordered w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                 />
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-                  {isLoadingTestCases && searchKeyword && (
+                  {isSearching && searchKeyword && (
                     <span className="loading loading-spinner loading-xs text-base-content/50"></span>
                   )}
-                  {searchKeyword && !isLoadingTestCases && (
+                  {searchKeyword && !isSearching && (
                     <button
                       data-testid="testcase-search-clear-btn"
                       type="button"
@@ -482,10 +538,12 @@ function TestCases({ params }) {
               </div>
             </div>
 
-            {/* List content or loading state - Only show loading skeleton in list */}
-            {isLoadingTestCases ? (
-              <div className="flex-1 flex items-center justify-center">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
+            {/* List content (page-level skeleton handles initial loading) */}
+            {isSearching ? (
+              <div className="flex-1 p-4 space-y-2 animate-pulse" data-testid="testcase-list-search-skeleton">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="h-12 bg-base-200 rounded-lg"></div>
+                ))}
               </div>
             ) : Array.isArray(testCases) && testCases.length > 0 ? (
               <>
@@ -652,7 +710,16 @@ function TestCases({ params }) {
 
           {/* Right Panel - Details - Always show, display previous selected or empty state */}
           <div className="col-span-8 h-full min-h-0 overflow-hidden" data-testid="testcase-details-panel-host">
-            {Array.isArray(testCases) && testCases.length > 0 && selectedTestCase ? (
+            {isSearching ? (
+              <div
+                className="bg-base-100 border border-base-200 rounded-xl p-4 h-full animate-pulse space-y-4"
+                data-testid="testcase-details-search-skeleton"
+              >
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-8 bg-base-200 rounded-lg" />
+                ))}
+              </div>
+            ) : Array.isArray(testCases) && testCases.length > 0 && selectedTestCase ? (
               <TestCaseDetailsPanel
                 selectedTestCase={selectedTestCase}
                 selectedVersions={selectedVersions}
@@ -665,7 +732,6 @@ function TestCases({ params }) {
                 getScoreMessage={getScoreMessage}
                 getScoreDisplay={getScoreDisplay}
                 bridgeId={resolvedParams?.id}
-                onTestCaseUpdate={() => dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }))}
               />
             ) : (
               /* Empty state in detail panel */

@@ -24,7 +24,6 @@ const TestCaseDetailsPanel = ({
   getScoreMessage,
   getScoreDisplay,
   bridgeId,
-  onTestCaseUpdate,
 }) => {
   const dispatch = useDispatch();
 
@@ -286,12 +285,20 @@ const TestCaseDetailsPanel = ({
     return merged;
   };
 
-  // Function to check if any variables have empty values
+  const isVariableRequired = (key) => {
+    return Object.values(versionVariables || {}).some((versionVars) => {
+      const meta = versionVars?.[key];
+      return meta && meta.status === "required";
+    });
+  };
+
+  // Function to check if any REQUIRED variables have empty values
   const hasEmptyVariables = () => {
     const allVariables = getMergedVariables();
-
-    // Check if any variable has empty value
-    return Object.values(allVariables).some((value) => !value || value.toString().trim() === "");
+    return Object.entries(allVariables).some(([key, value]) => {
+      if (!isVariableRequired(key)) return false;
+      return !value || value.toString().trim() === "";
+    });
   };
 
   // Function to handle run with variable validation
@@ -1116,11 +1123,6 @@ const TestCaseDetailsPanel = ({
               },
             })
           );
-
-          // Refetch test cases to update the UI with latest data
-          if (onTestCaseUpdate) {
-            onTestCaseUpdate();
-          }
 
           // If there was an alert, proceed with running the test case
           if (showVariableAlert) {
