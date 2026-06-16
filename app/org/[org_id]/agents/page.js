@@ -752,6 +752,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         updated_at_original: updatedAt,
         bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
         folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
+        settings: item?.settings || {},
       };
     });
 
@@ -902,6 +903,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       updated_at_original: updatedAt,
       agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
       folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
+      settings: item?.settings || {},
     };
   });
 

@@ -34,28 +34,30 @@ const AccessManagementModal = ({ agent }) => {
     };
   }, []);
 
-  // Load initial data and extract agent members when agent prop changes
+  // Load initial data and extract agent members when agent prop or users list changes
   useEffect(() => {
-    if (agent && agent?.settings?.editAccess && users.length > 0) {
-      // Map agent user IDs to full user information
-      const enrichedMembers = agent?.settings?.editAccess.map((userId) => {
-        // Find the corresponding user in the users array
-        const userDetails = users.find((user) => user.user_id === userId);
+    if (agent && Array.isArray(agent?.settings?.editAccess)) {
+      // Map agent user IDs/objects to full user information
+      const enrichedMembers = agent?.settings?.editAccess.map((item) => {
+        // item could be a string (userId) or an object (user)
+        const memberId = typeof item === "object" && item ? item?.user_id || item?.id || item?._id : item;
 
-        // Return full user information or a placeholder if not found
-        return userDetails
-          ? {
-              id: userId,
-              name: userDetails.name,
-              email: userDetails.email,
-              role: "editor", // Default role
-            }
-          : {
-              id: userId,
-              name: "Unknown User",
-              email: `ID: ${userId}`,
-              role: "editor",
-            };
+        // Find the corresponding user in the users array
+        const userDetails = users.find(
+          (user) => String(user.user_id) === String(memberId) || String(user.id) === String(memberId)
+        );
+
+        // Extract fallback values if item is an object
+        const fallbackName = typeof item === "object" && item ? item?.name || item?.fullName : null;
+        const fallbackEmail = typeof item === "object" && item ? item?.email : null;
+
+        // Return full user information or fallback
+        return {
+          id: memberId,
+          name: userDetails?.name || fallbackName || "Unknown User",
+          email: userDetails?.email || fallbackEmail || (memberId ? `ID: ${memberId}` : ""),
+          role: "editor", // Default role
+        };
       });
 
       // Only update if the content actually changed (prevent infinite loop)
@@ -68,7 +70,7 @@ const AccessManagementModal = ({ agent }) => {
     } else {
       setAgentMembers((prev) => (prev.length === 0 ? prev : []));
     }
-  }, [agent?.users, users]);
+  }, [agent?.settings?.editAccess, users]);
 
   const handleClose = () => {
     setEmailInput("");
@@ -112,8 +114,7 @@ const AccessManagementModal = ({ agent }) => {
           setFoundUser(exactMatch);
         }
       }
-    } catch (error) {
-      console.error("Error searching for user:", error);
+    } catch {
       toast.error("Failed to search for user");
     } finally {
       setIsSearching(false);
@@ -132,7 +133,7 @@ const AccessManagementModal = ({ agent }) => {
     }
 
     // Check if user exists in agent members
-    if (!agentMembers.some((member) => member.id === userId)) {
+    if (!agentMembers.some((member) => String(member.id) === String(userId))) {
       toast.error("User is not a member of this agent");
       return;
     }
@@ -140,10 +141,15 @@ const AccessManagementModal = ({ agent }) => {
     setIsUpdating(true);
 
     try {
-      // Create payload with user ID and add_user_id:false to remove
+      const existingIds = agentMembers
+        .map((member) => (typeof member === "object" && member ? member.id || member.user_id : member))
+        .filter(Boolean);
+
+      const targetAccessList = existingIds.filter((id) => String(id) !== String(userId));
+
       const dataToSend = {
         settings: {
-          editAccess: agentMembers.filter((member) => member.id !== userId),
+          editAccess: targetAccessList,
         },
       };
 
@@ -158,12 +164,11 @@ const AccessManagementModal = ({ agent }) => {
         toast.success("User removed from agent successfully");
 
         // Update local state to reflect the removal
-        setAgentMembers((prev) => prev.filter((member) => member.id !== userId));
+        setAgentMembers((prev) => prev.filter((member) => String(member.id) !== String(userId)));
       } else {
         toast.error("Failed to remove user from agent");
       }
-    } catch (error) {
-      console.error("Error removing user from agent:", error);
+    } catch {
       toast.error("An error occurred while removing user");
     } finally {
       setIsUpdating(false);
@@ -178,7 +183,7 @@ const AccessManagementModal = ({ agent }) => {
     }
 
     // Check if user is already added to the agent
-    if (agentMembers.some((member) => member.id === userId)) {
+    if (agentMembers.some((member) => String(member.id) === String(userId))) {
       toast.info("User already has access to this agent");
       setEmailInput("");
       setFoundUser(null);
@@ -188,10 +193,15 @@ const AccessManagementModal = ({ agent }) => {
     setIsUpdating(true);
 
     try {
-      // Create payload with user ID and add_user_id:true to add
+      const existingIds = agentMembers
+        .map((member) => (typeof member === "object" && member ? member.id || member.user_id : member))
+        .filter(Boolean);
+
+      const targetAccessList = [...existingIds, userId];
+
       const dataToSend = {
         settings: {
-          editAccess: [...agentMembers, userId],
+          editAccess: targetAccessList,
         },
       };
 
@@ -206,7 +216,7 @@ const AccessManagementModal = ({ agent }) => {
         toast.success("User added to agent successfully");
 
         // Find the full user information from the users array
-        const userInfo = users.find((u) => u.user_id === userId) || {};
+        const userInfo = users.find((u) => String(u.user_id) === String(userId)) || {};
 
         // Update local state to show the new member immediately, including name and email
         const newMember = {
@@ -222,8 +232,7 @@ const AccessManagementModal = ({ agent }) => {
       } else {
         toast.error("Failed to add user to agent");
       }
-    } catch (error) {
-      console.error("Error adding user to agent:", error);
+    } catch {
       toast.error("An error occurred while adding user");
     } finally {
       setIsUpdating(false);
@@ -248,8 +257,7 @@ const AccessManagementModal = ({ agent }) => {
       } else {
         toast.error("Failed to send invitation");
       }
-    } catch (error) {
-      console.error("Error inviting user:", error);
+    } catch {
       toast.error("An error occurred while sending the invitation");
     } finally {
       setIsInviting(false);

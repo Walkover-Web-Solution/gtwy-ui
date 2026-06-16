@@ -1190,194 +1190,194 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                             </div>
                           ) : (
                             /* Regular Assistant/User/Expected/Error Message - Show model answer if testcase was run */
-                          <div className={`flex flex-col min-w-0 ${message.sender === "assistant" ? "w-full" : ""}`}>
-                            <div
-                              data-testid={`playground-ai-response-message-${message.id}`}
-                              className={`break-words gap-0 justify-start relative min-w-0 ${
-                                message.sender === "assistant"
-                                  ? `mr-8 w-full rounded-xl ${message.content ? "px-4 py-3 border border-base-content/20" : ""}`
-                                  : message.sender === "error"
-                                    ? "rounded-xl w-fit max-w-[75%] overflow-hidden bg-error/10 border border-error/30 text-error px-4 py-3 text-sm"
-                                    : "chat-bubble w-fit max-w-[75%] text-sm text-neutral-content"
-                              } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0 !border-0" : ""}`}
-                            >
-                              {/* Show loader overlay if this is the message being tested and no result yet */}
-                              {isRunningTestCase &&
-                                currentRunIndex !== null &&
-                                index === currentRunIndex + 1 &&
-                                !message.testCaseResult && (
-                                  <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10 pointer-events-none">
-                                    <div className="flex items-center gap-2">
-                                      <span className="loading loading-spinner loading-sm"></span>
-                                      <span className="text-sm font-medium">Running Test Case...</span>
+                            <div className={`flex flex-col min-w-0 ${message.sender === "assistant" ? "w-full" : ""}`}>
+                              <div
+                                data-testid={`playground-ai-response-message-${message.id}`}
+                                className={`break-words gap-0 justify-start relative min-w-0 ${
+                                  message.sender === "assistant"
+                                    ? `mr-8 w-full rounded-xl ${message.content ? "px-4 py-3 border border-base-content/20" : ""}`
+                                    : message.sender === "error"
+                                      ? "rounded-xl w-fit max-w-[75%] overflow-hidden bg-error/10 border border-error/30 text-error px-4 py-3 text-sm"
+                                      : "chat-bubble w-fit max-w-[75%] text-sm text-neutral-content"
+                                } ${message?.type === "template" || message?.type === "richui_json" ? "!bg-transparent !shadow-none !p-0 !border-0" : ""}`}
+                              >
+                                {/* Show loader overlay if this is the message being tested and no result yet */}
+                                {isRunningTestCase &&
+                                  currentRunIndex !== null &&
+                                  index === currentRunIndex + 1 &&
+                                  !message.testCaseResult && (
+                                    <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10 pointer-events-none">
+                                      <div className="flex items-center gap-2">
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        <span className="text-sm font-medium">Running Test Case...</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                {/* Edit Mode */}
+                                {editingMessage === message.id ? (
+                                  <div className="w-full">
+                                    <textarea
+                                      data-testid="chat-edit-textarea"
+                                      id="chat-edit-textarea"
+                                      value={editContent}
+                                      onChange={(e) => setEditContent(e.target.value)}
+                                      className="textarea textarea-bordered w-full min-h-[100px] resize-y text-base-content bg-base-100"
+                                      placeholder="Edit message content..."
+                                    />
+                                    <div className="flex gap-2 mt-2">
+                                      <button
+                                        data-testid="chat-save-edit-button"
+                                        id="chat-save-edit-button"
+                                        onClick={() => handleSaveEdit(message.id)}
+                                        disabled={!editContent.trim() || editContent === originalEditContentRef.current}
+                                        className="btn btn-sm btn-success disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        <Save className="h-3 w-3" />
+                                        Save
+                                      </button>
+                                      <button
+                                        data-testid="chat-cancel-edit-button"
+                                        id="chat-cancel-edit-button"
+                                        onClick={handleCancelEdit}
+                                        className="btn btn-sm btn-error"
+                                      >
+                                        <X className="h-3 w-3" />
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  /* Display Mode */
+                                  <div>
+                                    <div className="relative group flex flex-col w-full">
+                                      {/* Review phase accordion (shown when agent has a reviewer configured) */}
+                                      {message.review_phases?.length > 0 && (
+                                        <ReviewPhaseAccordion reviewPhases={message.review_phases} />
+                                      )}
+
+                                      {/* Reasoning accordion (shown when model emits reasoning events) */}
+                                      {message.reasoning && (
+                                        <ReasoningAccordion
+                                          reasoning={message.reasoning}
+                                          isStreaming={!!(message.isStreaming || message.isLoading)}
+                                          messageContent={message.content}
+                                        />
+                                      )}
+
+                                      {/* Tool calls (tool_call / tool_result events) */}
+                                      {message.toolCalls?.length > 0 && (
+                                        <div className="flex flex-col gap-1 mb-2">
+                                          {message.toolCalls.map((tc) => (
+                                            <ToolCallItem
+                                              key={tc.call_id}
+                                              toolCall={tc}
+                                              isMessageComplete={!message.isStreaming && !message.isLoading}
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Loading state for assistant message */}
+                                      {message.isLoading && !message.content && !message.toolCalls?.length ? (
+                                        <div data-testid="chat-loading-state" className="py-1">
+                                          <span className="loading loading-dots loading-sm"></span>
+                                        </div>
+                                      ) : message.isStreaming && message.content ? (
+                                        <StreamingMessage content={message.content} isStreaming={message.isStreaming} />
+                                      ) : message.sender === "error" ? (
+                                        /* Error Message - Display with error styling and icon */
+                                        <div className="flex min-w-0 items-start gap-2">
+                                          <AlertTriangle className="h-4 w-4 text-error flex-shrink-0 mt-0.5" />
+                                          <div className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-error font-medium">
+                                            {message.content}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        /* Regular message with markdown */
+                                        <div className={message.sender === "assistant" ? mdProseClass.dark : undefined}>
+                                          <ReactMarkdown components={mdComponents} remarkPlugins={mdRemarkPlugins}>
+                                            {message.type !== "template" && message.type !== "richui_json"
+                                              ? (() => {
+                                                  const raw =
+                                                    message.testCaseResult && message.sender === "assistant"
+                                                      ? message.testCaseResult.actual_result || message.content
+                                                      : message.content;
+                                                  return typeof raw === "string"
+                                                    ? raw
+                                                    : raw != null
+                                                      ? JSON.stringify(raw)
+                                                      : "";
+                                                })()
+                                              : ""}
+                                          </ReactMarkdown>
+                                        </div>
+                                      )}
+
+                                      {(message?.type === "richui_json" || message?.type === "template") &&
+                                        message?.content && (
+                                          <div className="mt-4 richui-container w-full">
+                                            {(() => {
+                                              return (
+                                                <RenderNode
+                                                  node={message.content}
+                                                  onAction={(action) => {
+                                                    if (action?.type === "reply" && action?.text) {
+                                                      if (handleSendMessageRef.current && inputRef.current) {
+                                                        // Set the input field value and triggers send
+                                                        inputRef.current.value = action.text;
+                                                        setTimeout(() => {
+                                                          handleSendMessageRef.current(null, true);
+                                                        }, 50);
+                                                        // Clear the input field after sending
+                                                        setTimeout(() => {
+                                                          if (inputRef.current) {
+                                                            inputRef.current.value = "";
+                                                          }
+                                                        }, 200);
+                                                      } else {
+                                                        console.warn(
+                                                          "[Chat] handleSendMessageRef or inputRef is missing",
+                                                          {
+                                                            handleSendMessageRef: handleSendMessageRef.current,
+                                                            inputRef: inputRef.current,
+                                                          }
+                                                        );
+                                                      }
+                                                    }
+                                                  }}
+                                                />
+                                              );
+                                            })()}
+                                          </div>
+                                        )}
+
+                                      {/* Render message attachments (images, etc.) */}
+                                      {_renderMessageAttachments(message)}
                                     </div>
                                   </div>
                                 )}
-
-                              {/* Edit Mode */}
-                              {editingMessage === message.id ? (
-                                <div className="w-full">
-                                  <textarea
-                                    data-testid="chat-edit-textarea"
-                                    id="chat-edit-textarea"
-                                    value={editContent}
-                                    onChange={(e) => setEditContent(e.target.value)}
-                                    className="textarea textarea-bordered w-full min-h-[100px] resize-y text-base-content bg-base-100"
-                                    placeholder="Edit message content..."
-                                  />
-                                  <div className="flex gap-2 mt-2">
-                                    <button
-                                      data-testid="chat-save-edit-button"
-                                      id="chat-save-edit-button"
-                                      onClick={() => handleSaveEdit(message.id)}
-                                      disabled={!editContent.trim() || editContent === originalEditContentRef.current}
-                                      className="btn btn-sm btn-success disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      <Save className="h-3 w-3" />
-                                      Save
-                                    </button>
-                                    <button
-                                      data-testid="chat-cancel-edit-button"
-                                      id="chat-cancel-edit-button"
-                                      onClick={handleCancelEdit}
-                                      className="btn btn-sm btn-error"
-                                    >
-                                      <X className="h-3 w-3" />
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                /* Display Mode */
-                              <div>
-                                <div className="relative group flex flex-col w-full">
-                                  {/* Review phase accordion (shown when agent has a reviewer configured) */}
-                                  {message.review_phases?.length > 0 && (
-                                    <ReviewPhaseAccordion reviewPhases={message.review_phases} />
-                                  )}
-
-                                  {/* Reasoning accordion (shown when model emits reasoning events) */}
-                                  {message.reasoning && (
-                                    <ReasoningAccordion
-                                      reasoning={message.reasoning}
-                                      isStreaming={!!(message.isStreaming || message.isLoading)}
-                                      messageContent={message.content}
-                                    />
-                                  )}
-
-                                  {/* Tool calls (tool_call / tool_result events) */}
-                                  {message.toolCalls?.length > 0 && (
-                                    <div className="flex flex-col gap-1 mb-2">
-                                      {message.toolCalls.map((tc) => (
-                                        <ToolCallItem
-                                          key={tc.call_id}
-                                          toolCall={tc}
-                                          isMessageComplete={!message.isStreaming && !message.isLoading}
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {/* Loading state for assistant message */}
-                                  {message.isLoading && !message.content && !message.toolCalls?.length ? (
-                                    <div data-testid="chat-loading-state" className="py-1">
-                                      <span className="loading loading-dots loading-sm"></span>
-                                    </div>
-                                  ) : message.isStreaming && message.content ? (
-                                    <StreamingMessage content={message.content} isStreaming={message.isStreaming} />
-                                  ) : message.sender === "error" ? (
-                                    /* Error Message - Display with error styling and icon */
-                                    <div className="flex min-w-0 items-start gap-2">
-                                      <AlertTriangle className="h-4 w-4 text-error flex-shrink-0 mt-0.5" />
-                                      <div className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-error font-medium">
-                                        {message.content}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    /* Regular message with markdown */
-                                    <div className={message.sender === "assistant" ? mdProseClass.dark : undefined}>
-                                      <ReactMarkdown components={mdComponents} remarkPlugins={mdRemarkPlugins}>
-                                        {message.type !== "template" && message.type !== "richui_json"
-                                          ? (() => {
-                                              const raw =
-                                                message.testCaseResult && message.sender === "assistant"
-                                                  ? message.testCaseResult.actual_result || message.content
-                                                  : message.content;
-                                              return typeof raw === "string"
-                                                ? raw
-                                                : raw != null
-                                                  ? JSON.stringify(raw)
-                                                  : "";
-                                            })()
-                                          : ""}
-                                      </ReactMarkdown>
-                                    </div>
-                                  )}
-
-                                  {(message?.type === "richui_json" || message?.type === "template") &&
-                                    message?.content && (
-                                      <div className="mt-4 richui-container w-full">
-                                        {(() => {
-                                          return (
-                                            <RenderNode
-                                              node={message.content}
-                                              onAction={(action) => {
-                                                if (action?.type === "reply" && action?.text) {
-                                                  if (handleSendMessageRef.current && inputRef.current) {
-                                                    // Set the input field value and triggers send
-                                                    inputRef.current.value = action.text;
-                                                    setTimeout(() => {
-                                                      handleSendMessageRef.current(null, true);
-                                                    }, 50);
-                                                    // Clear the input field after sending
-                                                    setTimeout(() => {
-                                                      if (inputRef.current) {
-                                                        inputRef.current.value = "";
-                                                      }
-                                                    }, 200);
-                                                  } else {
-                                                    console.warn(
-                                                      "[Chat] handleSendMessageRef or inputRef is missing",
-                                                      {
-                                                        handleSendMessageRef: handleSendMessageRef.current,
-                                                        inputRef: inputRef.current,
-                                                      }
-                                                    );
-                                                  }
-                                                }
-                                              }}
-                                            />
-                                          );
-                                        })()}
-                                      </div>
-                                    )}
-
-                                  {/* Render message attachments (images, etc.) */}
-                                  {_renderMessageAttachments(message)}
-                                </div>
                               </div>
-                            )}
-                          </div>
 
-                                  {/* Action Buttons Toolbar for Assistant Messages */}
+                              {/* Action Buttons Toolbar for Assistant Messages */}
                               {editingMessage !== message.id &&
                                 message.sender === "assistant" &&
-                                  !message.isLoading && (
-                                    <div className="flex items-center gap-1.5 mt-2 see-on-hover transition-opacity duration-150 justify-end w-full">
-                                      {message?.type !== "richui_json" &&
-                                        message?.type !== "template" &&
-                                        !(message?.llm_urls?.length > 0) && (
-                                          <button
-                                            data-testid={`playground-ai-response-pencil-button-${message.id}`}
-                                            id={`chat-edit-message-button-${message.id}`}
-                                            onClick={() => handleEditMessage(message.id, message.content)}
-                                            className="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300/50 h-7 w-7 p-0 min-h-0 rounded-md transition-colors flex items-center justify-center"
-                                            title="Edit message"
-                                          >
-                                            <Edit2 className="h-3.5 w-3.5" />
-                                          </button>
-                                        )}
-                                        {!(message?.llm_urls?.length > 0) && (
+                                !message.isLoading && (
+                                  <div className="flex items-center gap-1.5 mt-2 see-on-hover transition-opacity duration-150 justify-end w-full">
+                                    {message?.type !== "richui_json" &&
+                                      message?.type !== "template" &&
+                                      !(message?.llm_urls?.length > 0) && (
+                                        <button
+                                          data-testid={`playground-ai-response-pencil-button-${message.id}`}
+                                          id={`chat-edit-message-button-${message.id}`}
+                                          onClick={() => handleEditMessage(message.id, message.content)}
+                                          className="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300/50 h-7 w-7 p-0 min-h-0 rounded-md transition-colors flex items-center justify-center"
+                                          title="Edit message"
+                                        >
+                                          <Edit2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      )}
+                                    {!(message?.llm_urls?.length > 0) && (
                                       <button
                                         data-testid={`playground-ai-response-copy-button-${message.id}`}
                                         id={`chat-copy-message-button-${message.id}`}
@@ -1386,14 +1386,14 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                         title="Copy response"
                                       >
                                         {copiedMessageId === (message.id || index) ? (
-                                            <Check className="h-3.5 w-3.5 text-success" />
+                                          <Check className="h-3.5 w-3.5 text-success" />
                                         ) : (
-                                            <Copy className="h-3.5 w-3.5" />
+                                          <Copy className="h-3.5 w-3.5" />
                                         )}
                                       </button>
-                                        )}
-                                </div>
-                              )}
+                                    )}
+                                  </div>
+                                )}
                             </div>
                           )}
 
