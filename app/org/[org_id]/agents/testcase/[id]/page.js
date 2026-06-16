@@ -245,8 +245,10 @@ function TestCases({ params }) {
 
       // Set new timer for debounced search
       debounceTimer.current = setTimeout(() => {
-        // Reset to page 1 and fetch with search keyword
-        setIsLoadingTestCases(true);
+        // Reset to page 1 and fetch with search keyword. Use isSearching so the
+        // page-level skeleton (initial load) doesn't take over — only the list
+        // and details panel show their own skeletons while searching.
+        setIsSearching(true);
         setPage(1);
         setHasMore(true);
         setSelectedTestCaseIndex(0); // Reset selected test case to first one
