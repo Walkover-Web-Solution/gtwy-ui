@@ -481,7 +481,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                   const secondLastMessage = finalTestCases[finalTestCases.length - 2];
                   const secondLastIndex = finalTestCases.length - 2;
                   return (
-                    <div className="space-y-2">
+                    <div className="space-y-2" data-testid="add-testcase-user-query-wrapper">
                       <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
                       {secondLastMessage.role === "tools_call" || secondLastMessage.sender === "tools_call" ? (
                         <div className="space-y-3">
@@ -518,7 +518,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             )}
           </div>
 
-          <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0">
+          <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0" data-testid="add-testcase-bottom-panel">
             {/* User Expected Output Section */}
             {finalTestCases && finalTestCases.length > 0 && (
               <div className="space-y-2">
