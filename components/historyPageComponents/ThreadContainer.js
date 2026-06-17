@@ -561,7 +561,7 @@ const ThreadContainer = ({
               inverse={flexDirection === "column-reverse"}
               scrollableTarget="scrollableDiv"
             >
-              <div ref={contentRef} className="pb-16 px-4 pt-4" style={{ width: "100%" }}>
+              <div ref={contentRef} className="pb-16 px-4 pt-4 w-full overflow-hidden">
                 {Array.isArray(thread) &&
                   thread.map((item, index) => (
                     <ThreadItem

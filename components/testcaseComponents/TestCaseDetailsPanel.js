@@ -24,7 +24,6 @@ const TestCaseDetailsPanel = ({
   getScoreMessage,
   getScoreDisplay,
   bridgeId,
-  onTestCaseUpdate,
 }) => {
   const dispatch = useDispatch();
 
@@ -286,12 +285,20 @@ const TestCaseDetailsPanel = ({
     return merged;
   };
 
-  // Function to check if any variables have empty values
+  const isVariableRequired = (key) => {
+    return Object.values(versionVariables || {}).some((versionVars) => {
+      const meta = versionVars?.[key];
+      return meta && meta.status === "required";
+    });
+  };
+
+  // Function to check if any REQUIRED variables have empty values
   const hasEmptyVariables = () => {
     const allVariables = getMergedVariables();
-
-    // Check if any variable has empty value
-    return Object.values(allVariables).some((value) => !value || value.toString().trim() === "");
+    return Object.entries(allVariables).some(([key, value]) => {
+      if (!isVariableRequired(key)) return false;
+      return !value || value.toString().trim() === "";
+    });
   };
 
   // Function to handle run with variable validation
@@ -454,6 +461,7 @@ const TestCaseDetailsPanel = ({
                           </div>
                           {isLastUserMessage && (
                             <button
+                              data-testid={`testcase-delete-msg-btn-${idx}`}
                               onClick={async () => {
                                 const newConversation = editedConversation.filter((_, i) => i !== idx && i !== idx + 1);
                                 setEditedConversation(newConversation);
@@ -743,6 +751,7 @@ const TestCaseDetailsPanel = ({
                             {totalRuns > 1 && (
                               <div className="flex items-center gap-1 ml-1">
                                 <button
+                                  data-testid={`testcase-version-output-prev-run-${versions.indexOf(version) + 1}`}
                                   onClick={goPrev}
                                   disabled={safeIdx >= totalRuns - 1}
                                   className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -754,6 +763,7 @@ const TestCaseDetailsPanel = ({
                                   {totalRuns - safeIdx}/{totalRuns}
                                 </span>
                                 <button
+                                  data-testid={`testcase-version-output-next-run-${versions.indexOf(version) + 1}`}
                                   onClick={goNext}
                                   disabled={safeIdx <= 0}
                                   className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -832,6 +842,7 @@ const TestCaseDetailsPanel = ({
                               return (
                                 <div
                                   key={toolIdx}
+                                  data-testid={`testcase-version-${versions.indexOf(version) + 1}-tool-${toolIdx}`}
                                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-md text-xs font-medium transition-colors ${
                                     isRAGTool
                                       ? "bg-info/10 border-info/30 text-info hover:bg-info/20 cursor-default"
@@ -853,6 +864,7 @@ const TestCaseDetailsPanel = ({
                                     }
                                   >
                                     <FileClockIcon
+                                      data-testid={`testcase-version-${versions.indexOf(version) + 1}-tool-logs-${toolIdx}`}
                                       size={12}
                                       className="opacity-50 hover:opacity-100 ml-1"
                                       onClick={(e) => {
@@ -1116,11 +1128,6 @@ const TestCaseDetailsPanel = ({
               },
             })
           );
-
-          // Refetch test cases to update the UI with latest data
-          if (onTestCaseUpdate) {
-            onTestCaseUpdate();
-          }
 
           // If there was an alert, proceed with running the test case
           if (showVariableAlert) {

@@ -326,6 +326,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
         <ul className="menu bg-base-100 rounded-box w-56 p-2 shadow text-sm">
           <li>
             <button
+              data-testid="tools-filter-option-all"
               onClick={() => {
                 setActiveFilter("all");
                 handlePortalCloseImmediate();
@@ -338,6 +339,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
           </li>
           <li>
             <button
+              data-testid="tools-filter-option-connected"
               onClick={() => {
                 setActiveFilter("connected");
                 handlePortalCloseImmediate();
@@ -350,6 +352,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
           </li>
           <li>
             <button
+              data-testid="tools-filter-option-recent"
               onClick={() => {
                 setActiveFilter("recent");
                 handlePortalCloseImmediate();
@@ -522,6 +525,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
           <div className="relative inline-block" data-agents-dropdown>
             <button
               type="button"
+              data-testid={`tools-connected-agents-dropdown-btn-${row._id}`}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!isOpen && typeof window !== "undefined") {
@@ -573,6 +577,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
                       <li key={agent.bridgeId} className="border-b border-base-200 last:border-b-0">
                         <button
                           type="button"
+                          data-testid={`tools-connected-agent-option-${agent.bridgeId}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (hasVersions) {
@@ -611,6 +616,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
                               <li key={version.versionId}>
                                 <button
                                   type="button"
+                                  data-testid={`tools-connected-agent-version-option-${version.versionId}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const url = `/org/${orgId}/agents/configure/${agent.bridgeId}?version=${version.versionId}`;
@@ -707,6 +713,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
               />
             )}
             <button
+              data-testid="tools-filter-dropdown-btn"
               className="btn btn-outline btn-ghost text-sm btn-sm border border-base-300 gap-1"
               onClick={handleFilterDropdownClick}
             >

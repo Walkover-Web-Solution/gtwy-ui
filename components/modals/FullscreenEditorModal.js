@@ -22,6 +22,7 @@ function FullscreenEditorModal({
   disabled = false,
   mono = false,
   isJson = false,
+  onAttemptEdit,
 }) {
   const textareaRef = useRef(null);
   const [localValue, setLocalValue] = useState(value);
@@ -123,7 +124,16 @@ function FullscreenEditorModal({
           </div>
         )}
 
-        <div className="flex-1 overflow-hidden overflow-y-auto">
+        <div className="flex-1 overflow-hidden overflow-y-auto relative">
+          {onAttemptEdit && (
+            <div
+              className="absolute inset-0 z-10 cursor-text"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAttemptEdit();
+              }}
+            />
+          )}
           {isJson ? (
             <div data-testid="fullscreen-editor-codemirror-wrapper" className="h-full">
               <CodeMirror

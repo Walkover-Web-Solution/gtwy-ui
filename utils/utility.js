@@ -8,6 +8,7 @@ import {
   CircleMinusIcon,
 } from "@/components/Icons";
 import AIMLIcon from "@/icons/AIMLIcon";
+import { TOKEN_CATEGORIES } from "@/utils/enums";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
 import DeepgramIcon from "@/icons/DeepgramIcon";
@@ -423,6 +424,7 @@ export const allowedAttributes = {
     ["service", "Service"],
     ["model", "Model"],
     ["version_id", "Version ID"],
+    ["batch_data.batch_id", "Batch ID"],
   ],
 };
 
@@ -1276,3 +1278,78 @@ export function extractErrorMessage(errorStr) {
 
   return errorStr;
 }
+
+export const formatCostValue = (val) => {
+  if (val === undefined || val === null || val === "-") return "-";
+  if (typeof val !== "number") return val;
+  return `${val}`;
+};
+
+export const formatTokensTable = (tokensObj) => {
+  if (!tokensObj || typeof tokensObj !== "object") return null;
+
+  const costObj = tokensObj.cost || {};
+  const categories = TOKEN_CATEGORIES;
+  const rows = [];
+  const processedTokenKeys = new Set(["cost", "expected_cost"]);
+  const processedCostKeys = new Set();
+
+  categories.forEach((cat) => {
+    let tokenVal = undefined;
+    for (const tk of cat.tokenKeys) {
+      if (tokensObj[tk] !== undefined) {
+        if (tokenVal === undefined) tokenVal = tokensObj[tk];
+      }
+      processedTokenKeys.add(tk);
+    }
+
+    let costVal = undefined;
+    for (const ck of cat.costKeys) {
+      if (costObj[ck] !== undefined) {
+        if (costVal === undefined) costVal = costObj[ck];
+      }
+      processedCostKeys.add(ck);
+    }
+
+    if (tokenVal !== undefined || costVal !== undefined) {
+      rows.push({ label: cat.label, token: tokenVal, cost: costVal });
+    }
+  });
+
+  Object.keys(tokensObj).forEach((tk) => {
+    if (!processedTokenKeys.has(tk)) {
+      let matchedCostKey = null;
+      const potentialCostKey = tk.replace(/_tokens$/, "_cost");
+      if (costObj[potentialCostKey] !== undefined) matchedCostKey = potentialCostKey;
+
+      rows.push({
+        label: tk.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+        token: tokensObj[tk],
+        cost: matchedCostKey ? costObj[matchedCostKey] : undefined,
+      });
+
+      processedTokenKeys.add(tk);
+      if (matchedCostKey) processedCostKeys.add(matchedCostKey);
+    }
+  });
+
+  Object.keys(costObj).forEach((ck) => {
+    if (!processedCostKeys.has(ck) && ck !== "total_cost" && ck !== "expected_cost") {
+      rows.push({
+        label: ck.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+        token: "-",
+        cost: costObj[ck],
+      });
+      processedCostKeys.add(ck);
+    }
+  });
+
+  const totalTokens = tokensObj.total_tokens !== undefined ? tokensObj.total_tokens : undefined;
+  const totalCost = costObj.total_cost !== undefined ? costObj.total_cost : tokensObj.expected_cost;
+
+  if (totalTokens !== undefined || totalCost !== undefined) {
+    rows.push({ label: "Total / Expected", token: totalTokens, cost: totalCost, isTotal: true });
+  }
+
+  return rows;
+};

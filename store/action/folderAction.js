@@ -10,20 +10,26 @@ import {
 import { toast } from "react-toastify";
 import { getErrorMessage } from "@/utils/errorHandler";
 
-export const getAllFoldersAction = () => async (dispatch) => {
-  try {
-    dispatch(setLoading(true));
-    const response = await getAllFolders();
-    if (response?.success) {
-      dispatch(fetchFoldersReducer(response.data));
-    } else {
-      dispatch(setError(response?.message || "Failed to fetch folders"));
+export const getAllFoldersAction =
+  (forceRefresh = false) =>
+  async (dispatch, getState) => {
+    try {
+      const { folderReducer } = getState();
+      if (!forceRefresh && (folderReducer?.loading || folderReducer?.fetched)) {
+        return;
+      }
+      dispatch(setLoading(true));
+      const response = await getAllFolders();
+      if (response?.success) {
+        dispatch(fetchFoldersReducer(response.data));
+      } else {
+        dispatch(setError(response?.message || "Failed to fetch folders"));
+      }
+    } catch (error) {
+      console.error("Error in getAllFoldersAction:", error);
+      dispatch(setError(getErrorMessage(error)));
     }
-  } catch (error) {
-    console.error("Error in getAllFoldersAction:", error);
-    dispatch(setError(getErrorMessage(error)));
-  }
-};
+  };
 
 export const createFolderAction = (data) => async (dispatch) => {
   try {

@@ -74,11 +74,16 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
                   {allowedAttributes.optional
                     .sort((a, b) => a[1].localeCompare(b[1]))
                     .map(([key, displayKey]) => {
-                      const value = selectedItem[key];
+                      // Handle nested keys like "batch_data.batch_id"
+                      const keys = key.includes(".") ? key.split(".") : [key];
+                      let value = selectedItem;
+                      for (const k of keys) {
+                        value = value?.[k];
+                      }
                       if (value === undefined) return null;
 
-                      // If the value is an object, render each property as separate rows
-                      if (typeof value === "object" && value !== null && key !== "createdAt") {
+                      // If the value is an object (but not a Date or array), render each property as separate rows
+                      if (typeof value === "object" && value !== null && key !== "createdAt" && !Array.isArray(value)) {
                         return Object.entries(value).map(([objKey, objValue]) => (
                           <div
                             key={`${key}-${objKey}`}

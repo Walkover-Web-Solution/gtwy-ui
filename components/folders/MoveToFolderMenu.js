@@ -33,6 +33,7 @@ export const MoveToFolderMenu = ({ folders, onMove, currentFolderId }) => {
             </li>
             <li>
               <button
+                data-testid="move-to-uncategorized-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   onMove("uncategorized");
@@ -62,6 +63,7 @@ export const MoveToFolderMenu = ({ folders, onMove, currentFolderId }) => {
             filteredFolders.map((folder) => (
               <li key={folder._id}>
                 <button
+                  data-testid={`move-to-folder-btn-${folder._id}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onMove(folder._id);

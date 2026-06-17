@@ -44,12 +44,22 @@ function formatIoValue(value) {
 
 /** Reference: bordered INPUT / OUTPUT blocks */
 function IoPanel({ label, value }) {
+  const panelKey = String(label || "").toLowerCase();
   return (
-    <div className={`mx-2 mb-2 overflow-hidden rounded-lg ${TRACE_ROW_BORDER} bg-base-100`}>
-      <div className="border-b border-base-content/20 bg-base-200/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-base-content/45">
+    <div
+      className={`mx-2 mb-2 overflow-hidden rounded-lg ${TRACE_ROW_BORDER} bg-base-100`}
+      data-testid={`io-panel-${panelKey}`}
+    >
+      <div
+        className="border-b border-base-content/20 bg-base-200/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-base-content/45"
+        data-testid={`io-panel-label-${panelKey}`}
+      >
         {label}
       </div>
-      <pre className="max-h-52 overflow-auto whitespace-pre-wrap break-words bg-base-100 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-base-content/80">
+      <pre
+        className="max-h-52 overflow-auto whitespace-pre-wrap break-words bg-base-100 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-base-content/80"
+        data-testid={`io-panel-pre-${panelKey}`}
+      >
         {formatIoValue(value)}
       </pre>
     </div>
@@ -96,7 +106,7 @@ function StepIconBox({ children, className = "" }) {
   );
 }
 
-function StepRowHeader({ open, inRail, icon, children, onClick, headerClass = "" }) {
+function StepRowHeader({ open, inRail, icon, children, onClick, headerClass = "", ...props }) {
   return (
     <div
       className={`flex min-h-[30px] cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1 transition-colors ${TRACE_ROW_BORDER} ${headerClass}`}
@@ -104,6 +114,7 @@ function StepRowHeader({ open, inRail, icon, children, onClick, headerClass = ""
       onKeyDown={onClick ? (e) => e.key === "Enter" && onClick(e) : undefined}
       role="button"
       tabIndex={0}
+      {...props}
     >
       <ChevronRight
         size={14}
@@ -179,7 +190,12 @@ function TextStep({ step }) {
   return (
     <TraceRow textRow>
       <div className="min-w-0">
-        <StepRowHeader open={open} headerClass={NEUTRAL_HEAD} onClick={() => setOpen((o) => !o)}>
+        <StepRowHeader
+          open={open}
+          headerClass={NEUTRAL_HEAD}
+          onClick={() => setOpen((o) => !o)}
+          data-testid="text-step-header"
+        >
           <span className="text-xs font-medium text-base-content/70">Message</span>
         </StepRowHeader>
         {open && (
@@ -218,7 +234,7 @@ function VarsNodeIcon({ size = 12 }) {
   );
 }
 
-function VariableRow({ label, value, isLong }) {
+function VariableRow({ label, value, isLong, ...props }) {
   // Parse JSON if possible
   const parsedJson = useMemo(() => {
     if (!value) return null;
@@ -234,7 +250,10 @@ function VariableRow({ label, value, isLong }) {
   }, [value]);
 
   return (
-    <div className="grid grid-cols-[minmax(120px,180px)_1fr] gap-4 border-b border-base-content/15 px-4 py-2.5 text-xs last:border-0">
+    <div
+      className="grid grid-cols-[minmax(120px,180px)_1fr] gap-4 border-b border-base-content/15 px-4 py-2.5 text-xs last:border-0"
+      {...props}
+    >
       <span className="font-mono font-medium text-trace-blue break-words">{label}</span>
       <div className="font-mono text-base-content overflow-hidden w-full">
         {parsedJson !== null ? (
@@ -270,42 +289,63 @@ function VariablesBlock({ vars, inRail = true }) {
   const varsHead = "bg-gradient-to-r from-trace-gold/14 via-trace-gold/6 to-transparent hover:from-trace-gold/20";
 
   const body = (
-    <div className="min-w-0">
+    <div className="min-w-0" data-testid="variables-block">
       <StepRowHeader
         open={open}
         inRail={inRail}
         icon={<VarsNodeIcon />}
         headerClass={varsHead}
         onClick={() => setOpen((o) => !o)}
+        data-testid="variables-block-header"
       >
-        <KindTag className="inline-flex items-center gap-1 text-trace-gold">
+        <KindTag className="inline-flex items-center gap-1 text-trace-gold" data-testid="variables-block-tag">
           <Brackets size={12} /> variables
         </KindTag>
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-trace-blue/20 bg-trace-blue/10 px-1.5 text-[11px] font-mono text-trace-blue">
+        <span
+          className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-trace-blue/20 bg-trace-blue/10 px-1.5 text-[11px] font-mono text-trace-blue"
+          data-testid="variables-block-count"
+        >
           {entries.length}
         </span>
         {!open &&
           previewKeys.map(([k]) => (
-            <span key={k} className="rounded-md bg-trace-gold/8 px-2 py-0.5 text-[11px] font-mono text-base-content/60">
+            <span
+              key={k}
+              className="rounded-md bg-trace-gold/8 px-2 py-0.5 text-[11px] font-mono text-base-content/60"
+              data-testid={`variables-block-preview-${k}`}
+            >
               {k}
             </span>
           ))}
-        {!open && overflow > 0 && <span className="text-[11px] font-mono text-base-content/50">+{overflow}</span>}
+        {!open && overflow > 0 && (
+          <span className="text-[11px] font-mono text-base-content/50" data-testid="variables-block-overflow">
+            +{overflow}
+          </span>
+        )}
       </StepRowHeader>
       {open && (
-        <div className={`mt-1.5 overflow-hidden rounded-lg ${TRACE_ROW_BORDER} bg-trace-blue/[0.06]`}>
+        <div
+          className={`mt-1.5 overflow-hidden rounded-lg ${TRACE_ROW_BORDER} bg-trace-blue/[0.06]`}
+          data-testid="variables-block-expanded"
+        >
           {entries.map(([k, v]) => {
             const raw = typeof v === "object" && v !== null ? JSON.stringify(v, null, 2) : String(v ?? "");
             const isLong = raw.length > 200;
-            return <VariableRow key={k} label={k} value={raw} isLong={isLong} />;
+            return (
+              <VariableRow key={k} label={k} value={raw} isLong={isLong} data-testid={`variables-block-row-${k}`} />
+            );
           })}
         </div>
       )}
     </div>
   );
 
-  if (!inRail) return <FlatRow>{body}</FlatRow>;
-  return <TraceRow node={<VarsNodeIcon />}>{body}</TraceRow>;
+  if (!inRail) return <FlatRow data-testid="variables-block-flat-row">{body}</FlatRow>;
+  return (
+    <TraceRow node={<VarsNodeIcon />} data-testid="variables-block-trace-row">
+      {body}
+    </TraceRow>
+  );
 }
 
 function ToolActionButtons({ rawTool, isRag }) {
@@ -358,6 +398,7 @@ function ToolStep({ step, inRail = true }) {
         icon={<ToolNodeIcon err={err} />}
         headerClass={toolHead}
         onClick={() => setOpen((o) => !o)}
+        data-testid={`trace-tool-header-${formatToolName(step.name)}`}
       >
         {kindTag}
         <span
@@ -394,7 +435,10 @@ function VarsStep({ step, inRail = true }) {
 function KbQueryBox({ query }) {
   if (!query) return null;
   return (
-    <div className={`mx-2 mb-2 rounded-lg ${TRACE_ROW_BORDER} bg-trace-blue/[0.06] px-3 py-2`}>
+    <div
+      className={`mx-2 mb-2 rounded-lg ${TRACE_ROW_BORDER} bg-trace-blue/[0.06] px-3 py-2`}
+      data-testid="kb-query-box"
+    >
       <div className="text-[10px] font-semibold uppercase tracking-wider text-base-content/45">Query</div>
       <div className="mt-1 text-xs leading-relaxed text-base-content/80">{query}</div>
     </div>
@@ -404,7 +448,10 @@ function KbQueryBox({ query }) {
 function KbChunkCard({ chunk, index }) {
   const scorePct = chunk.score != null ? Math.round(Number(chunk.score) * 100) : null;
   return (
-    <div className={`mx-2 mb-2 overflow-hidden rounded-lg ${TRACE_ROW_BORDER} bg-base-100`}>
+    <div
+      className={`mx-2 mb-2 overflow-hidden rounded-lg ${TRACE_ROW_BORDER} bg-base-100`}
+      data-testid={`kb-chunk-card-${index}`}
+    >
       <div className="flex items-center justify-between gap-2 border-b border-base-content/20 bg-base-200/50 px-3 py-1.5 text-[11px]">
         <span className="truncate text-base-content/55">{chunk.source || `chunk ${index + 1}`}</span>
         {scorePct != null && (
@@ -434,6 +481,7 @@ function KbStep({ step, inRail = true }) {
         icon={<KbNodeIcon />}
         headerClass={kbHead}
         onClick={() => setOpen((o) => !o)}
+        data-testid={`trace-kb-header-${step.name || "kb"}`}
       >
         <KindTag className="border border-trace-blue/20 bg-trace-blue/10 text-trace-blue">knowledge base</KindTag>
         <span className="truncate text-xs font-medium text-base-content">{step.name}</span>
@@ -646,6 +694,7 @@ function RootExecutionShell({ node, agents, userMessage }) {
       <div
         className="inline-flex items-center gap-2 cursor-pointer select-none rounded-lg px-3 transition-all duration-200"
         onClick={() => setOpen((o) => !o)}
+        data-testid="trace-tool-calls-header"
       >
         <ChevronRight
           size={13}
@@ -719,6 +768,7 @@ function AgentBlock({ node, agents, root, embedded, depth = 1 }) {
       <div
         className={`relative flex min-h-[30px] cursor-pointer items-center gap-2 rounded-lg pl-4 pr-3 py-1 transition-colors ${headClass}`}
         onClick={() => setOpen((o) => !o)}
+        data-testid={`trace-agent-header-${a.name}`}
       >
         <div className={`absolute left-0 top-0 bottom-0 w-[2px] rounded-l-lg ${barColor}`} />
 

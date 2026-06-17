@@ -19,6 +19,7 @@ const InputSection = memo(() => {
     isMobileView,
     isPublished,
     isEditor,
+    promptResetKey,
   } = useConfigurationContext();
   return (
     <>
@@ -40,6 +41,7 @@ const InputSection = memo(() => {
         </div>
       )}
       <InputConfigComponent
+        key={promptResetKey}
         params={params}
         searchParams={searchParams}
         promptTextAreaRef={promptTextAreaRef}

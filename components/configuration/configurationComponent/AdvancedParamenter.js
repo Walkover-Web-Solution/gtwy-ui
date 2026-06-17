@@ -7,7 +7,7 @@ import { buildJsonSchemaResponseType, generateCombinedSchema, isEmptyJsonSchema 
 import { ChevronDownIcon, ChevronUpIcon, SettingsIcon } from "@/components/Icons";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useSyncExternalStore } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
 import { Check, CircleQuestionMark, CircleX, ExternalLink } from "lucide-react";
 import RenderNode from "@/components/richUI/RenderNode";
 import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
+import { useConfigurationContext } from "../ConfigurationContext";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { useThemeManager } from "@/customHooks/useThemeManager";
@@ -37,6 +38,11 @@ const AdvancedParameters = ({
   isEditor = true,
 }) => {
   const isReadOnly = isPublished || !isEditor;
+  const { discardPromptDraft } = useConfigurationContext();
+  const hasUnsavedChanges = useSyncExternalStore(
+    unsavedPromptGuard.subscribe.bind(unsavedPromptGuard),
+    unsavedPromptGuard.getSnapshot.bind(unsavedPromptGuard)
+  );
   // Use the tutorial videos hook
   const { getAdvanceParameterVideo } = useTutorialVideos();
 
@@ -68,7 +74,7 @@ const AdvancedParameters = ({
   const guardedResponseTypeAction = (action) => {
     if (unsavedPromptGuard.hasUnsavedChanges) {
       pendingResponseTypeActionRef.current = action;
-      openModal(MODAL_TYPE.UNSAVED_PROMPT_ACTION_MODAL);
+      openModal(MODAL_TYPE.UNSAVED_PROMPT_SCHEMA_MODAL);
     } else {
       action();
     }
@@ -890,12 +896,14 @@ const AdvancedParameters = ({
                                     className="cursor-pointer text-primary hover:opacity-80 transition-opacity"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const actionNodes = extractActionDataNodesFromSchema(
-                                        configuration?.response_type?.json_schema,
-                                        widgetObj._id
-                                      );
-                                      setActiveWidgetButtons(actionNodes);
-                                      openModal(MODAL_TYPE.BUTTON_SCHEMA_BUILDER);
+                                      guardedResponseTypeAction(() => {
+                                        const actionNodes = extractActionDataNodesFromSchema(
+                                          configuration?.response_type?.json_schema,
+                                          widgetObj._id
+                                        );
+                                        setActiveWidgetButtons(actionNodes);
+                                        openModal(MODAL_TYPE.BUTTON_SCHEMA_BUILDER);
+                                      });
                                     }}
                                     title="Configure Button Payload Schema"
                                   >
@@ -945,7 +953,9 @@ const AdvancedParameters = ({
                             data-testid={`advanced-param-json-schema-build-visually-${key}`}
                             className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
                             onClick={() => {
-                              openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
+                              guardedResponseTypeAction(() => {
+                                openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
+                              });
                             }}
                           >
                             Build Visually
@@ -955,7 +965,9 @@ const AdvancedParameters = ({
                             data-testid={`advanced-param-json-schema-build-ai-${key}`}
                             className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
                             onClick={() => {
-                              openModal(MODAL_TYPE.JSON_SCHEMA);
+                              guardedResponseTypeAction(() => {
+                                openModal(MODAL_TYPE.JSON_SCHEMA);
+                              });
                             }}
                           >
                             Build with AI
@@ -973,6 +985,15 @@ const AdvancedParameters = ({
                       </div>
 
                       <div className="relative" data-testid={`advanced-param-json-schema-editor-wrapper-${key}`}>
+                        {hasUnsavedChanges && (
+                          <div
+                            className="absolute inset-0 z-10 cursor-text"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              guardedResponseTypeAction(() => {});
+                            }}
+                          />
+                        )}
                         {jsonSchemaError && (
                           <div
                             className="flex flex-col gap-1 mb-1.5 text-error"
@@ -1157,9 +1178,16 @@ const AdvancedParameters = ({
                           }
                         }}
                         placeholder="Enter JSON schema..."
-                        disabled={isReadOnly}
+                        disabled={isReadOnly || hasUnsavedChanges}
                         mono
                         isJson
+                        onAttemptEdit={
+                          !isReadOnly && hasUnsavedChanges
+                            ? () => {
+                                guardedResponseTypeAction(() => {});
+                              }
+                            : undefined
+                        }
                       />
                       <JsonSchemaBuilderModal params={params} searchParams={searchParams} isReadOnly={isReadOnly} />
                       <JsonSchemaModal
@@ -1443,24 +1471,25 @@ const AdvancedParameters = ({
 
   const unsavedPromptActionModal = (
     <ConfirmationModal
-      modalType={MODAL_TYPE.UNSAVED_PROMPT_ACTION_MODAL}
+      modalType="UNSAVED_PROMPT_SCHEMA_MODAL"
       title="Unsaved Prompt Changes"
       message="You have unsaved changes to your prompt. Save your prompt first, or discard changes and continue."
       confirmText="Discard & Continue"
       cancelText="Go Back"
       confirmButtonClass="btn-error text-white"
       onConfirm={() => {
-        closeModal(MODAL_TYPE.UNSAVED_PROMPT_ACTION_MODAL);
+        closeModal("UNSAVED_PROMPT_SCHEMA_MODAL");
+        discardPromptDraft();
         const action = pendingResponseTypeActionRef.current;
         pendingResponseTypeActionRef.current = null;
         if (action) action();
       }}
       onCancel={() => {
-        closeModal(MODAL_TYPE.UNSAVED_PROMPT_ACTION_MODAL);
+        closeModal("UNSAVED_PROMPT_SCHEMA_MODAL");
         pendingResponseTypeActionRef.current = null;
       }}
       onClose={() => {
-        closeModal(MODAL_TYPE.UNSAVED_PROMPT_ACTION_MODAL);
+        closeModal("UNSAVED_PROMPT_SCHEMA_MODAL");
         pendingResponseTypeActionRef.current = null;
       }}
     />

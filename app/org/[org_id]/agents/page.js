@@ -140,6 +140,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
           <div className="flex gap-1 items-center justify-between text-sm">
             <span className="text-base-content/60">Reset Period</span>
             <select
+              data-testid="agent-reset-period-select"
               className="select select-bordered select-sm w-36"
               value={resetPeriod}
               onChange={handleResetPeriodChange}
@@ -150,6 +151,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
             </select>
           </div>
           <button
+            data-testid="agent-update-limit-button"
             className="btn btn-primary btn-sm"
             onClick={() => {
               onSetLimit(item, limit, resetPeriod);
@@ -158,7 +160,12 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
           >
             Set / Update Limit
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={onResetUsage} disabled={!Number(usageValue)}>
+          <button
+            data-testid="agent-reset-usage-button"
+            className="btn btn-ghost btn-sm"
+            onClick={onResetUsage}
+            disabled={!Number(usageValue)}
+          >
             Reset Usage
           </button>
         </div>
@@ -752,6 +759,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         updated_at_original: updatedAt,
         bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
         folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
+        settings: item?.settings || {},
       };
     });
 
@@ -902,6 +910,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       updated_at_original: updatedAt,
       agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
       folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
+      settings: item?.settings || {},
     };
   });
 
@@ -1033,25 +1042,36 @@ function Home({ params, searchParams, isEmbedUser }) {
     const dropdownContent = (
       <ul className="menu bg-base-100 rounded-box w-56 p-2 shadow text-sm">
         <li>
-          <button onClick={() => applyPresetUsageFilter(1)}>Last day</button>
+          <button data-testid="usage-filter-option-1" onClick={() => applyPresetUsageFilter(1)}>
+            Last day
+          </button>
         </li>
         <li>
-          <button onClick={() => applyPresetUsageFilter(5)}>Last 5 days</button>
+          <button data-testid="usage-filter-option-5" onClick={() => applyPresetUsageFilter(5)}>
+            Last 5 days
+          </button>
         </li>
         <li>
-          <button onClick={() => applyPresetUsageFilter(10)}>Last 10 days</button>
+          <button data-testid="usage-filter-option-10" onClick={() => applyPresetUsageFilter(10)}>
+            Last 10 days
+          </button>
         </li>
         <li>
-          <button onClick={() => applyPresetUsageFilter(15)}>Last 15 days</button>
+          <button data-testid="usage-filter-option-15" onClick={() => applyPresetUsageFilter(15)}>
+            Last 15 days
+          </button>
         </li>
         <li>
-          <button onClick={() => applyPresetUsageFilter(30)}>Last 30 days</button>
+          <button data-testid="usage-filter-option-30" onClick={() => applyPresetUsageFilter(30)}>
+            Last 30 days
+          </button>
         </li>
 
         <li className="mt-1 border-t border-base-200" />
 
         <li>
           <button
+            data-testid="usage-filter-option-reset"
             onClick={(ev) => {
               ev.preventDefault();
               ev.stopPropagation();
@@ -1065,6 +1085,7 @@ function Home({ params, searchParams, isEmbedUser }) {
 
         <li>
           <button
+            data-testid="usage-filter-option-custom"
             onClick={(ev) => {
               // open existing custom date popover anchored near this button
               ev.preventDefault();
@@ -1127,6 +1148,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <div className={`dropdown dropdown-hover dropdown-left ${isNearBottom ? "dropdown-top" : ""} w-full`}>
             <label
               tabIndex={0}
+              data-testid="agent-move-to-folder-dropdown"
               className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center justify-between cursor-pointer"
             >
               <div className="flex items-center gap-2 text-base-content">
@@ -1179,6 +1201,7 @@ function Home({ params, searchParams, isEmbedUser }) {
             <div className="bg-transparent">
               <div
                 role="button"
+                data-testid={`agent-action-dropdown-btn-${row._id}`}
                 className="hover:bg-base-200 rounded-lg p-3 cursor-pointer"
                 onClick={handleDropdownClick}
               >
@@ -1461,6 +1484,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                   <div className="flex items-center justify-between pt-2">
                     <button
                       className="btn btn-ghost btn-sm"
+                      data-testid="usage-filter-reset-button"
                       onClick={handleUsageFilterClear}
                       disabled={isUsageResetDisabled}
                     >

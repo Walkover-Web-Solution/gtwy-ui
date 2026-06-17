@@ -18,7 +18,15 @@ import { ExpandCollapse } from "@/components/UI/ExpandCollapse";
 import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getIconOfService, getToolName, openModal, allowedAttributes, extractErrorMessage } from "@/utils/utility";
+import {
+  getIconOfService,
+  getToolName,
+  openModal,
+  allowedAttributes,
+  extractErrorMessage,
+  formatCostValue,
+  formatTokensTable,
+} from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
 import {
@@ -973,7 +981,7 @@ const ThreadItem = ({
     <>
       {messageType === "updated_llm_message" && <span className="badge badge-xs badge-outline">Edited</span>}
       {isBatchResponse && (
-        <span className={`badge badge-xs gap-1 text-white ${batchStatusMeta.className}`}>
+        <span className={`badge badge-sm gap-1 text-white ${batchStatusMeta.className}`}>
           <BatchStatusIcon size={10} />
           {batchStatusMeta.label}
         </span>
@@ -1040,6 +1048,7 @@ const ThreadItem = ({
             <span className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">Optional Details</span>
           </div>
           {allowedAttributes.optional
+            .filter(([key]) => key !== "tokens")
             .sort((a, b) => a[1].localeCompare(b[1]))
             .map(([key, displayKey]) => {
               const value = item[key] !== undefined ? item[key] : key === "createdAt" ? item.created_at : undefined;
@@ -1055,9 +1064,17 @@ const ThreadItem = ({
                     <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold font-mono">
                       {objKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                     </span>
-                    <span className="text-xs break-all text-base-content whitespace-pre-wrap font-mono">
-                      {objValue?.toString()}
-                    </span>
+                    <div className="flex-1 min-w-0 text-xs break-all text-base-content whitespace-pre-wrap font-mono">
+                      {typeof objValue === "object" && objValue !== null ? (
+                        <div className="border border-base-content/20 bg-base-200/50 rounded-lg overflow-hidden w-full">
+                          <CodeBlock className="language-json" showCopy={false} plain={true}>
+                            {JSON.stringify(objValue, null, 2)}
+                          </CodeBlock>
+                        </div>
+                      ) : (
+                        objValue?.toString()
+                      )}
+                    </div>
                   </div>
                 ));
               }
@@ -1075,6 +1092,75 @@ const ThreadItem = ({
                 </div>
               );
             })}
+          {(() => {
+            const batchId = item?.batch_data?.batch_id;
+            if (!batchId) return null;
+            return (
+              <div key="batch_id" className="flex items-start gap-4 border-t border-base-content/10 px-4 py-2.5">
+                <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">Batch ID</span>
+                <span className="text-xs break-all text-base-content whitespace-pre-wrap font-mono">{batchId}</span>
+              </div>
+            );
+          })()}
+          {(() => {
+            const tokensVal = item.tokens;
+            if (tokensVal !== undefined && tokensVal !== null && typeof tokensVal === "object") {
+              const rows = formatTokensTable(tokensVal);
+              if (rows && rows.length > 0) {
+                return (
+                  <div key="tokens" className="flex flex-col gap-2 border-t border-base-content/10 px-4 py-3">
+                    <span className="text-xs font-semibold text-trace-gold uppercase tracking-wide">
+                      Token and Cost
+                    </span>
+                    <div className="overflow-x-auto w-full border border-base-content/10 bg-base-200/10 rounded-lg shadow-sm">
+                      <table className="table table-xs w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-base-content/10 bg-base-200/50">
+                            <th className="text-left py-2 px-3 font-semibold text-base-content/70 text-[10px] uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="text-left py-2 px-3 font-semibold text-base-content/70 text-[10px] uppercase tracking-wider">
+                              Tokens
+                            </th>
+                            <th className="text-left py-2 px-3 font-semibold text-base-content/70 text-[10px] uppercase tracking-wider">
+                              Cost ($)
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-base-content/5">
+                          {rows.map((row, idx) => (
+                            <tr
+                              key={idx}
+                              className={`${
+                                row.isTotal
+                                  ? "font-semibold bg-base-200/40 border-t border-base-content/15"
+                                  : "hover:bg-base-200/20"
+                              }`}
+                            >
+                              <td className="py-2 px-3 text-left text-xs font-medium text-base-content/90">
+                                {row.label}
+                              </td>
+                              <td className="py-2 px-3 text-left text-xs font-mono text-base-content/80">
+                                {row.token !== undefined && row.token !== null
+                                  ? typeof row.token === "number"
+                                    ? row.token.toLocaleString()
+                                    : row.token
+                                  : "-"}
+                              </td>
+                              <td className="py-2 px-3 text-left text-xs font-mono text-base-content/80">
+                                {formatCostValue(row.cost)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
         </div>
       </ThreadInlinePanel>
     );
@@ -1091,6 +1177,7 @@ const ThreadItem = ({
   };
 
   const renderResponseActionButtons = (stateful = false) => {
+    const showEdit = !item?.llm_urls?.length && !item?.fromRTLayer;
     if (stateful) {
       return (
         <div className="mt-2 flex flex-wrap items-center justify-start gap-1.5">
@@ -1112,6 +1199,16 @@ const ThreadItem = ({
           >
             Debug Agent
           </ThreadActionPill>
+          {showEdit && (
+            <ThreadActionPill
+              id="thread-item-edit-message-button"
+              testId="thread-item-edit-message-button"
+              icon={PencilIcon}
+              onClick={handleEdit}
+            >
+              Edit
+            </ThreadActionPill>
+          )}
         </div>
       );
     }
@@ -1136,6 +1233,17 @@ const ThreadItem = ({
           <BotMessageIcon className="h-3 w-3" />
           <span>Debug Agent</span>
         </button>
+        {showEdit && (
+          <button
+            id="thread-item-edit-message-button"
+            data-testid="thread-item-edit-message-button"
+            className={statelessBtnClass}
+            onClick={handleEdit}
+          >
+            <PencilIcon className="h-3 w-3" />
+            <span>Edit</span>
+          </button>
+        )}
       </div>
     );
   };
@@ -1412,6 +1520,7 @@ const ThreadItem = ({
             <div className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">Optional Details</div>
             <div className="border border-base-300 rounded-lg overflow-hidden bg-base-100 divide-y divide-base-300">
               {allowedAttributes.optional
+                .filter(([key]) => key !== "tokens")
                 .sort((a, b) => a[1].localeCompare(b[1]))
                 .map(([key, displayKey]) => {
                   const value = item[key] !== undefined ? item[key] : key === "createdAt" ? item.created_at : undefined;
@@ -1425,7 +1534,17 @@ const ThreadItem = ({
                           {objKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                         </div>
                         <div className="w-1/2 text-xs text-base-content font-mono">
-                          <span className="break-words font-normal text-base-content/80">{objValue?.toString()}</span>
+                          {typeof objValue === "object" && objValue !== null ? (
+                            <div className="border border-base-content/20 bg-base-200/50 rounded-lg overflow-hidden w-full">
+                              <CodeBlock className="language-json" showCopy={false} plain={true}>
+                                {JSON.stringify(objValue, null, 2)}
+                              </CodeBlock>
+                            </div>
+                          ) : (
+                            <span className="break-words font-normal text-base-content/80 whitespace-pre-wrap">
+                              {objValue?.toString()}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ));
@@ -1445,6 +1564,63 @@ const ThreadItem = ({
                     </div>
                   );
                 })}
+              {(() => {
+                const tokensVal = item.tokens;
+                if (tokensVal !== undefined && tokensVal !== null && typeof tokensVal === "object") {
+                  const rows = formatTokensTable(tokensVal);
+                  if (rows && rows.length > 0) {
+                    return (
+                      <div key="tokens" className="bg-base-100 flex flex-col gap-2 px-4 py-3">
+                        <div className="text-xs font-normal capitalize text-trace-gold">Token and Cost</div>
+                        <div className="overflow-x-auto w-full border border-base-content/10 bg-base-200/10 rounded-lg shadow-sm">
+                          <table className="table table-xs w-full border-collapse">
+                            <thead>
+                              <tr className="border-b border-base-content/10 bg-base-200/50">
+                                <th className="text-left py-2 px-3 font-semibold text-base-content/70 text-[10px] uppercase tracking-wider">
+                                  Type
+                                </th>
+                                <th className="text-right py-2 px-3 font-semibold text-base-content/70 text-[10px] uppercase tracking-wider">
+                                  Tokens
+                                </th>
+                                <th className="text-right py-2 px-3 font-semibold text-base-content/70 text-[10px] uppercase tracking-wider">
+                                  Cost
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-base-content/5">
+                              {rows.map((row, idx) => (
+                                <tr
+                                  key={idx}
+                                  className={`${
+                                    row.isTotal
+                                      ? "font-semibold bg-base-200/40 border-t border-base-content/15"
+                                      : "hover:bg-base-200/20"
+                                  }`}
+                                >
+                                  <td className="py-2 px-3 text-left text-xs font-medium text-base-content/90">
+                                    {row.label}
+                                  </td>
+                                  <td className="py-2 px-3 text-right text-xs font-mono text-base-content/80">
+                                    {row.token !== undefined && row.token !== null
+                                      ? typeof row.token === "number"
+                                        ? row.token.toLocaleString()
+                                        : row.token
+                                      : "-"}
+                                  </td>
+                                  <td className="py-2 px-3 text-right text-xs font-mono text-base-content/80">
+                                    {formatCostValue(row.cost)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </div>
           </div>
         ) : null}
@@ -2184,25 +2360,13 @@ const ThreadItem = ({
                     content={getMessageToDisplay()}
                     isHtml={isChatbotMessage() && containsHTML(getMessageToDisplay())}
                     hasToolCalls={hasAgentsOrTools}
-                    editButton={
-                      !item?.llm_urls?.length && !item?.fromRTLayer ? (
-                        <div
-                          className="tooltip absolute"
-                          style={{ top: "-0.5rem", right: "0.5rem" }}
-                          data-tip="Edit message"
-                        >
-                          <button
-                            id="thread-item-edit-message-button"
-                            data-testid="thread-item-edit-message-button"
-                            className="btn btn-xs btn-circle btn-ghost opacity-0 group-hover:opacity-100"
-                            onClick={handleEdit}
-                          >
-                            <PencilIcon size={13} />
-                          </button>
-                        </div>
-                      ) : null
-                    }
                   />
+
+                  <div
+                    className={`transition-opacity duration-200 ${isAnyPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                  >
+                    {renderResponseActionButtons(false)}
+                  </div>
 
                   {responseStatusBadges && (
                     <div className="mt-3 flex gap-1.5 items-center select-none">{responseStatusBadges}</div>
@@ -2490,36 +2654,18 @@ const ThreadItem = ({
                       <ChevronRight size={12} className="shrink-0 opacity-70" />
                     </button>
                   )}
+                  {responseStatusBadges && (
+                    <div className="flex gap-1.5 items-center select-none">{responseStatusBadges}</div>
+                  )}
                   <FinalResponseCard
                     attachments={renderAttachments(normalizeImageUrls(item?.llm_urls, "llm"))}
                     content={getMessageToDisplay()}
                     isHtml={isChatbotMessage() && containsHTML(getMessageToDisplay())}
                     hasToolCalls={hasAgentsOrTools}
-                    editButton={
-                      !item?.llm_urls?.length && !item?.fromRTLayer ? (
-                        <div
-                          className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity ${isAnyPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                        >
-                          <div className="tooltip" data-tip="Edit message">
-                            <button
-                              id="thread-item-edit-message-button"
-                              data-testid="thread-item-edit-message-button"
-                              className="btn btn-sm btn-circle btn-ghost hover:btn-primary text-base-content"
-                              onClick={handleEdit}
-                            >
-                              <PencilIcon size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : null
-                    }
                   />
 
                   {/* Action buttons and badges below FinalResponseCard */}
                   <div className="flex flex-wrap items-center mb-2 gap-2 z-20">
-                    {responseStatusBadges && (
-                      <div className="flex gap-1.5 items-center select-none">{responseStatusBadges}</div>
-                    )}
                     {!isSingleQuery && (
                       <div
                         className={`flex items-center gap-2 transition-opacity duration-200 ${isAnyPanelOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}

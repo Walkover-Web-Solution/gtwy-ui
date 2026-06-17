@@ -2,6 +2,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateApiAction, updateBridgeVersionAction, updateFuntionApiAction } from "@/store/action/bridgeAction";
 import { getStatusClass, openModal, closeModal } from "@/utils/utility";
 import React, { useMemo, useRef, useState } from "react";
+import { useConfigurationContext } from "../ConfigurationContext";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
@@ -19,6 +20,7 @@ import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEmbedUser = false }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
+  const { discardPromptDraft } = useConfigurationContext();
   const [preFunctionData, setPreFunctionData] = useState(null);
   const [preFunctionId, setPreFunctionId] = useState(null);
   const [preFunctionName, setPreFunctionName] = useState(null);
@@ -457,6 +459,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         confirmButtonClass="btn-error text-white"
         onConfirm={() => {
           closeModal(MODAL_TYPE.UNSAVED_PROMPT_ACTION_MODAL);
+          discardPromptDraft();
           const action = pendingActionRef.current;
           pendingActionRef.current = null;
           if (action) action();

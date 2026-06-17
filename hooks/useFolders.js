@@ -42,12 +42,10 @@ export const useFolders = (resourceType, orgId, passedIsEmbedUser) => {
   const handleRenameFolder = async (folderId, name) => {
     if (!folderId || !name) return;
     try {
-      const folder = foldersState.find((f) => f && f._id === folderId);
       return await dispatch(
         updateFolderAction({
           folder_id: folderId,
           name,
-          config: folder?.config || {},
         })
       );
     } catch (err) {

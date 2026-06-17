@@ -34,6 +34,7 @@ const MatchingTypeDropdown = ({
   return (
     <div className="relative">
       <button
+        data-testid="matching-type-dropdown-btn"
         onClick={() => setIsOpen((o) => !o)}
         className="flex items-center gap-2 px-2 py-1.5 bg-transparent border border-base-content/20 rounded-lg text-xs font-semibold text-base-content/70 cursor-pointer hover:bg-base-200 transition-colors"
       >
@@ -50,7 +51,11 @@ const MatchingTypeDropdown = ({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-[90]" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed inset-0 z-[90]"
+            data-testid="matching-type-dropdown-backdrop"
+            onClick={() => setIsOpen(false)}
+          />
           <div className="absolute top-[calc(100%+8px)] left-0 z-[100] w-[300px] bg-base-100 border border-base-300 rounded-2xl shadow-lg p-2">
             <div className="text-[11px] font-bold tracking-[0.05em] text-base-content/50 px-2.5 pt-1.5 pb-2.5 uppercase border-b border-base-200 mb-1.5">
               Matching Type
@@ -65,6 +70,7 @@ const MatchingTypeDropdown = ({
               return (
                 <button
                   key={opt.id}
+                  data-testid={`matching-type-option-${opt.id}`}
                   onClick={() => !opt.disabled && handleMatchingTypeClick(opt.id)}
                   disabled={isActive}
                   className={`w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-[10px] text-left mb-0.5 transition-colors ${
@@ -101,6 +107,7 @@ const MatchingTypeDropdown = ({
                     <span className="text-[11px] font-normal text-base-content/50">(optional)</span>
                     {customPromptSaved && (
                       <button
+                        data-testid="matching-type-clear-prompt-btn"
                         onClick={handleClearPrompt}
                         className="px-2.5 py-1 rounded-md border border-base-300 bg-base-100 text-[11px] font-semibold text-base-content/60 cursor-pointer hover:bg-base-200 transition-colors"
                       >
@@ -110,6 +117,7 @@ const MatchingTypeDropdown = ({
                   </div>
                 </div>
                 <textarea
+                  data-testid="matching-type-custom-prompt-input"
                   value={localCustomPrompt}
                   onChange={(e) => setLocalCustomPrompt(e.target.value)}
                   placeholder="e.g. Score the response 0-100 based on accuracy, tone, and conciseness. Return only the score."
@@ -118,6 +126,7 @@ const MatchingTypeDropdown = ({
                 />
                 <div className="flex justify-end gap-2 mt-2">
                   <button
+                    data-testid="matching-type-save-prompt-btn"
                     onClick={handleSavePrompt}
                     disabled={!canSave}
                     className={`px-3.5 py-[7px] rounded-[9px] border-0 text-[13px] font-bold transition-colors ${

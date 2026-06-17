@@ -287,7 +287,7 @@ const ModelDropdown = ({
     const { val, opt } = pendingSelection;
     const selectedGroup = opt?.meta?.group;
     const modelName = opt?.meta?.modelName || val;
-    const configUpdate = { model: modelName, type: selectedGroup, response_type: "default" };
+    const configUpdate = { model: modelName, type: selectedGroup };
     const dataToSend = { configuration: configUpdate };
     if (selectedGroup !== "chat" && isAutoModelSelected) {
       dataToSend.auto_model_select = null;

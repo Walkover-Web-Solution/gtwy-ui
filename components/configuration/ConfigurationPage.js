@@ -6,6 +6,7 @@ import SetupView from "./SetupView";
 import Protected from "../Protected";
 import { Lock } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 
 const ConfigurationPage = ({
   params,
@@ -29,6 +30,16 @@ const ConfigurationPage = ({
   const router = useRouter();
   const view = searchParams?.view || "config";
   const [currentView, setCurrentView] = useState(viewOverride || view);
+  const [promptResetKey, setPromptResetKey] = useState(0);
+
+  const discardPromptDraft = useCallback(() => {
+    setPromptState((prev) => ({
+      ...prev,
+      newContent: "",
+    }));
+    unsavedPromptGuard.hasUnsavedChanges = false;
+    setPromptResetKey((k) => k + 1);
+  }, [setPromptState]);
 
   const configState = useConfigurationState(params, searchParams);
 
@@ -164,6 +175,8 @@ const ConfigurationPage = ({
       isEditor,
       apiKeyError,
       setApiKeyError,
+      promptResetKey,
+      discardPromptDraft,
     }),
     [
       configState,
@@ -185,6 +198,8 @@ const ConfigurationPage = ({
       currentView,
       handleNavigation,
       apiKeyError,
+      promptResetKey,
+      discardPromptDraft,
     ]
   );
 

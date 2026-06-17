@@ -31,6 +31,7 @@ const TestCaseModelDropdown = ({ selectedModel, onModelChange, onServiceChange, 
   return (
     <div className="relative">
       <button
+        data-testid="testcase-model-dropdown-btn"
         onClick={() => setIsOpen((o) => !o)}
         className="flex items-center gap-2 px-3.5 py-2.5 bg-base-100 border border-base-300 rounded-xl text-sm font-semibold text-base-content/70 cursor-pointer shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:bg-base-200 transition-colors"
       >
@@ -43,7 +44,11 @@ const TestCaseModelDropdown = ({ selectedModel, onModelChange, onServiceChange, 
       </button>
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-[90]" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed inset-0 z-[90]"
+            data-testid="testcase-model-dropdown-backdrop"
+            onClick={() => setIsOpen(false)}
+          />
           <div className="absolute top-[calc(100%+8px)] left-0 z-[100] w-[280px] max-h-[400px] overflow-y-auto bg-base-100 border border-base-300 rounded-2xl shadow-lg p-2">
             <div className="text-[11px] font-bold tracking-[0.05em] text-base-content/50 px-2.5 pt-1.5 pb-2.5 uppercase border-b border-base-200 mb-1.5">
               Select Model
@@ -52,6 +57,7 @@ const TestCaseModelDropdown = ({ selectedModel, onModelChange, onServiceChange, 
             {/* Default Option */}
             <div className="mb-1.5 border-b border-base-200 pb-1.5">
               <button
+                data-testid="testcase-model-option-default"
                 onClick={() => {
                   onModelChange(null);
                   if (onServiceChange) {
@@ -87,6 +93,7 @@ const TestCaseModelDropdown = ({ selectedModel, onModelChange, onServiceChange, 
                   return (
                     <button
                       key={model.name}
+                      data-testid={`testcase-model-option-${model.name}`}
                       onClick={() => {
                         handleModelSelect(model.name, group.provider);
                         setIsOpen(false);

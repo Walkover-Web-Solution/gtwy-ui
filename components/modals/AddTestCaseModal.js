@@ -131,6 +131,8 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
   const [responseType, setResponseType] = useState("cosine");
   const [showFullConversation, setShowFullConversation] = useState(false);
   const [isExpectedExpanded, setIsExpectedExpanded] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState({}); // Track expanded state for each message
+  const [testCaseName, setTestCaseName] = useState("");
   // Filter out unwanted variables
   const filterVariables = (vars) => {
     const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
@@ -152,6 +154,10 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     if (testCaseConversation?.[0]?.threadVariables) {
       setEditableVariables(filterVariables(testCaseConversation[0].threadVariables));
     }
+    // Reset expanded states when conversation changes
+    setExpandedMessages({});
+    setIsExpectedExpanded(false);
+    setTestCaseName("");
   }, [testCaseConversation]);
 
   useEffect(() => {
@@ -179,6 +185,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const isToolsCall = lastTestCase.role === "tools_call";
 
     const payload = {
+      name: testCaseName,
       conversation: finalTestCases.slice(0, -1),
       type: isAssistant ? "response" : "function",
       expected: {
@@ -217,21 +224,6 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     });
   };
 
-  const handleTextareaInput = (e) => {
-    // Auto-resize textarea based on content
-    const textarea = e.target;
-    const currentHeight = textarea.style.height;
-    const autoHeight = textarea.getAttribute("data-auto-height");
-    if (currentHeight && autoHeight && currentHeight !== autoHeight) {
-      // User manually resized it, skip auto-resizing
-      return;
-    }
-    textarea.style.height = "auto";
-    const newHeight = textarea.scrollHeight + "px";
-    textarea.style.height = newHeight;
-    textarea.setAttribute("data-auto-height", newHeight);
-  };
-
   const handleVariableChange = (key, newValue) => {
     setEditableVariables((prev) => ({
       ...prev,
@@ -255,12 +247,39 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       updated.splice(startIndex, 2);
       return updated;
     });
+    // Clear expanded state for removed messages
+    setExpandedMessages((prev) => {
+      const newExpanded = { ...prev };
+      delete newExpanded[`${startIndex}-user`];
+      delete newExpanded[`${startIndex}-assistant`];
+      return newExpanded;
+    });
+  };
+
+  const toggleMessageExpansion = (messageId) => {
+    setExpandedMessages((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+
+  const isMessageExpanded = (messageId) => {
+    return expandedMessages[messageId] || false;
+  };
+
+  // Check if content needs "show more" button (more than 6 lines)
+  const needsExpansion = (content) => {
+    if (!content) return false;
+    const lines = content.split("\n").length;
+    return lines > 6;
   };
 
   // Group messages into user+assistant pairs
+  // Exclude the last pair (which will be shown as User Query and Expected Output)
   const getConversationPairs = () => {
     const pairs = [];
-    for (let i = 0; i < finalTestCases.length - 1; i += 2) {
+    // Stop 2 messages before the end to exclude the last user+assistant pair
+    for (let i = 0; i < finalTestCases.length - 2; i += 2) {
       pairs.push({
         user: finalTestCases[i],
         assistant: finalTestCases[i + 1],
@@ -273,6 +292,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
   const handleClose = () => {
     closeModal(MODAL_TYPE.ADD_TEST_CASE_MODAL);
     setTestCaseConversation([]);
+    setTestCaseName("");
   };
 
   return (
@@ -297,6 +317,19 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           </div>
 
           <div className="space-y-4">
+            {/* Test Case Name Section */}
+            <div className="space-y-2 bg-base-50 rounded-lg p-4 border border-base-200">
+              <label className="text-sm font-semibold text-base-content">Test Case Name</label>
+              <input
+                data-testid="add-testcase-name-input"
+                id="add-testcase-name-input"
+                type="text"
+                placeholder="Enter test case name"
+                value={testCaseName}
+                onChange={(e) => setTestCaseName(e.target.value)}
+                className="input input-sm input-bordered bg-base-100 w-full focus:outline-none"
+              />
+            </div>
             {/* Variables Section */}
             {Object.keys(editableVariables).length > 0 && (
               <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
@@ -362,28 +395,76 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                             </button>
                           </div>
                           <div className="w-[90%] bg-primary text-primary-content rounded-lg rounded-br-none px-4 py-3">
-                            <textarea
-                              defaultValue={pair.user?.content || ""}
-                              className="w-full bg-transparent text-sm leading-relaxed break-words focus:outline-none resize-none"
-                              onInput={handleTextareaInput}
-                              onFocus={handleTextareaInput}
-                              onBlur={(e) => handleChange(e.target.value, pair.startIndex, null)}
-                              rows={3}
-                            />
+                            <div
+                              style={{
+                                maxHeight: isMessageExpanded(`${pair.startIndex}-user`) ? "none" : "calc(6 * 1.625rem)",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                contentEditable
+                                suppressContentEditableWarning
+                                className="w-full text-sm leading-relaxed break-words whitespace-pre-wrap focus:outline-none"
+                                style={{ minHeight: "1.625rem" }}
+                                onBlur={(e) => handleChange(e.target.textContent, pair.startIndex, null)}
+                              >
+                                {pair.user?.content || ""}
+                              </div>
+                            </div>
+                            {needsExpansion(pair.user?.content) && (
+                              <div className="mt-2 pt-2 border-t border-primary-content/20">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleMessageExpansion(`${pair.startIndex}-user`);
+                                  }}
+                                  className="text-xs text-primary-content/70 hover:text-primary-content transition-colors cursor-pointer"
+                                >
+                                  {!isMessageExpanded(`${pair.startIndex}-user`) ? "... show more" : "show less"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {/* Assistant Message */}
                         <div className="flex flex-col items-start gap-1">
                           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
                           <div className="w-[90%] bg-base-300 text-base-content rounded-lg rounded-bl-none px-4 py-3">
-                            <textarea
-                              defaultValue={pair.assistant?.content || ""}
-                              className="w-full bg-transparent text-sm leading-relaxed break-words focus:outline-none resize-none"
-                              onInput={handleTextareaInput}
-                              onFocus={handleTextareaInput}
-                              onBlur={(e) => handleChange(e.target.value, pair.startIndex + 1, null)}
-                              rows={3}
-                            />
+                            <div
+                              style={{
+                                maxHeight: isMessageExpanded(`${pair.startIndex}-assistant`)
+                                  ? "none"
+                                  : "calc(6 * 1.625rem)",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                contentEditable
+                                suppressContentEditableWarning
+                                className="w-full text-sm leading-relaxed break-words whitespace-pre-wrap focus:outline-none"
+                                style={{ minHeight: "1.625rem" }}
+                                onBlur={(e) => handleChange(e.target.textContent, pair.startIndex + 1, null)}
+                              >
+                                {pair.assistant?.content || ""}
+                              </div>
+                            </div>
+                            {needsExpansion(pair.assistant?.content) && (
+                              <div className="mt-2 pt-2 border-t border-base-content/10">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleMessageExpansion(`${pair.startIndex}-assistant`);
+                                  }}
+                                  className="text-xs text-base-content/50 hover:text-primary transition-colors cursor-pointer"
+                                >
+                                  {!isMessageExpanded(`${pair.startIndex}-assistant`) ? "... show more" : "show less"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -409,18 +490,13 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                               key={idx}
                               className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
                             >
-                              <textarea
-                                id={`add-testcase-second-last-tool-textarea-${idx}`}
-                                defaultValue={JSON.stringify(item, null, 2)}
-                                className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
-                                onInput={handleTextareaInput}
-                                onFocus={handleTextareaInput}
-                                onBlur={(e) => handleChange(e.target.value, secondLastIndex, idx)}
-                                rows={4}
-                              />
+                              <div className="flex-1 overflow-hidden bg-base-100 rounded p-2 font-mono text-sm text-base-content whitespace-pre-wrap break-words">
+                                {JSON.stringify(item, null, 2)}
+                              </div>
                               {secondLastMessage.tools.length > 1 && (
                                 <button
                                   id={`add-testcase-second-last-remove-tool-${idx}`}
+                                  type="button"
                                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={() => removeTool(secondLastIndex, idx)}
                                 >
@@ -431,15 +507,9 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                           ))}
                         </div>
                       ) : (
-                        <textarea
-                          id="add-testcase-user-query-textarea"
-                          defaultValue={secondLastMessage.content}
-                          className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none rounded-lg shadow-sm resize-none overflow-hidden"
-                          onInput={handleTextareaInput}
-                          onFocus={handleTextareaInput}
-                          onBlur={(e) => handleChange(e.target.value, secondLastIndex, null)}
-                          rows={3}
-                        />
+                        <div className="bg-base-100 rounded-lg shadow-sm rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                          {secondLastMessage.content}
+                        </div>
                       )}
                     </div>
                   );
@@ -456,85 +526,72 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                   User Expected Output
                 </div>
                 <div className="bg-base-50 rounded-lg border border-base-200">
-                  <div
-                    style={{
-                      maxHeight: isExpectedExpanded ? "none" : "calc(6 * 1.625rem)",
-                      overflow: "hidden",
-                    }}
-                    className="px-4 pt-3 pb-1"
-                  >
-                    {(() => {
-                      const lastMessage = finalTestCases[finalTestCases.length - 1];
-                      const lastIndex = finalTestCases.length - 1;
-                      if (lastMessage.role === "tools_call" || lastMessage.sender === "tools_call") {
+                  <div className="px-4 pt-3 pb-2">
+                    <div
+                      style={{
+                        maxHeight: isExpectedExpanded ? "none" : "calc(6 * 1.625rem)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {(() => {
+                        const lastMessage = finalTestCases[finalTestCases.length - 1];
+                        const lastIndex = finalTestCases.length - 1;
+                        if (lastMessage.role === "tools_call" || lastMessage.sender === "tools_call") {
+                          return (
+                            <div className="space-y-3">
+                              {lastMessage.tools?.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
+                                >
+                                  <div className="flex-1 overflow-hidden bg-base-100 rounded p-2 font-mono text-sm text-base-content whitespace-pre-wrap break-words">
+                                    {JSON.stringify(item, null, 2)}
+                                  </div>
+                                  {lastMessage.tools.length > 1 && (
+                                    <button
+                                      id={`add-testcase-expected-remove-tool-${idx}`}
+                                      type="button"
+                                      className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => removeTool(lastIndex, idx)}
+                                    >
+                                      <CloseIcon size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
                         return (
-                          <div className="space-y-3">
-                            {lastMessage.tools?.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
-                              >
-                                <textarea
-                                  id={`add-testcase-expected-tool-textarea-${idx}`}
-                                  defaultValue={JSON.stringify(item, null, 2)}
-                                  className="textarea bg-base-100 w-full font-mono text-sm p-2 bg-transparent focus:outline-none resize-none overflow-hidden"
-                                  onInput={handleTextareaInput}
-                                  onFocus={handleTextareaInput}
-                                  onBlur={(e) => handleChange(e.target.value, lastIndex, idx)}
-                                  rows={4}
-                                />
-                                {lastMessage.tools.length > 1 && (
-                                  <button
-                                    id={`add-testcase-expected-remove-tool-${idx}`}
-                                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => removeTool(lastIndex, idx)}
-                                  >
-                                    <CloseIcon size={16} />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
+                          <div className="bg-base-100 rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                            {lastMessage.content}
                           </div>
                         );
-                      }
-                      return (
-                        <textarea
-                          id="add-testcase-expected-content-textarea"
-                          defaultValue={lastMessage.content}
-                          className="textarea bg-base-100 w-full text-sm p-3 focus:outline-none resize-none overflow-hidden"
-                          onInput={handleTextareaInput}
-                          onFocus={handleTextareaInput}
-                          onBlur={(e) => handleChange(e.target.value, lastIndex, null)}
-                          rows={3}
-                        />
-                      );
-                    })()}
+                      })()}
+                    </div>
                   </div>
-                  {/* Show more / Show less row - only show if content exceeds 6 lines */}
+                  {/* Show more / Show less button */}
                   {(() => {
                     const lastMessage = finalTestCases[finalTestCases.length - 1];
-                    const content = lastMessage?.content || "";
+                    const isToolsCall = lastMessage.role === "tools_call" || lastMessage.sender === "tools_call";
+                    const shouldShow = isToolsCall
+                      ? lastMessage.tools?.some((item) => JSON.stringify(item, null, 2).split("\n").length > 6)
+                      : needsExpansion(lastMessage?.content);
+
                     return (
-                      content &&
-                      content.split("\n").length > 6 && (
-                        <div className="px-4 pb-2">
-                          {!isExpectedExpanded ? (
-                            <button
-                              type="button"
-                              onClick={() => setIsExpectedExpanded(true)}
-                              className="text-xs text-primary hover:text-primary transition-colors"
-                            >
-                              ... show more
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setIsExpectedExpanded(false)}
-                              className="text-xs text-base-content/50 hover:text-primary transition-colors"
-                            >
-                              show less
-                            </button>
-                          )}
+                      shouldShow && (
+                        <div className="px-4 pb-2 pt-2 border-t border-base-content/10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsExpectedExpanded(!isExpectedExpanded);
+                            }}
+                            className="text-xs text-primary hover:text-primary-focus transition-colors cursor-pointer"
+                          >
+                            {!isExpectedExpanded ? "... show more" : "show less"}
+                          </button>
                         </div>
                       )
                     );

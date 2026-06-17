@@ -4,6 +4,7 @@ const initialState = {
   folders: [],
   loading: false,
   error: null,
+  fetched: false,
 };
 
 export const folderReducer = createSlice({
@@ -20,6 +21,7 @@ export const folderReducer = createSlice({
       state.folders = action.payload || [];
       state.loading = false;
       state.error = null;
+      state.fetched = true;
     },
     createFolderReducer: (state, action) => {
       state.folders.push(action.payload);
@@ -37,6 +39,17 @@ export const folderReducer = createSlice({
       state.folders = state.folders.filter((f) => f._id !== folderId && f.folder_id !== folderId);
       state.loading = false;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase("organization/setCurrentOrgId", (state) => {
+        state.folders = [];
+        state.fetched = false;
+      })
+      .addCase("organization/clearCurrentOrgId", (state) => {
+        state.folders = [];
+        state.fetched = false;
+      });
   },
 });
 

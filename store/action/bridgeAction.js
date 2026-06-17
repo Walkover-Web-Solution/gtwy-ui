@@ -235,7 +235,6 @@ export const createEmbedAgentAction =
         service: "openai",
         model: "gpt-4o",
         name: agent_name?.trim() || null,
-        slugName: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
       };
