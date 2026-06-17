@@ -1,6 +1,7 @@
 import {
   createTestCaseApi,
   deleteTestCaseApi,
+  deleteMultipleTestCasesApi,
   getAllTestCasesOfBridgeApi,
   runTestCaseApi,
   updateTestCaseApi,
@@ -9,6 +10,7 @@ import {
 import {
   createTestCaseReducer,
   deleteTestCaseReducer,
+  deleteMultipleTestCasesReducer,
   getAllTestCasesReducer,
   appendTestCasesReducer,
   updateTestCaseReducer,
@@ -72,17 +74,35 @@ export const deleteTestCaseAction =
     }
   };
 
+export const deleteMultipleTestCasesAction =
+  ({ testCaseIds, bridgeId }) =>
+  async (dispatch) => {
+    try {
+      if (!Array.isArray(testCaseIds) || testCaseIds.length === 0) return;
+      const response = await deleteMultipleTestCasesApi({ testCaseIds });
+      if (response?.success) {
+        dispatch(deleteMultipleTestCasesReducer({ testCaseIds, bridgeId }));
+        toast.success(`${testCaseIds.length} test case${testCaseIds.length > 1 ? "s" : ""} deleted successfully`);
+      }
+      return response;
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
 export const runTestCaseAction =
   ({
     versionIds = null,
     bridgeId = null,
     testcase_id = null,
+    testcase_ids = null,
     testCaseData = null,
     variables = null,
     matching_type = null,
     ai_matching_custom_prompt = null,
     model = null,
     service = null,
+    models = null,
   }) =>
   async (dispatch) => {
     try {
@@ -90,13 +110,15 @@ export const runTestCaseAction =
       // for the run_started RTLayer event (which arrives moments later on the bridge channel).
       if (bridgeId) {
         const versionIdsArrayInit = Array.isArray(versionIds) ? versionIds : [versionIds].filter(Boolean);
-        const totalTestCases = testcase_id ? 1 : 0; // Single test case run has total 1, run all will be updated by RTLayer
+        const bulkCount = Array.isArray(testcase_ids) ? testcase_ids.length : 0;
+        const totalTestCases = testcase_id ? 1 : bulkCount; // Single=1, bulk=length, run all=0 (RTLayer updates)
         dispatch(
           testRunStartedReducer({
             bridgeId,
             total: totalTestCases,
             versionIds: versionIdsArrayInit,
             testcaseId: testcase_id || null,
+            testcaseIds: Array.isArray(testcase_ids) && testcase_ids.length > 0 ? testcase_ids : null,
           })
         );
       }
@@ -104,6 +126,7 @@ export const runTestCaseAction =
       const response = await runTestCaseApi({
         versionIds,
         testcase_id,
+        testcase_ids,
         testCaseData,
         bridgeId,
         variables,
@@ -111,6 +134,7 @@ export const runTestCaseAction =
         ai_matching_custom_prompt,
         model,
         service,
+        models,
       });
 
       // New flow: backend returns immediately with rtlayer_cred and streams results via RTLayer.

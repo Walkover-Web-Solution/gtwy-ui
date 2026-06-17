@@ -402,6 +402,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       }));
 
     if (conversation.length === 0) return;
+    if (variables && Object.keys(variables).length > 0) {
+      conversation[0] = { ...conversation[0], threadVariables: { ...variables } };
+    }
 
     setTestCaseConversation(conversation);
     openModal(MODAL_TYPE.ADD_TEST_CASE_MODAL);
