@@ -412,8 +412,8 @@ export const getStatsConfig = (summary) => {
       bg: "bg-emerald-500/10",
     },
     {
-      title: "Avg Response",
-      value: summary?.avg_response_ms != null ? `${(summary.avg_response_ms / 1000).toFixed(2)}s` : "0s",
+      title: "Avg Successful Response",
+      value: summary?.avg_response != null ? `${summary.avg_response}s` : "0s",
       change: "",
       trend: "down",
       icon: Timer,
