@@ -309,24 +309,6 @@ const ModelDropdown = ({
       const selectedGroup = opt?.meta?.group || "chat";
       const modelName = opt?.meta?.modelName || val;
 
-      const hasJsonSchema =
-        configuration?.response_type?.type === "json_schema" ||
-        (configuration?.response_type?.json_schema && Object.keys(configuration.response_type.json_schema).length > 0);
-
-      const newModelInfo = serviceModels?.[service]?.[selectedGroup]?.[modelName];
-      const responseTypeParam = newModelInfo?.configuration?.additional_parameters?.response_type;
-      const options = responseTypeParam?.options || [];
-      const supportsJsonSchema = options.some((opt) => {
-        const optVal = typeof opt === "object" ? opt.type || opt.value : opt;
-        return optVal === "json_schema";
-      });
-
-      if (hasJsonSchema && !supportsJsonSchema) {
-        setPendingSelection({ val, opt });
-        openModal(MODAL_TYPE.JSON_SCHEMA_MODEL_WARNING_MODAL);
-        return;
-      }
-
       const configUpdate = { model: modelName, type: selectedGroup };
       const dataToSend = { configuration: configUpdate };
       if (selectedGroup !== "chat" && isAutoModelSelected) {

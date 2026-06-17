@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { getServiceAction } from "@/store/action/serviceAction";
 import Protected from "@/components/Protected";
-import { getIconOfService, openModal, closeModal } from "@/utils/utility";
+import { getIconOfService, closeModal } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
 import { ChevronDownIcon, CircleAlert } from "lucide-react";
@@ -178,34 +178,6 @@ const ServiceDropdown = ({
     (serviceValue) => {
       const newService = serviceValue;
       const defaultModel = DEFAULT_MODEL?.[newService]?.model;
-
-      const hasJsonSchema =
-        configuration?.response_type?.type === "json_schema" ||
-        (configuration?.response_type?.json_schema && Object.keys(configuration.response_type.json_schema).length > 0);
-
-      // Find the group/type for defaultModel
-      let foundType = "chat";
-      const types = serviceModels?.[newService] || {};
-      for (const [type, models] of Object.entries(types)) {
-        if (models && models[defaultModel]) {
-          foundType = type;
-          break;
-        }
-      }
-
-      const modelInfo = serviceModels?.[newService]?.[foundType]?.[defaultModel];
-      const responseTypeParam = modelInfo?.configuration?.additional_parameters?.response_type;
-      const options = responseTypeParam?.options || [];
-      const supportsJsonSchema = options.some((opt) => {
-        const optVal = typeof opt === "object" ? opt.type || opt.value : opt;
-        return optVal === "json_schema";
-      });
-
-      if (hasJsonSchema && !supportsJsonSchema) {
-        setPendingService(newService);
-        openModal(MODAL_TYPE.JSON_SCHEMA_SERVICE_WARNING_MODAL);
-        return;
-      }
 
       const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
       setSelectedService(newService);
