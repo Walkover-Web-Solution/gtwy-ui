@@ -712,10 +712,11 @@ const TestCaseDetailsPanel = ({
                     const seen = new Set();
                     const tabs = [];
                     allRunsForVersion.forEach((run) => {
+                      if (!run?.model) return; // skip runs with no model (dead "Default" tab)
                       const key = buildRunModelKey(run);
                       if (seen.has(key)) return;
                       seen.add(key);
-                      tabs.push({ key, model: run?.model || "", service: run?.service || "" });
+                      tabs.push({ key, model: run.model, service: run?.service || "" });
                     });
                     return tabs;
                   })();
@@ -818,7 +819,7 @@ const TestCaseDetailsPanel = ({
                             >
                               {modelTabs.map((tab) => {
                                 const isActive = tab.key === activeTab?.key;
-                                const label = tab.model || "Default";
+                                const label = tab.model;
                                 return (
                                   <button
                                     key={tab.key}
@@ -826,13 +827,18 @@ const TestCaseDetailsPanel = ({
                                     aria-selected={isActive}
                                     title={tab.service ? `${tab.service} • ${label}` : label}
                                     onClick={() => setActiveModelByVersion((prev) => ({ ...prev, [version]: tab.key }))}
-                                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
                                       isActive
                                         ? "bg-primary/10 text-primary border border-primary/30"
                                         : "bg-base-200/60 text-base-content/60 border border-transparent hover:bg-base-200"
                                     }`}
                                   >
-                                    {label}
+                                    {tab.service && (
+                                      <span className="inline-flex items-center mt-1 flex-shrink-0">
+                                        {getIconOfService(tab.service, 12, 12)}
+                                      </span>
+                                    )}
+                                    <span>{label}</span>
                                   </button>
                                 );
                               })}
@@ -923,19 +929,6 @@ const TestCaseDetailsPanel = ({
                                 className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-base-content/60 font-medium w-full min-w-0"
                                 title={currentRun?.service || ""}
                               >
-                                {(currentRun?.model || currentRun?.metadata?.model) && (
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    {currentRun?.service && (
-                                      <span className="inline-flex items-center flex-shrink-0">
-                                        {getIconOfService(currentRun.service, 12, 12)}
-                                      </span>
-                                    )}
-                                    <span className="truncate max-w-[140px]">
-                                      {currentRun?.model || currentRun?.metadata?.model}
-                                    </span>
-                                  </div>
-                                )}
-
                                 {hasRun && !runErrorMessage && currentRun?.tokens?.total_tokens > 0 && (
                                   <span
                                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"

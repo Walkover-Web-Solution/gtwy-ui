@@ -445,7 +445,7 @@ function TestCases({ params }) {
       {/* Show skeleton while loading */}
       {isLoadingTestCases ? (
         <TestCaseLoadingSkeleton />
-      ) : (Array.isArray(testCases) && testCases.length > 0) || searchKeyword ? (
+      ) : (Array.isArray(testCases) && testCases.length > 0) || searchKeyword || isSearching ? (
         <>
           {/* Action Bar - Matching Type, Versions, and Run Button */}
           <div
@@ -674,7 +674,7 @@ function TestCases({ params }) {
       )}
 
       {/* Main Grid */}
-      {((Array.isArray(testCases) && testCases.length > 0) || searchKeyword) && (
+      {((Array.isArray(testCases) && testCases.length > 0) || searchKeyword || isSearching) && (
         <div className="flex-1 min-h-0 overflow-hidden px-6 pb-4 pt-3" data-testid="testcase-main-grid-wrapper">
           <div className="grid grid-cols-12 gap-4 h-full relative">
             {/* Left Panel - Test Cases List */}
@@ -698,10 +698,7 @@ function TestCases({ params }) {
                     className="input input-sm input-bordered w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-                    {isSearching && searchKeyword && (
-                      <span className="loading loading-spinner loading-xs text-base-content/50"></span>
-                    )}
-                    {searchKeyword && !isSearching && (
+                    {searchKeyword && (
                       <button
                         data-testid="testcase-search-clear-btn"
                         type="button"
@@ -741,184 +738,207 @@ function TestCases({ params }) {
                   </div>
                 </div>
               )}
-              <div
-                id="testcase-list-scrollable"
-                data-testid="testcase-list-scrollable"
-                className="overflow-x-auto overflow-y-auto flex-1 bg-base-100"
-              >
-                <InfiniteScroll
-                  dataLength={Array.isArray(testCases) ? testCases.length : 0}
-                  next={fetchMoreTestCases}
-                  hasMore={hasMore}
-                  loader={
-                    <div className="flex justify-center items-center py-3">
-                      <span className="loading loading-spinner loading-sm text-base-content/50" />
-                    </div>
-                  }
-                  scrollableTarget="testcase-list-scrollable"
-                  style={{ overflow: "visible" }}
+              {isSearching ? (
+                <div className="flex-1 p-4 space-y-2 animate-pulse" data-testid="testcase-list-search-skeleton">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="h-12 bg-base-200 rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                <div
+                  id="testcase-list-scrollable"
+                  data-testid="testcase-list-scrollable"
+                  className="overflow-x-auto overflow-y-auto flex-1 bg-base-100"
                 >
-                  <table
-                    className="w-full border-separate border-spacing-0 bg-base-100"
-                    data-testid="testcase-list-table"
+                  <InfiniteScroll
+                    dataLength={Array.isArray(testCases) ? testCases.length : 0}
+                    next={fetchMoreTestCases}
+                    hasMore={hasMore}
+                    loader={
+                      <div className="flex justify-center items-center py-3">
+                        <span className="loading loading-spinner loading-sm text-base-content/50" />
+                      </div>
+                    }
+                    scrollableTarget="testcase-list-scrollable"
+                    style={{ overflow: "visible" }}
                   >
-                    <thead className="bg-base-50" data-testid="testcase-list-table-head">
-                      <tr className="border-b border-base-200">
-                        <th
-                          style={{ left: 0, width: 36, minWidth: 36 }}
-                          className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
-                        >
-                          <input
-                            type="checkbox"
-                            data-testid="testcase-list-select-all"
-                            className="checkbox checkbox-xs"
-                            aria-label="Select all test cases"
-                            checked={
-                              Array.isArray(testCases) &&
-                              testCases.length > 0 &&
-                              testCases.every((tc) => bulkSelectedIds.has(tc?._id))
-                            }
-                            ref={(el) => {
-                              if (!el) return;
-                              const total = Array.isArray(testCases) ? testCases.length : 0;
-                              const selected = Array.isArray(testCases)
-                                ? testCases.filter((tc) => bulkSelectedIds.has(tc?._id)).length
-                                : 0;
-                              el.indeterminate = selected > 0 && selected < total;
-                            }}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setBulkSelectedIds(() => {
-                                if (!checked) return new Set();
-                                const next = new Set();
-                                (Array.isArray(testCases) ? testCases : []).forEach((tc) => {
-                                  if (tc?._id) next.add(tc._id);
-                                });
-                                return next;
-                              });
-                            }}
-                          />
-                        </th>
-                        <th
-                          style={{ left: 36, width: 40, minWidth: 40 }}
-                          className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
-                        >
-                          #
-                        </th>
-                        <th
-                          style={{ left: 76, width: 140, minWidth: 140 }}
-                          className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
-                        >
-                          Name
-                        </th>
-                        {selectedVersions.map((version, idx) => (
+                    <table
+                      className="w-full border-separate border-spacing-0 bg-base-100"
+                      data-testid="testcase-list-table"
+                    >
+                      <thead className="bg-base-50" data-testid="testcase-list-table-head">
+                        <tr className="border-b border-base-200">
                           <th
-                            key={idx}
-                            data-testid={`testcase-list-version-header-${idx}`}
-                            className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 "
+                            style={{ left: 0, width: 36, minWidth: 36 }}
+                            className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
                           >
-                            v{versions.indexOf(version) + 1}
+                            <input
+                              type="checkbox"
+                              data-testid="testcase-list-select-all"
+                              className="checkbox checkbox-xs"
+                              aria-label="Select all test cases"
+                              checked={
+                                Array.isArray(testCases) &&
+                                testCases.length > 0 &&
+                                testCases.every((tc) => bulkSelectedIds.has(tc?._id))
+                              }
+                              ref={(el) => {
+                                if (!el) return;
+                                const total = Array.isArray(testCases) ? testCases.length : 0;
+                                const selected = Array.isArray(testCases)
+                                  ? testCases.filter((tc) => bulkSelectedIds.has(tc?._id)).length
+                                  : 0;
+                                el.indeterminate = selected > 0 && selected < total;
+                              }}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setBulkSelectedIds(() => {
+                                  if (!checked) return new Set();
+                                  const next = new Set();
+                                  (Array.isArray(testCases) ? testCases : []).forEach((tc) => {
+                                    if (tc?._id) next.add(tc._id);
+                                  });
+                                  return next;
+                                });
+                              }}
+                            />
                           </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-base-200" data-testid="testcase-list-table-body">
-                      {Array.isArray(testCases) &&
-                        testCases.map((testCase, index) => {
-                          const testCaseName = testCase?.name;
-                          const lastUserMessageRaw = testCase?.conversation
-                            ?.filter((message) => message?.role === "user")
-                            ?.pop()?.content;
-                          const lastUserMessage =
-                            typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
-                              ? JSON.stringify(lastUserMessageRaw)
-                              : lastUserMessageRaw || "N/A";
-                          const displayText = testCaseName || lastUserMessage;
-
-                          const isSelected = selectedTestCaseIndex === index;
-
-                          const isRowChecked = bulkSelectedIds.has(testCase?._id);
-                          return (
-                            <tr
-                              key={index}
-                              data-testid={`testcase-row-${testCase?._id || index}`}
-                              onClick={() => setSelectedTestCaseIndex(index)}
-                              className={`cursor-pointer transition-all ${isSelected ? "bg-base-200 border-l-4 border-l-primary" : "bg-base-100 hover:bg-base-50 border-l-4 border-l-transparent"}`}
+                          <th
+                            style={{ left: 36, width: 40, minWidth: 40 }}
+                            className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
+                          >
+                            #
+                          </th>
+                          <th
+                            style={{ left: 76, width: 140, minWidth: 140 }}
+                            className="px-2 py-3 text-left text-xs font-semibold text-base-content uppercase tracking-wider sticky bg-base-50 z-30"
+                          >
+                            Name
+                          </th>
+                          {selectedVersions.map((version, idx) => (
+                            <th
+                              key={idx}
+                              data-testid={`testcase-list-version-header-${idx}`}
+                              className="px-2 py-3 text-center text-xs font-semibold text-base-content uppercase tracking-wider min-w-[60px] bg-base-50 "
                             >
-                              <td
-                                style={{ left: 0, width: 36, minWidth: 36 }}
-                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200" : "bg-base-100"}`}
-                                onClick={(e) => e.stopPropagation()}
+                              v{versions.indexOf(version) + 1}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-base-200" data-testid="testcase-list-table-body">
+                        {Array.isArray(testCases) && testCases.length === 0 ? (
+                          <tr data-testid="testcase-list-no-results">
+                            <td colSpan={3 + (selectedVersions?.length || 0)} className="px-4 py-12 text-center">
+                              <div className="flex flex-col items-center justify-center gap-2 text-base-content/60">
+                                <Search size={24} className="text-base-content/30" />
+                                <span className="text-sm font-medium">No testcase found</span>
+                                {searchKeyword && (
+                                  <span className="text-xs text-base-content/40">
+                                    No results for &quot;{searchKeyword}&quot;
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                        {Array.isArray(testCases) &&
+                          testCases.map((testCase, index) => {
+                            const testCaseName = testCase?.name;
+                            const lastUserMessageRaw = testCase?.conversation
+                              ?.filter((message) => message?.role === "user")
+                              ?.pop()?.content;
+                            const lastUserMessage =
+                              typeof lastUserMessageRaw === "object" && lastUserMessageRaw !== null
+                                ? JSON.stringify(lastUserMessageRaw)
+                                : lastUserMessageRaw || "N/A";
+                            const displayText = testCaseName || lastUserMessage;
+
+                            const isSelected = selectedTestCaseIndex === index;
+
+                            const isRowChecked = bulkSelectedIds.has(testCase?._id);
+                            return (
+                              <tr
+                                key={index}
+                                data-testid={`testcase-row-${testCase?._id || index}`}
+                                onClick={() => setSelectedTestCaseIndex(index)}
+                                className={`cursor-pointer transition-all ${isSelected ? "bg-base-200 border-l-4 border-l-primary" : "bg-base-100 hover:bg-base-50 border-l-4 border-l-transparent"}`}
                               >
-                                <input
-                                  type="checkbox"
-                                  data-testid={`testcase-row-select-${testCase?._id || index}`}
-                                  className="checkbox checkbox-xs"
-                                  aria-label="Select test case"
-                                  checked={isRowChecked}
-                                  onChange={() => testCase?._id && toggleRowSelected(testCase._id)}
-                                />
-                              </td>
-                              <td
-                                style={{ left: 36, width: 40, minWidth: 40 }}
-                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"}`}
-                              >
-                                {index + 1}
-                              </td>
-                              <td
-                                style={{ left: 76, width: 140, minWidth: 140 }}
-                                className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"} whitespace-nowrap overflow-hidden text-ellipsis`}
-                                title={displayText}
-                              >
-                                {displayText?.substring(0, 20)}
-                                {displayText?.length > 20 ? "..." : ""}
-                              </td>
-                              {selectedVersions.map((version, vIdx) => {
-                                const versionArray = testCase?.version_history?.[version];
-                                const latestResult = versionArray?.[0];
-                                const score = latestResult?.score || 0;
-                                const matchingTypeFromResult = testCase?.matching_type || "cosine";
-                                const runError = latestResult?.error;
-                                const runErrorMessage =
-                                  typeof runError === "string"
-                                    ? runError
-                                    : runError?.error || runError?.message || (runError ? "Run failed" : null);
-                                return (
-                                  <td
-                                    key={vIdx}
-                                    data-testid={`testcase-row-${testCase?._id || index}-version-${versions.indexOf(version) + 1}`}
-                                    className={`px-2 py-3.5 text-center min-w-[60px] bg-base-100"}`}
-                                  >
-                                    {versionArray &&
-                                      (runErrorMessage ? (
-                                        <InfoTooltip tooltipContent={runErrorMessage}>
-                                          <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error">
-                                            Error
-                                          </span>
-                                        </InfoTooltip>
-                                      ) : (
-                                        <InfoTooltip
-                                          tooltipContent={
-                                            latestResult?.reason || getScoreMessage(score, matchingTypeFromResult)
-                                          }
-                                        >
-                                          <span
-                                            className={`text-xs font-semibold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
+                                <td
+                                  style={{ left: 0, width: 36, minWidth: 36 }}
+                                  className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200" : "bg-base-100"}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    data-testid={`testcase-row-select-${testCase?._id || index}`}
+                                    className="checkbox checkbox-xs"
+                                    aria-label="Select test case"
+                                    checked={isRowChecked}
+                                    onChange={() => testCase?._id && toggleRowSelected(testCase._id)}
+                                  />
+                                </td>
+                                <td
+                                  style={{ left: 36, width: 40, minWidth: 40 }}
+                                  className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"}`}
+                                >
+                                  {index + 1}
+                                </td>
+                                <td
+                                  style={{ left: 76, width: 140, minWidth: 140 }}
+                                  className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"} whitespace-nowrap overflow-hidden text-ellipsis`}
+                                  title={displayText}
+                                >
+                                  {displayText?.substring(0, 20)}
+                                  {displayText?.length > 20 ? "..." : ""}
+                                </td>
+                                {selectedVersions.map((version, vIdx) => {
+                                  const versionArray = testCase?.version_history?.[version];
+                                  const latestResult = versionArray?.[0];
+                                  const score = latestResult?.score || 0;
+                                  const matchingTypeFromResult = testCase?.matching_type || "cosine";
+                                  const runError = latestResult?.error;
+                                  const runErrorMessage =
+                                    typeof runError === "string"
+                                      ? runError
+                                      : runError?.error || runError?.message || (runError ? "Run failed" : null);
+                                  return (
+                                    <td
+                                      key={vIdx}
+                                      data-testid={`testcase-row-${testCase?._id || index}-version-${versions.indexOf(version) + 1}`}
+                                      className={`px-2 py-3.5 text-center min-w-[60px] bg-base-100"}`}
+                                    >
+                                      {versionArray &&
+                                        (runErrorMessage ? (
+                                          <InfoTooltip tooltipContent={runErrorMessage}>
+                                            <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error">
+                                              Error
+                                            </span>
+                                          </InfoTooltip>
+                                        ) : (
+                                          <InfoTooltip
+                                            tooltipContent={
+                                              latestResult?.reason || getScoreMessage(score, matchingTypeFromResult)
+                                            }
                                           >
-                                            {getScoreDisplay(score, matchingTypeFromResult)}
-                                          </span>
-                                        </InfoTooltip>
-                                      ))}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </InfiniteScroll>
-              </div>
+                                            <span
+                                              className={`text-xs font-semibold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
+                                            >
+                                              {getScoreDisplay(score, matchingTypeFromResult)}
+                                            </span>
+                                          </InfoTooltip>
+                                        ))}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </InfiniteScroll>
+                </div>
+              )}
               <div
                 className="px-4 py-3 border-t border-base-200 text-xs text-base-content/60 bg-base-50"
                 data-testid="testcase-list-footer"
@@ -929,21 +949,51 @@ function TestCases({ params }) {
 
             {/* Right Panel - Details */}
             <div className="col-span-8 h-full min-h-0 overflow-hidden" data-testid="testcase-details-panel-host">
-              <TestCaseDetailsPanel
-                selectedTestCase={selectedTestCase}
-                selectedVersions={selectedVersions}
-                versions={versions}
-                runningTestCaseId={runningTestCaseId}
-                isloading={isloading}
-                testRun={testRun}
-                handleRunSingleTestCase={handleRunSingleTestCase}
-                handleDeleteTestCase={handleDeleteTestCase}
-                getScoreColor={getScoreColor}
-                getScoreMessage={getScoreMessage}
-                getScoreDisplay={getScoreDisplay}
-                bridgeId={resolvedParams?.id}
-                onTestCaseUpdate={() => dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }))}
-              />
+              {isSearching ? (
+                <div
+                  className="bg-base-100 border border-base-200 rounded-xl p-4 h-full animate-pulse space-y-4"
+                  data-testid="testcase-details-search-skeleton"
+                >
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-8 bg-base-200 rounded-lg" />
+                  ))}
+                </div>
+              ) : Array.isArray(testCases) && testCases.length === 0 && searchKeyword ? (
+                <div className="bg-base-100 border border-base-200 rounded-xl p-6 h-full flex items-center justify-center">
+                  <div className="text-center max-w-md">
+                    <div className="w-16 h-16 rounded-full bg-base-200 flex items-center justify-center mb-4 mx-auto">
+                      <FileText size={28} className="text-base-content/50" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-base-content mb-2">No test cases found</h3>
+                    <p className="text-sm text-base-content/60">
+                      Try adjusting your search or clear it to see all test cases.
+                    </p>
+                    <button
+                      data-testid="testcase-empty-clear-search-btn"
+                      onClick={() => handleSearchChange("")}
+                      className="btn btn-sm btn-primary mt-4"
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <TestCaseDetailsPanel
+                  selectedTestCase={selectedTestCase}
+                  selectedVersions={selectedVersions}
+                  versions={versions}
+                  runningTestCaseId={runningTestCaseId}
+                  isloading={isloading}
+                  testRun={testRun}
+                  handleRunSingleTestCase={handleRunSingleTestCase}
+                  handleDeleteTestCase={handleDeleteTestCase}
+                  getScoreColor={getScoreColor}
+                  getScoreMessage={getScoreMessage}
+                  getScoreDisplay={getScoreDisplay}
+                  bridgeId={resolvedParams?.id}
+                  onTestCaseUpdate={() => dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }))}
+                />
+              )}
             </div>
           </div>
         </div>
