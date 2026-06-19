@@ -149,6 +149,13 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const [showTestCases, setShowTestCases] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState("exact");
   const [testCaseId, setTestCaseId] = useState(null);
+  // Number of messages loaded from a freshly-clicked testcase. While the chat
+  // length stays equal to this, the conversation hasn't changed yet so we hide
+  // the "Add To Testcase" CTA (the testcase already exists).
+  const [loadedTestcaseMsgCount, setLoadedTestcaseMsgCount] = useState(0);
+  // When set, the next render with non-empty messages captures the baseline
+  // length (because loadTestCaseIntoChat may filter/append messages).
+  const pendingTestcaseLoadRef = useRef(false);
   const [currentRunIndex, setCurrentRunIndex] = useState(null);
   const [isRunningTestCase, setIsRunningTestCase] = useState(false);
   const [showTestCaseResults, setShowTestCaseResults] = useState({});
@@ -367,8 +374,18 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     };
   }, []);
 
+  // Capture loaded testcase baseline once messages reflect in redux.
+  useEffect(() => {
+    if (pendingTestcaseLoadRef.current && Array.isArray(messages) && messages.length > 0) {
+      setLoadedTestcaseMsgCount(messages.length);
+      pendingTestcaseLoadRef.current = false;
+    }
+  }, [messages]);
+
   const handleResetChat = () => {
     setTestCaseId(null);
+    setLoadedTestcaseMsgCount(0);
+    pendingTestcaseLoadRef.current = false;
     if (channelIdentifier) {
       dispatch(clearChatMessages(channelIdentifier));
       // Clear loading state from send button
@@ -464,6 +481,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
         if (testcase_id) {
           dispatch(setChatTestCaseIdAction(channelIdentifier, testcase_id));
         }
+        // Defer baseline capture until messages reflect in redux (the loader
+        // filters empty-content turns and may append the expected response).
+        pendingTestcaseLoadRef.current = true;
       }
 
       // Close testcase sidebar
@@ -842,8 +862,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
             </div>
           )}
 
-          {/* Add to Test Case button — only when there are messages */}
-          {messages?.length > 0 && (
+          {/* Add to Test Case button — only when there are messages and the
+              conversation has been extended beyond the loaded testcase. */}
+          {messages?.length > 0 && messages.length > loadedTestcaseMsgCount && (
             <div className="tooltip tooltip-bottom" data-tip="Add to Test Case">
               <button
                 data-testid="chat-add-conversation-to-testcase-button"

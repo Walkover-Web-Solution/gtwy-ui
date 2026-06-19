@@ -23,6 +23,7 @@ import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
 import { FileClockIcon } from "@/components/Icons";
 import InfoTooltip from "@/components/InfoTooltip";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
+import ExpandCollapse from "@/components/UI/ExpandCollapse";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -169,7 +170,6 @@ const TestCaseDetailsPanel = ({
       setTimeout(() => setCopiedVersion((curr) => (curr === versionId ? null : curr)), 1500);
     });
   }, []);
-  const [isExpectedExpanded, setIsExpectedExpanded] = useState(false);
   const toolsDataModalRef = useRef(null);
 
   const handleCloseToolsDataModal = () => {
@@ -241,7 +241,6 @@ const TestCaseDetailsPanel = ({
     setEditedConversation(selectedTestCase?.conversation ? [...selectedTestCase.conversation] : []);
     setEditedExpected(getExpectedValue(selectedTestCase));
     setHasUnsavedChanges(false);
-    setIsExpectedExpanded(false);
   }, [selectedTestCase?._id]);
 
   const trimConversation = (conv) =>
@@ -527,13 +526,17 @@ const TestCaseDetailsPanel = ({
                                 : "bg-base-200 text-base-content rounded-bl-none"
                             }`}
                           >
-                            {isStringContent ? (
-                              <div className="text-sm leading-relaxed break-words">{message?.content || ""}</div>
-                            ) : (
-                              <div className="text-sm leading-relaxed break-words">
-                                {JSON.stringify(message?.content)}
-                              </div>
-                            )}
+                            <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                              {isStringContent ? (
+                                <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                                  {message?.content || ""}
+                                </div>
+                              ) : (
+                                <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                                  {JSON.stringify(message?.content)}
+                                </div>
+                              )}
+                            </ExpandCollapse>
                           </div>
                           {isLastUserMessage && (
                             <button
@@ -604,13 +607,15 @@ const TestCaseDetailsPanel = ({
                   className="bg-base-50 rounded-lg px-4 py-3 border border-base-200"
                   data-testid="testcase-input-panel"
                 >
-                  <AutoResizeTextarea
-                    data-testid="testcase-input-textarea"
-                    value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
-                    onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
-                    onBlur={() => handleConversationBlur(lastUserIdx)}
-                    className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
-                  />
+                  <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                    <AutoResizeTextarea
+                      data-testid="testcase-input-textarea"
+                      value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
+                      onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
+                      onBlur={() => handleConversationBlur(lastUserIdx)}
+                      className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
+                    />
+                  </ExpandCollapse>
                 </div>
               </div>
             );
@@ -624,15 +629,11 @@ const TestCaseDetailsPanel = ({
             >
               Expected Output
             </div>
-            <div className="bg-base-50 rounded-lg border border-base-200" data-testid="testcase-expected-panel">
-              {/* Clipped content area */}
-              <div
-                style={{
-                  maxHeight: isExpectedExpanded ? "none" : "calc(4 * 1.625rem)",
-                  overflow: "hidden",
-                }}
-                className="px-4 pt-3 pb-1"
-              >
+            <div
+              className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2"
+              data-testid="testcase-expected-panel"
+            >
+              <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                 <AutoResizeTextarea
                   data-testid="testcase-expected-textarea"
                   value={editedExpected}
@@ -641,30 +642,7 @@ const TestCaseDetailsPanel = ({
                   minRows={2}
                   className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
                 />
-              </div>
-
-              {/* Show more / Show less row - only show if content exceeds 4 lines */}
-              {editedExpected && editedExpected.split("\n").length > 4 && (
-                <div className="px-4 pb-2">
-                  {!isExpectedExpanded ? (
-                    <button
-                      onClick={() => setIsExpectedExpanded(true)}
-                      className="text-xs text-primary hover:text-primary transition-colors"
-                      data-testid="testcase-expected-show-more"
-                    >
-                      ... show more
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setIsExpectedExpanded(false)}
-                      className="text-xs text-base-content/50 hover:text-primary transition-colors"
-                      data-testid="testcase-expected-show-less"
-                    >
-                      show less
-                    </button>
-                  )}
-                </div>
-              )}
+              </ExpandCollapse>
             </div>
           </div>
           {/* Version Comparison — driven by header "Versions" selector (single source of truth) */}
