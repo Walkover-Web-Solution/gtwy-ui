@@ -188,6 +188,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
       },
       bridge_id: params?.id,
+      matching_type: "ai",
       variables: editableVariables,
     };
     dispatch(createTestCaseAction({ bridgeId: params?.id, data: payload })).then(() => {

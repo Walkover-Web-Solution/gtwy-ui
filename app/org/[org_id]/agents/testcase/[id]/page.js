@@ -262,12 +262,16 @@ function TestCases({ params }) {
 
   const handleRunAllTestCases = async () => {
     if (!selectedVersions.length) return;
+    // If the user has bulk-selected testcases, run only those; otherwise run all.
+    const selectedIds = Array.from(bulkSelectedIds);
+    const testcase_ids = selectedIds.length > 0 ? selectedIds : null;
     // Loading + completion is now driven by RTLayer events via redux `testRun`.
     try {
       await dispatch(
         runTestCaseAction({
           versionIds: selectedVersions,
           bridgeId: resolvedParams?.id,
+          testcase_ids,
           matching_type: globalMatchingType.toLowerCase(),
           ai_matching_custom_prompt: globalCustomPromptSaved || undefined,
           ...buildModelsPayload(),
@@ -614,7 +618,9 @@ function TestCases({ params }) {
                   ) : (
                     <>
                       <PlayIcon size={12} style={{ fill: "currentColor", strokeWidth: 0 }} />
-                      Run All Testcases
+                      {bulkSelectedIds.size > 0
+                        ? `Run ${bulkSelectedIds.size} Testcase${bulkSelectedIds.size > 1 ? "s" : ""}`
+                        : "Run All Testcases"}
                     </>
                   )}
                 </button>
