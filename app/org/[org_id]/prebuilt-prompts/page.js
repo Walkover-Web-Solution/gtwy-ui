@@ -27,10 +27,12 @@ export default function PrebuiltPromptsPage() {
     prebuiltPrompts.forEach((promptObj) => {
       const key = Object.keys(promptObj)[0];
       const value = promptObj[key];
+      const isObject = value !== null && typeof value === "object";
       processed[key] = {
         name: customNames[key] || key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
         description: `${customNames[key] || key.replace(/_/g, " ")} agent configuration`,
-        prompt: value,
+        prompt: isObject ? JSON.stringify(value, null, 2) : (value ?? ""),
+        isObject,
       };
     });
     return processed;
@@ -77,8 +79,18 @@ export default function PrebuiltPromptsPage() {
   const handleSave = async (agentKey) => {
     setIsLoading(true);
     try {
+      let valueToSave = prompts[agentKey];
+      if (processedPrompts[agentKey]?.isObject) {
+        try {
+          valueToSave = JSON.parse(valueToSave);
+        } catch {
+          toast.error("Invalid JSON. Please fix syntax before saving.");
+          setIsLoading(false);
+          return;
+        }
+      }
       const dataToUpdate = {
-        [agentKey]: prompts[agentKey],
+        [agentKey]: valueToSave,
       };
       await updatePrebuiltPrompt(dataToUpdate);
       setSavebtnEnabled(false);
