@@ -3,6 +3,7 @@
 import React, { use, useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getThread } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
@@ -147,6 +148,7 @@ function Page({ params, searchParams }) {
   const [latencyChartType, setLatencyChartType] = useState("area");
 
   const router = useRouter();
+  const { buildUrl } = useQueryParams();
   const searchRef = useRef(null);
   const isFirstRender = useRef(true);
   const [appliedAdvancedFilters, setAppliedAdvancedFilters] = useState({
@@ -456,24 +458,26 @@ function Page({ params, searchParams }) {
         })
       );
 
-      const url = new URL(window.location.href);
-      url.searchParams.set("thread_id", encodeURIComponent(String(thread_id).replace(/&/g, "%26")));
-      url.searchParams.set("subThread_id", encodeURIComponent(String(firstSubThreadId).replace(/&/g, "%26")));
-      url.searchParams.delete("message_id");
-      url.searchParams.delete("batch_id");
-      router.push(url.pathname + url.search, undefined, { shallow: true });
+      router.push(
+        buildUrl(
+          {
+            thread_id: encodeURIComponent(String(thread_id).replace(/&/g, "%26")),
+            subThread_id: encodeURIComponent(String(firstSubThreadId).replace(/&/g, "%26")),
+            message_id: null,
+            batch_id: null,
+          },
+          pathName
+        )
+      );
     },
-    [router, resolvedParams.id, dispatch]
+    [pathName, router, buildUrl, resolvedParams.id, dispatch]
   );
 
   const handleAnalyticsMessageNavigate = useCallback(
     (messageId) => {
-      const url = new URL(window.location.href);
-      if (messageId) url.searchParams.set("message_id", messageId);
-      else url.searchParams.delete("message_id");
-      router.push(url.pathname + url.search, undefined, { shallow: true });
+      router.push(buildUrl({ message_id: messageId || null }, pathName));
     },
-    [router]
+    [pathName, router, buildUrl]
   );
 
   const handleSelectSubThread = useCallback(
@@ -501,14 +505,19 @@ function Page({ params, searchParams }) {
         })
       );
 
-      const url = new URL(window.location.href);
-      url.searchParams.set("thread_id", encodeURIComponent(String(threadId).replace(/&/g, "%26")));
-      url.searchParams.set("subThread_id", encodeURIComponent(String(subThreadId).replace(/&/g, "%26")));
-      url.searchParams.delete("message_id");
-      url.searchParams.delete("batch_id");
-      router.push(url.pathname + url.search, undefined, { shallow: true });
+      router.push(
+        buildUrl(
+          {
+            thread_id: encodeURIComponent(String(threadId).replace(/&/g, "%26")),
+            subThread_id: encodeURIComponent(String(subThreadId).replace(/&/g, "%26")),
+            message_id: null,
+            batch_id: null,
+          },
+          pathName
+        )
+      );
     },
-    [selectedThreadId, sidebarExpandedThreadId, resolvedParams.id, dispatch, router]
+    [pathName, selectedThreadId, sidebarExpandedThreadId, resolvedParams.id, dispatch, router, buildUrl]
   );
 
   const handleCloseAside = useCallback(() => {
@@ -517,14 +526,8 @@ function Page({ params, searchParams }) {
     setSelectedBatchMessageId(null);
     setSearchMessageId(null);
     setIsSliderOpen(false);
-
-    const url = new URL(window.location.href);
-    url.searchParams.delete("thread_id");
-    url.searchParams.delete("subThread_id");
-    url.searchParams.delete("message_id");
-    url.searchParams.delete("batch_id");
-    router.push(url.pathname + url.search, undefined, { shallow: true });
-  }, [router]);
+    router.push(buildUrl({ thread_id: null, subThread_id: null, message_id: null, batch_id: null }, pathName));
+  }, [pathName, router, buildUrl]);
 
   const handleSelectBatch = useCallback((messageId) => {
     setSearchMessageId(null);
@@ -539,8 +542,6 @@ function Page({ params, searchParams }) {
   }, []);
 
   const applyFilters = (updates = {}) => {
-    const currentUrl = new URL(window.location);
-
     const newStart = updates.start !== undefined ? updates.start : filterStart;
     const newEnd = updates.end !== undefined ? updates.end : filterEnd;
     const newRange = updates.range !== undefined ? updates.range : filterRange;
@@ -553,47 +554,29 @@ function Page({ params, searchParams }) {
     const newKnowledgeBase = updates.knowledgebase_id !== undefined ? updates.knowledgebase_id : filterKnowledgeBase;
     const newAgent = updates.agent_id !== undefined ? updates.agent_id : filterAgent;
 
-    if (newStart) currentUrl.searchParams.set("start", newStart);
-    else currentUrl.searchParams.delete("start");
-
-    if (newEnd) currentUrl.searchParams.set("end", newEnd);
-    else currentUrl.searchParams.delete("end");
-
-    if (newRange && !newStart && !newEnd) currentUrl.searchParams.set("range", newRange);
-    else currentUrl.searchParams.delete("range");
-
-    if (newInterval) currentUrl.searchParams.set("interval", newInterval);
-    else currentUrl.searchParams.delete("interval");
-
-    if (newFeedback && newFeedback !== "all") currentUrl.searchParams.set("feedback", newFeedback);
-    else currentUrl.searchParams.delete("feedback");
-
-    if (newError) currentUrl.searchParams.set("error", "true");
-    else currentUrl.searchParams.delete("error");
-
-    if (newReviewFailed) currentUrl.searchParams.set("review_failed", "true");
-    else currentUrl.searchParams.delete("review_failed");
-
-    if (newTool && newTool.length) currentUrl.searchParams.set("tool_id", newTool.join(","));
-    else currentUrl.searchParams.delete("tool_id");
-
-    if (newModel && newModel.length) currentUrl.searchParams.set("model", newModel.join(","));
-    else currentUrl.searchParams.delete("model");
-
-    if (newKnowledgeBase && newKnowledgeBase.length)
-      currentUrl.searchParams.set("knowledgebase_id", newKnowledgeBase.join(","));
-    else currentUrl.searchParams.delete("knowledgebase_id");
-
-    if (newAgent && newAgent.length) currentUrl.searchParams.set("agent_id", newAgent.join(","));
-    else currentUrl.searchParams.delete("agent_id");
-
-    // Remove thread selection params so sidebar doesn't auto-expand and no thread_id leaks to API
-    currentUrl.searchParams.delete("thread_id");
-    currentUrl.searchParams.delete("subThread_id");
-    currentUrl.searchParams.delete("message_id");
-    currentUrl.searchParams.delete("batch_id");
-
-    router.push(currentUrl.pathname + currentUrl.search);
+    router.push(
+      buildUrl(
+        {
+          start: newStart || null,
+          end: newEnd || null,
+          range: !newStart && !newEnd && newRange ? newRange : null,
+          interval: newInterval || null,
+          feedback: newFeedback && newFeedback !== "all" ? newFeedback : null,
+          error: newError ? "true" : null,
+          review_failed: newReviewFailed ? "true" : null,
+          tool_id: newTool?.length ? newTool.join(",") : null,
+          model: newModel?.length ? newModel.join(",") : null,
+          knowledgebase_id: newKnowledgeBase?.length ? newKnowledgeBase.join(",") : null,
+          agent_id: newAgent?.length ? newAgent.join(",") : null,
+          // clear thread selection so sidebar doesn't auto-expand and thread_id doesn't leak to API
+          thread_id: null,
+          subThread_id: null,
+          message_id: null,
+          batch_id: null,
+        },
+        pathName
+      )
+    );
   };
 
   const clearFilters = () => {
@@ -621,27 +604,29 @@ function Page({ params, searchParams }) {
     };
     setAppliedAdvancedFilters(emptyAdvancedFilters);
 
-    const currentUrl = new URL(window.location);
-    currentUrl.searchParams.delete("start");
-    currentUrl.searchParams.delete("end");
-    currentUrl.searchParams.delete("range");
-    currentUrl.searchParams.delete("interval");
-    currentUrl.searchParams.delete("feedback");
-    currentUrl.searchParams.delete("error");
-    currentUrl.searchParams.delete("tool_id");
-    currentUrl.searchParams.delete("model");
-    currentUrl.searchParams.delete("knowledgebase_id");
-    currentUrl.searchParams.delete("agent_id");
-    currentUrl.searchParams.delete("review_failed");
-    currentUrl.searchParams.delete("keyword");
-
-    // Remove thread selection params so sidebar doesn't auto-expand
-    currentUrl.searchParams.delete("thread_id");
-    currentUrl.searchParams.delete("subThread_id");
-    currentUrl.searchParams.delete("message_id");
-    currentUrl.searchParams.delete("batch_id");
-
-    router.push(currentUrl.pathname + currentUrl.search);
+    router.push(
+      buildUrl(
+        {
+          start: null,
+          end: null,
+          range: null,
+          interval: null,
+          feedback: null,
+          error: null,
+          tool_id: null,
+          model: null,
+          knowledgebase_id: null,
+          agent_id: null,
+          review_failed: null,
+          keyword: null,
+          thread_id: null,
+          subThread_id: null,
+          message_id: null,
+          batch_id: null,
+        },
+        pathName
+      )
+    );
 
     if (document.activeElement) {
       document.activeElement.blur();

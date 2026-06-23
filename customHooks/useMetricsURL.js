@@ -1,26 +1,14 @@
 import { useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryParams } from "./useQueryParams";
 
-export const useMetricsURL = (searchParams) => {
-  const router = useRouter();
+export const useMetricsURL = () => {
+  const { setParams } = useQueryParams();
 
   const updateURLParams = useCallback(
     (newParams) => {
-      const current = new URLSearchParams(Array.from(searchParams.entries()));
-
-      Object.entries(newParams).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== "") {
-          current.set(key, value);
-        } else {
-          current.delete(key);
-        }
-      });
-
-      const search = current.toString();
-      const query = search ? `?${search}` : "";
-      router.replace(`${window.location.pathname}${query}`, { scroll: false });
+      setParams(newParams, { replace: true });
     },
-    [searchParams, router]
+    [setParams]
   );
 
   const getDisplayRangeText = useCallback((range, customStartDate, customEndDate, TIME_RANGE_OPTIONS) => {

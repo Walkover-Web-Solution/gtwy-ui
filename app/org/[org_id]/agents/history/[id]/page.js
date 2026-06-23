@@ -3,6 +3,7 @@
 import React, { use, useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getHistoryAction } from "@/store/action/historyAction";
 import { clearThreadData, clearHistoryData, setSelectedVersion } from "@/store/reducer/historyReducer";
@@ -25,6 +26,7 @@ function Page({ params, searchParams }) {
   const search = useSearchParams();
   const router = useRouter();
   const pathName = usePathname();
+  const { buildUrl } = useQueryParams();
   const dispatch = useDispatch();
   const sidebarRef = useRef(null);
   const searchRef = useRef();
@@ -83,17 +85,10 @@ function Page({ params, searchParams }) {
 
   useEffect(() => {
     return () => {
-      const cleanUrl = new URL(window.location.href);
-      const version = search.get("version");
-      const type = search.get("type");
-
-      // Preserve both version and type parameters
-      let params = [];
-      if (version) params.push(`version=${version}`);
-      if (type) params.push(`type=${type}`);
-
-      cleanUrl.search = params.length ? `?${params.join("&")}` : "";
-      window.history.replaceState({}, "", cleanUrl);
+      const current = new URLSearchParams(search.toString());
+      ["thread_id", "subThread_id", "start", "end", "message_id", "error"].forEach((k) => current.delete(k));
+      const query = current.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
       dispatch(clearThreadData());
       dispatch(clearHistoryData());
       dispatch(setSelectedVersion("all"));
@@ -119,22 +114,35 @@ function Page({ params, searchParams }) {
       const result = await dispatch(
         getHistoryAction(resolvedParams.id, 1, filterOption, isErrorTrue, selectedVersion, keyword, startDate, endDate)
       );
-      const version = search.get("version") || selectedVersion;
-      const type = search.get("type") || resolvedSearchParams?.type || "";
-      const messageId = resolvedSearchParams?.message_id;
       const firstThreadId = result?.[0]?.thread_id;
       if (firstThreadId) {
+        const encodedThreadId = encodeURIComponent(firstThreadId.replace(/&/g, "%26"));
         if (isErrorTrue) {
           router.push(
-            `${pathName}?version=${version}&thread_id=${firstThreadId}&subThread_id=${firstThreadId}&error=true${messageId ? `&message_id=${messageId}` : ""}&type=${type}`,
-            undefined,
-            { shallow: true }
+            buildUrl(
+              {
+                thread_id: encodedThreadId,
+                subThread_id: encodedThreadId,
+                error: "true",
+                // clear date range params not relevant when filtering by error
+                start: null,
+                end: null,
+              },
+              pathName
+            )
           );
         } else {
           router.push(
-            `${pathName}?version=${version}&thread_id=${firstThreadId}&start=${startDate || ""}&end=${endDate || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${type}`,
-            undefined,
-            { shallow: true }
+            buildUrl(
+              {
+                thread_id: encodedThreadId,
+                subThread_id: null,
+                start: startDate || null,
+                end: endDate || null,
+                error: null,
+              },
+              pathName
+            )
           );
         }
       }
@@ -174,17 +182,10 @@ function Page({ params, searchParams }) {
         }
       } else {
         // Handle other cases (navigation)
-        const start = search.get("start");
-        const end = search.get("end");
-        const messageId = search.get("message_id");
         const encodedThreadId = encodeURIComponent(thread_id.replace(/&/g, "%26"));
         const firstSubThreadId = item?.sub_thread?.[0]?.sub_thread_id || thread_id;
         const encodedSubThreadId = encodeURIComponent(firstSubThreadId.replace(/&/g, "%26"));
-        router.push(
-          `${pathName}?version=${search.get("version") || selectedVersion}&thread_id=${encodedThreadId}&subThread_id=${encodedSubThreadId}&start=${start || ""}&end=${end || ""}${messageId ? `&message_id=${messageId}` : ""}&type=${search.get("type") || resolvedSearchParams.type || ""}`,
-          undefined,
-          { shallow: true }
-        );
+        router.push(buildUrl({ thread_id: encodedThreadId, subThread_id: encodedSubThreadId }, pathName));
       }
     },
     [pathName, resolvedParams.id, resolvedSearchParams.version, resolvedSearchParams?.start, resolvedSearchParams?.end]

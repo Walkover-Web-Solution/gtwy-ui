@@ -44,7 +44,7 @@ function Page({ params }) {
   }));
 
   const { rawData, loading, fetchMetricsData } = useMetricsData(orgId, allBridges, apikeyData);
-  const { updateURLParams, getDisplayRangeText } = useMetricsURL(searchParams);
+  const { updateURLParams, getDisplayRangeText } = useMetricsURL();
   const { actualTheme } = useThemeManager();
 
   // Effects

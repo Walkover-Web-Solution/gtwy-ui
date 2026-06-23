@@ -39,6 +39,7 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import ConfigureEnvironmentModal from "@/components/modals/ConfigureEnvironmentModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 
 export const runtime = "edge";
 const ModelBadge = ({ model, service, modelsConfig }) => {
@@ -326,6 +327,7 @@ function Home({ params, searchParams, isEmbedUser }) {
   const resolvedSearchParams = use(searchParams);
   const dispatch = useDispatch();
   const router = useRouter();
+  const { setParam } = useQueryParams();
   const type = resolvedSearchParams?.type ?? "api";
   const {
     allBridges,
@@ -387,13 +389,9 @@ function Home({ params, searchParams, isEmbedUser }) {
   useEffect(() => {
     if (resolvedSearchParams?.folder === "trash") {
       setActiveFolderId("trash");
-      const url = new URL(window.location);
-      if (url.searchParams.has("folder")) {
-        url.searchParams.delete("folder");
-        router.replace(url.pathname + url.search, { scroll: false });
-      }
+      setParam("folder", null, { replace: true });
     }
-  }, [resolvedSearchParams?.folder, setActiveFolderId, router]);
+  }, [resolvedSearchParams?.folder, setActiveFolderId, setParam]);
 
   // Initialize with empty array instead of typeFilteredBridges to avoid reference error
   const [filterBridges, setFilterBridges] = useState([]);

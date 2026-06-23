@@ -12,6 +12,7 @@ import { updateTitle, generateRandomID, extractPromptVariables, openModal, close
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { useRouter } from "next/navigation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 import AgentSetupGuide from "@/components/AgentSetupGuide";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { RefreshIcon } from "@/components/Icons";
@@ -118,6 +119,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const promptTextAreaRef = useRef(null);
   const apiKeySectionRef = useRef(null);
   const router = useRouter();
+  const { setParam } = useQueryParams();
   const dispatch = useDispatch();
 
   // Panel refs for programmatic resizing
@@ -359,22 +361,16 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   }, [uiState.isConfigCollapsed, uiState.isPromptHelperCollapsed, uiState.isPromptHelperOpen]);
 
   const handleSwitchToModelTab = useCallback(() => {
-    const current = new URLSearchParams(window.location.search);
-    current.set("tab", "model");
-    router.push(`${window.location.pathname}?${current.toString()}`);
-  }, [router]);
+    setParam("tab", "model");
+  }, [setParam]);
 
   const handleSwitchToPromptTab = useCallback(() => {
-    const current = new URLSearchParams(window.location.search);
-    current.set("tab", "prompt");
-    router.push(`${window.location.pathname}?${current.toString()}`);
-  }, [router]);
+    setParam("tab", "prompt");
+  }, [setParam]);
 
   const handleSwitchToConnectorsTab = useCallback(() => {
-    const current = new URLSearchParams(window.location.search);
-    current.set("tab", "connectors");
-    router.push(`${window.location.pathname}?${current.toString()}`);
-  }, [router]);
+    setParam("tab", "connectors");
+  }, [setParam]);
 
   const [isAgentFlowView, setIsAgentFlowView] = useState(() => resolvedSearchParams?.view === "agent-flow");
   useEffect(() => {
@@ -572,10 +568,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
 
         // If type is missing or doesn't match, update the URL
         if (!currentType || currentType !== correctType) {
-          const url = new URL(window.location);
-          url.searchParams.set("type", correctType);
-          // Use replaceState to avoid creating a new history entry
-          window.history.replaceState({}, "", url.toString());
+          setParam("type", correctType, { replace: true });
         }
       } catch (error) {
         console.error("Error in getSingleBridgesAction:", error);
