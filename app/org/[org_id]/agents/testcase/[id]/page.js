@@ -115,7 +115,8 @@ const MultiScoreCell = ({
 
   // Single-group: keep the original inline rendering for visual parity.
   if (groups.length === 1) {
-    const run = groups[0].run;
+    const run = groups[0]?.run;
+    if (!run) return null;
     const score = run?.score || 0;
     const runError = run?.error;
     const runErrorMessage =
@@ -177,6 +178,7 @@ const ScoreBreakdownModalBody = ({ breakdown, getScoreColor, getScoreMessage, ge
       </div>
       <div className="flex flex-col gap-1 p-2 max-h-[60vh] overflow-y-auto">
         {groups.map(({ key, isDefault, run }) => {
+          if (!run) return null;
           const score = run?.score || 0;
           const runError = run?.error;
           const runErrorMessage =
