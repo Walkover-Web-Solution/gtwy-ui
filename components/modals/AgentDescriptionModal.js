@@ -2,9 +2,13 @@ import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import React, { useEffect, useState } from "react";
 import Modal from "../UI/Modal";
+import useDeleteOperation from "@/customHooks/useDeleteOperation";
 
 const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, isAgentToAgentConnect = true }) => {
   const [draftDescription, setDraftDescription] = useState(description || "");
+  const { isDeleting: isSaving, executeDelete } = useDeleteOperation(MODAL_TYPE.AGENT_DESCRIPTION_MODAL, {
+    closeOnSuccess: false,
+  });
 
   useEffect(() => {
     setDraftDescription(description || "");
@@ -15,10 +19,10 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
     setDescription(value?.trim());
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const nextDescription = draftDescription.trim();
     setDescription(nextDescription);
-    handleSaveAgent(undefined, undefined, nextDescription);
+    await executeDelete(() => handleSaveAgent(undefined, undefined, nextDescription));
   };
 
   return (
@@ -59,8 +63,9 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
             id="agent-description-save-button"
             className="btn btn-sm btn-primary"
             onClick={handleSave}
-            disabled={!draftDescription.trim()}
+            disabled={!draftDescription.trim() || isSaving}
           >
+            {isSaving && <span className="loading loading-spinner loading-xs" />}
             {isAgentToAgentConnect ? "Continue" : "Add Agent"}
           </button>
         </div>

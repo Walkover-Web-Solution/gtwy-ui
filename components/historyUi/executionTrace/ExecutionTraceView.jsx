@@ -513,7 +513,7 @@ function KbStep({ step, inRail = true }) {
 /** ~6 lines at text-xs / leading-snug — matches line-clamp-6 */
 const TRACE_BUBBLE_CLAMP_HEIGHT = 120;
 
-function MessageBubble({ text, align = "left", expandable = true }) {
+function MessageBubble({ text, align = "left", expandable = true, isError = false }) {
   if (!text) return null;
 
   const isLeft = align === "left";
@@ -521,16 +521,22 @@ function MessageBubble({ text, align = "left", expandable = true }) {
   return (
     <div className="relative my-[7px] min-w-0">
       <div
-        className={`bg-base-200/55 px-3 py-2 text-xs leading-snug text-base-content/70 ${
-          isLeft ? "rounded-[4px_12px_12px_12px] text-left" : "rounded-[12px_4px_12px_12px] text-right"
-        }`}
+        className={`px-3 py-2 text-xs leading-snug ${
+          isError ? "border border-error/40 bg-error/10 text-error/90" : "bg-base-200/55 text-base-content/70"
+        } ${isLeft ? "rounded-[4px_12px_12px_12px] text-left" : "rounded-[12px_4px_12px_12px] text-right"}`}
       >
+        {isError && (
+          <div className="flex items-center gap-1.5 mb-1">
+            <AlertTriangle size={12} className="text-error" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-error">Error</span>
+          </div>
+        )}
         {expandable ? (
           <ExpandCollapse
             collapsedHeight={TRACE_BUBBLE_CLAMP_HEIGHT}
             fadeHeight={40}
             style={{
-              "--expand-collapse-fade": "oklch(var(--b2) / 0.55)",
+              "--expand-collapse-fade": isError ? "oklch(var(--er) / 0.10)" : "oklch(var(--b2) / 0.55)",
             }}
           >
             <div className="whitespace-pre-wrap">{text}</div>
@@ -547,8 +553,8 @@ function QueryBubble({ text }) {
   return <MessageBubble text={text} align="left" expandable={false} />;
 }
 
-function ResponseBubble({ text }) {
-  return <MessageBubble text={text} align="left" expandable />;
+function ResponseBubble({ text, isError = false }) {
+  return <MessageBubble text={text} align="left" expandable isError={isError} />;
 }
 
 function canOpenAgentHistory(rawTool) {
@@ -784,6 +790,11 @@ function AgentBlock({ node, agents, root, embedded, depth = 1 }) {
           {a.role}
         </span>
         {!open && stepCountBadges}
+        {node.responseIsError && (
+          <span className="shrink-0 badge badge-xs badge-error" title="Agent returned an error">
+            err
+          </span>
+        )}
         <span className="flex-1" />
         <Meta latency={node.latency} tokens={node.tokens} cost={node.cost} />
         <AgentActionButtons payload={sliderPayload} rawTool={node.rawTool} />
@@ -800,7 +811,7 @@ function AgentBlock({ node, agents, root, embedded, depth = 1 }) {
         <QueryBubble text={question} />
         {node.vars && <VariablesBlock vars={node.vars} inRail />}
         {node.steps?.map(renderStep)}
-        <ResponseBubble text={node.responseText} />
+        <ResponseBubble text={node.responseText} isError={node.responseIsError} />
       </AgentBodyRail>
     );
   };

@@ -739,6 +739,7 @@ const AdvancedParameters = ({
                         <li key={opt.value} className="border-b border-base-200">
                           <button
                             type="button"
+                            data-testid={`advanced-param-response-type-option-${opt.value}`}
                             className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-base-200 ${
                               opt.isActive ? "bg-primary/10 text-primary font-medium" : ""
                             }`}
@@ -753,6 +754,7 @@ const AdvancedParameters = ({
                         <li>
                           <button
                             type="button"
+                            data-testid="advanced-param-response-type-option-remove"
                             className="w-full text-left px-3 py-2 text-sm text-error hover:bg-error/10"
                             onClick={() => applySelection("remove")}
                           >

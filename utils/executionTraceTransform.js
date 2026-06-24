@@ -1,3 +1,5 @@
+import { extractErrorMessage } from "@/utils/utility";
+
 const slugify = (name) =>
   String(name || "agent")
     .toLowerCase()
@@ -61,7 +63,31 @@ export const extractAgentResponse = (message) => {
     message.response?.llm_message ||
     message.response?.chatbot_message ||
     "";
-  return stripHtml(raw);
+  if (raw) return stripHtml(raw);
+
+  const errorRaw = message.error || message.firstAttemptError || "";
+  if (errorRaw) {
+    return extractErrorMessage(errorRaw);
+  }
+  return "";
+};
+
+const extractAgentResponseInfo = (message) => {
+  if (!message || typeof message !== "object") return { text: "", isError: false };
+  const raw =
+    message.updated_llm_message ||
+    message.llm_message ||
+    message.chatbot_message ||
+    message.response?.llm_message ||
+    message.response?.chatbot_message ||
+    "";
+  if (raw) return { text: stripHtml(raw), isError: false };
+
+  const errorRaw = message.error || message.firstAttemptError || "";
+  if (errorRaw) {
+    return { text: extractErrorMessage(errorRaw), isError: true };
+  }
+  return { text: "", isError: false };
 };
 
 const responsePreview = (text, max = 120) => {
@@ -180,7 +206,7 @@ const buildAgentSteps = (message, registry, rootAgentName, callCounter = { n: 0 
       const stepHue = nextSubAgentHue(callCounter);
       const nested = messageToRun(childMessage, registry, rootAgentName, false, callCounter);
 
-      const responseText = extractAgentResponse(childMessage);
+      const { text: responseText, isError: responseIsError } = extractAgentResponseInfo(childMessage);
 
       steps.push({
         type: "agent",
@@ -196,6 +222,7 @@ const buildAgentSteps = (message, registry, rootAgentName, callCounter = { n: 0 
         tokens: getTokens(childMessage),
         cost: childMessage?.tokens?.expected_cost ?? null,
         responseText,
+        responseIsError,
         responsePreview: responsePreview(responseText),
         rawTool: tool,
         steps: nested.steps,
@@ -219,7 +246,7 @@ const messageToRun = (message, registry, rootAgentName, isRoot, callCounter = { 
     role: isRoot ? "Orchestrator" : "Sub-agent",
   });
 
-  const responseText = extractAgentResponse(message);
+  const { text: responseText, isError: responseIsError } = extractAgentResponseInfo(message);
 
   return {
     type: "agent",
@@ -228,6 +255,7 @@ const messageToRun = (message, registry, rootAgentName, isRoot, callCounter = { 
     tokens: getTokens(message),
     cost: message?.tokens?.expected_cost ?? null,
     responseText: isRoot ? responseText : undefined,
+    responseIsError: isRoot ? responseIsError : undefined,
     responsePreview: isRoot ? responsePreview(responseText) : undefined,
     rawMessage: isRoot ? message : undefined,
     steps: buildAgentSteps(message, registry, rootAgentName, callCounter),

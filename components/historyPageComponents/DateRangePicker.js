@@ -2,6 +2,7 @@ import { getHistoryAction } from "@/store/action/historyAction";
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useSearchParams } from "next/navigation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 
 // Helper function to get today's date with time set to 12:00 AM
@@ -25,6 +26,7 @@ const DateRangePicker = ({
   const [endingDate, setEndingDate] = useState(getDefaultDate());
 
   const searchParams = useSearchParams();
+  const { setParams } = useQueryParams();
 
   // Get search state to check if search is active
   const { searchQuery } = useCustomSelector((state) => ({
@@ -39,11 +41,6 @@ const DateRangePicker = ({
   }, [searchParams]);
 
   const handleDataChange = async () => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("start", startingDate);
-    newSearchParams.set("end", endingDate);
-
-    // Check if there's a search query in URL params or Redux state
     const currentSearchQuery = searchParams.get("message_id") || searchQuery;
     const keyword = currentSearchQuery || "";
 
@@ -51,22 +48,17 @@ const DateRangePicker = ({
       getHistoryAction(params.id, 1, filterOption, isErrorTrue, selectedVersion, keyword, startingDate, endingDate)
     );
 
-    const queryString = newSearchParams.toString();
-    window.history.replaceState(null, "", `?${queryString}`);
+    setParams({ start: startingDate, end: endingDate }, { replace: true });
   };
+
   const handleClear = async () => {
     setStartingDate(getDefaultDate());
     setEndingDate(getDefaultDate());
     const start = searchParams.get("start");
     const end = searchParams.get("end");
-    if (!start && !end) return; // Do nothing if 'start' and 'end' are not in the URL
+    if (!start && !end) return;
     setFilterOption("all");
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.delete("start");
-    newSearchParams.delete("end");
-    newSearchParams.delete("thread_id");
 
-    // Check if there's still a search query after clearing date range
     const currentSearchQuery = searchParams.get("message_id") || searchQuery;
 
     if (currentSearchQuery) {
@@ -79,8 +71,7 @@ const DateRangePicker = ({
       setPage(1);
     }
 
-    const queryString = newSearchParams.toString();
-    window.history.replaceState(null, "", `?${queryString}`);
+    setParams({ start: null, end: null, thread_id: null }, { replace: true });
   };
   // ... existing code ...
 

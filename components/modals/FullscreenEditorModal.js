@@ -172,13 +172,14 @@ function FullscreenEditorModal({
 /**
  * Small button that opens the fullscreen editor.
  */
-export function FullscreenEditorButton({ onClick, tooltip = "Open fullscreen editor", className = "" }) {
+export function FullscreenEditorButton({ onClick, tooltip = "Open fullscreen editor", className = "", ...rest }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`btn btn-xs btn-ghost text-base-content/60 hover:text-primary transition-colors ${className}`}
       title={tooltip}
+      {...rest}
     >
       <Maximize2 size={14} />
     </button>

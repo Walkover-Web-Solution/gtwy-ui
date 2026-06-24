@@ -1,5 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { PlayIcon, TrashIcon, ChevronDownIcon, ChevronLeft, ChevronRight, Plus, X, Settings } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  PlayIcon,
+  TrashIcon,
+  ChevronDownIcon,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Copy,
+  Check as CheckIcon,
+  GripVertical,
+} from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
 import { MODAL_TYPE } from "@/utils/enums";
@@ -11,6 +21,9 @@ import ReactMarkdown from "react-markdown";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
 import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
 import { FileClockIcon } from "@/components/Icons";
+import InfoTooltip from "@/components/InfoTooltip";
+import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
+import ExpandCollapse from "@/components/UI/ExpandCollapse";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -18,6 +31,7 @@ const TestCaseDetailsPanel = ({
   versions,
   runningTestCaseId,
   isloading,
+  testRun,
   handleRunSingleTestCase,
   handleDeleteTestCase,
   getScoreColor,
@@ -27,10 +41,107 @@ const TestCaseDetailsPanel = ({
 }) => {
   const dispatch = useDispatch();
 
-  // Comparison versions are independent of selectedVersions (which controls "run").
-  // User can pick ANY versions from all available `versions` to compare here.
-  const [comparisonVersions, setComparisonVersions] = useState([]);
-  const [openDropdown, setOpenDropdown] = useState(null);
+  // Comparison versions follow the single source of truth: `selectedVersions` from header.
+  // Fall back to first 2 versions if nothing selected (defensive only).
+  const baseComparisonVersions = useMemo(() => {
+    if (Array.isArray(selectedVersions) && selectedVersions.length > 0) return selectedVersions;
+    if (Array.isArray(versions) && versions.length > 0) return versions.slice(0, Math.min(2, versions.length));
+    return [];
+  }, [selectedVersions, versions]);
+
+  // Local display order (user-draggable). Re-syncs when the base selection changes,
+  // preserving the relative order of versions that still exist and appending new ones.
+  // Initial order is hydrated from the persisted per-bridge config.
+  const persistedVersionOrder = useCustomSelector(
+    (state) => state?.testCaseConfigReducer?.configs?.[bridgeId]?.versionOrder || []
+  );
+  const [versionOrder, setVersionOrderState] = useState(() => {
+    const valid = persistedVersionOrder.filter((v) => baseComparisonVersions.includes(v));
+    const missing = baseComparisonVersions.filter((v) => !valid.includes(v));
+    return [...valid, ...missing];
+  });
+  const setVersionOrder = useCallback(
+    (next) => {
+      setVersionOrderState((prev) => {
+        const value = typeof next === "function" ? next(prev) : next;
+        if (bridgeId) dispatch(setTestCaseConfig({ bridgeId, versionOrder: value }));
+        return value;
+      });
+    },
+    [dispatch, bridgeId]
+  );
+  useEffect(() => {
+    setVersionOrder((prev) => {
+      const kept = prev.filter((v) => baseComparisonVersions.includes(v));
+      const added = baseComparisonVersions.filter((v) => !kept.includes(v));
+      return [...kept, ...added];
+    });
+  }, [baseComparisonVersions]);
+  const comparisonVersions = versionOrder;
+
+  const [draggedVersion, setDraggedVersion] = useState(null);
+  const handleVersionDragStart = (e, version) => {
+    setDraggedVersion(version);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  const handleVersionDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const handleVersionDrop = (e, targetVersion) => {
+    e.preventDefault();
+    if (!draggedVersion || draggedVersion === targetVersion) {
+      setDraggedVersion(null);
+      return;
+    }
+    setVersionOrder((prev) => {
+      const next = [...prev];
+      const from = next.indexOf(draggedVersion);
+      const to = next.indexOf(targetVersion);
+      if (from === -1 || to === -1) return prev;
+      next.splice(from, 1);
+      next.splice(to, 0, draggedVersion);
+      return next;
+    });
+    setDraggedVersion(null);
+  };
+  const handleVersionDragEnd = () => setDraggedVersion(null);
+
+  // Auto-scroll the details content container while dragging near its edges
+  const scrollContainerRef = useRef(null);
+  useEffect(() => {
+    if (!draggedVersion) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const EDGE = 80; // px from top/bottom edge that triggers auto-scroll
+    const MAX_SPEED = 24; // px per frame
+    let pointerY = 0;
+    let rafId = null;
+
+    const tick = () => {
+      const rect = el.getBoundingClientRect();
+      const distTop = pointerY - rect.top;
+      const distBottom = rect.bottom - pointerY;
+      let delta = 0;
+      if (distTop < EDGE && distTop > -EDGE) {
+        delta = -MAX_SPEED * (1 - Math.max(0, distTop) / EDGE);
+      } else if (distBottom < EDGE && distBottom > -EDGE) {
+        delta = MAX_SPEED * (1 - Math.max(0, distBottom) / EDGE);
+      }
+      if (delta !== 0) el.scrollTop += delta;
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onDragOver = (e) => {
+      pointerY = e.clientY;
+    };
+    window.addEventListener("dragover", onDragOver);
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener("dragover", onDragOver);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [draggedVersion]);
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [versionVariables, setVersionVariables] = useState({});
   const [showVariableAlert, setShowVariableAlert] = useState(false);
@@ -40,8 +151,32 @@ const TestCaseDetailsPanel = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toolsData, setToolsData] = useState(null);
+  // Per-card pagination index, keyed by `${versionId}::${modelKey}` so each
+  // model tab keeps its own "newer/older" cursor.
   const [runIndices, setRunIndices] = useState({});
-  const [isExpectedExpanded, setIsExpectedExpanded] = useState(false);
+  // Active model tab per version card. Empty string = no override (default model).
+  const [activeModelByVersion, setActiveModelByVersion] = useState({});
+
+  // Build the same model key the reducer uses so the panel can group runs by
+  // which (service, model) produced them.
+  // Non-overridden runs (i.e. each version's configured default model) collapse
+  // into a single "Default" tab regardless of which model the backend actually
+  // used, mirroring the reducer's keying.
+  const DEFAULT_TAB_KEY = "__default__";
+  const buildRunModelKey = useCallback(
+    (run) => (run?.is_overridden === false ? DEFAULT_TAB_KEY : `${run?.service || ""}:${run?.model || ""}`),
+    []
+  );
+  const [copiedVersion, setCopiedVersion] = useState(null);
+
+  const handleCopyResponse = useCallback((versionId, output) => {
+    const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedVersion(versionId);
+      setTimeout(() => setCopiedVersion((curr) => (curr === versionId ? null : curr)), 1500);
+    });
+  }, []);
   const toolsDataModalRef = useRef(null);
 
   const handleCloseToolsDataModal = () => {
@@ -98,19 +233,6 @@ const TestCaseDetailsPanel = ({
     [embedToken, bridgeId]
   );
 
-  const dropdownRef = useRef(null);
-
-  // Close all dropdowns on outside click
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Get current expected value as string for editing
   const getExpectedValue = (testCase) => {
     const response = testCase?.expected?.response;
@@ -126,7 +248,6 @@ const TestCaseDetailsPanel = ({
     setEditedConversation(selectedTestCase?.conversation ? [...selectedTestCase.conversation] : []);
     setEditedExpected(getExpectedValue(selectedTestCase));
     setHasUnsavedChanges(false);
-    setIsExpectedExpanded(false);
   }, [selectedTestCase?._id]);
 
   const trimConversation = (conv) =>
@@ -212,16 +333,6 @@ const TestCaseDetailsPanel = ({
     // Note: no refetch needed — reducer updates state from API response (fresh updatedAt).
     // Refetching here can race with backend consistency and overwrite the new updatedAt with stale data.
   };
-
-  // Sync comparison versions with selected versions
-  // If no versions selected, default to first 2 available versions
-  useEffect(() => {
-    if (Array.isArray(selectedVersions) && selectedVersions.length > 0) {
-      setComparisonVersions(selectedVersions);
-    } else if (Array.isArray(versions) && versions.length > 0 && comparisonVersions.length === 0) {
-      setComparisonVersions(versions.slice(0, Math.min(2, versions.length)));
-    }
-  }, [selectedVersions, versions]);
 
   // Get version data from Redux
   const bridgeVersionMapping = useCustomSelector(
@@ -314,38 +425,9 @@ const TestCaseDetailsPanel = ({
     await handleRunSingleTestCase(testCaseId, mergedVars);
   };
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpenDropdown(null);
-      }
-    };
-    if (openDropdown !== null) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [openDropdown]);
-
   if (!selectedTestCase) return null;
 
   const isRunningThis = runningTestCaseId === selectedTestCase?._id;
-
-  const handleAddVersion = () => {
-    const available = versions.find((v) => !comparisonVersions.includes(v));
-    if (available) setComparisonVersions([...comparisonVersions, available]);
-  };
-
-  const handleRemoveVersion = (versionToRemove) => {
-    setComparisonVersions(comparisonVersions.filter((v) => v !== versionToRemove));
-  };
-
-  const handleVersionChange = (index, newVersion) => {
-    const updated = [...comparisonVersions];
-    updated[index] = newVersion;
-    setComparisonVersions(updated);
-    setOpenDropdown(null);
-  };
 
   return (
     <div className="overflow-hidden h-full min-h-0" data-testid="testcase-details-panel">
@@ -410,7 +492,7 @@ const TestCaseDetailsPanel = ({
         </div>
 
         {/* Content */}
-        <div className="overflow-auto flex-1 p-6" data-testid="testcase-details-content">
+        <div ref={scrollContainerRef} className="overflow-auto flex-1 p-6" data-testid="testcase-details-content">
           {/* Conversation History */}
           {editedConversation.slice(0, -1).length > 0 && (
             <div className="mb-6">
@@ -451,13 +533,17 @@ const TestCaseDetailsPanel = ({
                                 : "bg-base-200 text-base-content rounded-bl-none"
                             }`}
                           >
-                            {isStringContent ? (
-                              <div className="text-sm leading-relaxed break-words">{message?.content || ""}</div>
-                            ) : (
-                              <div className="text-sm leading-relaxed break-words">
-                                {JSON.stringify(message?.content)}
-                              </div>
-                            )}
+                            <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                              {isStringContent ? (
+                                <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                                  {message?.content || ""}
+                                </div>
+                              ) : (
+                                <div className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+                                  {JSON.stringify(message?.content)}
+                                </div>
+                              )}
+                            </ExpandCollapse>
                           </div>
                           {isLastUserMessage && (
                             <button
@@ -528,13 +614,15 @@ const TestCaseDetailsPanel = ({
                   className="bg-base-50 rounded-lg px-4 py-3 border border-base-200"
                   data-testid="testcase-input-panel"
                 >
-                  <AutoResizeTextarea
-                    data-testid="testcase-input-textarea"
-                    value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
-                    onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
-                    onBlur={() => handleConversationBlur(lastUserIdx)}
-                    className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
-                  />
+                  <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                    <AutoResizeTextarea
+                      data-testid="testcase-input-textarea"
+                      value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
+                      onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
+                      onBlur={() => handleConversationBlur(lastUserIdx)}
+                      className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
+                    />
+                  </ExpandCollapse>
                 </div>
               </div>
             );
@@ -548,15 +636,11 @@ const TestCaseDetailsPanel = ({
             >
               Expected Output
             </div>
-            <div className="bg-base-50 rounded-lg border border-base-200" data-testid="testcase-expected-panel">
-              {/* Clipped content area */}
-              <div
-                style={{
-                  maxHeight: isExpectedExpanded ? "none" : "calc(4 * 1.625rem)",
-                  overflow: "hidden",
-                }}
-                className="px-4 pt-3 pb-1"
-              >
+            <div
+              className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2"
+              data-testid="testcase-expected-panel"
+            >
+              <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                 <AutoResizeTextarea
                   data-testid="testcase-expected-textarea"
                   value={editedExpected}
@@ -565,109 +649,87 @@ const TestCaseDetailsPanel = ({
                   minRows={2}
                   className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
                 />
-              </div>
-
-              {/* Show more / Show less row - only show if content exceeds 4 lines */}
-              {editedExpected && editedExpected.split("\n").length > 4 && (
-                <div className="px-4 pb-2">
-                  {!isExpectedExpanded ? (
-                    <button
-                      onClick={() => setIsExpectedExpanded(true)}
-                      className="text-xs text-primary hover:text-primary transition-colors"
-                      data-testid="testcase-expected-show-more"
-                    >
-                      ... show more
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setIsExpectedExpanded(false)}
-                      className="text-xs text-base-content/50 hover:text-primary transition-colors"
-                      data-testid="testcase-expected-show-less"
-                    >
-                      show less
-                    </button>
-                  )}
-                </div>
-              )}
+              </ExpandCollapse>
             </div>
           </div>
-          {/* Version Comparison (independent of run-version selection) */}
-          <div ref={dropdownRef} data-testid="testcase-comparison-section">
+          {/* Version Comparison — driven by header "Versions" selector (single source of truth) */}
+          <div data-testid="testcase-comparison-section">
             <div className="mb-5 flex items-center gap-2 flex-wrap" data-testid="testcase-comparison-controls">
               <span className="text-sm font-medium text-base-content" data-testid="testcase-comparison-label">
-                Compare:
+                Comparing:
               </span>
-              <div className="flex items-center gap-2 flex-wrap" data-testid="testcase-comparison-version-list">
-                {comparisonVersions.map((version, idx) => {
-                  const availableForThisSlot = versions.filter((v) => v === version || !comparisonVersions.includes(v));
-                  return (
-                    <div key={idx} className="relative" data-testid={`testcase-comparison-version-${idx}`}>
-                      <div className="dropdown" data-testid={`testcase-comparison-dropdown-${idx}`}>
-                        <div
-                          tabIndex={0}
-                          role="button"
-                          data-testid={`testcase-comparison-dropdown-button-${idx}`}
-                          className="px-2 py-1 bg-base-100 border border-base-200 rounded-md text-xs font-medium text-base-content hover:bg-base-200 flex items-center gap-1.5 transition-all"
-                        >
-                          V{versions.indexOf(version) + 1}
-                          <ChevronDownIcon size={12} className="text-base-content/40" />
-                        </div>
-                        <ul
-                          tabIndex={0}
-                          className="dropdown-content menu bg-base-100 border border-base-200 rounded-md shadow-lg z-30 min-w-[120px] max-h-60 overflow-y-auto p-1 mt-1 flex-nowrap"
-                          data-testid={`testcase-comparison-dropdown-menu-${idx}`}
-                        >
-                          {availableForThisSlot.map((v, vIdx) => (
-                            <li key={vIdx}>
-                              <button
-                                data-testid={`testcase-comparison-version-option-${idx}-${versions.indexOf(v) + 1}`}
-                                onClick={(e) => {
-                                  handleVersionChange(idx, v);
-                                  e.currentTarget.blur();
-                                }}
-                                className={`text-sm ${v === version ? "bg-primary/10 text-primary font-semibold" : ""}`}
-                              >
-                                V{versions.indexOf(v) + 1}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      {comparisonVersions.length > 1 && (
-                        <button
-                          data-testid={`testcase-comparison-remove-version-${idx}`}
-                          onClick={() => handleRemoveVersion(version)}
-                          className="absolute -top-1.5 -right-1.5 p-0.5 bg-base-100 text-base-content/60 hover:text-error border border-base-300 hover:border-error rounded-full transition-colors shadow-sm z-10"
-                        >
-                          <X size={10} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-                {comparisonVersions.length < versions.length && (
-                  <button
-                    data-testid="testcase-comparison-add-version"
-                    onClick={handleAddVersion}
-                    className="px-2 py-1 bg-base-100 border border-dashed border-primary/40 rounded-md text-xs font-medium text-primary hover:bg-primary/5 flex items-center gap-1.5 transition-all"
+              <div className="flex items-center gap-1.5 flex-wrap" data-testid="testcase-comparison-version-list">
+                {comparisonVersions.map((version, idx) => (
+                  <span
+                    key={idx}
+                    data-testid={`testcase-comparison-version-${idx}`}
+                    draggable
+                    onDragStart={(e) => handleVersionDragStart(e, version)}
+                    onDragOver={handleVersionDragOver}
+                    onDrop={(e) => handleVersionDrop(e, version)}
+                    onDragEnd={handleVersionDragEnd}
+                    title="Drag to reorder"
+                    className={`px-2 py-1 bg-primary/10 border border-primary/30 rounded-md text-xs font-semibold text-primary cursor-grab active:cursor-grabbing select-none transition-opacity ${
+                      draggedVersion === version ? "opacity-40" : ""
+                    }`}
                   >
-                    <Plus size={12} />
-                    Add Version
-                  </button>
-                )}
+                    V{versions.indexOf(version) + 1}
+                  </span>
+                ))}
               </div>
+              <span className="text-xs text-base-content/50 italic ml-1">
+                Change selection from the <span className="font-semibold">Versions</span> dropdown above
+              </span>
             </div>
 
             {/* Version Outputs Grid */}
             {comparisonVersions.length > 0 ? (
               <div
-                className={`grid gap-4 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+                className={`grid gap-4 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"}`}
                 data-testid="testcase-version-output-grid"
               >
                 {comparisonVersions.map((version, idx) => {
-                  const versionArray = selectedTestCase?.version_history?.[version] || [];
+                  const allRunsForVersion = selectedTestCase?.version_history?.[version] || [];
+                  // Distinct (service, model) tabs present in the run history.
+                  // Order preserves first-seen-newest-first because the reducer
+                  // unshifts new runs at index 0.
+                  const modelTabs = (() => {
+                    const seen = new Set();
+                    const tabs = [];
+                    allRunsForVersion.forEach((run) => {
+                      const key = buildRunModelKey(run);
+                      // For overridden runs we still require a model name to
+                      // build a meaningful tab. Default-tab runs are allowed
+                      // through even if the model is missing on older entries.
+                      if (key !== DEFAULT_TAB_KEY && !run?.model) return;
+                      if (seen.has(key)) return;
+                      seen.add(key);
+                      tabs.push({
+                        key,
+                        isDefault: key === DEFAULT_TAB_KEY,
+                        model: run?.model || "",
+                        service: run?.service || "",
+                      });
+                    });
+                    // Always render the Default tab on the left side.
+                    tabs.sort((a, b) => (a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1));
+                    return tabs;
+                  })();
+                  const hasMultipleModels = modelTabs.length > 1;
+                  // Active model key for this card. Default to the newest run's
+                  // model (first tab) so single-model usage looks identical to
+                  // before the multi-model change.
+                  const activeModelKey =
+                    activeModelByVersion[version] !== undefined
+                      ? activeModelByVersion[version]
+                      : modelTabs[0]?.key || "";
+                  const activeTab = modelTabs.find((t) => t.key === activeModelKey) || modelTabs[0];
+                  const versionArray = hasMultipleModels
+                    ? allRunsForVersion.filter((run) => buildRunModelKey(run) === activeTab?.key)
+                    : allRunsForVersion;
                   const totalRuns = versionArray.length;
-                  const currentIdx = runIndices[version] ?? 0;
+                  const indexKey = `${version}::${activeTab?.key || ""}`;
+                  const currentIdx = runIndices[indexKey] ?? 0;
                   const safeIdx = Math.min(currentIdx, Math.max(totalRuns - 1, 0));
                   const currentRun = versionArray[safeIdx];
                   const hasRun = !!currentRun;
@@ -679,238 +741,356 @@ const TestCaseDetailsPanel = ({
                       ? runError
                       : runError?.error || runError?.message || (runError ? "Run failed" : null);
                   const toolsCallData = currentRun?.tools_call_data || [];
-                  const matchingTypeFromResult = selectedTestCase?.matching_type || "cosine";
+                  const matchingTypeFromResult =
+                    currentRun?.matching_type || selectedTestCase?.matching_type || "cosine";
+                  // The reducer keys `seen` by `${versionId}:${modelKey}:${testcaseId}`.
+                  // Treat the version as still pending if ANY model tab for this
+                  // (version, testcase) hasn't reported yet.
+                  const seenKeysForVersionTc = Object.keys(testRun?.seen || {}).filter(
+                    (k) => k.startsWith(`${version}:`) && k.endsWith(`:${selectedTestCase?._id}`)
+                  );
+                  // Only show pending if this testcase is part of the current run scope:
+                  // - single run: testcaseId matches
+                  // - bulk run: testcaseIds includes this id
+                  // - run all: both testcaseId and testcaseIds are null/empty
+                  const runScopedToThisTc = (() => {
+                    const tcId = selectedTestCase?._id;
+                    if (!tcId) return false;
+                    if (testRun?.testcaseId) return testRun.testcaseId === tcId;
+                    if (Array.isArray(testRun?.testcaseIds) && testRun.testcaseIds.length > 0) {
+                      return testRun.testcaseIds.includes(tcId);
+                    }
+                    return true; // run all
+                  })();
+                  // Backend fans out one run per (version, model + optional default).
+                  // Keep the card in its loading state until every expected model result
+                  // for this version has arrived, not just the first one.
+                  const expectedRunsForVersion =
+                    typeof testRun?.expectedRunsPerVersion === "number" && testRun.expectedRunsPerVersion > 0
+                      ? testRun.expectedRunsPerVersion
+                      : 1;
+                  const versionHasAllResults = seenKeysForVersionTc.length >= expectedRunsForVersion;
+                  const isVersionPending =
+                    testRun?.status === "running" &&
+                    Array.isArray(testRun?.versionIds) &&
+                    testRun.versionIds.includes(version) &&
+                    runScopedToThisTc &&
+                    !versionHasAllResults;
 
                   const goPrev = () =>
                     setRunIndices((prev) => ({
                       ...prev,
-                      [version]: Math.min(safeIdx + 1, totalRuns - 1),
+                      [indexKey]: Math.min(safeIdx + 1, totalRuns - 1),
                     }));
                   const goNext = () =>
                     setRunIndices((prev) => ({
                       ...prev,
-                      [version]: Math.max(safeIdx - 1, 0),
+                      [indexKey]: Math.max(safeIdx - 1, 0),
                     }));
 
                   return (
                     <div
                       key={idx}
                       data-testid={`testcase-version-output-card-${versions.indexOf(version) + 1}`}
-                      className={`bg-base-50 border rounded-lg p-4 h-fit ${runErrorMessage ? "border-error/40" : "border-base-200"}`}
+                      draggable
+                      onDragStart={(e) => handleVersionDragStart(e, version)}
+                      onDragOver={handleVersionDragOver}
+                      onDrop={(e) => handleVersionDrop(e, version)}
+                      onDragEnd={handleVersionDragEnd}
+                      className={`bg-base-50 border rounded-lg p-4 h-fit relative transition-all cursor-grab active:cursor-grabbing ${
+                        draggedVersion === version ? "opacity-50" : ""
+                      } ${draggedVersion && draggedVersion !== version ? "ring-2 ring-primary/30" : ""} ${
+                        isVersionPending ? "border-primary/40" : runErrorMessage ? "border-error/40" : "border-base-200"
+                      }`}
                     >
-                      <div className="flex flex-col gap-1.5 mb-3 pb-3 border-b border-base-200">
-                        {/* Top row: version label + score/error + pagination */}
-                        <div className="flex items-center justify-between gap-2 w-full">
-                          <div className="text-xs font-bold text-primary uppercase tracking-wide">
+                      {isVersionPending ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-3">
+                          <div className="text-xs font-bold text-primary uppercase tracking-wide self-start">
                             v{versions.indexOf(version) + 1}
                           </div>
-
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {/* Tokens + cost inline — lg screens only */}
-                            {hasRun &&
-                              !runErrorMessage &&
-                              (currentRun?.tokens?.total_tokens > 0 || currentRun?.cost > 0) && (
-                                <div className="hidden lg:flex items-center gap-1.5 text-xs text-base-content/50">
-                                  {currentRun?.tokens?.total_tokens > 0 && (
-                                    <span
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
-                                      title={`Input: ${currentRun.tokens.input_tokens} • Output: ${currentRun.tokens.output_tokens}`}
-                                    >
-                                      <span className="font-medium text-base-content/70">Tokens</span>
-                                      <span className="font-mono">
-                                        {currentRun.tokens.total_tokens.toLocaleString()}
+                          <span className="loading loading-spinner loading-lg text-primary"></span>
+                          <p className="text-sm text-base-content/60">Running test case...</p>
+                        </div>
+                      ) : (
+                        <>
+                          {modelTabs.length > 0 && (
+                            <div
+                              data-testid={`testcase-version-model-tabs-${versions.indexOf(version) + 1}`}
+                              className="flex flex-wrap items-center gap-1 mb-2 -mt-1"
+                              role="tablist"
+                            >
+                              {modelTabs.map((tab) => {
+                                const isActive = tab.key === activeTab?.key;
+                                // For the Default tab, the underlying model/service can vary across
+                                // historical runs (the version's default may have been edited).
+                                // When this tab is active, mirror the currently-displayed run so the
+                                // label tracks pagination.
+                                const displayModel =
+                                  tab.isDefault && isActive ? currentRun?.model || tab.model : tab.model;
+                                const displayService =
+                                  tab.isDefault && isActive ? currentRun?.service || tab.service : tab.service;
+                                const tabTitle = tab.isDefault
+                                  ? `Default${displayModel ? ` (${displayService ? `${displayService} • ` : ""}${displayModel})` : ""}`
+                                  : displayService
+                                    ? `${displayService} • ${displayModel}`
+                                    : displayModel;
+                                return (
+                                  <button
+                                    key={tab.key}
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    title={tabTitle}
+                                    onClick={() => setActiveModelByVersion((prev) => ({ ...prev, [version]: tab.key }))}
+                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                                      isActive
+                                        ? "bg-primary/10 text-primary border border-primary/30"
+                                        : "bg-base-200/60 text-base-content/60 border border-transparent hover:bg-base-200"
+                                    }`}
+                                  >
+                                    {displayService && (
+                                      <span className="inline-flex items-center mt-1 flex-shrink-0">
+                                        {getIconOfService(displayService, 12, 12)}
                                       </span>
-                                    </span>
-                                  )}
-                                  {currentRun?.cost > 0 && (
-                                    <span
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
-                                      title="Estimated cost"
-                                    >
-                                      <span className="font-medium text-base-content/70">Cost</span>
-                                      <span className="font-mono">${currentRun.cost.toFixed(4)}</span>
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            {!hasRun ? null : runErrorMessage ? (
-                              <span
-                                className="text-xs font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error"
-                                data-testid={`testcase-version-output-error-${versions.indexOf(version) + 1}`}
-                              >
-                                Error
-                              </span>
-                            ) : (
-                              <span
-                                className={`text-lg font-bold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
-                                title={getScoreMessage(score, matchingTypeFromResult)}
-                              >
-                                {getScoreDisplay(score, matchingTypeFromResult)}
-                              </span>
-                            )}
-                            {totalRuns > 1 && (
-                              <div className="flex items-center gap-1 ml-1">
-                                <button
-                                  data-testid={`testcase-version-output-prev-run-${versions.indexOf(version) + 1}`}
-                                  onClick={goPrev}
-                                  disabled={safeIdx >= totalRuns - 1}
-                                  className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                                  title="Previous run (older)"
+                                    )}
+                                    {tab.isDefault ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        <span>Default</span>
+                                        {displayModel && (
+                                          <span className="text-base-content/50 font-normal">· {displayModel}</span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span>{displayModel}</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-1.5 mb-3 pb-3 border-b border-base-200">
+                            {/* Top row: version label + score/error + pagination */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  draggable
+                                  onDragStart={(e) => handleVersionDragStart(e, version)}
+                                  onDragEnd={handleVersionDragEnd}
+                                  title="Drag to reorder"
+                                  className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/70 select-none"
                                 >
-                                  <ChevronLeft size={14} />
-                                </button>
-                                <span className="text-xs text-base-content/60 min-w-[28px] text-center">
-                                  {totalRuns - safeIdx}/{totalRuns}
+                                  <GripVertical size={14} />
                                 </span>
-                                <button
-                                  data-testid={`testcase-version-output-next-run-${versions.indexOf(version) + 1}`}
-                                  onClick={goNext}
-                                  disabled={safeIdx <= 0}
-                                  className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                                  title="Next run (newer)"
-                                >
-                                  <ChevronRight size={14} />
-                                </button>
+                                <div className="text-xs font-bold text-primary uppercase tracking-wide">
+                                  v{versions.indexOf(version) + 1}
+                                </div>
+                                {hasRun && (
+                                  <span
+                                    title={`Matching type used: ${matchingTypeFromResult}`}
+                                    className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-base-200 text-base-content/60"
+                                  >
+                                    {matchingTypeFromResult}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {!hasRun ? null : runErrorMessage ? (
+                                  <span
+                                    className="text-xs font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error"
+                                    data-testid={`testcase-version-output-error-${versions.indexOf(version) + 1}`}
+                                  >
+                                    Error
+                                  </span>
+                                ) : (
+                                  <InfoTooltip
+                                    tooltipContent={
+                                      currentRun?.reason || getScoreMessage(score, matchingTypeFromResult)
+                                    }
+                                  >
+                                    <span
+                                      className={`text-lg font-bold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
+                                    >
+                                      {getScoreDisplay(score, matchingTypeFromResult)}
+                                    </span>
+                                  </InfoTooltip>
+                                )}
+                                {totalRuns > 1 && (
+                                  <div className="flex items-center gap-1 ml-1">
+                                    <button
+                                      onClick={goPrev}
+                                      disabled={safeIdx >= totalRuns - 1}
+                                      className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                      title="Previous run (older)"
+                                    >
+                                      <ChevronLeft size={14} />
+                                    </button>
+                                    <span className="text-xs text-base-content/60 min-w-[28px] text-center">
+                                      {totalRuns - safeIdx}/{totalRuns}
+                                    </span>
+                                    <button
+                                      onClick={goNext}
+                                      disabled={safeIdx <= 0}
+                                      className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                      title="Next run (newer)"
+                                    >
+                                      <ChevronRight size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Bottom row: model name + metrics (wraps as needed) */}
+                            {(currentRun?.model ||
+                              currentRun?.metadata?.model ||
+                              (hasRun &&
+                                !runErrorMessage &&
+                                (currentRun?.tokens?.total_tokens > 0 ||
+                                  currentRun?.cost > 0 ||
+                                  currentRun?.latency?.over_all_time > 0 ||
+                                  modelOutput))) && (
+                              <div
+                                className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-base-content/60 font-medium w-full min-w-0"
+                                title={currentRun?.service || ""}
+                              >
+                                {hasRun && !runErrorMessage && currentRun?.tokens?.total_tokens > 0 && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
+                                    title={`Input: ${currentRun.tokens.input_tokens} • Output: ${currentRun.tokens.output_tokens}`}
+                                  >
+                                    <span className="font-medium text-base-content/70">Tokens</span>
+                                    <span className="font-mono">{currentRun.tokens.total_tokens.toLocaleString()}</span>
+                                  </span>
+                                )}
+                                {hasRun && !runErrorMessage && currentRun?.cost > 0 && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
+                                    title="Estimated cost"
+                                  >
+                                    <span className="font-medium text-base-content/70">Cost</span>
+                                    <span className="font-mono">${currentRun.cost.toFixed(4)}</span>
+                                  </span>
+                                )}
+                                {hasRun && !runErrorMessage && currentRun?.latency?.over_all_time > 0 && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
+                                    title="Total time taken"
+                                  >
+                                    <span className="font-medium text-base-content/70">Time</span>
+                                    <span className="font-mono">{currentRun.latency.over_all_time.toFixed(2)}s</span>
+                                  </span>
+                                )}
+                                {hasRun && !runErrorMessage && modelOutput && (
+                                  <button
+                                    onClick={() => handleCopyResponse(version, modelOutput)}
+                                    className="ml-auto w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
+                                    title="Copy response"
+                                    data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
+                                  >
+                                    {copiedVersion === version ? (
+                                      <CheckIcon size={12} className="text-success" />
+                                    ) : (
+                                      <Copy size={12} />
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
-                        </div>
 
-                        {/* Bottom row: model name + sm tokens/cost */}
-                        {(currentRun?.model || currentRun?.metadata?.model) && (
-                          <div
-                            className="flex items-center flex-wrap gap-1 mt-0.5 text-[10px] text-base-content/60 font-medium w-full"
-                            title={currentRun?.service || ""}
-                          >
-                            {currentRun?.service && (
-                              <span className="inline-flex items-center flex-shrink-0">
-                                {getIconOfService(currentRun.service, 12, 12)}
-                              </span>
-                            )}
-                            <span className="truncate max-w-[100px] sm:max-w-none">
-                              {currentRun?.model || currentRun?.metadata?.model}
-                            </span>
+                          {/* Tool calls display */}
+                          {toolsCallData.length > 0 && (
+                            <div className="mb-3 flex flex-wrap gap-2">
+                              {toolsCallData
+                                .flatMap((toolObj) => Object.values(toolObj || {}))
+                                .map((toolEntry, toolIdx) => {
+                                  if (!toolEntry) return null;
+                                  const toolName =
+                                    toolEntry.name ||
+                                    toolEntry.display_tool_name ||
+                                    toolEntry.model_tool_name ||
+                                    "Unknown Tool";
+                                  const toolType = toolEntry.type || "tool";
+                                  const isRAGTool = toolEntry?.data?.metadata?.type === "RAG";
+                                  const isAgentTool = toolEntry?.type?.toUpperCase() === "AGENT";
+                                  const isUnclickable = isRAGTool || isAgentTool;
 
-                            {/* Tokens + cost inline with model — sm/md only */}
-                            {hasRun &&
-                              !runErrorMessage &&
-                              (currentRun?.tokens?.total_tokens > 0 || currentRun?.cost > 0) && (
-                                <>
-                                  {currentRun?.tokens?.total_tokens > 0 && (
-                                    <span
-                                      className="lg:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
-                                      title={`Input: ${currentRun.tokens.input_tokens} • Output: ${currentRun.tokens.output_tokens}`}
+                                  return (
+                                    <div
+                                      key={toolIdx}
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-md text-xs font-medium transition-colors ${
+                                        isRAGTool
+                                          ? "bg-info/10 border-info/30 text-info hover:bg-info/20 cursor-default"
+                                          : isAgentTool
+                                            ? "bg-base-200/50 border-base-300 text-base-content/70 cursor-default"
+                                            : "bg-base-200/50 border-base-300 text-base-content/70 hover:bg-base-300 cursor-pointer"
+                                      }`}
+                                      onClick={() => {
+                                        if (!isUnclickable) handleToolPrimaryClick(toolEntry);
+                                      }}
                                     >
-                                      <span className="font-medium text-base-content/70">Tokens</span>
-                                      <span className="font-mono">
-                                        {currentRun.tokens.total_tokens.toLocaleString()}
-                                      </span>
-                                    </span>
-                                  )}
-                                  {currentRun?.cost > 0 && (
-                                    <span
-                                      className="lg:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200/60"
-                                      title="Estimated cost"
-                                    >
-                                      <span className="font-medium text-base-content/70">Cost</span>
-                                      <span className="font-mono">${currentRun.cost.toFixed(4)}</span>
-                                    </span>
-                                  )}
-                                </>
-                              )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Tool calls display */}
-                      {toolsCallData.length > 0 && (
-                        <div className="mb-3 flex flex-wrap gap-2">
-                          {toolsCallData
-                            .flatMap((toolObj) => Object.values(toolObj || {}))
-                            .map((toolEntry, toolIdx) => {
-                              if (!toolEntry) return null;
-                              const toolName =
-                                toolEntry.name ||
-                                toolEntry.display_tool_name ||
-                                toolEntry.model_tool_name ||
-                                "Unknown Tool";
-                              const toolType = toolEntry.type || "tool";
-                              const isRAGTool = toolEntry?.data?.metadata?.type === "RAG";
-                              const isAgentTool = toolEntry?.type?.toUpperCase() === "AGENT";
-                              const isUnclickable = isRAGTool || isAgentTool;
-
-                              return (
-                                <div
-                                  key={toolIdx}
-                                  data-testid={`testcase-version-${versions.indexOf(version) + 1}-tool-${toolIdx}`}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-md text-xs font-medium transition-colors ${
-                                    isRAGTool
-                                      ? "bg-info/10 border-info/30 text-info hover:bg-info/20 cursor-default"
-                                      : isAgentTool
-                                        ? "bg-base-200/50 border-base-300 text-base-content/70 cursor-default"
-                                        : "bg-base-200/50 border-base-300 text-base-content/70 hover:bg-base-300 cursor-pointer"
-                                  }`}
-                                  onClick={() => {
-                                    if (!isUnclickable) handleToolPrimaryClick(toolEntry);
+                                      <span className={isRAGTool ? "" : "text-base-content"}>{toolName}</span>
+                                      <span className="text-base-content/40">·</span>
+                                      <span className="text-base-content/50 capitalize">{toolType}</span>
+                                      <div
+                                        className="tooltip tooltip-top"
+                                        data-tip={
+                                          isRAGTool
+                                            ? "knowledge base data"
+                                            : isAgentTool
+                                              ? "agent data"
+                                              : "function data"
+                                        }
+                                      >
+                                        <FileClockIcon
+                                          size={12}
+                                          className="opacity-50 hover:opacity-100 ml-1"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setToolsData(toolEntry);
+                                            toolsDataModalRef.current?.showModal();
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          )}
+                          {!hasRun ? (
+                            <div
+                              className="text-xs text-base-content/40 italic mb-3"
+                              data-testid={`testcase-version-output-empty-${versions.indexOf(version) + 1}`}
+                            >
+                              Not run yet
+                            </div>
+                          ) : runErrorMessage ? (
+                            <div
+                              className="text-sm leading-relaxed mb-3 p-3 rounded-md bg-error/5 border border-error/20 text-error break-words"
+                              data-testid={`testcase-version-output-error-message-${versions.indexOf(version) + 1}`}
+                            >
+                              {runErrorMessage}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-base-content leading-relaxed mb-3">
+                              {typeof modelOutput === "string" ? (
+                                <ReactMarkdown
+                                  components={{
+                                    code: ({ node, inline, className, children, ...props }) => (
+                                      <CodeBlock className={className} {...props}>
+                                        {children}
+                                      </CodeBlock>
+                                    ),
                                   }}
                                 >
-                                  <span className={isRAGTool ? "" : "text-base-content"}>{toolName}</span>
-                                  <span className="text-base-content/40">·</span>
-                                  <span className="text-base-content/50 capitalize">{toolType}</span>
-                                  <div
-                                    className="tooltip tooltip-top"
-                                    data-tip={
-                                      isRAGTool ? "knowledge base data" : isAgentTool ? "agent data" : "function data"
-                                    }
-                                  >
-                                    <FileClockIcon
-                                      data-testid={`testcase-version-${versions.indexOf(version) + 1}-tool-logs-${toolIdx}`}
-                                      size={12}
-                                      className="opacity-50 hover:opacity-100 ml-1"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setToolsData(toolEntry);
-                                        toolsDataModalRef.current?.showModal();
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-                      {!hasRun ? (
-                        <div
-                          className="text-xs text-base-content/40 italic mb-3"
-                          data-testid={`testcase-version-output-empty-${versions.indexOf(version) + 1}`}
-                        >
-                          Not run yet
-                        </div>
-                      ) : runErrorMessage ? (
-                        <div
-                          className="text-sm leading-relaxed mb-3 p-3 rounded-md bg-error/5 border border-error/20 text-error break-words"
-                          data-testid={`testcase-version-output-error-message-${versions.indexOf(version) + 1}`}
-                        >
-                          {runErrorMessage}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-base-content leading-relaxed mb-3">
-                          {typeof modelOutput === "string" ? (
-                            <ReactMarkdown
-                              components={{
-                                code: ({ node, inline, className, children, ...props }) => (
-                                  <CodeBlock className={className} {...props}>
-                                    {children}
-                                  </CodeBlock>
-                                ),
-                              }}
-                            >
-                              {modelOutput}
-                            </ReactMarkdown>
-                          ) : (
-                            JSON.stringify(modelOutput)
+                                  {modelOutput}
+                                </ReactMarkdown>
+                              ) : (
+                                JSON.stringify(modelOutput)
+                              )}
+                            </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   );
@@ -991,12 +1171,15 @@ const TestCaseDetailsPanel = ({
                                         Error
                                       </span>
                                     ) : (
-                                      <span
-                                        className={`text-lg font-bold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
-                                        title={getScoreMessage(score, matchingTypeFromResult)}
+                                      <InfoTooltip
+                                        tooltipContent={run?.reason || getScoreMessage(score, matchingTypeFromResult)}
                                       >
-                                        {getScoreDisplay(score, matchingTypeFromResult)}
-                                      </span>
+                                        <span
+                                          className={`text-lg font-bold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
+                                        >
+                                          {getScoreDisplay(score, matchingTypeFromResult)}
+                                        </span>
+                                      </InfoTooltip>
                                     )}
                                   </div>
                                 </div>

@@ -104,7 +104,7 @@ const BatchSubthreadPanel = ({
 
   return (
     <div
-      className="shrink-0 border-r border-base-300 bg-base-200 flex flex-row overflow-y-auto h-screen transition-all duration-200"
+      className="shrink-0 border-r border-base-300 bg-base-200 flex flex-row overflow-y-auto h-full transition-all duration-200"
       style={{
         width: isVisible ? `${panelWidth}px` : "0px",
         minWidth: isVisible ? `${panelWidth}px` : "0px",

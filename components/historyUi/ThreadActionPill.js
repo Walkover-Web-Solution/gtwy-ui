@@ -35,6 +35,7 @@ export function ThreadActionPill({
   className = "",
   type = "button",
   title,
+  disabled = false,
 }) {
   return (
     <button
@@ -43,7 +44,8 @@ export function ThreadActionPill({
       id={id}
       title={title}
       onClick={onClick}
-      className={`${pillBase} ${active ? pillActive : pillInactive} ${className}`}
+      disabled={disabled}
+      className={`${pillBase} ${active ? pillActive : pillInactive} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
     >
       {Icon ? (
         <Icon

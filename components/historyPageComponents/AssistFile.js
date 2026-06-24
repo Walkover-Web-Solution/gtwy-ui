@@ -50,6 +50,16 @@ export const scrollToTop = (historyRef, searchMessageId) => {
   }
 };
 
+export const scrollElementIntoContainer = (container, element, behavior = "smooth") => {
+  if (!container || !element) return false;
+  const containerRect = container.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  const relativeTop = elementRect.top - containerRect.top + container.scrollTop;
+  const targetScroll = relativeTop - container.clientHeight / 2 + element.clientHeight / 2;
+  container.scrollTo({ top: Math.max(0, targetScroll), behavior });
+  return true;
+};
+
 export const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {

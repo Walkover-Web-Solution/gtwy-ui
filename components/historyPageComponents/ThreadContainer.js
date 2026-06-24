@@ -4,10 +4,10 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { useParams, usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 
-import { CircleDownIcon, BotMessageIcon } from "@/components/Icons";
+import { CircleDownIcon } from "@/components/Icons";
 import ThreadItem from "./ThreadItem";
 import InfiniteScroll from "react-infinite-scroll-component";
-import { scrollToBottom, scrollToTop } from "./AssistFile";
+import { scrollToBottom, scrollToTop, scrollElementIntoContainer } from "./AssistFile";
 import { getThread, updateContentHistory } from "@/store/action/historyAction";
 import { clearThreadData } from "@/store/reducer/historyReducer";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -44,6 +44,8 @@ const ThreadContainer = ({
   selectedVersion,
   previousPrompt,
   isErrorTrue,
+  fillParent = false,
+  keepSearchMessageId = false,
 }) => {
   const routeParams = useParams();
   const orgId = routeParams?.org_id;
@@ -59,18 +61,9 @@ const ThreadContainer = ({
 
   const dispatch = useDispatch();
   const integrationData = useCustomSelector((state) => state?.bridgeReducer?.org?.[orgId]?.integrationData) || {};
-  const { searchResults, isSearchActive, isSingleQuery } = useCustomSelector((state) => ({
+  const { searchResults, isSearchActive } = useCustomSelector((state) => ({
     searchResults: Array.isArray(state?.historyReducer?.search?.results) ? state.historyReducer.search.results : [],
     isSearchActive: state?.historyReducer?.search?.isActive || false,
-    isSingleQuery: (() => {
-      const isEmbedUser = state?.appInfoReducer?.embedUserDetails?.isEmbedUser;
-      if (isEmbedUser) return false;
-      const bridgeInfo = state?.bridgeReducer?.allBridgesMap?.[bridgeId];
-      const isStateless = bridgeInfo?.settings?.stateless_conversation === true;
-      if (!isStateless) return false;
-      const userMessageCount = Array.isArray(thread) ? thread.filter((msg) => msg?.user).length : 0;
-      return userMessageCount <= 1;
-    })(),
   }));
 
   const historyRef = useRef(null);
@@ -89,7 +82,6 @@ const ThreadContainer = ({
   const [modalInput, setModalInput] = useState(null);
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [generatedPrompts, setGeneratedPrompts] = useState({}); // Store generated prompts by message ID
-  const [debugQuery, setDebugQuery] = useState("");
 
   const formatDateAndTime = useCallback((created_at) => {
     const date = new Date(created_at);
@@ -129,48 +121,6 @@ const ThreadContainer = ({
     },
     [thread]
   );
-
-  // Debug Agent — send a query to the chatbot using the last thread item's context (single-query/stateless mode)
-  const handleAskAi = useCallback(() => {
-    const trimmed = debugQuery.trim();
-    if (!trimmed || !Array.isArray(thread) || thread.length === 0) return;
-    const lastIndex = thread.length - 1;
-    const lastItem = thread[lastIndex];
-    if (!lastItem) return;
-
-    const aiconfig = handleAddTestCase(lastItem, lastIndex, true);
-    let variables = {
-      aiconfig,
-      response: lastItem?.chatbot_message ? lastItem.chatbot_message : lastItem?.llm_message,
-    };
-    try {
-      variables = { "System Prompt": lastItem.prompt, ...variables };
-    } catch (error) {
-      console.error("Failed to build debug variables:", error);
-    }
-
-    if (typeof window.SendDataToChatbot === "function") {
-      window.SendDataToChatbot({
-        parentId: "",
-        bridgeName: "history_page_chabot",
-        threadId: String(lastItem?.id),
-        variables,
-        version_id: "null",
-        hideCloseButton: "false",
-      });
-      setTimeout(() => {
-        if (typeof window.openChatbot === "function") window.openChatbot();
-        setTimeout(() => {
-          if (typeof window.Chatbot?.askAi === "function") {
-            window.Chatbot.askAi({ message: trimmed });
-          }
-        }, 300);
-      }, 100);
-      setDebugQuery("");
-    } else {
-      console.warn("Chatbot embed script not loaded. SendDataToChatbot is unavailable.");
-    }
-  }, [debugQuery, thread, handleAddTestCase]);
 
   const handleSave = useCallback(() => {
     if (!modalInput?.content?.trim()) {
@@ -494,22 +444,32 @@ const ThreadContainer = ({
     return () => window.removeEventListener("message", handleEvent);
   }, []);
 
-  // Scroll to searched message
   const scrollToSearchedMessage = useCallback(
     async (messageId) => {
       if (!messageId || !historyRef.current) return;
 
-      const MAX_ATTEMPTS = threadMessageState?.totalPages || 1;
-      const DELAY_MS = 100;
+      const MAX_ATTEMPTS = Math.max(threadMessageState?.totalPages || 1, fillParent ? 30 : 15);
+      const DELAY_MS = fillParent ? 150 : 100;
+
+      // Wait for slide-panel animation + thread fetch only when content is not ready yet
+      if (fillParent && (!thread?.length || loadingData)) {
+        await new Promise((r) => setTimeout(r, 320));
+      }
 
       const findMessageAndScroll = async (attempt = 1) => {
-        const messageElement = threadRefs.current?.[messageId];
-        if (messageElement) {
-          messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        const container = historyRef.current;
+        const messageElement = threadRefs.current?.[messageId] || document.getElementById(`message-${messageId}`);
+
+        if (messageElement && container) {
+          if (threadRefs.current) threadRefs.current[messageId] = messageElement;
+          scrollElementIntoContainer(container, messageElement, "smooth");
           return;
         }
+
         if (attempt < MAX_ATTEMPTS) {
-          scrollToTop(historyRef, messageId);
+          if (flexDirection === "column-reverse") {
+            scrollToTop(historyRef, messageId);
+          }
           await new Promise((r) => setTimeout(r, DELAY_MS));
           await findMessageAndScroll(attempt + 1);
         }
@@ -517,18 +477,18 @@ const ThreadContainer = ({
 
       findMessageAndScroll();
     },
-    [threadMessageState?.totalPages]
+    [threadMessageState?.totalPages, fillParent, flexDirection, thread?.length, loadingData]
   );
 
   useEffect(() => {
     if (searchMessageId) scrollToSearchedMessage(searchMessageId);
-  }, [searchMessageId, scrollToSearchedMessage]);
+  }, [searchMessageId, scrollToSearchedMessage, thread?.length, loadingData]);
 
   return (
     <div
       data-testid="thread-container"
       id="thread-container"
-      className="flex-1 flex flex-col overflow-hidden h-[calc(100vh-2.5rem)] bg-history-page"
+      className={`flex-1 flex flex-col overflow-hidden bg-history-page ${fillParent ? "h-full min-h-0" : "h-[calc(100vh-2.5rem)]"}`}
     >
       <div className="w-full flex-1 flex flex-col min-h-0 relative bg-history-page">
         <div
@@ -546,7 +506,7 @@ const ThreadContainer = ({
         >
           {/* Show loading skeleton when loading */}
           {loadingData ? (
-            <ChatLoadingSkeleton isSingleQuery={isSingleQuery} />
+            <ChatLoadingSkeleton />
           ) : !thread || thread.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-history-page">
               <p className="text-gray-500 text-lg">No history present</p>
@@ -570,13 +530,13 @@ const ThreadContainer = ({
                       index={index}
                       item={item}
                       thread={thread}
-                      isSingleQuery={isSingleQuery}
                       threadHandler={threadHandler}
                       formatDateAndTime={formatDateAndTime}
                       integrationData={integrationData}
                       threadRefs={threadRefs}
                       searchMessageId={searchMessageId}
                       setSearchMessageId={setSearchMessageId}
+                      keepSearchMessageIdAfterHighlight={keepSearchMessageId}
                       handleAddTestCase={handleAddTestCase}
                       setModalInput={setModalInput}
                       modalInput={modalInput}
@@ -599,39 +559,6 @@ const ThreadContainer = ({
           </button>
         )}
       </div>
-
-      {/* Debug Agent footer — sticky page footer (single-query / stateless only) */}
-      {isSingleQuery && Array.isArray(thread) && thread.length > 0 && (
-        <div className="sticky bottom-0 shrink-0 px-3 py-2 bg-history-page z-10">
-          <div className="flex items-center gap-2 border border-base-200 rounded-lg px-3 py-2 bg-history-page focus-within:border-primary/50 transition-colors">
-            <BotMessageIcon className="h-3.5 w-3.5 text-base-content/40 shrink-0" />
-            <input
-              autoComplete="off"
-              data-testid="thread-container-debug-input"
-              id="thread-container-debug-input"
-              type="text"
-              value={debugQuery}
-              onChange={(e) => setDebugQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && debugQuery.trim()) {
-                  handleAskAi();
-                }
-              }}
-              placeholder="Debug with me..."
-              className="flex-1 bg-history-page  text-sm outline-none text-base-content placeholder:text-base-content/30"
-            />
-            <button
-              id="thread-container-debug-agent-button"
-              data-testid="thread-container-debug-agent-button"
-              disabled={!debugQuery.trim()}
-              onClick={handleAskAi}
-              className="btn btn-primary btn-xs text-black rounded-md"
-            >
-              Send
-            </button>
-          </div>
-        </div>
-      )}
 
       <AddTestCaseModal testCaseConversation={testCaseConversation} setTestCaseConversation={setTestCaseConversation} />
 

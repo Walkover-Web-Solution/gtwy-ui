@@ -344,6 +344,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               onBlur={handleBlur}
               name="defaultErrorMessage"
               rows="3"
+              data-testid="chatbot-config-default-error-message"
             />
           </label>
 
@@ -387,6 +388,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               onBlur={handleBlur}
               name="defaultMessage"
               rows="3"
+              data-testid="chatbot-config-default-message"
             />
           </label>
 

@@ -62,9 +62,9 @@ const MatchingTypeDropdown = ({
             </div>
 
             {[
-              { id: "AI", label: "AI" },
-              { id: "Exact", label: "Exact" },
-              { id: "Cosine", label: "Cosine" },
+              { id: "AI", label: "AI", description: "LLM judges how well the response matches." },
+              { id: "Exact", label: "Exact", description: "Strict character-by-character match." },
+              { id: "Cosine", label: "Cosine", description: "Semantic similarity via embeddings (0–1)." },
             ].map((opt) => {
               const isActive = matchingType === opt.id;
               return (
@@ -84,12 +84,15 @@ const MatchingTypeDropdown = ({
                   >
                     {isActive && <Check size={11} strokeWidth={3.5} className="text-primary-content" />}
                   </span>
-                  <div
-                    className={`text-[13.5px] ${
-                      isActive ? "font-bold text-primary" : "font-medium text-base-content/70"
-                    }`}
-                  >
-                    {opt.label}
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={`text-[13.5px] ${
+                        isActive ? "font-bold text-primary" : "font-medium text-base-content/70"
+                      }`}
+                    >
+                      {opt.label}
+                    </div>
+                    <div className="text-[11.5px] text-base-content/55 mt-0.5 leading-snug">{opt.description}</div>
                   </div>
                 </button>
               );

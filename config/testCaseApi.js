@@ -54,9 +54,23 @@ export const deleteTestCaseApi = async ({ testCaseId }) => {
   }
 };
 
+// Bulk delete: same base endpoint, no id in path, ids sent in body.
+export const deleteMultipleTestCasesApi = async ({ testCaseIds }) => {
+  try {
+    const response = await axios.delete(`${URL}/api/testcases`, {
+      data: { testCaseIds },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
+
 export const runTestCaseApi = async ({
   versionIds,
   testcase_id,
+  testcase_ids,
   testCaseData,
   bridgeId,
   variables,
@@ -64,6 +78,8 @@ export const runTestCaseApi = async ({
   ai_matching_custom_prompt,
   model,
   service,
+  models,
+  include_default,
 }) => {
   try {
     const payload = {
@@ -76,6 +92,11 @@ export const runTestCaseApi = async ({
       matching_type: matching_type,
     };
 
+    // Include bulk testcase_ids array only when provided (multi-select run)
+    if (Array.isArray(testcase_ids) && testcase_ids.length > 0) {
+      payload.testcase_ids = testcase_ids;
+    }
+
     // Only add optional parameters if they are provided
     if (ai_matching_custom_prompt) {
       payload.agent_info = {
@@ -87,6 +108,16 @@ export const runTestCaseApi = async ({
     }
     if (service) {
       payload.service = service;
+    }
+    // Multi-model run: send an array of { model, service } pairs. Backend fans out
+    // every selected version across every selected model.
+    if (Array.isArray(models) && models.length > 0) {
+      payload.models = models;
+    }
+    // Only forward include_default when explicitly set so the backend default
+    // (true) still applies when the caller doesn't care.
+    if (typeof include_default === "boolean") {
+      payload.include_default = include_default;
     }
 
     const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, payload);

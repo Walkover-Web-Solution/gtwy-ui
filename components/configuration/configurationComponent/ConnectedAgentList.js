@@ -50,7 +50,11 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
       variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
     };
   });
-  const handleSaveAgent = (overrideBridge = null, bridgeCollection = bridgeData, nextDescription = description) => {
+  const handleSaveAgent = async (
+    overrideBridge = null,
+    bridgeCollection = bridgeData,
+    nextDescription = description
+  ) => {
     try {
       const sb = overrideBridge ? overrideBridge : selectedBridge;
       const selectedDescription = nextDescription || sb?.agent_info?.description || sb?.bridge_summary || "";
@@ -59,7 +63,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         toast?.error("Description Required");
         return;
       }
-      dispatch(
+      const response = await dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
@@ -91,6 +95,9 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
       );
       setDescription("");
       closeModal(MODAL_TYPE?.AGENT_DESCRIPTION_MODAL);
+      if (response?.success) {
+        toast?.success("Agent connected successfully");
+      }
       setCurrentVariable(null);
       setSelectedBridge(null);
     } catch (error) {

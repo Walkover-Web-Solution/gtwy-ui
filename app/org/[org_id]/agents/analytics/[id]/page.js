@@ -1,34 +1,102 @@
 "use client";
 
-import React, { use, useCallback, useEffect, useState, useRef } from "react";
+import React, { use, useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getHistoryAction, getThread } from "@/store/action/historyAction";
+import { getThread } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
+import { getAgentAnalyticsFiltersApi } from "@/config";
 import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 
-import { Activity, TrendingDown, TrendingUp, X, Bot } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen } from "lucide-react";
+import { ResponsiveContainer, ComposedChart, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 import Sidebar from "@/components/historyPageComponents/Sidebar";
 import BatchSubthreadPanel from "@/components/historyPageComponents/BatchSubthreadPanel";
 import ThreadContainer from "@/components/historyPageComponents/ThreadContainer";
-import { getStatsConfig } from "@/utils/enums";
+import { getStatsConfig, MODAL_TYPE } from "@/utils/enums";
+import { openModal } from "@/utils/utility";
+import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 
-const CHART_STYLE = {
-  grid: "#f3f4f6",
-  axis: "#9ca3af",
-  tooltip: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "8px",
-    fontSize: "12px",
-    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-  },
-};
+// URL params that must never be forwarded to the analytics API.
+const UI_ONLY_QUERY_PARAMS = new Set([
+  "thread_id",
+  "subThread_id",
+  "sub_thread_id",
+  "batch_id",
+  "message_id",
+  "navigated",
+  "type",
+  "_rsc",
+  "feedback",
+  "version",
+]);
+
+const FEEDBACK_TO_API = { 1: "good", 2: "bad", good: "good", bad: "bad" };
+
+function buildAnalyticsQueryParams(
+  rawParams,
+  { selectedVersion, filterByFields = {}, filterVariableKey = "", filterVariableValue = "", extra = {} } = {}
+) {
+  const entries = typeof rawParams?.entries === "function" ? Object.fromEntries(rawParams.entries()) : { ...rawParams };
+
+  const queryParams = {};
+  for (const [key, value] of Object.entries(entries)) {
+    if (UI_ONLY_QUERY_PARAMS.has(key) || value == null || value === "") continue;
+    queryParams[key] = value;
+  }
+
+  const mappedFeedback = FEEDBACK_TO_API[entries.feedback];
+  if (mappedFeedback) {
+    queryParams.user_feedback = mappedFeedback;
+  }
+
+  if (queryParams.start) {
+    queryParams.start_date = queryParams.start;
+    delete queryParams.start;
+  }
+  if (queryParams.end) {
+    queryParams.end_date = queryParams.end;
+    delete queryParams.end;
+  }
+  if (queryParams.start_date || queryParams.end_date) {
+    delete queryParams.range;
+  } else {
+    queryParams.range = queryParams.range || "30d";
+  }
+
+  if (selectedVersion && selectedVersion !== "all") {
+    queryParams.version_id = selectedVersion;
+  }
+
+  if (!queryParams.tool_id) delete queryParams.tool_id;
+  if (!queryParams.model) delete queryParams.model;
+  if (!queryParams.knowledgebase_id) delete queryParams.knowledgebase_id;
+  if (!queryParams.agent_id) delete queryParams.agent_id;
+  if (!queryParams.interval) delete queryParams.interval;
+
+  const activeFilterBy = {};
+  if (filterByFields.thread_id?.trim()) activeFilterBy.thread_id = filterByFields.thread_id.trim();
+  if (filterByFields.sub_thread_id?.trim()) activeFilterBy.sub_thread_id = filterByFields.sub_thread_id.trim();
+  if (filterByFields.message_id?.trim()) activeFilterBy.message_id = filterByFields.message_id.trim();
+  if (filterByFields.batch_id?.trim()) activeFilterBy.batch_id = filterByFields.batch_id.trim();
+  if (filterByFields.user?.trim()) activeFilterBy.user = filterByFields.user.trim();
+  if (filterByFields.llm_message?.trim()) activeFilterBy.llm_message = filterByFields.llm_message.trim();
+  if (filterVariableKey.trim() && filterVariableValue.trim()) {
+    activeFilterBy.variables = { [filterVariableKey.trim()]: filterVariableValue.trim() };
+  } else if (filterVariableValue.trim()) {
+    activeFilterBy.variables = filterVariableValue.trim();
+  }
+  if (Object.keys(activeFilterBy).length > 0) {
+    queryParams.filter_by = activeFilterBy;
+  }
+
+  return { ...queryParams, ...extra };
+}
 
 function Page({ params, searchParams }) {
   const resolvedSearchParams = use(searchParams);
@@ -43,29 +111,75 @@ function Page({ params, searchParams }) {
       : "";
   useRtLayerEventHandler(channelId);
 
-  const { historyData, thread, analyticsData, selectedVersion } = useCustomSelector((state) => {
+  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading } = useCustomSelector((state) => {
     return {
-      historyData: state?.historyReducer?.history || [],
       thread: state?.historyReducer?.thread || [],
       analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
       selectedVersion: state?.historyReducer?.selectedVersion || "all",
+      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
+      analyticsLoading: state?.analyticsReducer?.loading || false,
     };
   });
 
-  const [searchQuery, setSearchQuery] = useState("");
+  // Derive pagination from analytics response
+  const hasMore = analyticsData?.pagination?.has_more ?? false;
+
+  // Map knowledge base IDs to their display names
+  const knowledgeBaseNameMap = useMemo(() => {
+    const map = {};
+    knowledgeBaseData.forEach((kb) => {
+      const id = kb._id || kb.id;
+      if (id) map[id] = kb.title || kb.name || id;
+    });
+    return map;
+  }, [knowledgeBaseData]);
+
+  const [searchQuery, setSearchQuery] = useState(() => search.get("keyword") || "");
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
   const [selectedSubThreadId, setSelectedSubThreadId] = useState(null);
   const [selectedBatchMessageId, setSelectedBatchMessageId] = useState(null);
-  const [isSliderOpen, setIsSliderOpen] = useState(false);
+  const [searchMessageId, setSearchMessageId] = useState(null);
+  const [sidebarExpandedThreadId, setSidebarExpandedThreadId] = useState(null);
+  const [sidebarExpandedSubThreadId, setSidebarExpandedSubThreadId] = useState(null);
+  const [, setIsSliderOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [executionChartType, setExecutionChartType] = useState("area");
+  const [latencyChartType, setLatencyChartType] = useState("area");
 
   const router = useRouter();
+  const { buildUrl } = useQueryParams();
   const searchRef = useRef(null);
   const isFirstRender = useRef(true);
+  const [appliedAdvancedFilters, setAppliedAdvancedFilters] = useState({
+    filterByFields: {
+      thread_id: "",
+      sub_thread_id: "",
+      message_id: "",
+      batch_id: "",
+      user: "",
+      llm_message: "",
+    },
+    filterVariableKey: "",
+    filterVariableValue: "",
+  });
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const customDropdownRef = useRef(null);
+
+  // Search-by-fields state (moved out from sidebar for analytics)
+  const [filterByFields, setFilterByFields] = useState({
+    thread_id: "",
+    sub_thread_id: "",
+    message_id: "",
+    batch_id: "",
+    user: "",
+    llm_message: "",
+  });
+  const [filterVariableKey, setFilterVariableKey] = useState("");
+  const [filterVariableValue, setFilterVariableValue] = useState("");
+  const [isAdvanceFilterOpen, setIsAdvanceFilterOpen] = useState(false);
+  const [showAllToolGroup, setShowAllToolGroup] = useState(false);
+  const [showAllModels, setShowAllModels] = useState(false);
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -97,33 +211,64 @@ function Page({ params, searchParams }) {
   const [filterInterval, setFilterInterval] = useState(resolvedSearchParams?.interval || "");
   const [filterFeedback, setFilterFeedback] = useState(resolvedSearchParams?.feedback || "all");
   const [filterError, setFilterError] = useState(resolvedSearchParams?.error === "true");
+  const [filterReviewFailed, setFilterReviewFailed] = useState(resolvedSearchParams?.review_failed === "true");
+  const parseArrayParam = (v) =>
+    v
+      ? String(v)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+  const [filterTool, setFilterTool] = useState(parseArrayParam(resolvedSearchParams?.tool_id));
+  const [filterModel, setFilterModel] = useState(parseArrayParam(resolvedSearchParams?.model));
+  const [filterKnowledgeBase, setFilterKnowledgeBase] = useState(
+    parseArrayParam(resolvedSearchParams?.knowledgebase_id)
+  );
+  const [filterAgent, setFilterAgent] = useState(parseArrayParam(resolvedSearchParams?.agent_id));
+  const [filterOptions, setFilterOptions] = useState({
+    tools_data: {},
+    unique_model: {},
+    knowledgebase_data: {},
+    agent_data: {},
+  });
+
+  const hasAnyFilter = Boolean(
+    filterStart ||
+    filterEnd ||
+    filterInterval ||
+    filterFeedback !== "all" ||
+    filterError ||
+    filterReviewFailed ||
+    filterTool.length ||
+    filterModel.length ||
+    filterKnowledgeBase.length ||
+    filterAgent.length ||
+    Object.values(filterByFields).some((v) => v && String(v).trim() !== "") ||
+    filterVariableKey.trim() ||
+    filterVariableValue.trim() ||
+    searchQuery.trim()
+  );
+
+  // Derive sidebar thread list from analytics API response threads
+  const historyData = useMemo(() => {
+    const threads = analyticsData?.threads || [];
+    // Preserve keyword-search payload (message + sub_thread.messages) from the API.
+    return threads.map((t) => ({
+      ...t,
+      thread_id: t.thread_id,
+      updated_at: t.updated_at,
+      message: Array.isArray(t.message) ? t.message : [],
+      sub_thread: Array.isArray(t.sub_thread)
+        ? t.sub_thread
+        : t.sub_thread_id
+          ? [{ sub_thread_id: t.sub_thread_id }]
+          : [],
+    }));
+  }, [analyticsData?.threads]);
 
   const summary = analyticsData?.summary || {};
   const requestsOverTime = analyticsData?.requests_over_time || [];
   const responseTime = analyticsData?.response_time || [];
-
-  const getDates = () => {
-    let startDate = resolvedSearchParams?.start || "";
-    let endDate = resolvedSearchParams?.end || "";
-
-    if (!startDate && !endDate) {
-      const rangeVal = resolvedSearchParams?.range || "30d";
-      const now = new Date();
-      let start;
-      if (rangeVal === "24h") {
-        start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      } else if (rangeVal === "7d") {
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      } else if (rangeVal === "30d") {
-        start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      }
-      if (start) {
-        startDate = start.toISOString();
-        endDate = now.toISOString();
-      }
-    }
-    return { startDate, endDate };
-  };
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -144,249 +289,294 @@ function Page({ params, searchParams }) {
   }));
 
   useEffect(() => {
+    const urlVersion = search.get("version") || "all";
+    if (urlVersion !== selectedVersion) {
+      dispatch(setSelectedVersion(urlVersion));
+    }
+  }, [resolvedParams?.id, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const keyword = search.get("keyword") || "";
+    setSearchQuery(keyword);
+    if (searchRef.current) {
+      searchRef.current.value = keyword;
+    }
+  }, [search]);
+
+  useEffect(() => {
     return () => {
       dispatch(setSelectedVersion("all"));
     };
   }, [dispatch]);
 
+  // Never restore thread/slider state from URL on load or refresh — manual click only.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const uiKeys = ["thread_id", "subThread_id", "message_id", "batch_id"];
+    let dirty = false;
+    uiKeys.forEach((key) => {
+      if (p.has(key)) {
+        p.delete(key);
+        dirty = true;
+      }
+    });
+    if (dirty) {
+      router.replace(`${pathName}?${p.toString()}`, undefined, { shallow: true });
+    }
+    setSelectedThreadId(null);
+    setSelectedSubThreadId(null);
+    setSelectedBatchMessageId(null);
+    setSidebarExpandedThreadId(null);
+    setSidebarExpandedSubThreadId(null);
+    setIsSliderOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!resolvedParams?.id) return;
+    const fetchFilters = async () => {
+      try {
+        const data = await getAgentAnalyticsFiltersApi(resolvedParams.id);
+        setFilterOptions({
+          tools_data: data.tools_data || {},
+          unique_model: data.unique_model || {},
+          knowledgebase_data: data.knowledgebase_data || {},
+          agent_data: data.agent_data || {},
+        });
+      } catch (e) {
+        console.error("Failed to fetch filter options:", e);
+      }
+    };
+    fetchFilters();
+  }, [resolvedParams?.id]);
+
+  const getAnalyticsQueryParams = useCallback(
+    (extra = {}) =>
+      buildAnalyticsQueryParams(search, {
+        selectedVersion,
+        filterByFields: appliedAdvancedFilters.filterByFields,
+        filterVariableKey: appliedAdvancedFilters.filterVariableKey,
+        filterVariableValue: appliedAdvancedFilters.filterVariableValue,
+        extra,
+      }),
+    [search, selectedVersion, appliedAdvancedFilters]
+  );
+
+  const analyticsUrlKey = useMemo(() => {
+    const params = new URLSearchParams(search.toString());
+    ["thread_id", "subThread_id", "sub_thread_id", "batch_id", "message_id"].forEach((key) => {
+      params.delete(key);
+    });
+    return params.toString();
+  }, [search]);
+
   // Fetch agent analytics (with a 1-second delay on refresh/initial mount, and immediately on subsequent updates)
   useEffect(() => {
     if (!resolvedParams?.id) return;
 
-    const queryParams = { ...resolvedSearchParams };
-    if (queryParams.start) queryParams.start_date = queryParams.start;
-    if (queryParams.end) queryParams.end_date = queryParams.end;
-    if (!queryParams.start && !queryParams.end) {
-      queryParams.range = queryParams.range || "30d";
-    }
-    queryParams.version = selectedVersion;
+    const queryParams = getAnalyticsQueryParams();
 
+    setPage(1);
     if (isFirstRender.current) {
       isFirstRender.current = false;
       const timer = setTimeout(() => {
-        dispatch(getAgentAnalyticsAction(resolvedParams.id, queryParams));
+        dispatch(getAgentAnalyticsAction(resolvedParams.id, queryParams, resolvedParams.org_id));
       }, 1000); // 1-second delay on initial load / refresh
       return () => clearTimeout(timer);
-    } else {
-      dispatch(getAgentAnalyticsAction(resolvedParams.id, queryParams));
     }
-  }, [
-    resolvedParams?.id,
-    resolvedSearchParams?.start,
-    resolvedSearchParams?.end,
-    resolvedSearchParams?.range,
-    resolvedSearchParams?.interval,
-    resolvedSearchParams?.feedback,
-    resolvedSearchParams?.error,
-    selectedVersion,
-    dispatch,
-  ]);
+    dispatch(getAgentAnalyticsAction(resolvedParams.id, queryParams, resolvedParams.org_id));
+  }, [resolvedParams?.id, resolvedParams?.org_id, analyticsUrlKey, selectedVersion, appliedAdvancedFilters, dispatch]);
 
-  // Initial fetch for history
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      const { startDate, endDate } = getDates();
-      const feedback = resolvedSearchParams?.feedback || "all";
-      const isError = resolvedSearchParams?.error === "true";
+  const dispatchAnalyticsWithAdvancedFilters = (nextAdvancedFilters) => {
+    if (!resolvedParams?.id) return;
+    setAppliedAdvancedFilters(nextAdvancedFilters);
+  };
 
-      const result = await dispatch(
-        getHistoryAction(resolvedParams.id, 1, feedback, isError, selectedVersion, "", startDate, endDate)
-      );
-      if (result && result.length > 0) {
-        setHasMore(result.length >= 40); // PAGE_SIZE is usually 40
-      } else {
-        setHasMore(false);
-      }
-      setLoading(false);
-    };
-    fetchInitialData();
-  }, [
-    resolvedParams.id,
-    resolvedSearchParams?.start,
-    resolvedSearchParams?.end,
-    resolvedSearchParams?.range,
-    resolvedSearchParams?.feedback,
-    resolvedSearchParams?.error,
-    selectedVersion,
-  ]);
+  const buildAnalyticsQueryParamsForFetch = (extra = {}) => getAnalyticsQueryParams(extra);
 
   const fetchMoreData = async () => {
-    if (!hasMore || loading) return;
+    if (!hasMore || analyticsLoading) return;
     const nextPage = page + 1;
-    const { startDate, endDate } = getDates();
-    const feedback = resolvedSearchParams?.feedback || "all";
-    const isError = resolvedSearchParams?.error === "true";
-
-    const result = await dispatch(
-      getHistoryAction(resolvedParams.id, nextPage, feedback, isError, selectedVersion, searchQuery, startDate, endDate)
-    );
-    if (result && result.length > 0) {
-      setPage(nextPage);
-      setHasMore(result.length >= 40);
-    } else {
-      setHasMore(false);
-    }
+    const queryParams = buildAnalyticsQueryParamsForFetch({ page: nextPage });
+    await dispatch(getAgentAnalyticsAction(resolvedParams.id, queryParams, resolvedParams.org_id));
+    setPage(nextPage);
   };
 
-  const handleSearch = async (query) => {
-    setSearchQuery(query);
-    setPage(1);
-    setLoading(true);
-    const { startDate, endDate } = getDates();
-    const feedback = resolvedSearchParams?.feedback || "all";
-    const isError = resolvedSearchParams?.error === "true";
+  const handleSearch = useCallback(
+    (query) => {
+      const trimmed = (query || "").trim();
+      setSearchQuery(trimmed);
+      const url = new URL(window.location.href);
+      if (trimmed) {
+        url.searchParams.set("keyword", trimmed);
+      } else {
+        url.searchParams.delete("keyword");
+      }
+      url.searchParams.delete("thread_id");
+      url.searchParams.delete("subThread_id");
+      url.searchParams.delete("message_id");
+      url.searchParams.delete("batch_id");
+      setSelectedThreadId(null);
+      setSelectedSubThreadId(null);
+      setSelectedBatchMessageId(null);
+      setSearchMessageId(null);
+      setSidebarExpandedThreadId(null);
+      setSidebarExpandedSubThreadId(null);
+      setIsSliderOpen(false);
+      router.replace(url.pathname + url.search);
+    },
+    [router]
+  );
 
-    const result = await dispatch(
-      getHistoryAction(resolvedParams.id, 1, feedback, isError, selectedVersion, query, startDate, endDate)
-    );
-    if (result && result.length > 0) {
-      setHasMore(result.length >= 40);
-    } else {
-      setHasMore(false);
-    }
-    setLoading(false);
-  };
+  const handleAnalyticsSidebarSelect = useCallback((threadId, subThreadId) => {
+    setSidebarExpandedThreadId(threadId);
+    setSidebarExpandedSubThreadId(subThreadId);
+  }, []);
 
-  const urlThreadId = search.get("thread_id");
-  const urlSubThreadId = search.get("subThread_id");
+  const threadHandler = useCallback(
+    async (thread_id, item, options = {}) => {
+      const opts = options && typeof options === "object" ? options : {};
+      const firstSubThreadId =
+        opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id || thread_id;
 
-  useEffect(() => {
-    if (urlThreadId) {
-      const activeSubThread = urlSubThreadId || urlThreadId;
-      setSelectedThreadId(urlThreadId);
-      setSelectedSubThreadId(activeSubThread);
+      setSelectedThreadId(thread_id);
+      setSelectedSubThreadId(firstSubThreadId);
+      setSidebarExpandedThreadId(thread_id);
+      setSidebarExpandedSubThreadId(firstSubThreadId);
       setIsSliderOpen(true);
+      setSelectedBatchMessageId(null);
 
       dispatch(
         getThread({
-          threadId: urlThreadId,
+          threadId: thread_id,
           bridgeId: resolvedParams.id,
           nextPage: 1,
           user_feedback: "all",
-          subThreadId: activeSubThread,
+          subThreadId: firstSubThreadId,
           versionId: "",
           error: false,
         })
       );
-    } else {
-      setSelectedThreadId(null);
-      setSelectedSubThreadId(null);
-      setIsSliderOpen(false);
-    }
-  }, [urlThreadId, urlSubThreadId, resolvedParams.id, dispatch]);
 
-  const threadHandler = useCallback(
-    async (thread_id, item, value) => {
-      const start = search.get("start") || "";
-      const end = search.get("end") || "";
-      const range = search.get("range") || "";
-      const interval = search.get("interval") || "";
-      const feedback = search.get("feedback") || "";
-      const error = search.get("error") || "";
-
-      const encodedThreadId = encodeURIComponent(thread_id.replace(/&/g, "%26"));
-      const firstSubThreadId = item?.sub_thread?.[0]?.sub_thread_id || thread_id;
-      const encodedSubThreadId = encodeURIComponent(firstSubThreadId.replace(/&/g, "%26"));
-
-      const paramsObj = new URLSearchParams();
-      if (start) paramsObj.set("start", start);
-      if (end) paramsObj.set("end", end);
-      if (range) paramsObj.set("range", range);
-      if (interval) paramsObj.set("interval", interval);
-      if (feedback) paramsObj.set("feedback", feedback);
-      if (error) paramsObj.set("error", error);
-      paramsObj.set("thread_id", encodedThreadId);
-      paramsObj.set("subThread_id", encodedSubThreadId);
-
-      router.push(`${pathName}?${paramsObj.toString()}`, undefined, { shallow: true });
+      router.push(
+        buildUrl(
+          {
+            thread_id: encodeURIComponent(String(thread_id).replace(/&/g, "%26")),
+            subThread_id: encodeURIComponent(String(firstSubThreadId).replace(/&/g, "%26")),
+            message_id: null,
+            batch_id: null,
+          },
+          pathName
+        )
+      );
     },
-    [pathName, router, search]
+    [pathName, router, buildUrl, resolvedParams.id, dispatch]
+  );
+
+  const handleAnalyticsMessageNavigate = useCallback(
+    (messageId) => {
+      router.push(buildUrl({ message_id: messageId || null }, pathName));
+    },
+    [pathName, router, buildUrl]
   );
 
   const handleSelectSubThread = useCallback(
-    async (subThreadId) => {
+    async (subThreadId, threadIdOverride) => {
       setSelectedBatchMessageId(null);
-      const start = search.get("start") || "";
-      const end = search.get("end") || "";
-      const range = search.get("range") || "";
-      const interval = search.get("interval") || "";
-      const feedback = search.get("feedback") || "";
-      const error = search.get("error") || "";
-      const threadId = search.get("thread_id") || "";
+      setSearchMessageId(null);
+      const threadId = threadIdOverride || selectedThreadId || sidebarExpandedThreadId;
+      if (!threadId) return;
 
-      const paramsObj = new URLSearchParams();
-      if (start) paramsObj.set("start", start);
-      if (end) paramsObj.set("end", end);
-      if (range) paramsObj.set("range", range);
-      if (interval) paramsObj.set("interval", interval);
-      if (feedback) paramsObj.set("feedback", feedback);
-      if (error) paramsObj.set("error", error);
-      if (threadId) paramsObj.set("thread_id", threadId);
-      paramsObj.set("subThread_id", encodeURIComponent(subThreadId.replace(/&/g, "%26")));
+      setSelectedThreadId(threadId);
+      setSelectedSubThreadId(subThreadId);
+      setSidebarExpandedThreadId(threadId);
+      setSidebarExpandedSubThreadId(subThreadId);
+      setIsSliderOpen(true);
 
-      router.push(`${pathName}?${paramsObj.toString()}`, undefined, { shallow: true });
+      dispatch(
+        getThread({
+          threadId,
+          bridgeId: resolvedParams.id,
+          nextPage: 1,
+          user_feedback: "all",
+          subThreadId,
+          versionId: "",
+          error: false,
+        })
+      );
+
+      router.push(
+        buildUrl(
+          {
+            thread_id: encodeURIComponent(String(threadId).replace(/&/g, "%26")),
+            subThread_id: encodeURIComponent(String(subThreadId).replace(/&/g, "%26")),
+            message_id: null,
+            batch_id: null,
+          },
+          pathName
+        )
+      );
     },
-    [pathName, router, search]
+    [pathName, selectedThreadId, sidebarExpandedThreadId, resolvedParams.id, dispatch, router, buildUrl]
   );
 
   const handleCloseAside = useCallback(() => {
     setSelectedThreadId(null);
     setSelectedSubThreadId(null);
     setSelectedBatchMessageId(null);
+    setSearchMessageId(null);
     setIsSliderOpen(false);
-
-    const start = search.get("start") || "";
-    const end = search.get("end") || "";
-    const range = search.get("range") || "";
-    const interval = search.get("interval") || "";
-    const feedback = search.get("feedback") || "";
-    const error = search.get("error") || "";
-
-    const paramsObj = new URLSearchParams();
-    if (start) paramsObj.set("start", start);
-    if (end) paramsObj.set("end", end);
-    if (range) paramsObj.set("range", range);
-    if (interval) paramsObj.set("interval", interval);
-    if (feedback) paramsObj.set("feedback", feedback);
-    if (error) paramsObj.set("error", error);
-
-    router.push(`${pathName}?${paramsObj.toString()}`, undefined, { shallow: true });
-  }, [pathName, router, search]);
+    router.push(buildUrl({ thread_id: null, subThread_id: null, message_id: null, batch_id: null }, pathName));
+  }, [pathName, router, buildUrl]);
 
   const handleSelectBatch = useCallback((messageId) => {
-    setSelectedBatchMessageId(messageId);
+    setSearchMessageId(null);
+    setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId));
+  }, []);
+
+  const handleThreadItemClick = useCallback((thread_id, item, value) => {
+    if (value === "AiConfig" || value === "Latency") {
+      setSelectedItem({ variables: item.variables, ...item, value });
+      openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
+    }
   }, []);
 
   const applyFilters = (updates = {}) => {
-    const currentUrl = new URL(window.location);
-
     const newStart = updates.start !== undefined ? updates.start : filterStart;
     const newEnd = updates.end !== undefined ? updates.end : filterEnd;
     const newRange = updates.range !== undefined ? updates.range : filterRange;
     const newInterval = updates.interval !== undefined ? updates.interval : filterInterval;
     const newFeedback = updates.feedback !== undefined ? updates.feedback : filterFeedback;
     const newError = updates.error !== undefined ? updates.error : filterError;
+    const newReviewFailed = updates.review_failed !== undefined ? updates.review_failed : filterReviewFailed;
+    const newTool = updates.tool_id !== undefined ? updates.tool_id : filterTool;
+    const newModel = updates.model !== undefined ? updates.model : filterModel;
+    const newKnowledgeBase = updates.knowledgebase_id !== undefined ? updates.knowledgebase_id : filterKnowledgeBase;
+    const newAgent = updates.agent_id !== undefined ? updates.agent_id : filterAgent;
 
-    if (newStart) currentUrl.searchParams.set("start", newStart);
-    else currentUrl.searchParams.delete("start");
-
-    if (newEnd) currentUrl.searchParams.set("end", newEnd);
-    else currentUrl.searchParams.delete("end");
-
-    if (newRange && !newStart && !newEnd) currentUrl.searchParams.set("range", newRange);
-    else currentUrl.searchParams.delete("range");
-
-    if (newInterval) currentUrl.searchParams.set("interval", newInterval);
-    else currentUrl.searchParams.delete("interval");
-
-    if (newFeedback && newFeedback !== "all") currentUrl.searchParams.set("feedback", newFeedback);
-    else currentUrl.searchParams.delete("feedback");
-
-    if (newError) currentUrl.searchParams.set("error", "true");
-    else currentUrl.searchParams.delete("error");
-
-    router.push(currentUrl.pathname + currentUrl.search);
+    router.push(
+      buildUrl(
+        {
+          start: newStart || null,
+          end: newEnd || null,
+          range: !newStart && !newEnd && newRange ? newRange : null,
+          interval: newInterval || null,
+          feedback: newFeedback && newFeedback !== "all" ? newFeedback : null,
+          error: newError ? "true" : null,
+          review_failed: newReviewFailed ? "true" : null,
+          tool_id: newTool?.length ? newTool.join(",") : null,
+          model: newModel?.length ? newModel.join(",") : null,
+          knowledgebase_id: newKnowledgeBase?.length ? newKnowledgeBase.join(",") : null,
+          agent_id: newAgent?.length ? newAgent.join(",") : null,
+          // clear thread selection so sidebar doesn't auto-expand and thread_id doesn't leak to API
+          thread_id: null,
+          subThread_id: null,
+          message_id: null,
+          batch_id: null,
+        },
+        pathName
+      )
+    );
   };
 
   const clearFilters = () => {
@@ -396,17 +586,47 @@ function Page({ params, searchParams }) {
     setFilterInterval("");
     setFilterFeedback("all");
     setFilterError(false);
+    setFilterReviewFailed(false);
+    setFilterTool([]);
+    setFilterModel([]);
+    setFilterKnowledgeBase([]);
+    setFilterAgent([]);
+    setFilterByFields({ thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" });
+    setFilterVariableKey("");
+    setFilterVariableValue("");
     dispatch(setSelectedVersion("all"));
     setIsCustomOpen(false);
 
-    const currentUrl = new URL(window.location);
-    currentUrl.searchParams.delete("start");
-    currentUrl.searchParams.delete("end");
-    currentUrl.searchParams.delete("range");
-    currentUrl.searchParams.delete("interval");
-    currentUrl.searchParams.delete("feedback");
-    currentUrl.searchParams.delete("error");
-    router.push(currentUrl.pathname + currentUrl.search);
+    const emptyAdvancedFilters = {
+      filterByFields: { thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" },
+      filterVariableKey: "",
+      filterVariableValue: "",
+    };
+    setAppliedAdvancedFilters(emptyAdvancedFilters);
+
+    router.push(
+      buildUrl(
+        {
+          start: null,
+          end: null,
+          range: null,
+          interval: null,
+          feedback: null,
+          error: null,
+          tool_id: null,
+          model: null,
+          knowledgebase_id: null,
+          agent_id: null,
+          review_failed: null,
+          keyword: null,
+          thread_id: null,
+          subThread_id: null,
+          message_id: null,
+          batch_id: null,
+        },
+        pathName
+      )
+    );
 
     if (document.activeElement) {
       document.activeElement.blur();
@@ -415,19 +635,797 @@ function Page({ params, searchParams }) {
 
   return (
     <div className="flex h-[calc(100vh-40px)] w-full overflow-hidden bg-base-200/50">
-      {/* Left Sidebar */}
-      <div className="pl-4 h-full shrink-0 z-50 flex relative">
+      {/* Main Dashboard Area */}
+      <div className="flex-1 relative flex flex-row max-w-full overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {/* Dashboard Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-base-content">Agent Analytics</h1>
+                <p className="text-sm text-base-content/60 mt-1">
+                  Overview of agent performance and execution history.
+                </p>
+              </div>
+            </div>
+
+            {/* KPI Stats Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
+              {getStatsConfig(summary).map((stat, idx) => {
+                const Icon = stat.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="bg-base-100 p-5 rounded-2xl border border-base-300 shadow-sm flex flex-col gap-1"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color}`}>
+                        <Icon size={16} />
+                      </div>
+                      <div
+                        className={`flex items-center gap-1 text-xs font-semibold ${stat.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
+                      >
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div className="flex flex-col mt-2">
+                      <p className="text-xl font-bold text-base-content">{stat.value}</p>
+                      <h3 className="text-[11px] font-medium text-base-content/60 mt-0.5">{stat.title}</h3>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Filters Container */}
+            <div className="bg-base-100 border border-base-300 rounded-lg  mb-8 shadow-sm">
+              {/* Row 1: Time Range, Interval, Feedback, Error, Advance Toggle */}
+              <div className="flex items-center gap-4 px-4 py-1.5 flex-wrap">
+                {/* Time Range */}
+                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
+                  Time Range
+                </span>
+                <div className="flex gap-1.5 shrink-0 ">
+                  {[
+                    { label: "24h", value: "24h" },
+                    { label: "7d", value: "7d" },
+                    { label: "30d", value: "30d" },
+                  ].map((item) => {
+                    const isActive = filterRange === item.value && !filterStart && !filterEnd;
+
+                    return (
+                      <button
+                        key={item.value}
+                        onClick={() => {
+                          setFilterRange(item.value);
+                          setFilterStart("");
+                          setFilterEnd("");
+                          applyFilters({ range: item.value, start: "", end: "" });
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          isActive ? "bg-blue-500 text-white" : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+
+                  {/* Custom Date Dropdown replacing the pill */}
+                  <div ref={customDropdownRef} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomOpen(!isCustomOpen)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border-none outline-none focus:outline-none focus:ring-0 ${
+                        filterStart || filterEnd
+                          ? "bg-blue-500 text-white"
+                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      Custom
+                    </button>
+                    {isCustomOpen && (
+                      <div className="absolute left-0 z-50 menu p-4 shadow-xl border border-base-300 bg-base-100 rounded-box w-80 ">
+                        <h3 className="font-semibold text-sm mb-4 text-base-content">Custom Date Range</h3>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
+                            <input
+                              type="datetime-local"
+                              className="input input-sm input-bordered w-full text-xs"
+                              value={filterStart}
+                              max={filterEnd}
+                              onChange={(e) => {
+                                setFilterStart(e.target.value);
+                                setFilterRange("");
+                              }}
+                              onClick={(e) => e.target.showPicker()}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
+                            <input
+                              type="datetime-local"
+                              className="input input-sm input-bordered w-full text-xs"
+                              value={filterEnd}
+                              min={filterStart}
+                              onChange={(e) => {
+                                setFilterEnd(e.target.value);
+                                setFilterRange("");
+                              }}
+                              onClick={(e) => e.target.showPicker()}
+                            />
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              className="btn btn-sm btn-primary flex-1"
+                              onClick={() => {
+                                applyFilters();
+                                setIsCustomOpen(false);
+                                if (document.activeElement) document.activeElement.blur();
+                              }}
+                            >
+                              Apply
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline flex-1"
+                              onClick={() => {
+                                clearFilters();
+                                setIsCustomOpen(false);
+                              }}
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="w-px h-4 bg-base-300 shrink-0"></div>
+
+                {/* Interval */}
+                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
+                  Interval
+                </span>
+                <div className="flex gap-1.5 shrink-0">
+                  {[
+                    { label: "1h", value: "1h" },
+                    { label: "3h", value: "3h" },
+                    { label: "6h", value: "6h" },
+                    { label: "12h", value: "12h" },
+                    { label: "24h", value: "24h" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => {
+                        const newInterval = filterInterval === item.value ? "" : item.value;
+                        setFilterInterval(newInterval);
+                        applyFilters({ interval: newInterval });
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        filterInterval === item.value
+                          ? "bg-blue-500 text-white"
+                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-px h-4 bg-base-300 shrink-0"></div>
+
+                {/* Feedback */}
+                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
+                  Feedback
+                </span>
+                <div className="flex gap-1.5 shrink-0">
+                  {[
+                    { label: "Any", value: "all" },
+                    { label: "Good", value: "1" },
+                    { label: "Bad", value: "2" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => {
+                        setFilterFeedback(item.value);
+                        applyFilters({ feedback: item.value });
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        filterFeedback === item.value
+                          ? "bg-blue-500 text-white"
+                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Reviewer Failures Toggle */}
+                <label
+                  className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
+                    filterReviewFailed ? "bg-[#FD9900] text-white border border-[#FD9900]" : "border border-base-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className={`toggle toggle-sm scale-75 origin-center ${filterReviewFailed ? "toggle-warning" : ""}`}
+                    checked={filterReviewFailed}
+                    onChange={(e) => {
+                      setFilterReviewFailed(e.target.checked);
+                      applyFilters({ review_failed: e.target.checked });
+                    }}
+                  />
+                  <span className={`text-xs font-medium ${filterReviewFailed ? "text-white" : "text-base-content/70"}`}>
+                    Reviewer Failures
+                  </span>
+                </label>
+
+                {/* Error Toggle */}
+                <label
+                  className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
+                    filterError ? "bg-[#FA2C36] text-white border border-[#FA2C36]" : "border border-base-200"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className={`toggle toggle-sm scale-75 origin-center ${filterError ? "toggle-error" : ""}`}
+                    checked={filterError}
+                    onChange={(e) => {
+                      setFilterError(e.target.checked);
+                      applyFilters({ error: e.target.checked });
+                    }}
+                  />
+                  <span className={`text-xs font-medium ${filterError ? "text-white" : "text-base-content/70"}`}>
+                    Error History
+                  </span>
+                </label>
+
+                {/* Advance Filter Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsAdvanceFilterOpen(!isAdvanceFilterOpen)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${
+                    isAdvanceFilterOpen
+                      ? "bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:border-primary/40"
+                      : "bg-base-100 text-base-content/70 border-base-200 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:bg-base-100 dark:hover:bg-primary/10 dark:hover:text-primary"
+                  }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  Search by Fields
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isAdvanceFilterOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {hasAnyFilter && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              {/* Row 2: Advance Filters (expandable inside same container) */}
+              <div
+                className={`overflow-hidden px-4 pt-2 transition-all duration-300 ${
+                  isAdvanceFilterOpen
+                    ? "max-h-[600px] opacity-100  pt-3 pb-3 border-t border-base-200 dark:border-t-base-200 bg-[#F8FAFC] dark:bg-base-200/50 space-y-4"
+                    : "max-h-0 opacity-0"
+                }`}
+              >
+                {/* Tool, Knowledge Base, Agent & Model badges */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
+                  {/* Col 1: Tool + Knowledge Base + Agent */}
+                  <div>
+                    <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase block mb-1.5">
+                      Tool
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {/* Single All button for Tool + KB + Agent */}
+                      <button
+                        onClick={() => {
+                          setFilterTool([]);
+                          setFilterKnowledgeBase([]);
+                          setFilterAgent([]);
+                          applyFilters({ tool_id: [], knowledgebase_id: [], agent_id: [] });
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          !filterTool.length && !filterKnowledgeBase.length && !filterAgent.length
+                            ? "bg-blue-500 text-white"
+                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                        }`}
+                      >
+                        All
+                      </button>
+
+                      {/* Combined Tool + KB + Agent badges */}
+                      {(() => {
+                        const allItems = [
+                          ...Object.entries(filterOptions.tools_data).map(([name, id]) => ({ type: "tool", name, id })),
+                          ...Object.entries(filterOptions.knowledgebase_data).map(([name, id]) => ({
+                            type: "kb",
+                            name: knowledgeBaseNameMap[id] || name,
+                            id,
+                          })),
+                          ...Object.entries(filterOptions.agent_data).map(([name, id]) => ({
+                            type: "agent",
+                            name,
+                            id,
+                          })),
+                        ];
+                        const isSelected = (item) => {
+                          if (item.type === "tool") return filterTool.includes(item.id);
+                          if (item.type === "kb") return filterKnowledgeBase.includes(item.id);
+                          return filterAgent.includes(item.id);
+                        };
+                        const toggle = (item) => {
+                          if (item.type === "tool") {
+                            const next = filterTool.includes(item.id)
+                              ? filterTool.filter((t) => t !== item.id)
+                              : [...filterTool, item.id];
+                            setFilterTool(next);
+                            applyFilters({ tool_id: next });
+                          } else if (item.type === "kb") {
+                            const next = filterKnowledgeBase.includes(item.id)
+                              ? filterKnowledgeBase.filter((k) => k !== item.id)
+                              : [...filterKnowledgeBase, item.id];
+                            setFilterKnowledgeBase(next);
+                            applyFilters({ knowledgebase_id: next });
+                          } else {
+                            const next = filterAgent.includes(item.id)
+                              ? filterAgent.filter((a) => a !== item.id)
+                              : [...filterAgent, item.id];
+                            setFilterAgent(next);
+                            applyFilters({ agent_id: next });
+                          }
+                        };
+                        const visibleItems = showAllToolGroup ? allItems : allItems.slice(0, 8);
+                        return (
+                          <>
+                            {visibleItems.map((item) => {
+                              const selected = isSelected(item);
+                              const iconColor = selected
+                                ? "text-white"
+                                : item.type === "tool"
+                                  ? "text-amber-500"
+                                  : item.type === "kb"
+                                    ? "text-emerald-500"
+                                    : "text-violet-500";
+                              return (
+                                <button
+                                  key={`${item.type}-${item.id}`}
+                                  onClick={() => toggle(item)}
+                                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                                    selected
+                                      ? "bg-blue-500 text-white"
+                                      : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                                  }`}
+                                  title={item.name}
+                                >
+                                  {item.type === "tool" && <Wrench className={`w-3 h-3 ${iconColor}`} />}
+                                  {item.type === "kb" && <BookOpen className={`w-3 h-3 ${iconColor}`} />}
+                                  {item.type === "agent" && <Bot className={`w-3 h-3 ${iconColor}`} />}
+                                  {item.name.length > 18 ? item.name.slice(0, 18) + "..." : item.name}
+                                </button>
+                              );
+                            })}
+                            {allItems.length > 8 && (
+                              <button
+                                onClick={() => setShowAllToolGroup(!showAllToolGroup)}
+                                className="px-3 py-1 rounded-full text-xs font-medium transition-colors bg-base-200 text-base-content/70 hover:bg-base-300"
+                              >
+                                {showAllToolGroup ? "Less" : `+${allItems.length - 8} More`}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Col 2: Model */}
+                  <div>
+                    <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase block mb-1.5">
+                      Model
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setFilterModel([]);
+                          applyFilters({ model: [] });
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          !filterModel.length
+                            ? "bg-blue-500 text-white"
+                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                        }`}
+                      >
+                        All
+                      </button>
+                      {(showAllModels
+                        ? Object.entries(filterOptions.unique_model).flatMap(([service, models]) =>
+                            models.map((m) => ({ service, model: m }))
+                          )
+                        : Object.entries(filterOptions.unique_model)
+                            .flatMap(([service, models]) => models.map((m) => ({ service, model: m })))
+                            .slice(0, 4)
+                      ).map(({ service, model: m }) => (
+                        <button
+                          key={`${service}-${m}`}
+                          onClick={() => {
+                            const next = filterModel.includes(m)
+                              ? filterModel.filter((x) => x !== m)
+                              : [...filterModel, m];
+                            setFilterModel(next);
+                            applyFilters({ model: next });
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            filterModel.includes(m)
+                              ? "bg-blue-500 text-white"
+                              : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                      {Object.entries(filterOptions.unique_model).flatMap(([service, models]) => models.map((m) => m))
+                        .length > 4 && (
+                        <button
+                          onClick={() => setShowAllModels(!showAllModels)}
+                          className="px-3 py-1 rounded-full text-xs font-medium transition-colors bg-base-200 text-base-content/70 hover:bg-base-300"
+                        >
+                          {showAllModels
+                            ? "Less"
+                            : `+${Object.entries(filterOptions.unique_model).flatMap(([service, models]) => models.map((m) => m)).length - 4} More`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search by Fields */}
+                <div className="">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      { key: "thread_id", label: "Thread ID" },
+                      { key: "sub_thread_id", label: "Sub Thread ID" },
+                      { key: "message_id", label: "Message ID" },
+                      { key: "batch_id", label: "Batch ID" },
+                      { key: "user", label: "User" },
+                      { key: "llm_message", label: "LLM Message" },
+                    ].map((f) => (
+                      <div key={f.key}>
+                        <label className="block text-xs font-medium text-base-content/70 mb-0.5">{f.label}</label>
+                        <input
+                          type="text"
+                          className="input input-sm input-bordered w-full rounded-lg text-xs"
+                          placeholder={`Search ${f.label.toLowerCase()}...`}
+                          value={filterByFields[f.key] || ""}
+                          onChange={(e) => setFilterByFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                    <div className="col-span-2 md:col-span-3">
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-base-content/70 mb-0.5">Variable Key</label>
+                          <input
+                            type="text"
+                            className="input input-sm rounded-lg input-bordered w-full text-xs"
+                            placeholder="key"
+                            value={filterVariableKey}
+                            onChange={(e) => setFilterVariableKey(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-base-content/70 mb-0.5">
+                            Variable Value
+                          </label>
+                          <input
+                            type="text"
+                            className="input input-sm rounded-lg input-bordered w-full text-xs"
+                            placeholder="value"
+                            value={filterVariableValue}
+                            onChange={(e) => setFilterVariableValue(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-3">
+                    <button
+                      className="px-5 py-1 rounded-lg text-sm font-medium border border-base-200 text-base-content/70 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:hover:bg-primary/10 dark:hover:text-primary transition-colors"
+                      onClick={() => {
+                        const emptyFields = {
+                          thread_id: "",
+                          sub_thread_id: "",
+                          message_id: "",
+                          batch_id: "",
+                          user: "",
+                          llm_message: "",
+                        };
+                        setFilterByFields(emptyFields);
+                        setFilterVariableKey("");
+                        setFilterVariableValue("");
+                        dispatchAnalyticsWithAdvancedFilters({
+                          filterByFields: emptyFields,
+                          filterVariableKey: "",
+                          filterVariableValue: "",
+                        });
+                      }}
+                    >
+                      Reset Fields
+                    </button>
+                    <button
+                      className="px-5 py-1   rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-lg"
+                      onClick={() => {
+                        if (document.activeElement) document.activeElement.blur();
+                        dispatchAnalyticsWithAdvancedFilters({
+                          filterByFields,
+                          filterVariableKey,
+                          filterVariableValue,
+                        });
+                      }}
+                    >
+                      Apply Filter
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Success / Failure Chart */}
+              <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
+                    <p className="text-xs text-base-content/60">Success vs Failed runs over time</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setExecutionChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                      className="btn btn-ghost btn-xs btn-circle"
+                      title="Toggle bar / area"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={executionData}>
+                      <defs>
+                        <linearGradient id="gradSuccess" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                        </linearGradient>
+                        <linearGradient id="gradFailed" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="time"
+                        tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          fontSize: "12px",
+                          borderRadius: "4px",
+                          border: "none",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      {executionChartType === "area" ? (
+                        <>
+                          <Area
+                            type="monotone"
+                            dataKey="success"
+                            stroke="#10b981"
+                            strokeWidth={2}
+                            fill="url(#gradSuccess)"
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="failed"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            fill="url(#gradFailed)"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Bar dataKey="success" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="failed" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        </>
+                      )}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Latency Chart */}
+              <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-base font-semibold text-base-content">Average Latency</h3>
+                    <p className="text-xs text-base-content/60">Agent response time (s)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setLatencyChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                      className="btn btn-ghost btn-xs btn-circle"
+                      title="Toggle bar / area"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={latencyData}>
+                      <defs>
+                        <linearGradient id="gradWorst" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
+                        </linearGradient>
+                        <linearGradient id="gradSlow" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+                        </linearGradient>
+                        <linearGradient id="gradTypical" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="time"
+                        tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{
+                          fontSize: "12px",
+                          borderRadius: "4px",
+                          border: "none",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      {latencyChartType === "area" ? (
+                        <>
+                          <Area
+                            type="monotone"
+                            dataKey="worst"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            fill="url(#gradWorst)"
+                          />
+                          <Area type="monotone" dataKey="slow" stroke="#f59e0b" strokeWidth={2} fill="url(#gradSlow)" />
+                          <Area
+                            type="monotone"
+                            dataKey="typical"
+                            stroke="#3b82f6"
+                            strokeWidth={2}
+                            fill="url(#gradTypical)"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Bar dataKey="worst" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="slow" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="typical" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        </>
+                      )}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Backdrop overlay when slider is open */}
+        {selectedThreadId && (
+          <div
+            className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30 transition-opacity duration-300"
+            onClick={handleCloseAside}
+          />
+        )}
+
+        {/* Slide-in Thread Detail Panel - right to left */}
+        <div
+          className={`absolute top-0 right-0 h-full bg-base-100 shadow-2xl border-l border-base-300 z-40 flex flex-col transform transition-transform duration-300 ease-in-out ${
+            selectedThreadId ? "translate-x-0 w-[85%]" : "translate-x-full w-[85%]"
+          }`}
+        >
+          <div className="h-14 border-b border-base-300 flex items-center justify-between px-4 bg-base-100 shrink-0">
+            <h3 className="font-semibold text-sm truncate">Thread Details</h3>
+            <button onClick={handleCloseAside} className="btn btn-ghost btn-sm btn-circle shrink-0">
+              <X size={16} className="text-base-content/60 hover:text-base-content" />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <ThreadContainer
+              thread={
+                selectedBatchMessageId && !searchMessageId
+                  ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
+                  : thread
+              }
+              searchParamsHook={search}
+              isFetchingMore={false}
+              setIsFetchingMore={() => {}}
+              searchMessageId={searchMessageId}
+              setSearchMessageId={setSearchMessageId}
+              keepSearchMessageId={true}
+              fillParent={true}
+              pathName={pathName}
+              search={search}
+              historyData={historyData}
+              threadHandler={handleThreadItemClick}
+              setLoading={() => {}}
+              threadPage={1}
+              setThreadPage={() => {}}
+              hasMoreThreadData={false}
+              setHasMoreThreadData={() => {}}
+              selectedVersion={"all"}
+              previousPrompt={""}
+              isErrorTrue={false}
+            />
+          </div>
+        </div>
+
+        {/* Batch Subthread Panel - between main content and sidebar */}
+        {selectedThreadId && (
+          <BatchSubthreadPanel
+            thread={thread}
+            subThreadIdFromURL={selectedSubThreadId}
+            parentThreadId={selectedThreadId}
+            selectedBatchMessageId={selectedBatchMessageId}
+            onSelectBatch={handleSelectBatch}
+            onSelectSubThread={handleSelectSubThread}
+          />
+        )}
+      </div>
+
+      {/* Right Sidebar */}
+      <div className="h-full shrink-0 z-50 flex relative">
         <Sidebar
           historyData={historyData}
           threadHandler={threadHandler}
           fetchMoreData={fetchMoreData}
           hasMore={hasMore}
-          loading={loading}
+          loading={analyticsLoading}
           params={resolvedParams}
-          searchParams={Object.fromEntries(search.entries())}
-          setSearchMessageId={setSelectedBatchMessageId}
+          searchParams={(() => {
+            const p = Object.fromEntries(search.entries());
+            delete p.thread_id;
+            delete p.subThread_id;
+            delete p.message_id;
+            delete p.batch_id;
+            return p;
+          })()}
+          setSearchMessageId={setSearchMessageId}
+          searchMessageId={searchMessageId}
+          onAnalyticsMessageNavigate={handleAnalyticsMessageNavigate}
           setPage={setPage}
-          setHasMore={setHasMore}
+          setHasMore={() => {}}
           filterOption={filterFeedback}
           setFilterOption={setFilterFeedback}
           searchRef={searchRef}
@@ -438,408 +1436,18 @@ function Page({ params, searchParams }) {
           activeFilterByRef={undefined}
           isAnalytics={true}
           handleSearch={handleSearch}
+          selectedThreadId={selectedThreadId}
+          sidebarExpandedThreadId={sidebarExpandedThreadId}
+          sidebarExpandedSubThreadId={sidebarExpandedSubThreadId}
+          onAnalyticsSidebarSelect={handleAnalyticsSidebarSelect}
+          onAnalyticsSelectSubThread={handleSelectSubThread}
         />
       </div>
 
-      {/* Main Dashboard Area */}
-      <div className="flex-1 relative flex flex-row max-w-full overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Dashboard Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-base-content">Agent Analytics</h1>
-              <p className="text-sm text-base-content/60 mt-1">Overview of agent performance and execution history.</p>
-            </div>
-          </div>
-
-          {/* Horizontal Filter Bar */}
-          <div className="flex items-center justify-between w-full bg-base-100 border border-base-300 rounded-lg px-4 py-2.5 mb-8 shadow-sm">
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Time Range */}
-              <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                Time Range
-              </span>
-              <div className="flex gap-1.5 shrink-0">
-                {[
-                  { label: "24h", value: "24h" },
-                  { label: "7d", value: "7d" },
-                  { label: "30d", value: "30d" },
-                ].map((item) => {
-                  const isActive = filterRange === item.value && !filterStart && !filterEnd;
-
-                  return (
-                    <button
-                      key={item.value}
-                      onClick={() => {
-                        setFilterRange(item.value);
-                        setFilterStart("");
-                        setFilterEnd("");
-                        applyFilters({ range: item.value, start: "", end: "" });
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        isActive ? "bg-blue-500 text-white" : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-
-                {/* Custom Date Dropdown replacing the pill */}
-                <div ref={customDropdownRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomOpen(!isCustomOpen)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border-none outline-none focus:outline-none focus:ring-0 ${
-                      filterStart || filterEnd
-                        ? "bg-blue-500 text-white"
-                        : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                    }`}
-                  >
-                    Custom
-                  </button>
-                  {isCustomOpen && (
-                    <div className="absolute left-0 z-50 menu p-4 shadow-xl border border-base-300 bg-base-100 rounded-box w-80 mt-2">
-                      <h3 className="font-semibold text-sm mb-4 text-base-content">Custom Date Range</h3>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
-                          <input
-                            type="datetime-local"
-                            className="input input-sm input-bordered w-full text-xs"
-                            value={filterStart}
-                            max={filterEnd}
-                            onChange={(e) => {
-                              setFilterStart(e.target.value);
-                              setFilterRange("");
-                            }}
-                            onClick={(e) => e.target.showPicker()}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
-                          <input
-                            type="datetime-local"
-                            className="input input-sm input-bordered w-full text-xs"
-                            value={filterEnd}
-                            min={filterStart}
-                            onChange={(e) => {
-                              setFilterEnd(e.target.value);
-                              setFilterRange("");
-                            }}
-                            onClick={(e) => e.target.showPicker()}
-                          />
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                          <button
-                            className="btn btn-sm btn-primary flex-1"
-                            onClick={() => {
-                              applyFilters();
-                              setIsCustomOpen(false);
-                              if (document.activeElement) document.activeElement.blur();
-                            }}
-                          >
-                            Apply
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline flex-1"
-                            onClick={() => {
-                              clearFilters();
-                              setIsCustomOpen(false);
-                            }}
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="w-px h-4 bg-base-300 shrink-0" />
-
-              {/* Interval */}
-              <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                Interval
-              </span>
-              <div className="flex gap-1.5 shrink-0">
-                {[
-                  { label: "1h", value: "1h" },
-                  { label: "3h", value: "3h" },
-                  { label: "6h", value: "6h" },
-                  { label: "12h", value: "12h" },
-                  { label: "24h", value: "24h" },
-                ].map((item) => (
-                  <button
-                    key={item.value}
-                    onClick={() => {
-                      const newInterval = filterInterval === item.value ? "" : item.value;
-                      setFilterInterval(newInterval);
-                      applyFilters({ interval: newInterval });
-                    }}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      filterInterval === item.value
-                        ? "bg-blue-500 text-white"
-                        : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="w-px h-4 bg-base-300 shrink-0" />
-
-              {/* Feedback */}
-              <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                Feedback
-              </span>
-              <div className="flex gap-1.5 shrink-0">
-                {[
-                  { label: "Any", value: "all" },
-                  { label: "Good", value: "1" },
-                  { label: "Bad", value: "2" },
-                ].map((item) => (
-                  <button
-                    key={item.value}
-                    onClick={() => {
-                      setFilterFeedback(item.value);
-                      applyFilters({ feedback: item.value });
-                    }}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      filterFeedback === item.value
-                        ? "bg-blue-500 text-white"
-                        : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="w-px h-4 bg-base-300 shrink-0" />
-
-              {/* Error Toggle */}
-              <label className="flex items-center gap-2 cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-sm"
-                  checked={filterError}
-                  onChange={(e) => {
-                    setFilterError(e.target.checked);
-                    applyFilters({ error: e.target.checked });
-                  }}
-                />
-                <span className="text-xs font-medium text-base-content/70">Error History</span>
-              </label>
-            </div>
-          </div>
-
-          {/* KPI Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
-            {getStatsConfig(summary).map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <div
-                  key={idx}
-                  className="bg-base-100 p-5 rounded-2xl border border-base-300 shadow-sm flex flex-col gap-1"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color}`}>
-                      <Icon size={16} />
-                    </div>
-                    <div
-                      className={`flex items-center gap-1 text-xs font-semibold ${stat.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
-                    >
-                      {stat.trend === "up" ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                      {stat.change}
-                    </div>
-                  </div>
-                  <div className="flex flex-col mt-2">
-                    <p className="text-xl font-bold text-base-content">{stat.value}</p>
-                    <h3 className="text-[11px] font-medium text-base-content/60 mt-0.5">{stat.title}</h3>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Success / Failure Chart */}
-            <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
-                  <p className="text-xs text-base-content/60">Success vs Failed runs over time</p>
-                </div>
-                <span className="span">
-                  <Bot size={16} />
-                </span>
-              </div>
-              <div className="flex-1 min-h-[240px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={executionData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="gSuccess" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="gFailed" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.15} />
-                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} vertical={false} />
-                    <XAxis dataKey="time" stroke={CHART_STYLE.axis} fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke={CHART_STYLE.axis} fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={CHART_STYLE.tooltip} cursor={{ stroke: "#d4d4d4", strokeWidth: 1 }} />
-                    <Area
-                      type="monotone"
-                      dataKey="success"
-                      stroke="#10b981"
-                      fill="url(#gSuccess)"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Success"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="failed"
-                      stroke="#ef4444"
-                      fill="url(#gFailed)"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Failed"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Latency Chart */}
-            <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-base font-semibold text-base-content">Average Latency</h3>
-                  <p className="text-xs text-base-content/60">Agent response time (s)</p>
-                </div>
-                <span className="span">
-                  <Activity size={16} />
-                </span>
-              </div>
-              <div className="flex-1 min-h-[240px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={latencyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="gTypical" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="gSlow" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.02} />
-                      </linearGradient>
-                      <linearGradient id="gWorst" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.15} />
-                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_STYLE.grid} vertical={false} />
-                    <XAxis dataKey="time" stroke={CHART_STYLE.axis} fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke={CHART_STYLE.axis} fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={CHART_STYLE.tooltip} cursor={{ stroke: "#d4d4d4", strokeWidth: 1 }} />
-                    <Area
-                      type="monotone"
-                      dataKey="worst"
-                      stroke="#ef4444"
-                      fill="url(#gWorst)"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Worst (s)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="slow"
-                      stroke="#f59e0b"
-                      fill="url(#gSlow)"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Slow (s)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="typical"
-                      stroke="#3b82f6"
-                      fill="url(#gTypical)"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Typical (s)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Thread Details aside panel */}
-        {isSliderOpen && selectedThreadId && (
-          <aside className="absolute left-0 top-0 bottom-0 w-full border-l border-base-300 shadow-2xl bg-base-100 flex h-full shrink-0 z-40 animate-in slide-in-from-left duration-300 ease-out">
-            <div className="flex h-full w-full">
-              {/* Optional Batch/Subthread Panel (appears on left of the slider) */}
-              <BatchSubthreadPanel
-                thread={thread}
-                subThreadIdFromURL={selectedSubThreadId}
-                parentThreadId={selectedThreadId}
-                selectedBatchMessageId={selectedBatchMessageId}
-                onSelectBatch={handleSelectBatch}
-                onSelectSubThread={handleSelectSubThread}
-              />
-
-              {/* Thread Messages */}
-              <div className="flex-1 flex flex-col relative min-w-0 h-full">
-                <div className="h-14 border-b border-base-300 flex items-center justify-between px-4 bg-base-100 shrink-0">
-                  <h3 className="font-semibold text-sm truncate">Thread Details</h3>
-                  <button onClick={handleCloseAside} className="btn btn-ghost btn-sm btn-circle shrink-0">
-                    <X size={16} className="text-base-content/60 hover:text-base-content" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <ThreadContainer
-                    thread={
-                      selectedBatchMessageId
-                        ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
-                        : thread
-                    }
-                    searchParamsHook={search}
-                    isSingleQuery={false}
-                    isFetchingMore={false}
-                    setIsFetchingMore={() => {}}
-                    searchMessageId={null}
-                    setSearchMessageId={() => {}}
-                    pathName={pathName}
-                    search={search}
-                    historyData={historyData}
-                    threadHandler={() => {}}
-                    setLoading={() => {}}
-                    threadPage={1}
-                    setThreadPage={() => {}}
-                    hasMoreThreadData={false}
-                    setHasMoreThreadData={() => {}}
-                    selectedVersion={"all"}
-                    previousPrompt={""}
-                    isErrorTrue={false}
-                  />
-                </div>
-              </div>
-            </div>
-          </aside>
-        )}
-      </div>
+      <ChatAiConfigDeatilViewModal
+        modalContent={selectedItem?.value === "Latency" ? selectedItem?.latency : selectedItem?.AiConfig}
+        modalTitle={selectedItem?.value === "Latency" ? "Latency Details" : "AI Configuration"}
+      />
     </div>
   );
 }

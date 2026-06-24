@@ -16,7 +16,7 @@ import {
   testRunFailedReducer,
   directTestResultReducer,
 } from "@/store/reducer/testCasesReducer";
-import { updateAnalyticsFromRtLayer } from "@/store/reducer/analyticsReducer";
+import { updateAnalyticsFromRtLayer, addAnalyticsThread } from "@/store/reducer/analyticsReducer";
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
@@ -159,7 +159,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
                 versionId: parsedData.version_id,
                 result: parsedData.result,
                 model: parsedData.model,
-                service: parsedData.service_name,
+                service: parsedData.service || parsedData.service_name,
+                isOverridden: parsedData.is_overridden,
               })
             );
             // Also store in direct test results for testcases that don't exist in database
@@ -286,6 +287,15 @@ function useRtLayerEventHandler(channelIdentifier = "") {
           // Dispatch to history reducer
           if (threadData.thread_id) {
             dispatch(addThreadUsingRtLayer({ Thread: threadData }));
+
+            // Also push to analytics sidebar so rerun threads appear there too
+            const analyticsThread = {
+              thread_id: threadData.thread_id,
+              sub_thread_id: threadData.sub_thread_id,
+              updated_at: threadData.updated_at,
+              created_at: threadData.created_at,
+            };
+            dispatch(addAnalyticsThread({ bridge_id: bridgeId, thread: analyticsThread }));
 
             // Create Messages object in the format expected by the reducer
             const Messages = {

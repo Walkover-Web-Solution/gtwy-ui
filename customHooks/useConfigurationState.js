@@ -40,7 +40,6 @@ export const useConfigurationState = (params, searchParams) => {
       showPreTool: state.appInfoReducer.embedUserDetails.showPreTool,
       validationConfig: validationConfig, // Expose full validationConfig
       cacheOn: activeData?.cache_on ?? false,
-      statelessConversation: bridgeDataFromState?.settings?.stateless_conversation ?? false,
     };
   });
 };

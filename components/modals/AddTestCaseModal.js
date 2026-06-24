@@ -11,6 +11,7 @@ import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
 import { clearChatTestCaseIdAction } from "@/store/action/chatAction";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
+import ExpandCollapse from "@/components/UI/ExpandCollapse";
 
 function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, channelIdentifier }) {
   const params = useParams();
@@ -128,10 +129,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
   const initialTestCases = processTestCaseData();
 
   const [finalTestCases, setFinalTestCases] = useState(initialTestCases);
-  const [responseType, setResponseType] = useState("cosine");
   const [showFullConversation, setShowFullConversation] = useState(false);
-  const [isExpectedExpanded, setIsExpectedExpanded] = useState(false);
-  const [expandedMessages, setExpandedMessages] = useState({}); // Track expanded state for each message
   const [testCaseName, setTestCaseName] = useState("");
   // Filter out unwanted variables
   const filterVariables = (vars) => {
@@ -154,9 +152,6 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     if (testCaseConversation?.[0]?.threadVariables) {
       setEditableVariables(filterVariables(testCaseConversation[0].threadVariables));
     }
-    // Reset expanded states when conversation changes
-    setExpandedMessages({});
-    setIsExpectedExpanded(false);
     setTestCaseName("");
   }, [testCaseConversation]);
 
@@ -193,7 +188,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
       },
       bridge_id: params?.id,
-      matching_type: responseType,
+      matching_type: "ai",
       variables: editableVariables,
     };
     dispatch(createTestCaseAction({ bridgeId: params?.id, data: payload })).then(() => {
@@ -247,31 +242,6 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       updated.splice(startIndex, 2);
       return updated;
     });
-    // Clear expanded state for removed messages
-    setExpandedMessages((prev) => {
-      const newExpanded = { ...prev };
-      delete newExpanded[`${startIndex}-user`];
-      delete newExpanded[`${startIndex}-assistant`];
-      return newExpanded;
-    });
-  };
-
-  const toggleMessageExpansion = (messageId) => {
-    setExpandedMessages((prev) => ({
-      ...prev,
-      [messageId]: !prev[messageId],
-    }));
-  };
-
-  const isMessageExpanded = (messageId) => {
-    return expandedMessages[messageId] || false;
-  };
-
-  // Check if content needs "show more" button (more than 6 lines)
-  const needsExpansion = (content) => {
-    if (!content) return false;
-    const lines = content.split("\n").length;
-    return lines > 6;
   };
 
   // Group messages into user+assistant pairs
@@ -395,12 +365,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                             </button>
                           </div>
                           <div className="w-[90%] bg-primary text-primary-content rounded-lg rounded-br-none px-4 py-3">
-                            <div
-                              style={{
-                                maxHeight: isMessageExpanded(`${pair.startIndex}-user`) ? "none" : "calc(6 * 1.625rem)",
-                                overflow: "hidden",
-                              }}
-                            >
+                            <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                               <div
                                 contentEditable
                                 suppressContentEditableWarning
@@ -410,36 +375,14 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                               >
                                 {pair.user?.content || ""}
                               </div>
-                            </div>
-                            {needsExpansion(pair.user?.content) && (
-                              <div className="mt-2 pt-2 border-t border-primary-content/20">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    toggleMessageExpansion(`${pair.startIndex}-user`);
-                                  }}
-                                  className="text-xs text-primary-content/70 hover:text-primary-content transition-colors cursor-pointer"
-                                >
-                                  {!isMessageExpanded(`${pair.startIndex}-user`) ? "... show more" : "show less"}
-                                </button>
-                              </div>
-                            )}
+                            </ExpandCollapse>
                           </div>
                         </div>
                         {/* Assistant Message */}
                         <div className="flex flex-col items-start gap-1">
                           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
                           <div className="w-[90%] bg-base-300 text-base-content rounded-lg rounded-bl-none px-4 py-3">
-                            <div
-                              style={{
-                                maxHeight: isMessageExpanded(`${pair.startIndex}-assistant`)
-                                  ? "none"
-                                  : "calc(6 * 1.625rem)",
-                                overflow: "hidden",
-                              }}
-                            >
+                            <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                               <div
                                 contentEditable
                                 suppressContentEditableWarning
@@ -449,22 +392,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                               >
                                 {pair.assistant?.content || ""}
                               </div>
-                            </div>
-                            {needsExpansion(pair.assistant?.content) && (
-                              <div className="mt-2 pt-2 border-t border-base-content/10">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    toggleMessageExpansion(`${pair.startIndex}-assistant`);
-                                  }}
-                                  className="text-xs text-base-content/50 hover:text-primary transition-colors cursor-pointer"
-                                >
-                                  {!isMessageExpanded(`${pair.startIndex}-assistant`) ? "... show more" : "show less"}
-                                </button>
-                              </div>
-                            )}
+                            </ExpandCollapse>
                           </div>
                         </div>
                       </div>
@@ -481,7 +409,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                   const secondLastMessage = finalTestCases[finalTestCases.length - 2];
                   const secondLastIndex = finalTestCases.length - 2;
                   return (
-                    <div className="space-y-2">
+                    <div className="space-y-2" data-testid="add-testcase-user-query-wrapper">
                       <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
                       {secondLastMessage.role === "tools_call" || secondLastMessage.sender === "tools_call" ? (
                         <div className="space-y-3">
@@ -508,7 +436,9 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                         </div>
                       ) : (
                         <div className="bg-base-100 rounded-lg shadow-sm rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
-                          {secondLastMessage.content}
+                          <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                            <div className="whitespace-pre-wrap break-words">{secondLastMessage.content}</div>
+                          </ExpandCollapse>
                         </div>
                       )}
                     </div>
@@ -518,104 +448,57 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             )}
           </div>
 
-          <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0">
+          <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0" data-testid="add-testcase-bottom-panel">
             {/* User Expected Output Section */}
             {finalTestCases && finalTestCases.length > 0 && (
               <div className="space-y-2">
                 <div className="text-xs font-semibold uppercase text-base-content tracking-wide">
                   User Expected Output
                 </div>
-                <div className="bg-base-50 rounded-lg border border-base-200">
-                  <div className="px-4 pt-3 pb-2">
-                    <div
-                      style={{
-                        maxHeight: isExpectedExpanded ? "none" : "calc(6 * 1.625rem)",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {(() => {
-                        const lastMessage = finalTestCases[finalTestCases.length - 1];
-                        const lastIndex = finalTestCases.length - 1;
-                        if (lastMessage.role === "tools_call" || lastMessage.sender === "tools_call") {
-                          return (
-                            <div className="space-y-3">
-                              {lastMessage.tools?.map((item, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
-                                >
-                                  <div className="flex-1 overflow-hidden bg-base-100 rounded p-2 font-mono text-sm text-base-content whitespace-pre-wrap break-words">
-                                    {JSON.stringify(item, null, 2)}
-                                  </div>
-                                  {lastMessage.tools.length > 1 && (
-                                    <button
-                                      id={`add-testcase-expected-remove-tool-${idx}`}
-                                      type="button"
-                                      className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => removeTool(lastIndex, idx)}
-                                    >
-                                      <CloseIcon size={16} />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        }
+                <div className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2">
+                  <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                    {(() => {
+                      const lastMessage = finalTestCases[finalTestCases.length - 1];
+                      const lastIndex = finalTestCases.length - 1;
+                      if (lastMessage.role === "tools_call" || lastMessage.sender === "tools_call") {
                         return (
-                          <div className="bg-base-100 rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
-                            {lastMessage.content}
+                          <div className="space-y-3">
+                            {lastMessage.tools?.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
+                              >
+                                <div className="flex-1 overflow-hidden bg-base-100 rounded p-2 font-mono text-sm text-base-content whitespace-pre-wrap break-words">
+                                  {JSON.stringify(item, null, 2)}
+                                </div>
+                                {lastMessage.tools.length > 1 && (
+                                  <button
+                                    id={`add-testcase-expected-remove-tool-${idx}`}
+                                    type="button"
+                                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => removeTool(lastIndex, idx)}
+                                  >
+                                    <CloseIcon size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         );
-                      })()}
-                    </div>
-                  </div>
-                  {/* Show more / Show less button */}
-                  {(() => {
-                    const lastMessage = finalTestCases[finalTestCases.length - 1];
-                    const isToolsCall = lastMessage.role === "tools_call" || lastMessage.sender === "tools_call";
-                    const shouldShow = isToolsCall
-                      ? lastMessage.tools?.some((item) => JSON.stringify(item, null, 2).split("\n").length > 6)
-                      : needsExpansion(lastMessage?.content);
-
-                    return (
-                      shouldShow && (
-                        <div className="px-4 pb-2 pt-2 border-t border-base-content/10">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setIsExpectedExpanded(!isExpectedExpanded);
-                            }}
-                            className="text-xs text-primary hover:text-primary-focus transition-colors cursor-pointer"
-                          >
-                            {!isExpectedExpanded ? "... show more" : "show less"}
-                          </button>
+                      }
+                      return (
+                        <div className="bg-base-100 rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                          {lastMessage.content}
                         </div>
-                      )
-                    );
-                  })()}
+                      );
+                    })()}
+                  </ExpandCollapse>
                 </div>
               </div>
             )}
 
-            {/* Footer with matching strategy and buttons */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-base-content">Matching strategy:</label>
-                <select
-                  data-testid="add-testcase-matching-strategy-select"
-                  id="add-testcase-matching-strategy-select"
-                  className="select select-sm bg-base-100 focus:outline-none border-none"
-                  value={responseType}
-                  onChange={(e) => setResponseType(e.target.value)}
-                >
-                  <option value="exact">Exact</option>
-                  <option value="ai">AI</option>
-                  <option value="cosine">Cosine</option>
-                </select>
-              </div>
+            {/* Footer buttons */}
+            <div className="flex justify-end items-center">
               <div className="flex gap-2">
                 <button
                   data-testid="add-testcase-cancel-button"

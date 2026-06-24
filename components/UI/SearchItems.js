@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useQueryParams } from "@/customHooks/useQueryParams";
 import { X } from "lucide-react";
 import Protected from "../Protected";
 const SearchItems = ({
@@ -13,7 +14,7 @@ const SearchItems = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const { setParam } = useQueryParams();
   const filterParam = searchParams.get("filter");
   const isWorkspaceItem =
     item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser) || item === "metrics";
@@ -47,10 +48,7 @@ const SearchItems = ({
   };
 
   const clearFilter = () => {
-    // Remove filter parameter from URL
-    const url = new URL(window.location);
-    url.searchParams.delete("filter");
-    router.push(url.pathname + url.search);
+    setParam("filter", null);
     setSearchTerm("");
   };
 
@@ -87,13 +85,10 @@ const SearchItems = ({
   // Auto-clear filter when search term is completely removed by user
   useEffect(() => {
     if (filterParam && searchTerm.trim() === "" && userClearedSearch.current) {
-      // If there's a filter active but search term is empty and user cleared it, clear the filter
-      const url = new URL(window.location);
-      url.searchParams.delete("filter");
-      router.push(url.pathname + url.search);
+      setParam("filter", null);
       userClearedSearch.current = false;
     }
-  }, [searchTerm, filterParam, router]);
+  }, [searchTerm, filterParam, setParam]);
 
   // Memoize the filtering logic to prevent infinite re-renders
   const filterData = useCallback(() => {

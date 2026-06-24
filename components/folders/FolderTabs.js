@@ -201,6 +201,7 @@ export const FolderTabs = ({
                 ? "bg-error/15 text-error border-error/30 shadow-sm"
                 : "bg-base-200 hover:bg-base-300 text-base-content/80 border-transparent"
             }`}
+            data-testid="folder-tab-trash"
           >
             <Trash2 size={15} />
             <span>Trash ({deletedCount})</span>

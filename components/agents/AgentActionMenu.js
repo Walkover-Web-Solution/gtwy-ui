@@ -1,17 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import {
-  ArchiveRestore,
-  MessageSquareOff,
-  MoreVertical,
-  Pause,
-  Play,
-  Settings2,
-  Trash2,
-  Users,
-  Globe,
-} from "lucide-react";
+import { ArchiveRestore, MoreVertical, Pause, Play, Settings2, Trash2, Users, Globe } from "lucide-react";
 import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
@@ -39,9 +29,6 @@ export const AgentMenuItems = ({
   handlePortalOpen,
   handlePortalCloseImmediate,
   showDeleteAgentOption,
-  statelessConversation,
-  onStatelessToggle,
-  isStatelessReadOnly,
   bridgeType,
   isTableListPage,
 }) => {
@@ -130,29 +117,6 @@ export const AgentMenuItems = ({
     }
   }, [dispatch, bridge, isArchived, onClose]);
 
-  const handleStatelessToggle = useCallback(async () => {
-    if (isStatelessReadOnly) return;
-
-    const nextValue = !statelessConversation;
-    if (onStatelessToggle) {
-      onStatelessToggle(nextValue);
-      return;
-    }
-
-    try {
-      await dispatch(
-        updateBridgeAction({
-          bridgeId: bridge._id,
-          dataToSend: { settings: { stateless_conversation: nextValue } },
-        })
-      );
-      toast.success(`Stateless conversation ${nextValue ? "enabled" : "disabled"}`);
-    } catch (error) {
-      console.error("Failed to update stateless conversation", error);
-      toast.error("Failed to update stateless conversation");
-    }
-  }, [dispatch, bridge, isStatelessReadOnly, onStatelessToggle, statelessConversation]);
-
   const handleConfigureEnvironment = useCallback(() => {
     onClose?.();
     if (onSetSelectedAgent) onSetSelectedAgent(bridge);
@@ -161,41 +125,6 @@ export const AgentMenuItems = ({
 
   return (
     <>
-      {bridgeType !== "chatbot" && !isEmbedUser && !isTableListPage && (
-        <div
-          data-testid="agent-action-stateless-conversation"
-          title="When enabled, the agent responds without carrying previous conversation context forward."
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-          className="w-full px-4 py-2 flex items-center justify-between gap-2"
-        >
-          <div className="flex items-center gap-2">
-            <MessageSquareOff size={14} className="flex-shrink-0" />
-            <span className="text-sm">Stateless</span>
-          </div>
-          <label
-            className="label cursor-pointer gap-1 p-0"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <span className="text-xs font-semibold">{statelessConversation ? "On" : "Off"}</span>
-            <input
-              data-testid="stateless-conversation-toggle"
-              type="checkbox"
-              disabled={isStatelessReadOnly}
-              className="toggle toggle-xs"
-              checked={!!statelessConversation}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                // Use mouse down to trigger toggle because click/change may be swallowed by parent handlers
-                handleStatelessToggle();
-              }}
-            />
-          </label>
-        </div>
-      )}
       {!isEmbedUser && !isTableListPage && (
         <button
           data-testid="agent-action-configure-environment"

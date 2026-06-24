@@ -409,6 +409,7 @@ const InputConfigComponent = memo(
                 fullscreenButton={
                   !uiState.isPromptHelperOpen ? (
                     <FullscreenEditorButton
+                      data-testid="prompt-fullscreen-button-embed-string"
                       tooltip="Open prompt in fullscreen"
                       className="opacity-50 hover:opacity-100"
                       onClick={() => {
@@ -564,6 +565,7 @@ const InputConfigComponent = memo(
                     )}
                     {!field.deprecated && !uiState.isPromptHelperOpen && (
                       <FullscreenEditorButton
+                        data-testid={`prompt-fullscreen-button-embed-${field.name}`}
                         tooltip={`Open ${field.name} in fullscreen`}
                         className="absolute top-1 right-1 opacity-50 hover:opacity-100 z-10"
                         onClick={() => {
@@ -634,6 +636,7 @@ const InputConfigComponent = memo(
                     )}
                     {!uiState.isPromptHelperOpen && (
                       <FullscreenEditorButton
+                        data-testid={`prompt-fullscreen-button-structured-${key}`}
                         tooltip={`Open ${fieldConfig.label || key} in fullscreen`}
                         className="absolute top-1 right-1 opacity-50 hover:opacity-100"
                         onClick={() => {
@@ -668,6 +671,7 @@ const InputConfigComponent = memo(
                 fullscreenButton={
                   !uiState.isPromptHelperOpen ? (
                     <FullscreenEditorButton
+                      data-testid="prompt-fullscreen-button-plain"
                       tooltip="Open prompt in fullscreen"
                       className="opacity-50 hover:opacity-100"
                       onClick={() => {

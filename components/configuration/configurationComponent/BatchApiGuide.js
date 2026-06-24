@@ -11,7 +11,7 @@ const BatchApi = (bridgeId, versionId) => {
     `--data '{\n` +
     `    "webhook": {\n` +
     `        "url": "YOUR WEBHOOK URL",\n` +
-    `        "header": {}\n` +
+    `        "headers": {}\n` +
     `    },\n` +
     `    "batch": [\n` +
     `        "YOUR QUESTION 1",\n` +

@@ -9,7 +9,7 @@
 - **State Management**: Redux Toolkit + Redux Persist
 - **Styling**: Tailwind CSS + DaisyUI
 - **HTTP Client**: Axios with custom interceptors
-- **Charts**: ApexCharts (react-apexcharts)
+- **Charts**: Recharts
 - **Icons**: Lucide React
 - **Real-time**: RTLayer Client
 - **Analytics**: PostHog

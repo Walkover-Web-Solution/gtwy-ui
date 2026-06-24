@@ -149,6 +149,13 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const [showTestCases, setShowTestCases] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState("exact");
   const [testCaseId, setTestCaseId] = useState(null);
+  // Number of messages loaded from a freshly-clicked testcase. While the chat
+  // length stays equal to this, the conversation hasn't changed yet so we hide
+  // the "Add To Testcase" CTA (the testcase already exists).
+  const [loadedTestcaseMsgCount, setLoadedTestcaseMsgCount] = useState(0);
+  // When set, the next render with non-empty messages captures the baseline
+  // length (because loadTestCaseIntoChat may filter/append messages).
+  const pendingTestcaseLoadRef = useRef(false);
   const [currentRunIndex, setCurrentRunIndex] = useState(null);
   const [isRunningTestCase, setIsRunningTestCase] = useState(false);
   const [showTestCaseResults, setShowTestCaseResults] = useState({});
@@ -192,9 +199,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     directTestResults,
     starterQuestions,
     bridgeType,
+    modelType,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeData = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    const isPublished = searchParams?.isPublished === "true";
     return {
       messages: state?.chatReducer?.messagesByChannel?.[channelIdentifier] || [],
       finishReasonDescription: state?.flowDataReducer?.flowData?.finishReasonsData || [],
@@ -207,6 +216,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       directTestResults: state?.testCasesReducer?.directTestResults?.[params?.id] || {},
       starterQuestions: bridgeData?.starterQuestion || [],
       bridgeType: bridgeData?.bridgeType || "",
+      modelType: isPublished ? bridgeData?.configuration?.type : versionData?.configuration?.type,
     };
   });
 
@@ -367,8 +377,18 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     };
   }, []);
 
+  // Capture loaded testcase baseline once messages reflect in redux.
+  useEffect(() => {
+    if (pendingTestcaseLoadRef.current && Array.isArray(messages) && messages.length > 0) {
+      setLoadedTestcaseMsgCount(messages.length);
+      pendingTestcaseLoadRef.current = false;
+    }
+  }, [messages]);
+
   const handleResetChat = () => {
     setTestCaseId(null);
+    setLoadedTestcaseMsgCount(0);
+    pendingTestcaseLoadRef.current = false;
     if (channelIdentifier) {
       dispatch(clearChatMessages(channelIdentifier));
       // Clear loading state from send button
@@ -402,6 +422,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       }));
 
     if (conversation.length === 0) return;
+    if (variables && Object.keys(variables).length > 0) {
+      conversation[0] = { ...conversation[0], threadVariables: { ...variables } };
+    }
 
     setTestCaseConversation(conversation);
     openModal(MODAL_TYPE.ADD_TEST_CASE_MODAL);
@@ -461,6 +484,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
         if (testcase_id) {
           dispatch(setChatTestCaseIdAction(channelIdentifier, testcase_id));
         }
+        // Defer baseline capture until messages reflect in redux (the loader
+        // filters empty-content turns and may append the expected response).
+        pendingTestcaseLoadRef.current = true;
       }
 
       // Close testcase sidebar
@@ -839,8 +865,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
             </div>
           )}
 
-          {/* Add to Test Case button — only when there are messages */}
-          {messages?.length > 0 && (
+          {/* Add to Test Case button — only when there are messages and the
+              conversation has been extended beyond the loaded testcase. */}
+          {messages?.length > 0 && messages.length > loadedTestcaseMsgCount && (
             <div className="tooltip tooltip-bottom" data-tip="Add to Test Case">
               <button
                 data-testid="chat-add-conversation-to-testcase-button"
@@ -1066,9 +1093,9 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                         message?.llm_urls?.length > 0 ||
                         message?.image_urls?.length > 0) && (
                         <div
-                          className={`flex gap-2 show-on-hover ${message.sender === "user" ? "justify-end" : "justify-start"} w-full max-w-[720px] min-w-0 items-center relative ${editingMessage === message.id && message.sender === "assistant" ? "w-[500px]" : ""}`}
+                          className={`flex gap-2 show-on-hover ${message.sender === "user" ? "justify-end" : "justify-start"} w-full max-w-[720px] min-w-0 ${message?.content?.length > 100 ? "items-end" : "items-center"} relative ${editingMessage === message.id && message.sender === "assistant" ? "w-[500px]" : ""}`}
                         >
-                          {message?.sender === "user" && message?.content && (
+                          {message?.sender === "user" && message?.content && modelType !== "image" && (
                             <div className="dropdown dropdown-end see-on-hover">
                               <button
                                 tabIndex={0}
@@ -1120,10 +1147,12 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                           )}
 
                           {/* Show either assistant message or test case result */}
-                          {message?.testCaseResult && showTestCaseResults[message.id] ? (
-                            <div ref={testCaseResultRef}>
-                              {/* Test Case Result Display */}
-                              <div className="chat-bubble gap-0 relative min-w-full">
+                          <div
+                            className={`flex flex-col min-w-0 ${message.sender === "assistant" ? "w-full" : "w-fit max-w-[75%]"}`}
+                          >
+                            {message?.testCaseResult && showTestCaseResults[message.id] ? (
+                              <div ref={testCaseResultRef} className="chat-bubble gap-0 relative min-w-full">
+                                {/* Test Case Result Display */}
                                 <div className="bg-neutral/90 border border-neutral-content/20 rounded-lg p-4 text-neutral-content">
                                   {/* Header */}
                                   <div className="flex items-center gap-2 mb-4">
@@ -1187,12 +1216,8 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            /* Regular Assistant/User/Expected/Error Message - Show model answer if testcase was run */
-                            <div
-                              className={`flex flex-col min-w-0 ${message.sender === "assistant" ? "w-full" : "w-fit max-w-[75%]"}`}
-                            >
+                            ) : (
+                              /* Regular Assistant/User/Expected/Error Message - Show model answer if testcase was run */
                               <div
                                 data-testid={`playground-ai-response-message-${message.id}`}
                                 className={`gap-0 justify-start relative min-w-0 ${
@@ -1360,83 +1385,83 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   </div>
                                 )}
                               </div>
-
-                              {/* Action Buttons Toolbar for Assistant Messages */}
-                              {editingMessage !== message.id &&
-                                message.sender === "assistant" &&
-                                !message.isLoading && (
-                                  <div className="flex items-center gap-1.5 mt-2 see-on-hover transition-opacity duration-150 justify-end w-full">
-                                    {message?.type !== "richui_json" &&
-                                      message?.type !== "template" &&
-                                      !(message?.llm_urls?.length > 0) && (
-                                        <button
-                                          data-testid={`playground-ai-response-pencil-button-${message.id}`}
-                                          id={`chat-edit-message-button-${message.id}`}
-                                          onClick={() => handleEditMessage(message.id, message.content)}
-                                          className="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300/50 h-7 w-7 p-0 min-h-0 rounded-md transition-colors flex items-center justify-center"
-                                          title="Edit message"
+                            )}
+                            {/* Action Buttons Toolbar for Assistant Messages */}
+                            {editingMessage !== message.id && message.sender === "assistant" && !message.isLoading && (
+                              <div
+                                className={`flex items-center gap-1.5 mt-2 see-on-hover transition-opacity duration-150 w-full ${message?.testCaseResult ? "justify-between" : "justify-end"}`}
+                              >
+                                {/* Toggle Button for Test Case Results */}
+                                {message?.testCaseResult && (
+                                  <button
+                                    data-testid={`chat-toggle-result-button-${message.id}`}
+                                    id={`chat-toggle-result-button-${message.id}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowTestCaseResults((prev) => ({
+                                        ...prev,
+                                        [message.id]: !prev[message.id],
+                                      }));
+                                    }}
+                                    className="flex items-center gap-2 text-xs text-base-content/70 hover:text-base-content transition-colors px-2 py-1 rounded-full bg-base-100 border border-base-content/20 shadow-sm hover:bg-base-200/50"
+                                  >
+                                    {showTestCaseResults[message.id] ? (
+                                      <>
+                                        <ToggleRight className="h-3 w-3" />
+                                        <span>Model Answer</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ToggleLeft className="h-3 w-3" />
+                                        <span>Test Details</span>
+                                        <span
+                                          className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                                            message.testCaseResult.score >= 0.8
+                                              ? "bg-success/20 text-success"
+                                              : message.testCaseResult.score >= 0.6
+                                                ? "bg-warning/20 text-warning"
+                                                : "bg-error/20 text-error"
+                                          }`}
                                         >
-                                          <Edit2 className="h-3.5 w-3.5" />
-                                        </button>
-                                      )}
-                                    {!(message?.llm_urls?.length > 0) && (
+                                          {(message.testCaseResult.score * 100).toFixed(1)}%
+                                        </span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                                <div className="flex items-center gap-1.5">
+                                  {message?.type !== "richui_json" &&
+                                    message?.type !== "template" &&
+                                    !(message?.llm_urls?.length > 0) && (
                                       <button
-                                        data-testid={`playground-ai-response-copy-button-${message.id}`}
-                                        id={`chat-copy-message-button-${message.id}`}
-                                        onClick={() => handleCopyMessage(message, index)}
+                                        data-testid={`playground-ai-response-pencil-button-${message.id}`}
+                                        id={`chat-edit-message-button-${message.id}`}
+                                        onClick={() => handleEditMessage(message.id, message.content)}
                                         className="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300/50 h-7 w-7 p-0 min-h-0 rounded-md transition-colors flex items-center justify-center"
-                                        title="Copy response"
+                                        title="Edit message"
                                       >
-                                        {copiedMessageId === (message.id || index) ? (
-                                          <Check className="h-3.5 w-3.5 text-success" />
-                                        ) : (
-                                          <Copy className="h-3.5 w-3.5" />
-                                        )}
+                                        <Edit2 className="h-3.5 w-3.5" />
                                       </button>
                                     )}
-                                  </div>
-                                )}
-                            </div>
-                          )}
-
-                          {/* Absolute Toggle Button for Test Case Results */}
-                          {message?.testCaseResult && (
-                            <button
-                              data-testid={`chat-toggle-result-button-${message.id}`}
-                              id={`chat-toggle-result-button-${message.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowTestCaseResults((prev) => ({
-                                  ...prev,
-                                  [message.id]: !prev[message.id],
-                                }));
-                              }}
-                              className="absolute -bottom-8 left-4 flex items-center gap-2 text-xs text-base-content/70 hover:text-base-content transition-colors px-2 py-1 rounded-full bg-base-100 border border-base-content/20 shadow-sm hover:bg-base-200/50"
-                            >
-                              {showTestCaseResults[message.id] ? (
-                                <>
-                                  <ToggleRight className="h-3 w-3" />
-                                  <span>Model Answer</span>
-                                </>
-                              ) : (
-                                <>
-                                  <ToggleLeft className="h-3 w-3" />
-                                  <span>Test Details</span>
-                                  <span
-                                    className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                                      message.testCaseResult.score >= 0.8
-                                        ? "bg-success/20 text-success"
-                                        : message.testCaseResult.score >= 0.6
-                                          ? "bg-warning/20 text-warning"
-                                          : "bg-error/20 text-error"
-                                    }`}
-                                  >
-                                    {(message.testCaseResult.score * 100).toFixed(1)}%
-                                  </span>
-                                </>
-                              )}
-                            </button>
-                          )}
+                                  {!(message?.llm_urls?.length > 0) && (
+                                    <button
+                                      data-testid={`playground-ai-response-copy-button-${message.id}`}
+                                      id={`chat-copy-message-button-${message.id}`}
+                                      onClick={() => handleCopyMessage(message, index)}
+                                      className="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content hover:bg-base-300/50 h-7 w-7 p-0 min-h-0 rounded-md transition-colors flex items-center justify-center"
+                                      title="Copy response"
+                                    >
+                                      {copiedMessageId === (message.id || index) ? (
+                                        <Check className="h-3.5 w-3.5 text-success" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                   </div>

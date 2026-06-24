@@ -5,7 +5,27 @@ const initialState = {
   testRuns: {},
 };
 
-const applyResultToTestCase = (state, bridgeId, versionId, result, payloadModel = null, payloadService = null) => {
+// Stable identifier for "which (service, model) produced this run". Empty string
+// segments are normalized so that a "default" run (no model override) collapses
+// to a single key — keeping single-model runs deduped exactly like before.
+const DEFAULT_MODEL_KEY = "__default__";
+const buildModelKey = (model, service, isOverridden) => {
+  // Non-overridden runs (i.e. the version's configured default model) always
+  // collapse into a single "Default" bucket so tabs don't split on per-version
+  // model names.
+  if (isOverridden === false) return DEFAULT_MODEL_KEY;
+  return `${service || ""}:${model || ""}`;
+};
+
+const applyResultToTestCase = (
+  state,
+  bridgeId,
+  versionId,
+  result,
+  payloadModel = null,
+  payloadService = null,
+  payloadIsOverridden = undefined
+) => {
   if (!result || !result.testcase_id) return false;
   // Skipped results (no_changes_since_last_execution) carry null score / null
   // actual_result — they are NOT a fresh evaluation and would clobber the
@@ -29,22 +49,32 @@ const applyResultToTestCase = (state, bridgeId, versionId, result, payloadModel 
   const totalTokens = result?.total_tokens || inputTokens + outputTokens;
   const cost = result?.cost || result?.tokens?.expected_cost || 0;
 
+  const finalIsOverridden =
+    typeof result?.is_overridden === "boolean"
+      ? result.is_overridden
+      : typeof payloadIsOverridden === "boolean"
+        ? payloadIsOverridden
+        : undefined;
+
   tc.version_history[versionId].unshift({
     score: result.score,
     model_output: result.actual_result,
     expected: result.expected,
     matching_type: result.matching_type,
+    reason: result.reason || null,
     success: result.success,
     error: result.error || null,
     tools_call_data: result.tools_call_data || null,
     service: finalService,
     model: finalModel,
+    is_overridden: finalIsOverridden,
     tokens: {
       input_tokens: inputTokens,
       output_tokens: outputTokens,
       total_tokens: totalTokens,
     },
     cost: cost,
+    latency: result?.latency || null,
     metadata: { bridge_id: result.bridge_id || bridgeId },
     created_at: nowIso,
   });
@@ -96,18 +126,21 @@ const testCasesReducer = createSlice({
                   model_output: historyItem?.llm_message,
                   error: historyItem?.error,
                   matching_type: historyItem?.testcase_data?.matching_type || testCase?.matching_type || "cosine",
+                  reason: historyItem?.testcase_data?.reason || historyItem?.reason || null,
                   actual: historyItem?.testcase_data?.actual,
                   expected: historyItem?.testcase_data?.expected,
                   success: historyItem?.testcase_data?.success,
                   tools_call_data: historyItem?.tools_call_data || null,
                   service: historyItem?.service,
                   model: historyItem?.model || historyItem?.testcase_data?.model,
+                  is_overridden: historyItem?.testcase_data?.is_overridden,
                   tokens: {
                     input_tokens: inputTokens,
                     output_tokens: outputTokens,
                     total_tokens: totalTokens,
                   },
                   cost: cost,
+                  latency: historyItem?.latency || null,
                   created_at: historyItem?.created_at,
                   updated_at: historyItem?.updated_at,
                   // Keep original data for reference
@@ -148,12 +181,15 @@ const testCasesReducer = createSlice({
                 model_output: historyItem?.llm_message,
                 error: historyItem?.error,
                 matching_type: historyItem?.testcase_data?.matching_type || testCase?.matching_type || "cosine",
+                reason: historyItem?.testcase_data?.reason || historyItem?.reason || null,
                 actual: historyItem?.testcase_data?.actual,
                 expected: historyItem?.testcase_data?.expected,
                 success: historyItem?.testcase_data?.success,
                 tools_call_data: historyItem?.tools_call_data || null,
                 service: historyItem?.service,
                 model: historyItem?.model || historyItem?.testcase_data?.model,
+                is_overridden: historyItem?.testcase_data?.is_overridden,
+                latency: historyItem?.latency || null,
                 created_at: historyItem?.created_at,
                 updated_at: historyItem?.updated_at,
                 // Keep original data for reference
@@ -174,6 +210,19 @@ const testCasesReducer = createSlice({
         }
       }
       return state;
+    },
+    deleteMultipleTestCasesReducer: (state, action) => {
+      const { testCaseIds, bridgeId } = action.payload || {};
+      if (!bridgeId || !Array.isArray(testCaseIds) || testCaseIds.length === 0) return;
+      if (state.testCases[bridgeId]) {
+        const idSet = new Set(testCaseIds);
+        const before = state.testCases[bridgeId].length;
+        state.testCases[bridgeId] = state.testCases[bridgeId].filter((tc) => !idSet.has(tc._id));
+        const removed = before - state.testCases[bridgeId].length;
+        if (state.testCasesTotal[bridgeId]) {
+          state.testCasesTotal[bridgeId] = Math.max(0, state.testCasesTotal[bridgeId] - removed);
+        }
+      }
     },
     updateTestCaseReducer: (state, action) => {
       const { testCaseId, dataToUpdate } = action.payload;
@@ -226,7 +275,9 @@ const testCasesReducer = createSlice({
         total = 0,
         versionIds = [],
         testcaseId = null,
+        testcaseIds = null,
         preserveTestcaseId = false,
+        expectedRunsPerVersion = null,
       } = action.payload || {};
       if (!bridgeId) return;
       const existing = state.testRuns[bridgeId];
@@ -237,23 +288,46 @@ const testCasesReducer = createSlice({
         preserveTestcaseId && existing?.testcaseId !== null && existing?.testcaseId !== undefined
           ? existing.testcaseId
           : testcaseId;
+      // Preserve existing testcaseIds when the new payload doesn't include them
+      // (e.g. RTLayer "run_started" re-dispatches without bulk scope info).
+      const finalTestcaseIds =
+        Array.isArray(testcaseIds) && testcaseIds.length > 0
+          ? testcaseIds
+          : Array.isArray(existing?.testcaseIds) && existing.testcaseIds.length > 0
+            ? existing.testcaseIds
+            : null;
       state.testRuns[bridgeId] = {
         status: "running",
         total: Number(total) || existing?.total || 0,
         completed: 0,
         versionIds: Array.isArray(versionIds) && versionIds.length > 0 ? versionIds : existing?.versionIds || [],
         testcaseId: finalTestcaseId,
+        // List of testcase IDs included in this run; null/empty means "run all"
+        testcaseIds: finalTestcaseIds,
         error: null,
+        // Number of model results to expect per version (default model + each
+        // entry in models[]). Null means "unknown" (e.g. preserved RTLayer event).
+        expectedRunsPerVersion:
+          typeof expectedRunsPerVersion === "number"
+            ? expectedRunsPerVersion
+            : (existing?.expectedRunsPerVersion ?? null),
         seen: {}, // Clear seen object on new run to allow reprocessing results
       };
     },
     testRunResultReducer: (state, action) => {
-      const { bridgeId, versionId, result, model, service } = action.payload || {};
+      const { bridgeId, versionId, result, model, service, isOverridden } = action.payload || {};
       if (!bridgeId || !versionId || !result?.testcase_id) return;
       const run = state.testRuns[bridgeId];
-      const seenKey = `${versionId}:${result.testcase_id}`;
+      const effectiveIsOverridden =
+        typeof result?.is_overridden === "boolean"
+          ? result.is_overridden
+          : typeof isOverridden === "boolean"
+            ? isOverridden
+            : undefined;
+      const modelKey = buildModelKey(result?.model || model, result?.service || service, effectiveIsOverridden);
+      const seenKey = `${versionId}:${modelKey}:${result.testcase_id}`;
       if (run?.seen?.[seenKey]) return; // dedup
-      applyResultToTestCase(state, bridgeId, versionId, result, model, service);
+      applyResultToTestCase(state, bridgeId, versionId, result, model, service, effectiveIsOverridden);
       if (!run) return;
       run.seen[seenKey] = true;
       // Track which versions have reported for each testcase. A testcase only
@@ -287,7 +361,8 @@ const testCasesReducer = createSlice({
             if (!Array.isArray(results)) return;
             results.forEach((result) => {
               if (!result?.testcase_id) return;
-              const seenKey = `${versionId}:${result.testcase_id}`;
+              const modelKey = buildModelKey(result?.model || payloadModel, result?.service || payloadService);
+              const seenKey = `${versionId}:${modelKey}:${result.testcase_id}`;
               if (run?.seen?.[seenKey]) return;
               const applied = applyResultToTestCase(state, bridgeId, versionId, result, payloadModel, payloadService);
               if (run) {
@@ -311,7 +386,8 @@ const testCasesReducer = createSlice({
             if (!versionId || !Array.isArray(results)) return;
             results.forEach((result) => {
               if (!result?.testcase_id) return;
-              const seenKey = `${versionId}:${result.testcase_id}`;
+              const modelKey = buildModelKey(result?.model || groupModel, result?.service || groupService);
+              const seenKey = `${versionId}:${modelKey}:${result.testcase_id}`;
 
               // If already seen, update with model/service/tokens/cost from versionGroup
               if (run?.seen?.[seenKey]) {
@@ -397,6 +473,7 @@ export const {
   getAllTestCasesReducer,
   appendTestCasesReducer,
   deleteTestCaseReducer,
+  deleteMultipleTestCasesReducer,
   runTestCaseReducer,
   updateTestCaseReducer,
   testRunStartedReducer,

@@ -55,6 +55,13 @@ axios.interceptors.response.use(
       }
     }
 
+    // Retry once on network errors (connection dropped after UI idle)
+    // Do NOT retry on timeout or server errors — AI calls can legitimately take 2-3 min
+    if (!error?.response && !error?.config?._retry) {
+      error.config._retry = true;
+      return axios(error.config);
+    }
+
     // Handle network errors (no response from server)
     if (!error?.response) {
       error.isNetworkError = true;
