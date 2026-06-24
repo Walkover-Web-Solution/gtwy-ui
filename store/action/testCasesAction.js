@@ -103,6 +103,7 @@ export const runTestCaseAction =
     model = null,
     service = null,
     models = null,
+    include_default = true,
   }) =>
   async (dispatch) => {
     try {
@@ -112,6 +113,10 @@ export const runTestCaseAction =
         const versionIdsArrayInit = Array.isArray(versionIds) ? versionIds : [versionIds].filter(Boolean);
         const bulkCount = Array.isArray(testcase_ids) ? testcase_ids.length : 0;
         const totalTestCases = testcase_id ? 1 : bulkCount; // Single=1, bulk=length, run all=0 (RTLayer updates)
+        // Mirror the backend cartesian-product so the UI knows how many model
+        // results to wait for per version before declaring a card "done".
+        const modelsCount = Array.isArray(models) ? models.length : 0;
+        const expectedRunsPerVersion = Math.max(1, modelsCount + (include_default ? 1 : 0));
         dispatch(
           testRunStartedReducer({
             bridgeId,
@@ -119,6 +124,7 @@ export const runTestCaseAction =
             versionIds: versionIdsArrayInit,
             testcaseId: testcase_id || null,
             testcaseIds: Array.isArray(testcase_ids) && testcase_ids.length > 0 ? testcase_ids : null,
+            expectedRunsPerVersion,
           })
         );
       }
@@ -135,6 +141,7 @@ export const runTestCaseAction =
         model,
         service,
         models,
+        include_default,
       });
 
       // New flow: backend returns immediately with rtlayer_cred and streams results via RTLayer.

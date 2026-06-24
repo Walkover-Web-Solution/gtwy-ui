@@ -79,6 +79,7 @@ export const runTestCaseApi = async ({
   model,
   service,
   models,
+  include_default,
 }) => {
   try {
     const payload = {
@@ -112,6 +113,11 @@ export const runTestCaseApi = async ({
     // every selected version across every selected model.
     if (Array.isArray(models) && models.length > 0) {
       payload.models = models;
+    }
+    // Only forward include_default when explicitly set so the backend default
+    // (true) still applies when the caller doesn't care.
+    if (typeof include_default === "boolean") {
+      payload.include_default = include_default;
     }
 
     const response = await axios.post(`${PYTHON_URL}/api/v2/model/testcases`, payload);

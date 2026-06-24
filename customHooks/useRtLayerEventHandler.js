@@ -159,7 +159,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
                 versionId: parsedData.version_id,
                 result: parsedData.result,
                 model: parsedData.model,
-                service: parsedData.service_name,
+                service: parsedData.service || parsedData.service_name,
+                isOverridden: parsedData.is_overridden,
               })
             );
             // Also store in direct test results for testcases that don't exist in database

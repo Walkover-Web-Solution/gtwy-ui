@@ -159,7 +159,14 @@ const TestCaseDetailsPanel = ({
 
   // Build the same model key the reducer uses so the panel can group runs by
   // which (service, model) produced them.
-  const buildRunModelKey = useCallback((run) => `${run?.service || ""}:${run?.model || ""}`, []);
+  // Non-overridden runs (i.e. each version's configured default model) collapse
+  // into a single "Default" tab regardless of which model the backend actually
+  // used, mirroring the reducer's keying.
+  const DEFAULT_TAB_KEY = "__default__";
+  const buildRunModelKey = useCallback(
+    (run) => (run?.is_overridden === false ? DEFAULT_TAB_KEY : `${run?.service || ""}:${run?.model || ""}`),
+    []
+  );
   const [copiedVersion, setCopiedVersion] = useState(null);
 
   const handleCopyResponse = useCallback((versionId, output) => {
@@ -690,12 +697,22 @@ const TestCaseDetailsPanel = ({
                     const seen = new Set();
                     const tabs = [];
                     allRunsForVersion.forEach((run) => {
-                      if (!run?.model) return; // skip runs with no model (dead "Default" tab)
                       const key = buildRunModelKey(run);
+                      // For overridden runs we still require a model name to
+                      // build a meaningful tab. Default-tab runs are allowed
+                      // through even if the model is missing on older entries.
+                      if (key !== DEFAULT_TAB_KEY && !run?.model) return;
                       if (seen.has(key)) return;
                       seen.add(key);
-                      tabs.push({ key, model: run.model, service: run?.service || "" });
+                      tabs.push({
+                        key,
+                        isDefault: key === DEFAULT_TAB_KEY,
+                        model: run?.model || "",
+                        service: run?.service || "",
+                      });
                     });
+                    // Always render the Default tab on the left side.
+                    tabs.sort((a, b) => (a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1));
                     return tabs;
                   })();
                   const hasMultipleModels = modelTabs.length > 1;
@@ -732,7 +749,6 @@ const TestCaseDetailsPanel = ({
                   const seenKeysForVersionTc = Object.keys(testRun?.seen || {}).filter(
                     (k) => k.startsWith(`${version}:`) && k.endsWith(`:${selectedTestCase?._id}`)
                   );
-                  const versionHasAnyResult = seenKeysForVersionTc.length > 0;
                   // Only show pending if this testcase is part of the current run scope:
                   // - single run: testcaseId matches
                   // - bulk run: testcaseIds includes this id
@@ -746,12 +762,20 @@ const TestCaseDetailsPanel = ({
                     }
                     return true; // run all
                   })();
+                  // Backend fans out one run per (version, model + optional default).
+                  // Keep the card in its loading state until every expected model result
+                  // for this version has arrived, not just the first one.
+                  const expectedRunsForVersion =
+                    typeof testRun?.expectedRunsPerVersion === "number" && testRun.expectedRunsPerVersion > 0
+                      ? testRun.expectedRunsPerVersion
+                      : 1;
+                  const versionHasAllResults = seenKeysForVersionTc.length >= expectedRunsForVersion;
                   const isVersionPending =
                     testRun?.status === "running" &&
                     Array.isArray(testRun?.versionIds) &&
                     testRun.versionIds.includes(version) &&
                     runScopedToThisTc &&
-                    !versionHasAnyResult;
+                    !versionHasAllResults;
 
                   const goPrev = () =>
                     setRunIndices((prev) => ({
@@ -792,18 +816,30 @@ const TestCaseDetailsPanel = ({
                           {modelTabs.length > 0 && (
                             <div
                               data-testid={`testcase-version-model-tabs-${versions.indexOf(version) + 1}`}
-                              className="flex items-center gap-1 mb-2 -mt-1 overflow-x-auto"
+                              className="flex flex-wrap items-center gap-1 mb-2 -mt-1"
                               role="tablist"
                             >
                               {modelTabs.map((tab) => {
                                 const isActive = tab.key === activeTab?.key;
-                                const label = tab.model;
+                                // For the Default tab, the underlying model/service can vary across
+                                // historical runs (the version's default may have been edited).
+                                // When this tab is active, mirror the currently-displayed run so the
+                                // label tracks pagination.
+                                const displayModel =
+                                  tab.isDefault && isActive ? currentRun?.model || tab.model : tab.model;
+                                const displayService =
+                                  tab.isDefault && isActive ? currentRun?.service || tab.service : tab.service;
+                                const tabTitle = tab.isDefault
+                                  ? `Default${displayModel ? ` (${displayService ? `${displayService} • ` : ""}${displayModel})` : ""}`
+                                  : displayService
+                                    ? `${displayService} • ${displayModel}`
+                                    : displayModel;
                                 return (
                                   <button
                                     key={tab.key}
                                     role="tab"
                                     aria-selected={isActive}
-                                    title={tab.service ? `${tab.service} • ${label}` : label}
+                                    title={tabTitle}
                                     onClick={() => setActiveModelByVersion((prev) => ({ ...prev, [version]: tab.key }))}
                                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-colors ${
                                       isActive
@@ -811,12 +847,21 @@ const TestCaseDetailsPanel = ({
                                         : "bg-base-200/60 text-base-content/60 border border-transparent hover:bg-base-200"
                                     }`}
                                   >
-                                    {tab.service && (
+                                    {displayService && (
                                       <span className="inline-flex items-center mt-1 flex-shrink-0">
-                                        {getIconOfService(tab.service, 12, 12)}
+                                        {getIconOfService(displayService, 12, 12)}
                                       </span>
                                     )}
-                                    <span>{label}</span>
+                                    {tab.isDefault ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        <span>Default</span>
+                                        {displayModel && (
+                                          <span className="text-base-content/50 font-normal">· {displayModel}</span>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span>{displayModel}</span>
+                                    )}
                                   </button>
                                 );
                               })}
@@ -902,7 +947,8 @@ const TestCaseDetailsPanel = ({
                                 !runErrorMessage &&
                                 (currentRun?.tokens?.total_tokens > 0 ||
                                   currentRun?.cost > 0 ||
-                                  currentRun?.latency?.over_all_time > 0))) && (
+                                  currentRun?.latency?.over_all_time > 0 ||
+                                  modelOutput))) && (
                               <div
                                 className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-base-content/60 font-medium w-full min-w-0"
                                 title={currentRun?.service || ""}
@@ -933,6 +979,20 @@ const TestCaseDetailsPanel = ({
                                     <span className="font-medium text-base-content/70">Time</span>
                                     <span className="font-mono">{currentRun.latency.over_all_time.toFixed(2)}s</span>
                                   </span>
+                                )}
+                                {hasRun && !runErrorMessage && modelOutput && (
+                                  <button
+                                    onClick={() => handleCopyResponse(version, modelOutput)}
+                                    className="ml-auto w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
+                                    title="Copy response"
+                                    data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
+                                  >
+                                    {copiedVersion === version ? (
+                                      <CheckIcon size={12} className="text-success" />
+                                    ) : (
+                                      <Copy size={12} />
+                                    )}
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -1012,21 +1072,7 @@ const TestCaseDetailsPanel = ({
                               {runErrorMessage}
                             </div>
                           ) : (
-                            <div className="relative group text-sm text-base-content leading-relaxed mb-3">
-                              {modelOutput && (
-                                <button
-                                  onClick={() => handleCopyResponse(version, modelOutput)}
-                                  className="absolute top-1 right-1 z-10 w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  title="Copy response"
-                                  data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
-                                >
-                                  {copiedVersion === version ? (
-                                    <CheckIcon size={12} className="text-success" />
-                                  ) : (
-                                    <Copy size={12} />
-                                  )}
-                                </button>
-                              )}
+                            <div className="text-sm text-base-content leading-relaxed mb-3">
                               {typeof modelOutput === "string" ? (
                                 <ReactMarkdown
                                   components={{

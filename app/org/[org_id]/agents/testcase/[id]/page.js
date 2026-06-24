@@ -21,8 +21,9 @@ import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetail
 import MatchingTypeDropdown from "@/components/testcaseComponents/MatchingTypeDropdown";
 import TestCaseModelDropdown from "@/components/testcaseComponents/ModelDropdown";
 import DeleteModal from "@/components/UI/DeleteModal";
+import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
-import { openModal, closeModal } from "@/utils/utility";
+import { openModal, closeModal, getIconOfService } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 
 const TestCaseLoadingSkeleton = () => (
@@ -77,6 +78,151 @@ const TestCaseLoadingSkeleton = () => (
 );
 
 export const runtime = "edge";
+
+/**
+ * Renders the score cell for a single (testcase, version) pair.
+ *
+ * Each version may have multiple runs (default model + each entry in the
+ * user-selected models[] list). When more than one distinct (service, model)
+ * has reported a score we show a compact button that opens a popover listing
+ * every model with its score and reason, so users can tell which model the
+ * score belongs to. Single-result cells render exactly like before.
+ */
+const MultiScoreCell = ({
+  versionArray,
+  matchingType,
+  getScoreColor,
+  getScoreMessage,
+  getScoreDisplay,
+  onOpenBreakdown,
+}) => {
+  // Group runs by `is_overridden === false ? __default__ : service:model` and
+  // keep the newest run per group (the array is already newest-first).
+  const groups = useMemo(() => {
+    const seen = new Map();
+    (versionArray || []).forEach((run) => {
+      if (!run) return;
+      const isDefault = run.is_overridden === false;
+      const key = isDefault ? "__default__" : `${run.service || ""}:${run.model || ""}`;
+      if (seen.has(key)) return;
+      seen.set(key, { key, isDefault, run });
+    });
+    // Default first.
+    return Array.from(seen.values()).sort((a, b) => (a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1));
+  }, [versionArray]);
+
+  if (!groups.length) return null;
+
+  // Single-group: keep the original inline rendering for visual parity.
+  if (groups.length === 1) {
+    const run = groups[0].run;
+    const score = run?.score || 0;
+    const runError = run?.error;
+    const runErrorMessage =
+      typeof runError === "string"
+        ? runError
+        : runError?.error || runError?.message || (runError ? "Run failed" : null);
+    return runErrorMessage ? (
+      <InfoTooltip tooltipContent={runErrorMessage}>
+        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error">Error</span>
+      </InfoTooltip>
+    ) : (
+      <InfoTooltip tooltipContent={run?.reason || getScoreMessage(score, matchingType)}>
+        <span className={`text-xs font-semibold cursor-help ${getScoreColor(score, matchingType)}`}>
+          {getScoreDisplay(score, matchingType)}
+        </span>
+      </InfoTooltip>
+    );
+  }
+
+  // Multi-group: a plain "Score" button. The per-model breakdown lives in a
+  // shared <Modal> rendered once at the parent so the list cell stays clean.
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenBreakdown?.({ groups, matchingType });
+      }}
+      title={`${groups.length} model results — click to view breakdown`}
+      className="inline-flex items-center px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors text-xs font-semibold text-primary"
+    >
+      Score
+    </button>
+  );
+};
+
+/**
+ * Body of the shared "Scores by model" modal. Rendered inside the reusable
+ * <Modal> dialog at the parent level so every list row reuses the same DOM.
+ */
+const ScoreBreakdownModalBody = ({ breakdown, getScoreColor, getScoreMessage, getScoreDisplay, onClose }) => {
+  if (!breakdown) return null;
+  const { groups, matchingType } = breakdown;
+  return (
+    <div className="modal-box max-w-md p-0 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-base-200">
+        <div>
+          <div className="text-sm font-bold text-base-content">Scores by model</div>
+          <div className="text-[11px] text-base-content/60">{groups.length} results for this version</div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-7 h-7 inline-flex items-center justify-center rounded-md hover:bg-base-200 text-base-content/60"
+          aria-label="Close"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      <div className="flex flex-col gap-1 p-2 max-h-[60vh] overflow-y-auto">
+        {groups.map(({ key, isDefault, run }) => {
+          const score = run?.score || 0;
+          const runError = run?.error;
+          const runErrorMessage =
+            typeof runError === "string"
+              ? runError
+              : runError?.error || runError?.message || (runError ? "Run failed" : null);
+          const reason = runErrorMessage || run?.reason || getScoreMessage(score, matchingType);
+          return (
+            <div key={key} className="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-base-200/60">
+              <span className="inline-flex items-center mt-0.5 flex-shrink-0">
+                {run?.service ? getIconOfService(run.service, 14, 14) : null}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-base-content truncate">
+                  {isDefault ? (
+                    <>
+                      Default
+                      {run?.model ? <span className="text-base-content/50 font-normal"> · {run.model}</span> : null}
+                    </>
+                  ) : (
+                    run?.model || "Unknown model"
+                  )}
+                </div>
+                <div className="text-[12px] text-base-content/60 leading-snug mt-0.5">{reason}</div>
+              </div>
+              <div className="flex-shrink-0 self-center">
+                {runErrorMessage ? (
+                  <span
+                    className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error"
+                    title={runErrorMessage}
+                  >
+                    Error
+                  </span>
+                ) : (
+                  <span className={`text-xs font-semibold ${getScoreColor(score, matchingType)}`}>
+                    {getScoreDisplay(score, matchingType)}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 function TestCases({ params }) {
   // Use the tutorial videos hook
@@ -308,6 +454,13 @@ function TestCases({ params }) {
     try {
       await dispatch(deleteTestCaseAction({ testCaseId, bridgeId: resolvedParams?.id }));
       setSelectedTestCaseIndex(0);
+      // Drop the deleted id from the bulk-selection so the run/delete count stays accurate.
+      setBulkSelectedIds((prev) => {
+        if (!prev.has(testCaseId)) return prev;
+        const next = new Set(prev);
+        next.delete(testCaseId);
+        return next;
+      });
     } catch (error) {
       console.error("Error deleting test case:", error);
     }
@@ -427,6 +580,18 @@ function TestCases({ params }) {
     }
     return `${(num * 100).toFixed(0)}%`;
   };
+
+  // Shared "Scores by model" modal state. The breakdown is supplied by any
+  // MultiScoreCell click; closing the modal clears it.
+  const [scoreBreakdown, setScoreBreakdown] = useState(null);
+  const openScoreBreakdown = useCallback((breakdown) => {
+    setScoreBreakdown(breakdown);
+    openModal(MODAL_TYPE.TESTCASE_SCORES_MODAL);
+  }, []);
+  const closeScoreBreakdown = useCallback(() => {
+    closeModal(MODAL_TYPE.TESTCASE_SCORES_MODAL);
+    setScoreBreakdown(null);
+  }, []);
 
   return (
     <div data-testid="testcase-page" className="bg-base-50 h-full flex flex-col overflow-hidden">
@@ -900,40 +1065,23 @@ function TestCases({ params }) {
                                 </td>
                                 {selectedVersions.map((version, vIdx) => {
                                   const versionArray = testCase?.version_history?.[version];
-                                  const latestResult = versionArray?.[0];
-                                  const score = latestResult?.score || 0;
                                   const matchingTypeFromResult = testCase?.matching_type || "cosine";
-                                  const runError = latestResult?.error;
-                                  const runErrorMessage =
-                                    typeof runError === "string"
-                                      ? runError
-                                      : runError?.error || runError?.message || (runError ? "Run failed" : null);
                                   return (
                                     <td
                                       key={vIdx}
                                       data-testid={`testcase-row-${testCase?._id || index}-version-${versions.indexOf(version) + 1}`}
-                                      className={`px-2 py-3.5 text-center min-w-[60px] bg-base-100"}`}
+                                      className={`px-2 py-3.5 text-center min-w-[60px] bg-base-100`}
                                     >
-                                      {versionArray &&
-                                        (runErrorMessage ? (
-                                          <InfoTooltip tooltipContent={runErrorMessage}>
-                                            <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-error/10 text-error">
-                                              Error
-                                            </span>
-                                          </InfoTooltip>
-                                        ) : (
-                                          <InfoTooltip
-                                            tooltipContent={
-                                              latestResult?.reason || getScoreMessage(score, matchingTypeFromResult)
-                                            }
-                                          >
-                                            <span
-                                              className={`text-xs font-semibold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
-                                            >
-                                              {getScoreDisplay(score, matchingTypeFromResult)}
-                                            </span>
-                                          </InfoTooltip>
-                                        ))}
+                                      {versionArray && (
+                                        <MultiScoreCell
+                                          versionArray={versionArray}
+                                          matchingType={matchingTypeFromResult}
+                                          getScoreColor={getScoreColor}
+                                          getScoreMessage={getScoreMessage}
+                                          getScoreDisplay={getScoreDisplay}
+                                          onOpenBreakdown={openScoreBreakdown}
+                                        />
+                                      )}
                                     </td>
                                   );
                                 })}
@@ -1013,6 +1161,16 @@ function TestCases({ params }) {
         loading={isBulkDeleting}
         buttonTitle="Delete"
       />
+
+      <Modal MODAL_ID={MODAL_TYPE.TESTCASE_SCORES_MODAL} onClose={() => setScoreBreakdown(null)}>
+        <ScoreBreakdownModalBody
+          breakdown={scoreBreakdown}
+          getScoreColor={getScoreColor}
+          getScoreMessage={getScoreMessage}
+          getScoreDisplay={getScoreDisplay}
+          onClose={closeScoreBreakdown}
+        />
+      </Modal>
     </div>
   );
 }

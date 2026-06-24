@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { Check, Zap, ChevronDownIcon } from "lucide-react";
+import { Check, Zap, ChevronDownIcon, Search } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 
 const TestCaseModelDropdown = ({ selectedModels = [], onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch services and models from Redux
   const { SERVICES, serviceModels } = useCustomSelector((state) => {
@@ -56,6 +57,19 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange }) => {
     if (isDefault) return "Use each version's configured model";
     return selectedModels.map((m) => m.model).join(", ");
   }, [isDefault, selectedModels]);
+
+  // Filter groups/models by the search query (case-insensitive).
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return groupedModels;
+    return groupedModels
+      .map((group) => {
+        const providerMatches = group.provider?.toLowerCase().includes(q);
+        const models = providerMatches ? group.models : group.models.filter((m) => m.name?.toLowerCase().includes(q));
+        return models.length > 0 ? { ...group, models } : null;
+      })
+      .filter(Boolean);
+  }, [groupedModels, searchQuery]);
 
   const isModelSelected = (modelName, provider) =>
     selectedModels.some((m) => m.model === modelName && m.service === provider);
@@ -132,7 +146,28 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange }) => {
               </button>
             </div>
 
-            {groupedModels.map((group) => (
+            {/* Search */}
+            <div className="px-1.5 pb-1.5">
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-[9px] border border-base-content/30 bg-base-100 focus-within:border-primary">
+                <Search size={12} className="text-base-content/40 flex-shrink-0" />
+                <input
+                  type="text"
+                  data-testid="testcase-model-dropdown-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search models"
+                  className="w-full bg-transparent outline-none text-[12.5px] text-base-content placeholder:text-base-content/40"
+                />
+              </div>
+            </div>
+
+            {filteredGroups.length === 0 ? (
+              <div className="px-2.5 py-3 text-[12px] text-base-content/50 text-center">
+                No models match "{searchQuery}"
+              </div>
+            ) : null}
+
+            {filteredGroups.map((group) => (
               <div key={group.provider}>
                 <div className="flex items-center justify-between gap-2 px-2.5 pt-1.5 pb-1">
                   <span className="text-[11px] font-bold tracking-wide text-base-content/50">{group.provider}</span>
@@ -152,7 +187,7 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange }) => {
                       <span className="flex items-center gap-2 min-w-0">
                         <span
                           className={`w-4 h-4 flex-shrink-0 rounded border flex items-center justify-center ${
-                            isActive ? "bg-primary border-primary" : "border-base-300 bg-base-100"
+                            isActive ? "bg-primary border-primary" : "bg-base-100 border-base-content/40"
                           }`}
                         >
                           {isActive && <Check size={12} strokeWidth={3} className="text-primary-content" />}
