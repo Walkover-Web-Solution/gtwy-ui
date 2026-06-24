@@ -213,19 +213,19 @@ const ModelDropdown = ({
     if (!isAutoModelSupported && isAutoModelSelected) {
       dispatch(
         updateBridgeVersionAction({
-          bridgeId: params.id,
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: { auto_model_select: null },
         })
       );
     }
-  }, [dispatch, isAutoModelSupported, isAutoModelSelected, params.id, searchParams?.version]);
+  }, [dispatch, isAutoModelSupported, isAutoModelSelected, params?.id, searchParams?.version]);
 
   const handleFinetuneModelChange = (e) => {
     const selectedFineTunedModel = e.target.value;
     dispatch(
       updateBridgeVersionAction({
-        bridgeId: params.id,
+        bridgeId: params?.id,
         versionId: searchParams?.version,
         dataToSend: {
           configuration: {
@@ -294,7 +294,7 @@ const ModelDropdown = ({
     }
     dispatch(
       updateBridgeVersionAction({
-        bridgeId: params.id,
+        bridgeId: params?.id,
         versionId: searchParams?.version,
         dataToSend,
       })
@@ -302,7 +302,7 @@ const ModelDropdown = ({
     setHoveredModel(null);
     setPendingSelection(null);
     closeModal(MODAL_TYPE.JSON_SCHEMA_MODEL_WARNING_MODAL);
-  }, [dispatch, isAutoModelSelected, params.id, searchParams?.version, pendingSelection]);
+  }, [dispatch, isAutoModelSelected, params?.id, searchParams?.version, pendingSelection]);
 
   const handleSelect = useCallback(
     (val, opt) => {
@@ -334,14 +334,14 @@ const ModelDropdown = ({
       }
       dispatch(
         updateBridgeVersionAction({
-          bridgeId: params.id,
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend,
         })
       );
       setHoveredModel(null);
     },
-    [dispatch, isAutoModelSelected, params.id, searchParams?.version, configuration, serviceModels, service]
+    [dispatch, isAutoModelSelected, params?.id, searchParams?.version, configuration, serviceModels, service]
   );
 
   const handleAutoSelectModelChange = useCallback(
@@ -349,13 +349,13 @@ const ModelDropdown = ({
       const autoModelSelectValue = basedOnValue ? { tradeoff: basedOnValue } : null;
       dispatch(
         updateBridgeVersionAction({
-          bridgeId: params.id,
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: { auto_model_select: autoModelSelectValue },
         })
       );
     },
-    [dispatch, params.id, searchParams?.version]
+    [dispatch, params?.id, searchParams?.version]
   );
 
   const handleAutoSelectModelToggle = useCallback(
@@ -363,13 +363,13 @@ const ModelDropdown = ({
       const isEnabled = e.target.checked;
       dispatch(
         updateBridgeVersionAction({
-          bridgeId: params.id,
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: { auto_model_select: isEnabled ? { tradeoff: "cost" } : null },
         })
       );
     },
-    [dispatch, params.id, searchParams?.version]
+    [dispatch, params?.id, searchParams?.version]
   );
 
   const handleOptionHover = useCallback((opt) => {
