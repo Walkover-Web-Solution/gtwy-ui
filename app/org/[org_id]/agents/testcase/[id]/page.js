@@ -260,7 +260,6 @@ function TestCases({ params }) {
     },
     [dispatch, resolvedParams?.id]
   );
-  console.log(bridgeVersionMapping, "bridgeversionmapping");
   const [tutorialState, setTutorialState] = useState({
     showTutorial: false,
     showSuggestion: isFirstTestcase,
@@ -314,14 +313,18 @@ function TestCases({ params }) {
   // backwards compatible (sends flat `model`/`service`) while multi-model runs
   // send a `models[]` array that the backend fans out.
   const buildModelsPayload = useCallback(() => {
-    if (!Array.isArray(selectedModels) || selectedModels.length === 0) return {};
+    if (!Array.isArray(selectedModels) || selectedModels.length === 0) {
+      // No models selected - run with default only
+      return { include_default: true };
+    }
     if (selectedModels.length === 1) {
       return {
         model: selectedModels[0].model || undefined,
         service: selectedModels[0].service || undefined,
+        include_default: false,
       };
     }
-    return { models: selectedModels };
+    return { models: selectedModels, include_default: false };
   }, [selectedModels]);
 
   useEffect(() => {
@@ -703,7 +706,6 @@ function TestCases({ params }) {
                         const versionData = bridgeVersionMapping?.[version];
                         const versionService = versionData?.service;
                         const versionApiKeys = versionData?.apikey_object_id || {};
-                        console.log(versionApiKeys, "version");
                         const hasNoApiKey =
                           versionService && !Object.keys(versionApiKeys).some((k) => k === versionService);
                         return (

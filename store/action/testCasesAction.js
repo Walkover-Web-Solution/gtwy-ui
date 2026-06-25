@@ -103,7 +103,7 @@ export const runTestCaseAction =
     model = null,
     service = null,
     models = null,
-    include_default = true,
+    include_default = false,
   }) =>
   async (dispatch) => {
     try {

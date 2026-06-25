@@ -361,10 +361,24 @@ const testCasesReducer = createSlice({
             if (!Array.isArray(results)) return;
             results.forEach((result) => {
               if (!result?.testcase_id) return;
-              const modelKey = buildModelKey(result?.model || payloadModel, result?.service || payloadService);
+              const effectiveIsOverridden =
+                typeof result?.is_overridden === "boolean" ? result.is_overridden : undefined;
+              const modelKey = buildModelKey(
+                result?.model || payloadModel,
+                result?.service || payloadService,
+                effectiveIsOverridden
+              );
               const seenKey = `${versionId}:${modelKey}:${result.testcase_id}`;
               if (run?.seen?.[seenKey]) return;
-              const applied = applyResultToTestCase(state, bridgeId, versionId, result, payloadModel, payloadService);
+              const applied = applyResultToTestCase(
+                state,
+                bridgeId,
+                versionId,
+                result,
+                payloadModel,
+                payloadService,
+                effectiveIsOverridden
+              );
               if (run) {
                 run.seen[seenKey] = true;
                 if (applied) run.completed = (run.completed || 0) + 1;
@@ -386,7 +400,13 @@ const testCasesReducer = createSlice({
             if (!versionId || !Array.isArray(results)) return;
             results.forEach((result) => {
               if (!result?.testcase_id) return;
-              const modelKey = buildModelKey(result?.model || groupModel, result?.service || groupService);
+              const effectiveIsOverridden =
+                typeof result?.is_overridden === "boolean" ? result.is_overridden : undefined;
+              const modelKey = buildModelKey(
+                result?.model || groupModel,
+                result?.service || groupService,
+                effectiveIsOverridden
+              );
               const seenKey = `${versionId}:${modelKey}:${result.testcase_id}`;
 
               // If already seen, update with model/service/tokens/cost from versionGroup
@@ -422,7 +442,15 @@ const testCasesReducer = createSlice({
                 return;
               }
 
-              const applied = applyResultToTestCase(state, bridgeId, versionId, result, groupModel, groupService);
+              const applied = applyResultToTestCase(
+                state,
+                bridgeId,
+                versionId,
+                result,
+                groupModel,
+                groupService,
+                effectiveIsOverridden
+              );
               if (run) {
                 run.seen[seenKey] = true;
                 if (applied) run.completed = (run.completed || 0) + 1;

@@ -131,7 +131,6 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
   const handleCreateAgent = useCallback(() => {
     const purpose = textAreaPurposeRef?.current?.value?.trim();
     const resolvedFolderId = getResolvedFolderId();
-    console.log("CreateNewBridge: handleCreateAgent called.", { activeFolderId, folderContext, resolvedFolderId });
     updateState({
       validationErrors: { purpose: "" },
       globalError: "",
