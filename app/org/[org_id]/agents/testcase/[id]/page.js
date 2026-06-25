@@ -19,7 +19,7 @@ import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import PageHeader from "@/components/Pageheader";
 import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetailsPanel";
 import MatchingTypeDropdown from "@/components/testcaseComponents/MatchingTypeDropdown";
-import TestCaseModelDropdown from "@/components/testcaseComponents/TestCaseModelDropdown";
+import TestCaseModelDropdown from "@/components/testcaseComponents/ModelDropdown";
 import DeleteModal from "@/components/UI/DeleteModal";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
