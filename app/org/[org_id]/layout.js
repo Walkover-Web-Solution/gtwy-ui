@@ -155,14 +155,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       try {
         // If UTM params exist, store marketing ref first
         if (!currentUser?.meta) {
-          if (typeof window !== "undefined" && window.Tracker?.identify) {
-            window.Tracker.identify({
-              customer_id: currentUser.id,
-              email: currentUser.email,
-              fullName: currentUser.name,
-            });
-          }
-
           await dispatch(
             storeMarketingRefUserAction({
               ...utmParams,

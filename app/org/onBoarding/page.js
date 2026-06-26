@@ -20,6 +20,13 @@ export default function OnboardingPage() {
   const handleContinue = async () => {
     try {
       setIsLoading(true);
+      if (typeof window !== "undefined" && window.Tracker?.identify) {
+        window.Tracker?.identify({
+          customer_id: currentUser.id,
+          email: currentUser.email,
+          fullName: currentUser.name,
+        });
+      }
       const updatedOrgDetails = {
         ...currentUser,
         meta: {
