@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { usePathname } from "next/navigation";
 import { getServiceAction } from "@/store/action/serviceAction";
@@ -13,33 +13,22 @@ const ServiceInitializer = ({ isEmbedUser }) => {
   const SERVICES = useCustomSelector((state) => state.serviceReducer.services);
   const MODELS = useCustomSelector((state) => state.modelReducer.serviceModels);
   const isOrgPage = pathname === "/org" || pathname.endsWith("/org");
-  const hasCalledAPIs = useRef(false);
 
-  // Always run on org page - fetches fresh service list (picks up new services from backend)
   useEffect(() => {
     if (isOrgPage && !isEmbedUser) {
       dispatch(userDetails());
       dispatch(getServiceAction());
-      // Reset so non-org pages re-check after returning from org
-      hasCalledAPIs.current = false;
-    }
-  }, [dispatch, isOrgPage]);
-
-  // On non-org pages: fetch services only if missing from redux
-  useEffect(() => {
-    if (!isOrgPage && !hasCalledAPIs.current) {
+    } else if (!isOrgPage) {
       const hasServices = Array.isArray(SERVICES) && SERVICES.length > 0;
-      const hasModels = MODELS && Object.keys(MODELS).length > 0;
-      if (!hasServices || !hasModels) {
-        hasCalledAPIs.current = true;
+      if (!hasServices) {
         dispatch(getServiceAction());
       }
     }
-  }, [dispatch, isOrgPage, SERVICES, MODELS]);
+  }, [dispatch, isOrgPage]);
 
   // Fetch models per-service:
-  // - org page: always re-fetch all models (picks up new/updated services from backend)
-  // - other pages: only fetch models missing from redux
+  // - org page: always re-fetch all models
+  // - non-org pages: only fetch if model data is missing from redux
   useEffect(() => {
     if (!Array.isArray(SERVICES) || SERVICES.length === 0) return;
 
