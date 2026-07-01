@@ -10,11 +10,12 @@ import {
   deleteMultipleTestCasesAction,
   getAllTestCasesOfBridgeAction,
   runTestCaseAction,
+  updateTestCaseAction,
 } from "@/store/action/testCasesAction";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import { PlayIcon } from "@/components/Icons";
-import { FileText, Check, ChevronDownIcon, Trash2, Search, X, SlidersHorizontal } from "lucide-react";
+import { FileText, Check, ChevronDownIcon, Trash2, Search, X, SlidersHorizontal, Edit2 } from "lucide-react";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import PageHeader from "@/components/Pageheader";
 import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetailsPanel";
@@ -25,6 +26,9 @@ import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, getIconOfService } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+
+const TESTCASE_SPLIT_STORAGE_KEY = "testcase:list-details-split";
 
 const TestCaseLoadingSkeleton = () => (
   <div
@@ -262,6 +266,8 @@ function TestCases({ params }) {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState(0);
+  const [renamingTestCaseId, setRenamingTestCaseId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
   const debounceTimer = useRef(null);
   const [globalMatchingTypeLocal, setGlobalMatchingTypeLocal] = useState(persistedConfig?.matchingType || "AI");
   const [globalCustomPrompt, setGlobalCustomPrompt] = useState(
@@ -457,6 +463,25 @@ function TestCases({ params }) {
       });
     } catch (error) {
       console.error("Error deleting test case:", error);
+    }
+  };
+
+  const handleRenameTestCase = async (testCaseId) => {
+    if (!renameValue.trim()) {
+      setRenamingTestCaseId(null);
+      return;
+    }
+    try {
+      await dispatch(
+        updateTestCaseAction({
+          testCaseId,
+          dataToUpdate: { name: renameValue.trim() },
+        })
+      );
+      setRenamingTestCaseId(null);
+      setRenameValue("");
+    } catch (error) {
+      console.error("Error renaming test case:", error);
     }
   };
 
@@ -797,7 +822,13 @@ function TestCases({ params }) {
                   <span className="text-[10px] font-bold text-base-content/50 tracking-wide uppercase whitespace-nowrap">
                     Run with
                   </span>
-                  <TestCaseModelDropdown selectedModels={selectedModels} onChange={setSelectedModels} />
+                  <TestCaseModelDropdown
+                    selectedModels={selectedModels}
+                    onChange={setSelectedModels}
+                    selectedVersions={selectedVersions}
+                    versions={versions}
+                    bridgeId={resolvedParams?.id}
+                  />
                 </div>
               </>
             )}
@@ -840,10 +871,13 @@ function TestCases({ params }) {
       {/* Main Grid */}
       {((Array.isArray(testCases) && testCases.length > 0) || searchKeyword || isSearching) && (
         <div className="flex-1 min-h-0 overflow-hidden px-6 pb-4 pt-3" data-testid="testcase-main-grid-wrapper">
-          <div className="grid grid-cols-12 gap-4 h-full relative">
+          <PanelGroup direction="horizontal" autoSaveId={TESTCASE_SPLIT_STORAGE_KEY} className="h-full relative">
             {/* Left Panel - Test Cases List */}
-            <div
-              className="col-span-4 bg-base-100 border border-base-200 rounded-xl overflow-hidden flex flex-col h-full relative z-10 shadow-lg"
+            <Panel
+              defaultSize={33}
+              minSize={20}
+              maxSize={70}
+              className="bg-base-100 border border-base-200 rounded-xl overflow-hidden flex flex-col h-full relative z-10 shadow-lg"
               data-testid="testcase-list-panel"
             >
               {/* Search Bar */}
@@ -1050,11 +1084,56 @@ function TestCases({ params }) {
                                 </td>
                                 <td
                                   style={{ left: 76, width: 140, minWidth: 140 }}
-                                  className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"} whitespace-nowrap overflow-hidden text-ellipsis`}
+                                  className={`px-2 py-3.5 text-sm sticky z-20 ${isSelected ? "bg-base-200 font-semibold text-primary" : "bg-base-100 font-medium text-base-content"}`}
                                   title={displayText}
+                                  onClick={(e) => {
+                                    if (renamingTestCaseId === testCase?._id) e.stopPropagation();
+                                  }}
                                 >
-                                  {displayText?.substring(0, 20)}
-                                  {displayText?.length > 20 ? "..." : ""}
+                                  {renamingTestCaseId === testCase?._id ? (
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        autoFocus
+                                        type="text"
+                                        value={renameValue}
+                                        onChange={(e) => setRenameValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") handleRenameTestCase(testCase?._id);
+                                          if (e.key === "Escape") setRenamingTestCaseId(null);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex-1 px-2 py-1 text-xs border border-primary rounded bg-base-50 text-base-content outline-none"
+                                        placeholder="Test case name"
+                                      />
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRenameTestCase(testCase?._id);
+                                        }}
+                                        className="px-2 py-1 text-xs bg-primary text-primary-content rounded hover:bg-primary/90"
+                                      >
+                                        Save
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 group">
+                                      <span className="truncate">
+                                        {displayText?.substring(0, 20)}
+                                        {displayText?.length > 20 ? "..." : ""}
+                                      </span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRenameValue(testCaseName || "");
+                                          setRenamingTestCaseId(testCase?._id);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-base-200 rounded"
+                                        title="Rename test case"
+                                      >
+                                        <Edit2 size={12} className="text-base-content/60" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </td>
                                 {selectedVersions.map((version, vIdx) => {
                                   const versionArray = testCase?.version_history?.[version];
@@ -1092,10 +1171,24 @@ function TestCases({ params }) {
               >
                 {testCasesTotal > 0 ? `${testCasesTotal} testcases` : "0 testcases"}
               </div>
-            </div>
+            </Panel>
+
+            {/* Drag handle to resize the two panels. A 4px hit-target wraps a
+                visible 1px line that thickens + tints on hover for clear UX. */}
+            <PanelResizeHandle
+              className="group relative w-1 mx-1 flex items-center justify-center cursor-col-resize"
+              data-testid="testcase-panels-resize-handle"
+            >
+              <div className="w-px h-full bg-base-300 group-hover:bg-primary group-data-[resize-handle-state=drag]:bg-primary transition-colors" />
+            </PanelResizeHandle>
 
             {/* Right Panel - Details */}
-            <div className="col-span-8 h-full min-h-0 overflow-hidden" data-testid="testcase-details-panel-host">
+            <Panel
+              defaultSize={67}
+              minSize={30}
+              className="h-full min-h-0 overflow-hidden"
+              data-testid="testcase-details-panel-host"
+            >
               {isSearching ? (
                 <div
                   className="bg-base-100 border border-base-200 rounded-xl p-4 h-full animate-pulse space-y-4"
@@ -1141,8 +1234,8 @@ function TestCases({ params }) {
                   onTestCaseUpdate={() => dispatch(getAllTestCasesOfBridgeAction({ bridgeId: resolvedParams?.id }))}
                 />
               )}
-            </div>
-          </div>
+            </Panel>
+          </PanelGroup>
         </div>
       )}
 

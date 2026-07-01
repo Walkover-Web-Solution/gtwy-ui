@@ -1,4 +1,4 @@
-import { deleteApikey, getAllApikey, saveApiKeys, updateApikey } from "@/config/index";
+import { deleteApikey, getAllApikey, saveApiKeys, updateApikey, getBridgeApikeysByVersion } from "@/config/index";
 import {
   apikeyDataReducer,
   apikeyDeleteReducer,
@@ -6,6 +6,7 @@ import {
   apikeyUpdateReducer,
   backupApiKeysReducer,
   createApiKeyReducer,
+  setBridgeApikeysByVersionReducer,
 } from "../reducer/apiKeysReducer";
 import { toast } from "react-toastify";
 import { trackUserAction } from "@/utils/posthog";
@@ -119,6 +120,24 @@ export const deleteApikeyAction =
       dispatch(apikeyRollBackReducer({ org_id }));
     }
   };
+
+export const getBridgeApikeysByVersionAction = (bridge_id) => async (dispatch) => {
+  if (!bridge_id) return;
+  try {
+    const response = await getBridgeApikeysByVersion(bridge_id);
+    const payload = response?.data?.data;
+    if (response?.data?.success && payload?.version_ids) {
+      dispatch(
+        setBridgeApikeysByVersionReducer({
+          bridge_id: payload.agent_id || bridge_id,
+          version_ids: payload.version_ids,
+        })
+      );
+    }
+  } catch (error) {
+    console.error("Failed to fetch bridge apikeys by version:", error);
+  }
+};
 
 export const getAllApikeyAction = (org_id) => async (dispatch) => {
   try {
