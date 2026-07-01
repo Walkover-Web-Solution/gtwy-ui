@@ -8,7 +8,7 @@ import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { setCurrentOrgIdAction } from "@/store/action/orgAction";
-import { setInCookies, getFromCookies } from "@/utils/utility";
+import { setInCookies, getFromCookies, removeCookie } from "@/utils/utility";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -64,6 +64,34 @@ function Page() {
       }
     }
   }, [searchParams, route]);
+
+  // Handle isLifetimeAccessFree redirect: store cookie if param present, then redirect to lifetime-access
+  useEffect(() => {
+    const paramValue = searchParams.get("isLifetimeAccessFree");
+    if (paramValue === "true") {
+      setInCookies("isLifetimeAccessFree", "true");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const lifetimeAccessFlag = getFromCookies("isLifetimeAccessFree");
+    if (lifetimeAccessFlag !== "true") return;
+    if (organizationsArray.length === 0) return;
+
+    setIsRedirecting(true);
+    const recentOrgId = getFromCookies("current_org_id");
+    const targetOrgId =
+      recentOrgId && organizationsArray.some((org) => String(org?.id) === String(recentOrgId))
+        ? recentOrgId
+        : organizationsArray[0]?.id;
+
+    if (targetOrgId) {
+      removeCookie("isLifetimeAccessFree");
+      route.push(`/org/${targetOrgId}/lifetime-access`);
+    } else {
+      setIsRedirecting(false);
+    }
+  }, [organizationsArray, route]);
 
   // Initialize displayed organizations when organizations data changes
   useEffect(() => {
