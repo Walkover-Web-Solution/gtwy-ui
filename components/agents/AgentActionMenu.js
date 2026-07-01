@@ -6,7 +6,6 @@ import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAc
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import { toast } from "react-toastify";
-import { UsageSummaryPopover } from "@/app/org/[org_id]/agents/page";
 import ConfigureEnvironmentModal from "../modals/ConfigureEnvironmentModal";
 
 const BRIDGE_STATUS = {
@@ -16,75 +15,29 @@ const BRIDGE_STATUS = {
 
 export const AgentMenuItems = ({
   bridge,
-  bridgeData,
   bridgeStatus,
   isArchived,
   isUpdatingBridge,
   isEmbedUser,
   isAdminOrOwner,
-  orgId,
   onClose,
   onDelete,
   onSetSelectedAgent,
-  handlePortalOpen,
-  handlePortalCloseImmediate,
   showDeleteAgentOption,
-  bridgeType,
   isTableListPage,
 }) => {
   const dispatch = useDispatch();
-  const getUsageStatsForRow = (row) => {
-    const limitValue = Number(row?.agent_limit_original ?? row?.bridge_limit ?? 0);
-    const usageValue = Number(row?.agent_usage ?? row?.bridge_usage ?? 0);
-    const totalTokens = Number(row?.totalTokens ?? row?.total_tokens ?? 0);
-    const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
-    const usagePercent = hasLimit ? Math.min(100, Math.max(0, (usageValue / limitValue) * 100)) : 0;
-    const remaining = hasLimit ? Math.max(limitValue - usageValue, 0) : null;
-    return { limitValue, usageValue, totalTokens, hasLimit, usagePercent, remaining };
-  };
-
-  const handleUpdateBridgeLimit = async (bridgeItem, limit, resetPeriod) => {
-    const dataToSend = { bridge_limit: limit };
-    if (resetPeriod) {
-      dataToSend.bridge_limit_reset_period = resetPeriod;
-    }
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend }));
-    if (res?.success) toast.success("Agent Usage Limit Updated Successfully");
-  };
-
-  const resetUsage = async (bridgeItem) => {
-    const res = await dispatch(updateBridgeAction({ bridgeId: bridgeItem._id, dataToSend: { bridge_usage: 0 } }));
-    if (res?.success) toast.success("Agent Usage Reset Successfully");
-  };
-
   const handleManageAccess = useCallback(() => {
     onClose?.();
     if (onSetSelectedAgent) onSetSelectedAgent(bridge);
     setTimeout(() => openModal(MODAL_TYPE.ACCESS_MANAGEMENT_MODAL), 10);
   }, [bridge, onClose, onSetSelectedAgent]);
 
-  const handleUsageLimits = useCallback(
-    (e) => {
-      const usageContent = (
-        <UsageSummaryPopover
-          stats={getUsageStatsForRow(bridgeData || bridge)}
-          item={bridge}
-          isEmbedUser={isEmbedUser}
-          onSetLimit={(bridgeItem, limit, resetPeriod) => {
-            handlePortalCloseImmediate?.();
-            handleUpdateBridgeLimit(bridgeItem, limit, resetPeriod);
-          }}
-          onResetUsage={() => {
-            handlePortalCloseImmediate?.();
-            resetUsage(bridge);
-          }}
-        />
-      );
-      onClose?.();
-      handlePortalOpen?.(e.currentTarget, usageContent);
-    },
-    [bridge, bridgeData, isEmbedUser, handlePortalOpen, handlePortalCloseImmediate, onClose]
-  );
+  const handleUsageLimits = useCallback(() => {
+    onClose?.();
+    if (onSetSelectedAgent) onSetSelectedAgent(bridge);
+    setTimeout(() => openModal(MODAL_TYPE.AGENT_USAGE_LIMIT_MODAL), 10);
+  }, [bridge, onClose, onSetSelectedAgent]);
 
   const handlePauseBridge = useCallback(async () => {
     const newStatus = bridgeStatus === BRIDGE_STATUS.PAUSED ? BRIDGE_STATUS.ACTIVE : BRIDGE_STATUS.PAUSED;

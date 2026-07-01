@@ -672,6 +672,31 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
     !spec.usecase ||
     spec.usecase.length === 0;
 
+  const footerContent = (
+    <div className="flex items-center justify-between w-full">
+      <button
+        data-testid="add-model-reset-button"
+        id="add-model-reset-button"
+        type="button"
+        onClick={resetFormToDefault}
+        className="btn btn-sm btn-ghost text-xs"
+        title="Reset form to default values"
+      >
+        <RefreshCw size={16} />
+        Reset to defaults
+      </button>
+      <button
+        id="add-model-save-button"
+        type="button"
+        onClick={handleAddModel}
+        className="btn btn-sm btn-primary text-xs"
+        disabled={isFormInvalid}
+      >
+        Save Model
+      </button>
+    </div>
+  );
+
   return (
     <Modal
       MODAL_ID={MODAL_TYPE.ADD_NEW_MODEL_MODAL}
@@ -680,6 +705,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
       description="Add and configure a new model for your agent in just a few steps."
       icon={<Plus size={16} className="text-trace-gold" />}
       widthClass="w-[min(70rem,92vw)]"
+      footer={footerContent}
     >
       <div className="w-full mx-auto">
         <div className="card w-full">
@@ -1012,37 +1038,13 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                 <div className="space-y-2">{renderSelectableKeys()}</div>
               </div>
             </div>
-            <div className="border-t border-base-200 pt-6 mt-8">
-              {error?.message && (
-                <div className="w-full mb-4">
-                  <div className="error-container p-4 bg-error/10 border-l-4 border-error rounded-md shadow-sm text-error">
-                    {error?.message}
-                  </div>
+            {error?.message && (
+              <div className="w-full mt-4">
+                <div className="error-container p-4 bg-error/10 border-l-4 border-error rounded-md shadow-sm text-error">
+                  {error?.message}
                 </div>
-              )}
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  data-testid="add-model-reset-button"
-                  id="add-model-reset-button"
-                  type="button"
-                  onClick={resetFormToDefault}
-                  className="btn btn-sm btn-ghost"
-                  title="Reset form to default values"
-                >
-                  <RefreshCw size={16} />
-                  Reset to defaults
-                </button>
-                <button
-                  id="add-model-save-button"
-                  type="button"
-                  onClick={handleAddModel}
-                  className="btn btn-sm btn-primary"
-                  disabled={isFormInvalid}
-                >
-                  Save Model
-                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

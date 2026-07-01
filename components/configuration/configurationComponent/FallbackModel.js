@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { AlertIcon, ChevronDownIcon, ChevronUpIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -7,6 +7,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { getIconOfService } from "@/utils/utility";
 import { CircleQuestionMark } from "lucide-react";
 import { ModelPreview } from "./ModelDropdown";
+import Dropdown from "@/components/UI/Dropdown";
 
 const FallbackModel = ({
   params,
@@ -266,10 +267,81 @@ const FallbackModel = ({
   ]);
 
   const computedModelsList = serviceModels?.[fallbackService] || {};
-  const handleModelHover = useCallback((modelName, specs) => {
-    setHoveredModel(modelName);
-    setModelSpecs(specs);
+
+  const fallbackModelOptions = useMemo(() => {
+    const opts = [];
+    Object.entries(computedModelsList || {}).forEach(([group, options]) => {
+      if (group === "image") return;
+
+      Object.keys(options || {}).forEach((optionKey) => {
+        const optionConfig = options?.[optionKey];
+        const modelName = optionConfig?.configuration?.model?.default || optionKey;
+
+        if (currentModel === modelName || currentModel === optionKey) return;
+
+        const serviceConfig = embedModelsConfig?.[fallbackService];
+        const modelConfig = serviceConfig?.[modelName];
+        if (modelConfig?.hide === true) return;
+
+        const displayName = modelConfig?.value || modelName;
+        const specs = optionConfig?.validationConfig?.specification;
+
+        opts.push({
+          value: modelName,
+          label: displayName,
+          meta: { group, modelName, specs },
+        });
+      });
+    });
+    return opts;
+  }, [computedModelsList, currentModel, embedModelsConfig, fallbackService]);
+
+  const fallbackServiceOptions = useMemo(() => {
+    if (!Array.isArray(SERVICES)) return [];
+    return SERVICES.filter((svc) => {
+      if (showDefaultApikeys && embedDefaultApiKeys) {
+        return embedDefaultApiKeys.hasOwnProperty(svc.value);
+      }
+      return true;
+    }).map((svc) => {
+      const hasApiKeys = hasApiKeysForService(svc.value);
+      const serviceIcon = getIconOfService(svc.value, 16, 16);
+
+      return {
+        value: svc.value,
+        label: (
+          <div className="flex items-center gap-2 truncate">
+            {serviceIcon}
+            <span>{svc.displayName || svc.value}</span>
+          </div>
+        ),
+        disabled: !hasApiKeys,
+        description: !hasApiKeys ? "No API Key Available" : undefined,
+      };
+    });
+  }, [SERVICES, showDefaultApikeys, embedDefaultApiKeys, bridgeApikey_object_id, apikeydata]);
+
+  const handleServiceSelect = useCallback(
+    (val) => {
+      handleFallbackServiceChange(val);
+    },
+    [handleFallbackServiceChange]
+  );
+
+  const handleOptionHover = useCallback((opt) => {
+    const name = opt?.meta?.modelName || opt?.label;
+    setHoveredModel(name);
+    setModelSpecs(opt?.meta?.specs);
   }, []);
+
+  const handleSelect = useCallback(
+    (val, opt) => {
+      const modelName = opt?.meta?.modelName || val;
+      handleFallbackModelChange(modelName);
+      setHoveredModel(null);
+    },
+    [handleFallbackModelChange]
+  );
 
   return (
     <div data-testid="fallback-model-container" id="fallback-model-container" className="space-y-2">
@@ -305,88 +377,25 @@ const FallbackModel = ({
         <div className="w-full p-3 border border-base-200 rounded-lg bg-base-50" ref={dropdownContainerRef}>
           <div className="grid grid-cols-2 gap-4">
             {/* Fallback Service */}
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1">
               <label className="block text-base-content/70 text-xs font-medium">Fallback Service</label>
               <div className="relative w-full">
-                <details
-                  data-testid="fallback-service-dropdown"
-                  id="fallback-service-dropdown"
-                  className="dropdown dropdown-top dropdown-end w-full"
-                  onToggle={(e) => {
-                    if (e.currentTarget.open) {
-                      const modelDropdown = document.getElementById("fallback-model-dropdown");
-                      if (modelDropdown) modelDropdown.removeAttribute("open");
-                    }
-                  }}
+                <Dropdown
+                  testId="fallback-service-dropdown"
                   disabled={bridgeType === "batch" || isReadOnly}
-                >
-                  <summary
-                    data-testid="fallback-service-dropdown-button"
-                    id="fallback-service-dropdown-button"
-                    tabIndex={0}
-                    disabled={isReadOnly}
-                    role="button"
-                    className={`btn btn-sm border-base-200 bg-base-300 text-base-content/70 capitalize w-full justify-between ${bridgeType === "batch" ? "btn-disabled cursor-not-allowed opacity-50" : ""}`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      {fallbackService && getIconOfService(fallbackService, 16, 16)}
-                      <span>
-                        {fallbackService
-                          ? SERVICES?.find((s) => s.value === fallbackService)?.displayName || fallbackService
-                          : "Select a Service"}
-                      </span>
-                    </div>
-                    <ChevronDownIcon size={16} />
-                  </summary>
-                  <ul
-                    data-testid="fallback-service-dropdown-menu"
-                    id="fallback-service-dropdown-menu"
-                    tabIndex={0}
-                    className="dropdown-content z-high menu bg-base-100 rounded-box w-full p-1 shadow border border-base-300 max-h-80 overflow-y-auto"
-                  >
-                    {Array.isArray(SERVICES) &&
-                      SERVICES.filter((svc) => {
-                        // For embed users with showDefaultApikeys, only show services in embedDefaultApiKeys
-                        if (showDefaultApikeys && embedDefaultApiKeys) {
-                          return embedDefaultApiKeys.hasOwnProperty(svc.value);
-                        }
-                        return true;
-                      }).map((svc) => {
-                        const hasApiKeys = hasApiKeysForService(svc.value);
-                        return (
-                          <li key={svc.value}>
-                            {hasApiKeys ? (
-                              <a
-                                data-testid={`fallback-service-item-${svc.value}`}
-                                id={`fallback-service-item-${svc.value}`}
-                                className={`flex items-center gap-2 ${fallbackService === svc.value ? "active" : ""}`}
-                                onClick={(e) => {
-                                  handleFallbackServiceChange(svc.value);
-                                  const details = e.currentTarget.closest("details");
-                                  if (details) details.removeAttribute("open");
-                                }}
-                                disabled={isPublished}
-                              >
-                                {getIconOfService(svc.value, 16, 16)}
-                                <span>{svc.displayName || svc.value}</span>
-                              </a>
-                            ) : (
-                              <div className="w-full flex items-center justify-between">
-                                <span className="flex items-center gap-2 opacity-50 cursor-not-allowed pointer-events-none">
-                                  {getIconOfService(svc.value, 16, 16)}
-                                  <span>{svc.displayName || svc.value}</span>
-                                </span>
-                                <span className="text-xs text-error">No API Key Available</span>
-                              </div>
-                            )}
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </details>
+                  options={fallbackServiceOptions}
+                  value={fallbackService || ""}
+                  onChange={handleServiceSelect}
+                  placeholder="Select a Service"
+                  size="sm"
+                  placement="top"
+                  className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-content/20 text-base-content h-8 min-w-[150px]"
+                  style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
+                  menuClassName="w-full min-w-[200px] mb-6"
+                />
 
                 {bridgeType === "batch" && (
-                  <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                  <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                     <InfoTooltip tooltipContent="Batch API is only applicable for OpenAI">
                       <AlertIcon size={16} className="text-warning" />
                     </InfoTooltip>
@@ -396,91 +405,27 @@ const FallbackModel = ({
             </div>
 
             {/* Fallback Model */}
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1">
               <label className="block text-base-content/70 text-xs font-medium">Fallback Model</label>
-              <details
-                data-testid="fallback-model-dropdown"
-                id="fallback-model-dropdown"
-                className="dropdown dropdown-top w-full"
-                ref={fallbackModelDropdownRef}
-              >
-                <summary
-                  data-testid="fallback-model-dropdown-button"
-                  id="fallback-model-dropdown-button"
-                  tabIndex={0}
+              <div className="w-full" ref={fallbackModelDropdownRef}>
+                <Dropdown
+                  testId="fallback-model-dropdown"
                   disabled={isReadOnly}
-                  role="button"
-                  className="btn btn-sm w-full justify-between border border-base-200 bg-base-300 text-base-content/70 hover:bg-base-200 font-normal"
-                >
-                  <span>
-                    {fallbackModelName
-                      ? truncateText(
-                          embedModelsConfig?.[fallbackService]?.[fallbackModelName]?.value || fallbackModelName,
-                          30
-                        )
-                      : "Select a Model"}
-                  </span>
-                  <ChevronDownIcon size={16} />
-                </summary>
-                <ul
-                  data-testid="fallback-model-dropdown-menu"
-                  id="fallback-model-dropdown-menu"
-                  tabIndex={0}
-                  className="dropdown-content mb-6 z-high p-2 shadow bg-base-100 rounded-lg mt-1 max-h-[340px] w-[260px] overflow-y-auto border border-base-300"
-                  onMouseLeave={() => setHoveredModel(null)}
-                >
-                  {Object.entries(computedModelsList || {}).map(([group, options]) => {
-                    if (group === "image") return null;
-
-                    // 1️⃣ Pre-filter valid models
-                    const validModels = Object.keys(options || {}).filter((option) => {
-                      const modelName = options?.[option]?.configuration?.model?.default || option;
-                      return currentModel !== modelName && currentModel !== option;
-                    });
-                    if (validModels.length === 0) return null;
-                    return (
-                      <li key={group} id={`fallback-model-group-${group}`} className="px-2 py-1 cursor-pointer">
-                        <span className="text-sm text-base-content">{group}</span>
-                        <ul>
-                          {Object.keys(options || {}).map((option) => {
-                            const optionConfig = options?.[option];
-                            const modelName = optionConfig?.configuration?.model?.default || option;
-                            const selected = fallbackModelName === modelName || fallbackModelName === option;
-
-                            if (currentModel === modelName || currentModel === option) return null;
-
-                            // Get display name from embedModelsConfig for embed users
-                            const serviceConfig = embedModelsConfig?.[fallbackService];
-                            const modelConfig = serviceConfig?.[modelName];
-                            const displayName = modelConfig?.value || modelName;
-
-                            return (
-                              <li
-                                key={`${group}-${option}`}
-                                className={`hover:bg-base-200 rounded-md py-1 ${selected ? "bg-base-200" : ""}`}
-                                onMouseEnter={() =>
-                                  handleModelHover(modelName, optionConfig?.validationConfig?.specification)
-                                }
-                                onClick={(e) => {
-                                  handleFallbackModelChange(modelName);
-                                  setHoveredModel(null);
-                                  const details = e.currentTarget.closest("details");
-                                  if (details) details.removeAttribute("open");
-                                }}
-                              >
-                                {selected && <span className="flex-shrink-0 ml-2">✓</span>}
-                                <span className={`truncate flex-1 pl-2 ${!selected ? "ml-4" : ""}`}>
-                                  {truncateText(displayName || option, 30)}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </details>
+                  options={fallbackModelOptions}
+                  value={fallbackModelName || ""}
+                  onChange={handleSelect}
+                  onOptionHover={handleOptionHover}
+                  showGroupHeaders
+                  isEmbedUser={isEmbedUser}
+                  placeholder="Select a Model"
+                  size="sm"
+                  placement="top"
+                  className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-content/20 text-base-content h-8 min-w-[150px]"
+                  style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
+                  menuClassName="w-[260px] max-h-[340px] min-w-[200px] mb-6"
+                  maxLabelLength={30}
+                />
+              </div>
               <ModelPreview
                 hoveredModel={hoveredModel}
                 modelSpecs={modelSpecs}

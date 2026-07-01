@@ -163,6 +163,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
       description="Configure this prebuilt tool's options"
       icon={<Wrench size={16} className="text-trace-gold" />}
       widthClass={toolEntry?.type === "rag_knowledgebase" ? "w-[min(520px,92vw)]" : "w-[min(480px,92vw)]"}
+      onClose={() => closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL)}
     >
       {toolEntry && schema ? (
         <div
@@ -201,6 +202,15 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
           <div
             className={`flex justify-end gap-2 pt-2 border-t border-base-content/10 ${toolEntry.type === "rag_knowledgebase" ? "mt-auto" : "mt-2"}`}
           >
+            <button
+              type="button"
+              data-testid="pretool-config-cancel-button"
+              data-test-id="pretool-config-cancel-button"
+              className="btn btn-sm btn-outline text-xs"
+              onClick={() => closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL)}
+            >
+              Cancel
+            </button>
             <div className="relative group">
               {isSaveDisabled && disabledHint && (
                 <span className="absolute bottom-full right-0 mb-1 text-xs text-base-content/50 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -209,7 +219,8 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
               )}
               <button
                 data-testid="pretool-config-save-button"
-                className="btn btn-primary btn-sm"
+                data-test-id="pretool-config-save-button"
+                className="btn btn-primary btn-sm text-xs"
                 onClick={handleSave}
                 disabled={isSaveDisabled}
               >

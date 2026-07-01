@@ -47,6 +47,20 @@ const Modal = ({
     };
   }, [MODAL_ID]);
 
+  const handleClose = () => {
+    if (typeof onClose === "function") {
+      onClose();
+    } else {
+      const modalElement = document.getElementById(MODAL_ID);
+      if (modalElement) {
+        if (modalElement.close) {
+          modalElement.close();
+        }
+        modalElement.removeAttribute("open");
+      }
+    }
+  };
+
   if (!isOpen) {
     return <dialog data-testid={MODAL_ID} id={MODAL_ID} className="modal" style={{ pointerEvents: "none" }} />;
   }
@@ -62,7 +76,7 @@ const Modal = ({
       >
         <div
           className="fixed inset-0 z-low-medium flex min-h-[100vh] min-w-[100vw] items-center justify-center overflow-auto bg-black/60 py-8 backdrop-blur-[2px]"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <div
             id={`${MODAL_ID}-container`}
@@ -84,8 +98,10 @@ const Modal = ({
               </div>
               <button
                 type="button"
+                data-testid={MODAL_ID ? `${MODAL_ID}-close-button` : "modal-close-button"}
+                data-test-id={MODAL_ID ? `${MODAL_ID}-close-button` : "modal-close-button"}
                 className="rounded-md p-1.5 text-base-content/60 transition-colors hover:bg-base-content/10 hover:text-base-content"
-                onClick={onClose}
+                onClick={handleClose}
               >
                 <X size={18} />
               </button>

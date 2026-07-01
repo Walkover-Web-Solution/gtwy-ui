@@ -212,7 +212,10 @@ const Dropdown = ({
   );
 
   // DaisyUI placement helpers
-  const placementCls = placement === "bottom-end" ? "dropdown-end" : "";
+  const placementCls = cx(
+    placement === "bottom-end" ? "dropdown-end" : "",
+    placement?.startsWith("top") ? "dropdown-top" : ""
+  );
 
   return (
     <div
@@ -238,7 +241,7 @@ const Dropdown = ({
         className={cx("dropdown-content z-[60] w-full hover:bg-base-200", menuClassName)}
         role="listbox"
       >
-        <div className="bg-base-100 rounded-box shadow border border-base-content/10 w-full overflow-hidden">
+        <div className="bg-base-100 rounded-box shadow-xl border border-base-content/20 w-full overflow-hidden">
           {enableSearch && (
             <div className="p-2 border-b border-base-content/10">
               <input
@@ -268,7 +271,13 @@ const Dropdown = ({
                     const Icon = opt.icon;
                     const isActive = String(opt.value) === String(value);
                     return (
-                      <li key={String(opt.value)} className="whitespace-nowrap group">
+                      <li
+                        key={String(opt.value)}
+                        className={cx(
+                          "whitespace-nowrap group",
+                          opt.disabled ? "disabled opacity-50 cursor-not-allowed pointer-events-none" : ""
+                        )}
+                      >
                         <a
                           data-testid={`${testId}-option-${opt.value}`}
                           id={`dropdown-option-${opt.value}`}
@@ -278,6 +287,7 @@ const Dropdown = ({
                           )}
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (opt.disabled) return;
                             handleSelect(opt.value, opt);
                           }}
                           onMouseEnter={() => onOptionHover && onOptionHover(opt)}

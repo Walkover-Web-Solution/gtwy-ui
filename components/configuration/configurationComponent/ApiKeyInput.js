@@ -109,8 +109,6 @@ const ApiKeyInput = ({
     } else {
       // Disabled informational option pattern can be represented by not adding an option here; placeholder will handle it
     }
-    // Add new key action
-    opts.push({ value: "add_new", label: "+  Add new API Key" });
     return opts;
   }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType]);
 
@@ -137,6 +135,8 @@ const ApiKeyInput = ({
         maxLabelLength={20}
         menuClassName="w-full min-w-[200px]"
         hasError={hasError}
+        bottomOption={{ value: "add_new", label: "+  Add new API Key" }}
+        isEmbedUser={isEmbedUser}
       />
 
       <ApiKeyModal

@@ -38,6 +38,7 @@ import AgentEmptyState from "@/components/AgentEmptyState";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import ConfigureEnvironmentModal from "@/components/modals/ConfigureEnvironmentModal";
+import AgentUsageLimitModal from "@/components/modals/AgentUsageLimitModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
 
@@ -1517,6 +1518,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         {isEmbedUser && <PoweredByFooter />}
         <AccessManagementModal agent={selectedAgentForAccess} />
         <ConfigureEnvironmentModal />
+        <AgentUsageLimitModal agent={selectedAgentForAccess} isEmbedUser={isEmbedUser} />
 
         {/* Portal components from hook */}
         <PortalStyles />

@@ -22,7 +22,9 @@ export const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => 
   const dropdownMenu = dropdownRef.current?.querySelector(".dropdown-content");
   const targetRect = dropdownMenu ? dropdownMenu.getBoundingClientRect() : dropdownRect;
   const viewportHeight = window.innerHeight;
-  const shouldOpenUp = dropdownRef.current?.classList?.contains("dropdown-top");
+  const shouldOpenUp =
+    dropdownRef.current?.classList?.contains("dropdown-top") ||
+    dropdownRef.current?.querySelector(".dropdown-top") !== null;
 
   const modalWidth = 260;
   const viewportWidth = window.innerWidth;
@@ -411,7 +413,7 @@ const ModelDropdown = ({
                 options={autoModelBasedOnOptions}
                 value={selectedAutoModelBasedOn}
                 onChange={handleAutoSelectModelChange}
-                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
+                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-content/20 text-base-content h-8 min-w-[150px]"
                 placeholder="Select basis"
                 size="sm"
                 key={selectedAutoModelBasedOn}
@@ -435,7 +437,7 @@ const ModelDropdown = ({
                 }}
                 placeholder="Select model"
                 size="sm"
-                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
+                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-content/20 text-base-content h-8 min-w-[150px]"
                 style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
                 menuClassName="w-full sm:w-[260px] max-h-[500px] min-w-[200px]"
                 maxLabelLength={20}
