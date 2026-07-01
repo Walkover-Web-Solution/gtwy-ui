@@ -82,8 +82,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
-    versionData:
-      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.apiCalls || {},
     variablesPath:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.variables_path ||
       {},
@@ -93,7 +91,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     SERVICES: state?.serviceReducer?.services,
     tools:
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.function_ids || [],
-    SERVICES: state?.serviceReducer?.services,
     currentUser: state.userDetailsReducer.userDetails,
     doctstar_embed_token: state?.bridgeReducer?.org?.[resolvedParams.org_id]?.doctstar_embed_token || "",
     currrentOrgDetail: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id],
@@ -359,26 +356,31 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           }
           return;
         }
-        if (versionData && typeof versionData === "object" && !Array.isArray(versionData)) {
-          const selectedVersionData = Object.values(versionData).find((fn) => fn.script_id === e?.data?.id);
-          if (selectedVersionData) {
-            //This condition will delete the tools and preTools..
+        // Get function details from functionData using script_id
+        const fnFromData = Object.values(functionData || {}).find((f) => f?.script_id === e?.data?.id);
+        if (fnFromData?._id) {
+          // Check if this function_id exists in tools array (connected to version)
+          const functionInVersion = Array.isArray(tools) && tools.includes(fnFromData._id);
+          if (functionInVersion) {
+            // Function is in version, update to remove it
             await dispatch(
               updateBridgeVersionAction({
                 bridgeId: path[5],
                 versionId: resolvedSearchParams?.get("version"),
                 dataToSend: {
                   functionData: {
-                    function_id: selectedVersionData._id,
-                    script_id: selectedVersionData.script_id,
+                    function_id: fnFromData._id,
+                    script_id: fnFromData.script_id,
                   },
                 },
               })
             );
-            if (preTools.includes(selectedVersionData?._id)) {
+            const isInPreTools =
+              Array.isArray(preTools) && preTools.some((tool) => tool?.config?.function_id === fnFromData._id);
+            if (isInPreTools) {
               dispatch(
                 updateApiAction(path[5], {
-                  pre_tools: selectedVersionData?._id,
+                  pre_tools: preTools[0],
                   status: "0",
                   version_id: resolvedSearchParams?.get("version"),
                 })
@@ -393,9 +395,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
               })
             );
           }
-          dispatch(
-            deleteFunctionAction({ script_id: e?.data?.id, orgId: path[2], functionId: selectedVersionData?._id })
-          );
+          dispatch(deleteFunctionAction({ script_id: e?.data?.id, orgId: path[2], functionId: fnFromData._id }));
         }
       }
 
