@@ -5,6 +5,7 @@ import {
   updateHistoryMessage,
   userFeedbackCount,
   getRecursiveHistory,
+  getMessageByIdApi,
 } from "@/config";
 import {
   fetchAllHistoryReducer,
@@ -93,6 +94,23 @@ export const getSubThreadsAction =
       dispatch(fetchSubThreadReducer({ data: data.threads, thread_id }));
     } catch (error) {
       console.error(error);
+    }
+  };
+
+export const getMessageByIdAction =
+  ({ message_id }) =>
+  async (dispatch) => {
+    try {
+      console.log("[getMessageByIdAction] invoked with message_id:", message_id);
+      const response = await getMessageByIdApi({ message_id });
+      console.log("[getMessageByIdAction] api response:", response);
+      const messageData = response?.data || response;
+      if (messageData) {
+        dispatch(fetchThreadReducer({ data: { data: [messageData] }, nextPage: 1 }));
+      }
+      return messageData;
+    } catch (error) {
+      console.error("Error in getMessageByIdAction:", error);
     }
   };
 

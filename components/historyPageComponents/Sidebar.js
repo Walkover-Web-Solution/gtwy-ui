@@ -88,19 +88,27 @@ const Sidebar = memo(
     onAnalyticsMessageNavigate,
     searchMessageId = null,
   }) => {
-    const { subThreads, subThreadsParentId, userFeedbackCount, bridgeVersionsArray, bridgeType, analyticsThreads } =
-      useCustomSelector((state) => ({
-        subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
-        subThreadsParentId: state?.historyReducer?.subThreadsParentId,
-        userFeedbackCount: state?.historyReducer?.userFeedbackCount,
-        bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
-          ? state.bridgeReducer.allBridgesMap[params.id].versions
-          : [],
-        bridgeType:
-          state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType ||
-          state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_type,
-        analyticsThreads: state?.analyticsReducer?.analyticsData?.[params?.id]?.threads,
-      }));
+    const {
+      subThreads,
+      subThreadsParentId,
+      userFeedbackCount,
+      bridgeVersionsArray,
+      bridgeType,
+      analyticsThreads,
+      historyEmbed,
+    } = useCustomSelector((state) => ({
+      subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
+      subThreadsParentId: state?.historyReducer?.subThreadsParentId,
+      userFeedbackCount: state?.historyReducer?.userFeedbackCount,
+      bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions)
+        ? state.bridgeReducer.allBridgesMap[params.id].versions
+        : [],
+      bridgeType:
+        state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType ||
+        state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridge_type,
+      analyticsThreads: state?.analyticsReducer?.analyticsData?.[params?.id]?.threads,
+      historyEmbed: state?.appInfoReducer?.embedUserDetails?.historyEmbed || false,
+    }));
 
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [selectedThreadIds, _setSelectedThreadIds] = useState([]);
@@ -248,6 +256,9 @@ const Sidebar = memo(
     }, []);
 
     useEffect(() => {
+      // In historyEmbed mode we only render a single message via
+      // getMessageByIdApi and must NOT trigger the filter/keyword history API.
+      if (historyEmbed) return;
       if (searchParams?.message_id) {
         // Set the search query state and input value
         if (searchRef?.current) {
@@ -255,7 +266,7 @@ const Sidebar = memo(
         }
         handleChange();
       }
-    }, [searchParams?.message_id]);
+    }, [searchParams?.message_id, historyEmbed]);
 
     const handleChange = useCallback(
       (e) => {

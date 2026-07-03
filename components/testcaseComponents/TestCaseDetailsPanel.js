@@ -9,6 +9,8 @@ import {
   Copy,
   Check as CheckIcon,
   GripVertical,
+  ArrowUpToLine,
+  History,
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
@@ -168,6 +170,30 @@ const TestCaseDetailsPanel = ({
     []
   );
   const [copiedVersion, setCopiedVersion] = useState(null);
+  const [movedVersion, setMovedVersion] = useState(null);
+  const [isHistorySliderOpen, setIsHistorySliderOpen] = useState(false);
+
+  const handleOpenHistory = (messageId) => {
+    if (!bridgeId) return;
+    if (typeof window === "undefined" || typeof window.openGtwy !== "function") {
+      console.error("GTWY embed script not loaded yet");
+      return;
+    }
+    setIsHistorySliderOpen(true);
+    // Wait a tick to ensure slider DOM (parentId) is mounted before opening embed.
+    setTimeout(() => {
+      window.GtwyEmbed?.sendDataToGtwy?.({ parentId: "gtwyHistoryParentId" });
+      window.openGtwy({
+        agent_id: bridgeId,
+        historyEmbed: true,
+        message_id: messageId || null,
+      });
+    }, 50);
+  };
+
+  const handleCloseHistory = () => {
+    setIsHistorySliderOpen(false);
+  };
 
   const handleCopyResponse = useCallback((versionId, output) => {
     const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
@@ -177,6 +203,31 @@ const TestCaseDetailsPanel = ({
       setTimeout(() => setCopiedVersion((curr) => (curr === versionId ? null : curr)), 1500);
     });
   }, []);
+
+  const handleMoveToExpected = useCallback(
+    (versionId, output) => {
+      if (!selectedTestCase?._id) return;
+      const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+      if (!text) return;
+      const nextExpected = { ...(selectedTestCase?.expected || {}), response: text };
+      setEditedExpected(text);
+      dispatch(
+        updateTestCaseAction({
+          testCaseId: selectedTestCase._id,
+          dataToUpdate: {
+            conversation: selectedTestCase?.conversation,
+            type: selectedTestCase?.type,
+            expected: nextExpected,
+            matching_type: selectedTestCase?.matching_type,
+            variables: selectedTestCase?.variables,
+          },
+        })
+      );
+      setMovedVersion(versionId);
+      setTimeout(() => setMovedVersion((curr) => (curr === versionId ? null : curr)), 1500);
+    },
+    [dispatch, selectedTestCase]
+  );
   const toolsDataModalRef = useRef(null);
 
   const handleCloseToolsDataModal = () => {
@@ -981,18 +1032,47 @@ const TestCaseDetailsPanel = ({
                                   </span>
                                 )}
                                 {hasRun && !runErrorMessage && modelOutput && (
-                                  <button
-                                    onClick={() => handleCopyResponse(version, modelOutput)}
-                                    className="ml-auto w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
-                                    title="Copy response"
-                                    data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
-                                  >
-                                    {copiedVersion === version ? (
-                                      <CheckIcon size={12} className="text-success" />
-                                    ) : (
-                                      <Copy size={12} />
-                                    )}
-                                  </button>
+                                  <div className="ml-auto flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleMoveToExpected(version, modelOutput)}
+                                      className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-[10px] font-semibold text-base-content/70 hover:bg-base-200"
+                                      title="Set this response as the expected output"
+                                      data-testid={`testcase-version-move-to-expected-${versions.indexOf(version) + 1}`}
+                                    >
+                                      {movedVersion === version ? (
+                                        <>
+                                          <CheckIcon size={12} className="text-success" />
+                                          <span className="text-success">Moved</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ArrowUpToLine size={12} />
+                                          <span>Move to Expected</span>
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenHistory(currentRun?.message_id)}
+                                      className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
+                                      title="View agent history"
+                                      data-testid={`testcase-version-history-${versions.indexOf(version) + 1}`}
+                                      disabled={!bridgeId || !currentRun?.message_id}
+                                    >
+                                      <History size={12} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleCopyResponse(version, modelOutput)}
+                                      className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
+                                      title="Copy response"
+                                      data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
+                                    >
+                                      {copiedVersion === version ? (
+                                        <CheckIcon size={12} className="text-success" />
+                                      ) : (
+                                        <Copy size={12} />
+                                      )}
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -1324,6 +1404,25 @@ const TestCaseDetailsPanel = ({
         toolsDataModalRef={toolsDataModalRef}
         integrationData={{}}
       />
+
+      <>
+        {isHistorySliderOpen && (
+          <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={handleCloseHistory} />
+        )}
+        <div
+          className={`fixed top-8 right-0 h-full w-full max-w-4xl bg-base-100 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+            isHistorySliderOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between p-3 border-b border-base-300">
+            <h3 className="text-base font-semibold">More details</h3>
+            <button onClick={handleCloseHistory} className="btn btn-ghost btn-sm btn-circle" title="Close">
+              ✕
+            </button>
+          </div>
+          <div id="gtwyHistoryParentId" className="w-full h-[calc(100%-3rem)]" />
+        </div>
+      </>
     </div>
   );
 };

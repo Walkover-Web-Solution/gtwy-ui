@@ -79,6 +79,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     themeMode,
     functionData,
     tools,
+    historyEmbed,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -99,6 +100,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     currrentOrgDetail: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id],
     themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
     functionData: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.functionData || {},
+    historyEmbed: state?.appInfoReducer?.embedUserDetails?.historyEmbed || false,
   }));
   useEffect(() => {
     if (!isEmbedUser) {
@@ -547,10 +549,12 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         <ThemeManager userType={themeUserType} />
         {/* Main Content Area for Embed Users */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Sticky Navbar */}
-          <div className="sticky top-0 z-medium bg-base-100 border-b border-base-300 ml-2">
-            <Navbar params={resolvedParams} searchParams={resolvedSearchParams} />
-          </div>
+          {/* Sticky Navbar - hidden in historyEmbed mode */}
+          {(!isEmbedUser || (isEmbedUser && !historyEmbed)) && (
+            <div className="sticky top-0 z-medium bg-base-100 border-b border-base-300 ml-2">
+              <Navbar params={resolvedParams} searchParams={resolvedSearchParams} />
+            </div>
+          )}
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden">

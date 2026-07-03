@@ -2,7 +2,6 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { createTestCaseAction } from "@/store/action/testCasesAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
-import { CloseIcon } from "@/components/Icons";
 import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -14,6 +13,7 @@ import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
 
 function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, channelIdentifier }) {
+  console.log("conversation", testCaseConversation);
   const params = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
@@ -30,7 +30,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
 
     return { mongoIdsOfTools: mongoIds };
   });
-  // Process testCaseConversation - handle both array of messages and single object with AiConfig
+  // Process testCaseConversation - extract from outside AiConfig (from item data)
   const processTestCaseData = () => {
     if (!testCaseConversation || testCaseConversation.length === 0) return [];
 
@@ -44,47 +44,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       return typeof content === "string" ? content : String(content || "");
     };
 
-    // If it's a single object with AiConfig, extract the conversation from AiConfig input/messages
-    if (testCaseConversation.length === 1 && testCaseConversation[0]?.AiConfig) {
-      const historyItem = testCaseConversation[0];
-      const aiConfigInput = historyItem.AiConfig.input || historyItem.AiConfig.messages;
-
-      if (!Array.isArray(aiConfigInput)) {
-        return [];
-      }
-
-      const processedMessages = [];
-
-      // Create conversation from AiConfig.input - only user and assistant messages
-      aiConfigInput.forEach((msg, idx) => {
-        // Only include user, assistant, developer, and system messages
-        if (msg.role === "user" || msg.role === "assistant") {
-          processedMessages.push({
-            id: `msg-config-${idx}-${Date.now()}-${Math.random()}`,
-            role: msg.role,
-            content: getContentText(msg.content),
-          });
-        }
-        // Skip function calls, reasoning, and other metadata
-      });
-
-      // Add the expected response from LLM as the final message
-      // This will be treated as the expected response for the test case
-      const expectedResponse =
-        historyItem.llm_message || historyItem.chatbot_message || historyItem.updated_llm_message;
-      if (expectedResponse) {
-        processedMessages.push({
-          id: `msg-expected-${Date.now()}-${Math.random()}`,
-          role: "assistant",
-          content: expectedResponse,
-          isExpectedResponse: true, // Mark this as the expected response
-        });
-      }
-
-      return processedMessages;
-    }
-
-    // Handle regular conversation array format
+    // Handle regular conversation array format (outside AiConfig)
     return testCaseConversation
       .map((message, idx) => {
         const uniqueId = `msg-${idx}-${Date.now()}-${Math.random()}`;
@@ -126,11 +86,27 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       .filter(Boolean);
   };
 
+  // Extract user query and expected output from data (outside AiConfig)
+  const getTestCaseFromData = () => {
+    if (!testCaseConversation || testCaseConversation.length === 0) return { userQuery: "", expectedOutput: "" };
+
+    const data = testCaseConversation[0];
+    const userQuery = data?.user || "";
+    const expectedOutput = data?.llm_message || data?.chatbot_message || data?.updated_llm_message || "";
+
+    return { userQuery, expectedOutput };
+  };
+
+  const { userQuery, expectedOutput } = getTestCaseFromData();
+
   const initialTestCases = processTestCaseData();
 
   const [finalTestCases, setFinalTestCases] = useState(initialTestCases);
   const [showFullConversation, setShowFullConversation] = useState(false);
   const [testCaseName, setTestCaseName] = useState("");
+  const [userQueryText, setUserQueryText] = useState(userQuery);
+  const [expectedOutputText, setExpectedOutputText] = useState(expectedOutput);
+
   // Filter out unwanted variables
   const filterVariables = (vars) => {
     const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
@@ -149,11 +125,13 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
 
   useEffect(() => {
     setFinalTestCases(initialTestCases);
+    setUserQueryText(userQuery);
+    setExpectedOutputText(expectedOutput);
     if (testCaseConversation?.[0]?.threadVariables) {
       setEditableVariables(filterVariables(testCaseConversation[0].threadVariables));
     }
     setTestCaseName("");
-  }, [testCaseConversation]);
+  }, [testCaseConversation, userQuery, expectedOutput]);
 
   useEffect(() => {
     // Auto-resize all textareas on mount and when content changes
@@ -179,17 +157,20 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const isAssistant = lastTestCase.role === "assistant";
     const isToolsCall = lastTestCase.role === "tools_call";
 
+    const conversationData = finalTestCases.slice(0, -1);
     const payload = {
       name: testCaseName,
-      conversation: finalTestCases.slice(0, -1),
+      ...(conversationData.length > 0 && { conversation: conversationData }),
       type: isAssistant ? "response" : "function",
       expected: {
         ...(isAssistant && { response: lastTestCase.content }),
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
+        ...(expectedOutputText && { response: expectedOutputText }),
       },
       bridge_id: params?.id,
       matching_type: "ai",
       variables: editableVariables,
+      ...(testCaseConversation?.[0]?.AiConfig && { ai_config: testCaseConversation[0].AiConfig }),
     };
     dispatch(createTestCaseAction({ bridgeId: params?.id, data: payload })).then(() => {
       // Clear testcase_id from Redux when creating new testcase
@@ -224,14 +205,6 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       ...prev,
       [key]: newValue,
     }));
-  };
-
-  const removeTool = (index, childIndex) => {
-    setFinalTestCases((prevTestCases) => {
-      const updatedTestCases = [...prevTestCases];
-      updatedTestCases[index].tools.splice(childIndex, 1);
-      return updatedTestCases;
-    });
   };
 
   const removeConversationPair = (pairIndex) => {
@@ -415,54 +388,23 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
           )}
 
-          {/* User Query - Last user message (always visible) */}
-          {finalTestCases && finalTestCases.length >= 2 && (
+          {/* User Query - From user field (always visible) */}
+          {userQueryText && (
             <div id="add-testcase-last-user-message" className="space-y-4">
-              {(() => {
-                const secondLastMessage = finalTestCases[finalTestCases.length - 2];
-                const secondLastIndex = finalTestCases.length - 2;
-                return (
-                  <div className="space-y-2" data-testid="add-testcase-user-query-wrapper">
-                    <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
-                    {secondLastMessage.role === "tools_call" || secondLastMessage.sender === "tools_call" ? (
-                      <div className="space-y-3">
-                        {secondLastMessage.tools?.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
-                          >
-                            <div className="flex-1 overflow-hidden bg-base-100 rounded p-2 font-mono text-sm text-base-content whitespace-pre-wrap break-words">
-                              {JSON.stringify(item, null, 2)}
-                            </div>
-                            {secondLastMessage.tools.length > 1 && (
-                              <button
-                                id={`add-testcase-second-last-remove-tool-${idx}`}
-                                type="button"
-                                className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => removeTool(secondLastIndex, idx)}
-                              >
-                                <CloseIcon size={16} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-base-100 rounded-lg shadow-sm rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
-                        <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
-                          <div className="whitespace-pre-wrap break-words">{secondLastMessage.content}</div>
-                        </ExpandCollapse>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              <div className="space-y-2" data-testid="add-testcase-user-query-wrapper">
+                <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
+                <div className="bg-base-100 rounded-lg shadow-sm p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                  <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
+                    <div className="whitespace-pre-wrap break-words">{userQueryText}</div>
+                  </ExpandCollapse>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
         {/* User Expected Output Section */}
-        {finalTestCases && finalTestCases.length > 0 && (
+        {expectedOutputText && (
           <div
             className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0 rounded-lg"
             data-testid="add-testcase-bottom-panel"
@@ -473,41 +415,9 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
               </div>
               <div className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2">
                 <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
-                  {(() => {
-                    const lastMessage = finalTestCases[finalTestCases.length - 1];
-                    const lastIndex = finalTestCases.length - 1;
-                    if (lastMessage.role === "tools_call" || lastMessage.sender === "tools_call") {
-                      return (
-                        <div className="space-y-3">
-                          {lastMessage.tools?.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex gap-3 items-start group relative bg-base-100 rounded-lg p-3 shadow-sm"
-                            >
-                              <div className="flex-1 overflow-hidden bg-base-100 rounded p-2 font-mono text-sm text-base-content whitespace-pre-wrap break-words">
-                                {JSON.stringify(item, null, 2)}
-                              </div>
-                              {lastMessage.tools.length > 1 && (
-                                <button
-                                  id={`add-testcase-expected-remove-tool-${idx}`}
-                                  type="button"
-                                  className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeTool(lastIndex, idx)}
-                                >
-                                  <CloseIcon size={16} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="bg-base-100 rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
-                        {lastMessage.content}
-                      </div>
-                    );
-                  })()}
+                  <div className="bg-base-100 rounded p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                    {expectedOutputText}
+                  </div>
                 </ExpandCollapse>
               </div>
             </div>
