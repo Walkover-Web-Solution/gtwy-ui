@@ -86,27 +86,6 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       .filter(Boolean);
   };
 
-  // Extract user query and expected output from data (outside AiConfig)
-  const getTestCaseFromData = () => {
-    if (!testCaseConversation || testCaseConversation.length === 0) return { userQuery: "", expectedOutput: "" };
-
-    const data = testCaseConversation[0];
-    const userQuery = data?.user || "";
-    const expectedOutput = data?.llm_message || data?.chatbot_message || data?.updated_llm_message || "";
-
-    return { userQuery, expectedOutput };
-  };
-
-  const { userQuery, expectedOutput } = getTestCaseFromData();
-
-  const initialTestCases = processTestCaseData();
-
-  const [finalTestCases, setFinalTestCases] = useState(initialTestCases);
-  const [showFullConversation, setShowFullConversation] = useState(false);
-  const [testCaseName, setTestCaseName] = useState("");
-  const [userQueryText, setUserQueryText] = useState(userQuery);
-  const [expectedOutputText, setExpectedOutputText] = useState(expectedOutput);
-
   // Filter out unwanted variables
   const filterVariables = (vars) => {
     const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
@@ -119,19 +98,31 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     return filtered;
   };
 
-  const [editableVariables, setEditableVariables] = useState(
-    testCaseConversation?.[0]?.threadVariables ? filterVariables(testCaseConversation[0].threadVariables) : {}
-  );
+  const [finalTestCases, setFinalTestCases] = useState([]);
+  const [showFullConversation, setShowFullConversation] = useState(false);
+  const [testCaseName, setTestCaseName] = useState("");
+  const [userQueryText, setUserQueryText] = useState("");
+  const [expectedOutputText, setExpectedOutputText] = useState("");
+  const [userUrlsList, setUserUrlsList] = useState([]);
+  const [editableVariables, setEditableVariables] = useState({});
 
   useEffect(() => {
-    setFinalTestCases(initialTestCases);
+    if (!testCaseConversation || testCaseConversation.length === 0) return;
+
+    const data = testCaseConversation[0];
+    const userQuery = data?.user || "";
+    const expectedOutput = data?.llm_message || data?.chatbot_message || data?.updated_llm_message || "";
+    const userUrls = Array.isArray(data?.user_urls) ? data.user_urls : [];
+
     setUserQueryText(userQuery);
     setExpectedOutputText(expectedOutput);
-    if (testCaseConversation?.[0]?.threadVariables) {
-      setEditableVariables(filterVariables(testCaseConversation[0].threadVariables));
+    setUserUrlsList(userUrls);
+    setFinalTestCases(processTestCaseData());
+    if (data?.threadVariables) {
+      setEditableVariables(filterVariables(data.threadVariables));
     }
     setTestCaseName("");
-  }, [testCaseConversation, userQuery, expectedOutput]);
+  }, [testCaseConversation]);
 
   useEffect(() => {
     // Auto-resize all textareas on mount and when content changes
@@ -170,6 +161,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       bridge_id: params?.id,
       matching_type: "ai",
       variables: editableVariables,
+      ...(userUrlsList.length > 0 && { user_urls: userUrlsList }),
       ...(testCaseConversation?.[0]?.AiConfig && { ai_config: testCaseConversation[0].AiConfig }),
     };
     dispatch(createTestCaseAction({ bridgeId: params?.id, data: payload })).then(() => {
@@ -311,6 +303,54 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* User URLs Section */}
+          {userUrlsList.length > 0 && (
+            <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
+              <div className="text-sm font-semibold text-base-content mb-4">User URLs</div>
+              <div className="space-y-2">
+                {userUrlsList.map((urlObj, idx) => {
+                  const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
+                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+
+                  return (
+                    <div key={idx} className="bg-base-100 rounded-lg p-3 border border-base-200">
+                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
+                      {isImageUrl ? (
+                        <div className="flex flex-col gap-2">
+                          <img
+                            src={urlString}
+                            alt={`User URL ${idx + 1}`}
+                            className="max-w-full max-h-64 rounded border border-base-300"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                          <a
+                            href={urlString}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm break-all text-blue-600 hover:underline"
+                          >
+                            {urlString}
+                          </a>
+                        </div>
+                      ) : (
+                        <a
+                          href={urlString}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm break-all text-blue-600 hover:underline block"
+                        >
+                          {urlString || JSON.stringify(urlObj)}
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
