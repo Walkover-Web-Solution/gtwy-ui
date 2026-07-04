@@ -7,11 +7,13 @@ import { getStatusClass } from "@/utils/utility";
 import { ShieldCheck, Edit2, Trash2 } from "lucide-react";
 import ConnectedAgentListSuggestion from "./ConnectAgentListSuggestion";
 import { AddIcon } from "@/components/Icons";
+import { useConfigurationContext } from "../ConfigurationContext";
 
 function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) {
   const dispatch = useDispatch();
   const router = useRouter();
   const isReadOnly = isPublished || !isEditor;
+  const { isEmbedUser } = useConfigurationContext();
 
   const { bridges, reviewerAgentId } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
@@ -52,11 +54,11 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
       id="reviewer-agent-selector-container"
       className="border border-base-200 p-3 flex items-center justify-between gap-2"
     >
-      <div className="flex items-center gap-1.5 shrink-0">
-        <ShieldCheck size={14} className="text-base-content/60" />
-        <div>
+      <div className="flex items-start gap-1.5 min-w-0">
+        <ShieldCheck size={14} className="text-base-content/60 mt-0.5" />
+        <div className="min-w-0">
           <p className="text-sm font-medium text-base-content">Reviewer Agent</p>
-          <p className="text-xs text-base-content/60">Select a agent to review and validate responses.</p>
+          <p className="text-xs text-base-content/60 break-words">Select a agent to review and validate responses.</p>
         </div>
       </div>
 
@@ -67,8 +69,8 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
             title="Open reviewer agent"
             onClick={() => {
               const isCmdOrCtrl = window.event && (window.event.ctrlKey || window.event.metaKey);
-              const url = `/org/${params?.org_id}/agents/configure/${reviewerAgent._id}?version=${reviewerAgent?.published_version_id || reviewerAgent?.versions?.[0]}`;
-              if (isCmdOrCtrl) window.open(url, "_blank");
+              const url = `/org/${params?.org_id}/agents/configure/${reviewerAgent._id}?version=${reviewerAgent?.published_version_id || reviewerAgent?.versions?.[0]}${isEmbedUser ? "&isEmbedUser=true" : ""}&parentAgentId=${params?.id}&parentVersionId=${searchParams?.version}`;
+              if (isCmdOrCtrl && !isEmbedUser) window.open(url, "_blank");
               else router.push(url);
             }}
           >

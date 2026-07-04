@@ -28,6 +28,7 @@ const SettingsTab = () => {
     isPublished,
     isEditor,
     cacheOn,
+    showReviewAgent,
   } = useConfigurationContext();
 
   const shouldShowTriggers = useMemo(() => bridgeType === "trigger" && !isEmbedUser, [bridgeType, isEmbedUser]);
@@ -110,7 +111,7 @@ const SettingsTab = () => {
                 </label>
               </div>
             )}
-            {!isEmbedUser && (
+            {(!isEmbedUser || (isEmbedUser && showReviewAgent)) && (
               <div data-testid="reviewer-agent-section" id="reviewer-agent-section">
                 <ReviewerAgentSelector
                   params={params}

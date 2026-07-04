@@ -38,6 +38,7 @@ export const useConfigurationState = (params, searchParams) => {
       showAdvancedConfigurations: state.appInfoReducer.embedUserDetails.showAdvancedConfigurations,
       service: service,
       showPreTool: state.appInfoReducer.embedUserDetails.showPreTool,
+      showReviewAgent: state.appInfoReducer.embedUserDetails.showReviewAgent,
       validationConfig: validationConfig, // Expose full validationConfig
       cacheOn: activeData?.cache_on ?? false,
     };

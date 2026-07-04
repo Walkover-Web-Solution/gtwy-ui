@@ -206,6 +206,14 @@ const CONFIG_SCHEMA = [
     defaultValue: false,
     section: "Interface Options",
   },
+  {
+    key: "showReviewAgent",
+    type: "toggle",
+    label: "Show Review Agent",
+    description: "Display review agent settings",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 // Model Customization Component

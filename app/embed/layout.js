@@ -137,7 +137,7 @@ const Layout = ({ children, isEmbedUser }) => {
               }
             }
             configUpdates[key] = parsedTheme;
-          } else if (key === "apikey_object_id" || key === "models" || key === "themeMode" || key === "prompt") {
+          } else if (EMBED_OBJECT_KEYS.has(key) || EMBED_ARRAY_KEYS.has(key) || EMBED_PASSTHROUGH_KEYS.has(key)) {
             configUpdates[key] = value;
           } else {
             configUpdates[key] = toBoolean(value);

@@ -2,12 +2,14 @@ import React, { useMemo } from "react";
 import { SettingsIcon, TrashIcon, RefreshIcon, SquareFunctionIcon } from "@/components/Icons";
 import useExpandableList from "@/customHooks/useExpandableList";
 import InfoTooltip from "@/components/InfoTooltip";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import { getSelectedVariablesPath } from "@/utils/variableValidation";
 
 const WEB_SEARCH_WARNING_CLASS = "border-warning/40";
 const WEB_SEARCH_TOKEN_WARNING = "Selecting Web Search can cause heavy token utilization and may exceed 10,000 tokens.";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { useDispatch } from "react-redux";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 
 const truncateTitle = (text, maxLength) => {
   if (!maxLength || typeof text !== "string") return text;
@@ -34,9 +36,33 @@ const RenderEmbed = ({
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
-  const { variablesPath } = useCustomSelector((state) => ({
-    variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-  }));
+  const dispatch = useDispatch();
+
+  const { variablesPath, embedUserDetails, embed_override } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId];
+    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+    return {
+      variablesPath: versionData?.variables_path || {},
+      embedUserDetails: state?.appInfoReducer?.embedUserDetails || {},
+      embed_override: isPublished ? bridgeDataFromState?.embed_override || {} : versionData?.embed_override || {},
+    };
+  });
+
+  const handleToggleFunction = (functionId, isActive) => {
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params.id,
+        versionId: versionId,
+        dataToSend: {
+          embed_override: {
+            tools: {
+              [functionId]: isActive,
+            },
+          },
+        },
+      })
+    );
+  };
   // Sort functions first
   const sortedFunctions = useMemo(() => {
     return (
@@ -65,13 +91,17 @@ const RenderEmbed = ({
       const title = truncateTitle(rawTitle, maxTitleLength);
       const isTitleTruncated = !!maxTitleLength && typeof rawTitle === "string" && rawTitle.length > maxTitleLength;
       const isWebSearchPreTool = value?._type === "gtwy_web_search";
+      const isToolToggleable =
+        Array.isArray(embedUserDetails?.tools_id) && embedUserDetails.tools_id.includes(value?._id);
 
       return (
         <div
           data-testid={`render-embed-item-${value?._id}`}
           key={value?._id}
           id={value?._id}
-          className={`group flex items-center border cursor-pointer bg-base-100 relative min-h-[44px] w-full ${
+          className={`group flex items-center border bg-base-100 relative min-h-[44px] w-full ${
+            isToolToggleable ? "cursor-default" : "cursor-pointer"
+          } ${
             value?.description?.trim() === ""
               ? "border-red-600"
               : isWebSearchPreTool
@@ -82,7 +112,7 @@ const RenderEmbed = ({
           <div
             className="p-2 flex-1 flex items-center"
             onClick={() => {
-              if (isReadOnly) return;
+              if (isReadOnly || isToolToggleable) return;
               const selectedVariablesPath = getSelectedVariablesPath(variablesPath, functionName);
               if (value?._type === "custom_function" || !value?._type) {
                 openViasocket(functionName, {
@@ -126,54 +156,87 @@ const RenderEmbed = ({
               ) : (
                 <span className="block text-sm font-normal truncate flex-1 min-w-0 text-left">{title}</span>
               )}
+              {isToolToggleable && (
+                <span className="badge badge-ghost badge-sm text-[10px] text-base-content/60 border border-base-content/20 ml-2 font-medium shrink-0">
+                  Default Tool
+                </span>
+              )}
             </div>
           </div>
 
           {/* Action buttons that appear on hover */}
-          <div
-            className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
-          >
-            <button
-              data-testid={`render-embed-config-button-${value?._id}`}
-              id={`render-embed-config-button-${value?._id}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenModal(value?._id);
-              }}
-              className="btn btn-ghost btn-sm p-1 hover:bg-base-300"
-              title="Config"
+          {!isToolToggleable && (
+            <div
+              className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
             >
-              <SettingsIcon size={16} />
-            </button>
-            {name === "preFunction" && handleChangePreTool && (
               <button
-                data-testid={`render-embed-refresh-button-${value?._id}`}
-                id={`render-embed-refresh-button-${value?._id}`}
+                data-testid={`render-embed-config-button-${value?._id}`}
+                id={`render-embed-config-button-${value?._id}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleChangePreTool();
+                  handleOpenModal(value?._id);
                 }}
-                className="btn btn-ghost btn-sm p-1"
-                title={isChangePreToolDropdownOpen ? undefined : "Change Pre Tool"}
+                className="btn btn-ghost btn-sm p-1 hover:bg-base-300"
+                title="Config"
+              >
+                <SettingsIcon size={16} />
+              </button>
+              {name === "preFunction" && handleChangePreTool && (
+                <button
+                  data-testid={`render-embed-refresh-button-${value?._id}`}
+                  id={`render-embed-refresh-button-${value?._id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleChangePreTool();
+                  }}
+                  className="btn btn-ghost btn-sm p-1"
+                  title={isChangePreToolDropdownOpen ? undefined : "Change Pre Tool"}
+                  disabled={isReadOnly}
+                >
+                  <RefreshIcon size={16} />
+                </button>
+              )}
+              <button
+                data-testid={`render-embed-delete-button-${value?._id}`}
+                id={`render-embed-delete-button-${value?._id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenDeleteModal(value?._id, value?.script_id);
+                }}
+                className="btn btn-ghost btn-sm p-1 hover:bg-red-100 hover:text-error"
+                title="Remove"
                 disabled={isReadOnly}
               >
-                <RefreshIcon size={16} />
+                <TrashIcon size={16} />
               </button>
-            )}
-            <button
-              data-testid={`render-embed-delete-button-${value?._id}`}
-              id={`render-embed-delete-button-${value?._id}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenDeleteModal(value?._id, value?.script_id);
-              }}
-              className="btn btn-ghost btn-sm p-1 hover:bg-red-100 hover:text-error"
-              title="Remove"
-              disabled={isReadOnly}
-            >
-              <TrashIcon size={16} />
-            </button>
-          </div>
+            </div>
+          )}
+
+          {isToolToggleable && (
+            <div className="pr-3 flex items-center gap-1.5 flex-shrink-0">
+              <InfoTooltip tooltipContent="Toggle off to disable this tool">
+                <span
+                  className="text-base-content/40 hover:text-base-content/60 cursor-help"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <Info size={14} />
+                </span>
+              </InfoTooltip>
+              <input
+                autoComplete="off"
+                type="checkbox"
+                className="toggle toggle-xs"
+                checked={embed_override?.tools?.[value?._id] !== false}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleToggleFunction(value?._id, e.target.checked);
+                }}
+                disabled={isReadOnly}
+              />
+            </div>
+          )}
+
           {isWebSearchPreTool && (
             <span
               className="pr-2"

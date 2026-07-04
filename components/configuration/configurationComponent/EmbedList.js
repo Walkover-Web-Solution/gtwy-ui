@@ -1,7 +1,7 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { updateBridgeVersionAction, updateFuntionApiAction } from "@/store/action/bridgeAction";
+import { updateBridgeVersionAction, updateFuntionApiAction, getAllFunctions } from "@/store/action/bridgeAction";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
@@ -61,6 +61,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     showInbuiltTools,
     webSearchFilters,
     gtwyWebSearchFilters,
+    embedUserDetails,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -70,6 +71,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     const serviceName = activeData?.service;
     const modelTypeName = activeData?.configuration?.type?.toLowerCase();
     const modelName = activeData?.configuration?.model;
+    const embedUserDetails = state.appInfoReducer.embedUserDetails;
 
     return {
       integrationData: orgData?.integrationData || {},
@@ -88,6 +90,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
       gtwyWebSearchFilters: isPublished
         ? bridgeDataFromState?.gtwy_web_search_filters || []
         : versionData?.gtwy_web_search_filters || [],
+      embedUserDetails,
     };
   });
   // Use the tutorial videos hook
@@ -126,10 +129,22 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     setSelectedPrebuiltTool(item);
     openModal(MODAL_TYPE.DELETE_PREBUILT_TOOL_MODAL);
   };
-  const bridgeFunctions = useMemo(
-    () => bridge_functions.map((id) => function_data?.[id]),
-    [bridge_functions, function_data]
-  );
+  useEffect(() => {
+    if (Object.keys(function_data || {}).length === 0) {
+      dispatch(getAllFunctions());
+    }
+  }, [dispatch, function_data]);
+
+  const toolsId = embedUserDetails?.tools_id;
+  const showAddTool = true;
+
+  const bridgeFunctions = useMemo(() => {
+    if (Array.isArray(toolsId) && toolsId.length > 0) {
+      const mergedIds = Array.from(new Set([...toolsId, ...bridge_functions]));
+      return mergedIds.map((id) => function_data?.[id]).filter(Boolean);
+    }
+    return bridge_functions.map((id) => function_data?.[id]).filter(Boolean);
+  }, [bridge_functions, function_data, toolsId]);
 
   const handleSelectFunction = (functionId) => {
     if (functionId) {
@@ -329,40 +344,44 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                   >
                     <div className="border-2 border-base-200 border-dashed p-4 text-center">
                       <p className="text-sm text-base-content/70">No tools found.</p>
-                      <button
-                        data-testid="embed-list-add-tool-button-empty"
-                        id="embed-list-add-tool-button"
-                        tabIndex={0}
-                        className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
-                        disabled={isReadOnly}
-                        onClick={() => {
-                          setTimeout(() => {
-                            document.getElementById("embed-suggestion-search-input")?.focus();
-                          }, 50);
-                        }}
-                      >
-                        <AddIcon className="w-3 h-3" />
-                        Add
-                      </button>
+                      {showAddTool && (
+                        <button
+                          data-testid="embed-list-add-tool-button-empty"
+                          id="embed-list-add-tool-button"
+                          tabIndex={0}
+                          className="flex items-center justify-center gap-1 mt-3 text-base-content hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                          disabled={isReadOnly}
+                          onClick={() => {
+                            setTimeout(() => {
+                              document.getElementById("embed-suggestion-search-input")?.focus();
+                            }, 50);
+                          }}
+                        >
+                          <AddIcon className="w-3 h-3" />
+                          Add
+                        </button>
+                      )}
                     </div>
-                    <EmbedListSuggestionDropdownMenu
-                      name={"Function"}
-                      params={params}
-                      searchParams={searchParams}
-                      onSelect={handleSelectFunction}
-                      onSelectPrebuiltTool={handleAddPrebuiltTool}
-                      connectedFunctions={bridge_functions}
-                      shouldToolsShow={shouldToolsShow}
-                      modelName={model}
-                      asDropdownContent
-                      prebuiltToolsData={prebuiltToolsData}
-                      toolsVersionData={toolsVersionData}
-                      showInbuiltTools={showInbuiltTools}
-                      tutorialState={tutorialState}
-                      setTutorialState={setTutorialState}
-                      isPublished={isPublished}
-                      isEditor={isEditor}
-                    />
+                    {showAddTool && (
+                      <EmbedListSuggestionDropdownMenu
+                        name={"Function"}
+                        params={params}
+                        searchParams={searchParams}
+                        onSelect={handleSelectFunction}
+                        onSelectPrebuiltTool={handleAddPrebuiltTool}
+                        connectedFunctions={[...bridge_functions, ...(toolsId || [])]}
+                        shouldToolsShow={shouldToolsShow}
+                        modelName={model}
+                        asDropdownContent
+                        prebuiltToolsData={prebuiltToolsData}
+                        toolsVersionData={toolsVersionData}
+                        showInbuiltTools={showInbuiltTools}
+                        tutorialState={tutorialState}
+                        setTutorialState={setTutorialState}
+                        isPublished={isPublished}
+                        isEditor={isEditor}
+                      />
+                    )}
                   </div>
                 ) : (
                   <>
@@ -475,7 +494,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                       );
                     })}
 
-                    {hasTools && (
+                    {hasTools && showAddTool && (
                       <div
                         data-testid="embed-list-add-tool-dropdown"
                         id="embed-list-add-tool-dropdown"
@@ -504,7 +523,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                           searchParams={searchParams}
                           onSelect={handleSelectFunction}
                           onSelectPrebuiltTool={handleAddPrebuiltTool}
-                          connectedFunctions={bridge_functions}
+                          connectedFunctions={[...bridge_functions, ...(toolsId || [])]}
                           shouldToolsShow={shouldToolsShow}
                           modelName={model}
                           asDropdownContent

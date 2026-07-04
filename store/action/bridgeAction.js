@@ -561,6 +561,20 @@ export const updateBridgeVersionAction =
         };
       }
 
+      // Deep merge embed_override if present
+      if (dataToSend.embed_override) {
+        const currentEmbedOverride = currentVersion.embed_override || {};
+        const currentTools = currentEmbedOverride.tools || {};
+        optimisticData.embed_override = {
+          ...currentEmbedOverride,
+          ...dataToSend.embed_override,
+          tools: {
+            ...currentTools,
+            ...(dataToSend.embed_override.tools || {}),
+          },
+        };
+      }
+
       // Handle function_ids for EmbedList - update optimistically based on functionData
       if (dataToSend.functionData) {
         const currentFunctionIds = currentVersion.function_ids || [];

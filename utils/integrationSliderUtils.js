@@ -190,6 +190,14 @@ export const CONFIG_SCHEMA = [
     defaultValue: false,
     section: "Display Settings",
   },
+  {
+    key: "showReviewAgent",
+    type: "toggle",
+    label: "Show Review Agent",
+    description: "Display review agent settings",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 // Theme utility functions

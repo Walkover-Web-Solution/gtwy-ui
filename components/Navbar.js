@@ -16,6 +16,7 @@ import {
   RefreshCcw,
   Settings,
   BarChart3,
+  ArrowLeft,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
@@ -64,6 +65,8 @@ const Navbar = ({ isEmbedUser, params }) => {
   const searchParams = useSearchParams();
   const versionId = useMemo(() => searchParams?.get("version"), [searchParams]);
   const isPublished = useMemo(() => searchParams?.get("isPublished") === "true", [searchParams]);
+  const parentAgentId = useMemo(() => searchParams?.get("parentAgentId"), [searchParams]);
+  const parentVersionId = useMemo(() => searchParams?.get("parentVersionId"), [searchParams]);
   // Use portal dropdown hook (same as agents page)
   const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown({
     offsetX: -100,
@@ -405,6 +408,20 @@ const Navbar = ({ isEmbedUser, params }) => {
     router.push(`/org/${orgId}/agents`);
   }, [router, orgId]);
 
+  const handleBackToMainClick = useCallback(() => {
+    if (unsavedPromptGuard.hasUnsavedChanges) {
+      pendingNavRef.current = () =>
+        router.push(
+          `/org/${orgId}/agents/configure/${parentAgentId}?version=${parentVersionId}${isEmbedUser ? "&isEmbedUser=true" : ""}`
+        );
+      openModal(MODAL_TYPE.UNSAVED_CHANGES_NAV_MODAL);
+      return;
+    }
+    router.push(
+      `/org/${orgId}/agents/configure/${parentAgentId}?version=${parentVersionId}${isEmbedUser ? "&isEmbedUser=true" : ""}`
+    );
+  }, [router, orgId, parentAgentId, parentVersionId, isEmbedUser]);
+
   // Keyboard shortcuts for navigation - only enabled on testcases, configuration, or history pages
   useEffect(() => {
     // Only enable shortcuts on allowed pages (testcases, configuration, or history)
@@ -518,6 +535,22 @@ const Navbar = ({ isEmbedUser, params }) => {
               >
                 <Home data-testid="navbar-home-button" id="navbar-home-button" size={14} className="sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline text-sm sm:text-sm">Home</span>
+              </button>
+            )}
+
+            {parentAgentId && (
+              <button
+                onClick={handleBackToMainClick}
+                className="btn btn-xs sm:btn-sm gap-1 sm:gap-2 hover:bg-base-200 px-2 sm:px-3"
+                title="Back to Main Agent"
+              >
+                <ArrowLeft
+                  data-testid="navbar-back-button"
+                  id="navbar-back-button"
+                  size={14}
+                  className="sm:w-4 sm:h-4"
+                />
+                <span className="hidden sm:inline text-sm sm:text-sm">Back to Main</span>
               </button>
             )}
 
