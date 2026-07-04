@@ -369,6 +369,11 @@ function useRtLayerEventHandler(channelIdentifier = "") {
             const llmUrls = buildLlmUrls(rawImages, []);
             const messageData = {
               id: response.data.id || response.data.message_id || parsedData.message_id,
+              // Preserve the backend message_id (UUID) separately from the
+              // upstream provider id (which may be an OpenAI `resp_...` id).
+              // Needed for creating testcases (backend resolves ai_config
+              // via historyService.findHistoryByMessageId).
+              message_id: parsedData.message_id || response.data.message_id || response.data.id,
               content: response.data.content,
               role: response.data.role || "assistant",
               model: response.data.model,

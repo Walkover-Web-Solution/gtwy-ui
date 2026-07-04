@@ -80,6 +80,16 @@ export const deleteApikey = async (id, service) => {
   }
 };
 
+export const getBridgeApikeysByVersion = async (bridge_id) => {
+  try {
+    const response = await axios.get(`${URL}/api/apikeys/${bridge_id}`);
+    return response;
+  } catch (error) {
+    console.error(error);
+    return error;
+  }
+};
+
 export const getAllApikey = async (org_id) => {
   try {
     const response = await axios.get(`${URL}/api/apikeys`, org_id);

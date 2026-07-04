@@ -408,25 +408,35 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       }
     }, 100);
   };
-
-  // Convert current chat messages to the format expected by AddTestCaseModal
   const handleAddConversationToTestCase = () => {
     if (!messages || messages.length === 0) return;
 
-    // Build conversation from current messages (user + assistant only)
-    const conversation = messages
-      .filter((msg) => msg.sender === "user" || msg.sender === "assistant")
-      .map((msg) => ({
-        role: msg.sender,
-        content: typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content),
-      }));
+    // Find the most recent user + assistant message pair.
+    const lastUserMsg = [...messages].reverse().find((m) => m?.sender === "user");
+    const lastAssistantMsg = [...messages].reverse().find((m) => m?.sender === "assistant");
+    if (!lastUserMsg || !lastAssistantMsg) return;
 
-    if (conversation.length === 0) return;
-    if (variables && Object.keys(variables).length > 0) {
-      conversation[0] = { ...conversation[0], threadVariables: { ...variables } };
-    }
+    const userUrls = lastUserMsg?.user_urls ?? lastUserMsg?.image_urls ?? [];
 
-    setTestCaseConversation(conversation);
+    const item = {
+      user:
+        typeof lastUserMsg?.content === "string"
+          ? lastUserMsg.content
+          : lastUserMsg?.content == null
+            ? ""
+            : JSON.stringify(lastUserMsg.content),
+      llm_message:
+        typeof lastAssistantMsg?.content === "string"
+          ? lastAssistantMsg.content
+          : lastAssistantMsg?.content == null
+            ? ""
+            : JSON.stringify(lastAssistantMsg.content),
+      user_urls: userUrls,
+      threadVariables: typeof variables === "object" && !Array.isArray(variables) ? { ...variables } : {},
+      message_id: lastAssistantMsg?.message_id ?? lastAssistantMsg?.id ?? null,
+    };
+
+    setTestCaseConversation([item]);
     openModal(MODAL_TYPE.ADD_TEST_CASE_MODAL);
   };
 

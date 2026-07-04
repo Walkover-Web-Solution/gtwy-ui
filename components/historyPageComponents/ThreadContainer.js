@@ -111,6 +111,8 @@ const ThreadContainer = ({
 
       const itemWithVariables = {
         ...item,
+        // Backend fetches ai_config using message_id (see historyService.findHistoryByMessageId).
+        message_id: item?.message_id || threadItem?.message_id || item?.id || null,
         AiConfig: AiConfigForVariable,
         threadVariables: threadVariables,
       };

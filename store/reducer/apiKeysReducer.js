@@ -3,6 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   apikeys: {},
   apikeysBackup: {},
+  apikeysByBridgeVersion: {},
   loading: false,
   error: null,
 };
@@ -94,6 +95,13 @@ export const apiKeysReducer = createSlice({
         state.apikeys[org_id] = state.apikeys[org_id].filter((apiKey) => apiKey.name !== name);
       }
     },
+
+    // Store the per-version API key service availability for a bridge.
+    setBridgeApikeysByVersionReducer: (state, action) => {
+      const { bridge_id, version_ids } = action.payload;
+      if (!state.apikeysByBridgeVersion) state.apikeysByBridgeVersion = {};
+      state.apikeysByBridgeVersion[bridge_id] = version_ids || {};
+    },
   },
 });
 
@@ -105,6 +113,7 @@ export const {
   apikeyUpdateReducer,
   apikeyDeleteReducer,
   updateApiKeyStatusReducer,
+  setBridgeApikeysByVersionReducer,
 } = apiKeysReducer.actions;
 
 export default apiKeysReducer.reducer;

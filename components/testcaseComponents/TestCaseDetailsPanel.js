@@ -9,6 +9,8 @@ import {
   Copy,
   Check as CheckIcon,
   GripVertical,
+  ArrowUpToLine,
+  Info,
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
@@ -60,10 +62,20 @@ const TestCaseDetailsPanel = ({
     const missing = baseComparisonVersions.filter((v) => !valid.includes(v));
     return [...valid, ...missing];
   });
+  const arraysEqual = (a, b) => {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
+    return true;
+  };
   const setVersionOrder = useCallback(
     (next) => {
       setVersionOrderState((prev) => {
         const value = typeof next === "function" ? next(prev) : next;
+        // Skip state update AND dispatch when the order hasn't actually changed.
+        // Dispatching unconditionally caused a re-render → prop change → effect →
+        // setVersionOrder → dispatch loop (Maximum update depth exceeded).
+        if (arraysEqual(prev, value)) return prev;
         if (bridgeId) dispatch(setTestCaseConfig({ bridgeId, versionOrder: value }));
         return value;
       });
@@ -74,8 +86,10 @@ const TestCaseDetailsPanel = ({
     setVersionOrder((prev) => {
       const kept = prev.filter((v) => baseComparisonVersions.includes(v));
       const added = baseComparisonVersions.filter((v) => !kept.includes(v));
-      return [...kept, ...added];
+      const nextOrder = [...kept, ...added];
+      return arraysEqual(prev, nextOrder) ? prev : nextOrder;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseComparisonVersions]);
   const comparisonVersions = versionOrder;
 
@@ -168,6 +182,30 @@ const TestCaseDetailsPanel = ({
     []
   );
   const [copiedVersion, setCopiedVersion] = useState(null);
+  const [movedVersion, setMovedVersion] = useState(null);
+  const [isHistorySliderOpen, setIsHistorySliderOpen] = useState(false);
+
+  const handleOpenHistory = (messageId) => {
+    if (!bridgeId) return;
+    if (typeof window === "undefined" || typeof window.openGtwy !== "function") {
+      console.error("GTWY embed script not loaded yet");
+      return;
+    }
+    setIsHistorySliderOpen(true);
+    // Wait a tick to ensure slider DOM (parentId) is mounted before opening embed.
+    setTimeout(() => {
+      window.GtwyEmbed?.sendDataToGtwy?.({ parentId: "gtwyHistoryParentId" });
+      window.openGtwy({
+        agent_id: bridgeId,
+        historyEmbed: true,
+        message_id: messageId || null,
+      });
+    }, 50);
+  };
+
+  const handleCloseHistory = () => {
+    setIsHistorySliderOpen(false);
+  };
 
   const handleCopyResponse = useCallback((versionId, output) => {
     const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
@@ -177,6 +215,31 @@ const TestCaseDetailsPanel = ({
       setTimeout(() => setCopiedVersion((curr) => (curr === versionId ? null : curr)), 1500);
     });
   }, []);
+
+  const handleMoveToExpected = useCallback(
+    (versionId, output) => {
+      if (!selectedTestCase?._id) return;
+      const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+      if (!text) return;
+      const nextExpected = { ...(selectedTestCase?.expected || {}), response: text };
+      setEditedExpected(text);
+      dispatch(
+        updateTestCaseAction({
+          testCaseId: selectedTestCase._id,
+          dataToUpdate: {
+            conversation: selectedTestCase?.conversation,
+            type: selectedTestCase?.type,
+            expected: nextExpected,
+            matching_type: selectedTestCase?.matching_type,
+            variables: selectedTestCase?.variables,
+          },
+        })
+      );
+      setMovedVersion(versionId);
+      setTimeout(() => setMovedVersion((curr) => (curr === versionId ? null : curr)), 1500);
+    },
+    [dispatch, selectedTestCase]
+  );
   const toolsDataModalRef = useRef(null);
 
   const handleCloseToolsDataModal = () => {
@@ -594,14 +657,28 @@ const TestCaseDetailsPanel = ({
             </div>
           )}
 
-          {/* Input Section - last user message (editable) */}
+          {/* Input Section - last user message (editable).
+              If no user message exists yet, render an empty editable field so
+              the user can add one; typing appends a new user message at the
+              start of the conversation. */}
           {(() => {
             const lastUserIdx = [...editedConversation]
               .map((m, i) => ({ m, i }))
               .reverse()
               .find(({ m }) => m?.role === "user")?.i;
-            if (lastUserIdx === undefined) return null;
-            const lastUserContent = editedConversation[lastUserIdx]?.content || "";
+
+            const hasUser = lastUserIdx !== undefined;
+            const lastUserContent = hasUser ? editedConversation[lastUserIdx]?.content || "" : "";
+
+            const handleEmptyUserChange = (val) => {
+              if (val === "" && !hasUser) return;
+              setEditedConversation((prev) => {
+                // Prepend a new user message; keep any existing assistant/expected messages.
+                const next = [{ role: "user", content: val }, ...prev];
+                return next;
+              });
+            };
+
             return (
               <div className="mb-5">
                 <div
@@ -618,8 +695,13 @@ const TestCaseDetailsPanel = ({
                     <AutoResizeTextarea
                       data-testid="testcase-input-textarea"
                       value={typeof lastUserContent === "string" ? lastUserContent : JSON.stringify(lastUserContent)}
-                      onChange={(e) => handleConversationChange(lastUserIdx, e.target.value)}
-                      onBlur={() => handleConversationBlur(lastUserIdx)}
+                      placeholder={hasUser ? "" : "Enter user query..."}
+                      onChange={(e) =>
+                        hasUser
+                          ? handleConversationChange(lastUserIdx, e.target.value)
+                          : handleEmptyUserChange(e.target.value)
+                      }
+                      onBlur={() => hasUser && handleConversationBlur(lastUserIdx)}
                       className="w-full bg-transparent text-sm text-base-content leading-relaxed outline-none"
                     />
                   </ExpandCollapse>
@@ -627,6 +709,53 @@ const TestCaseDetailsPanel = ({
               </div>
             );
           })()}
+
+          {/* User URLs Section */}
+          {Array.isArray(selectedTestCase?.user_urls) && selectedTestCase.user_urls.length > 0 && (
+            <div className="mb-6">
+              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">User URLs</div>
+              <div className="space-y-2">
+                {selectedTestCase.user_urls.map((urlObj, idx) => {
+                  const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
+                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+                  return (
+                    <div key={idx} className="bg-base-50 rounded-lg p-3 border border-base-200">
+                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
+                      {isImageUrl ? (
+                        <div className="flex flex-col gap-2">
+                          <img
+                            src={urlString}
+                            alt={`User URL ${idx + 1}`}
+                            className="max-w-full max-h-64 rounded border border-base-300"
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                            }}
+                          />
+                          <a
+                            href={urlString}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm break-all text-blue-600 hover:underline"
+                          >
+                            {urlString}
+                          </a>
+                        </div>
+                      ) : (
+                        <a
+                          href={urlString}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm break-all text-blue-600 hover:underline block"
+                        >
+                          {urlString || JSON.stringify(urlObj)}
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Expected Output — collapses to 4 lines with "...show more" */}
           <div className="mb-6">
@@ -981,18 +1110,48 @@ const TestCaseDetailsPanel = ({
                                   </span>
                                 )}
                                 {hasRun && !runErrorMessage && modelOutput && (
-                                  <button
-                                    onClick={() => handleCopyResponse(version, modelOutput)}
-                                    className="ml-auto w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
-                                    title="Copy response"
-                                    data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
-                                  >
-                                    {copiedVersion === version ? (
-                                      <CheckIcon size={12} className="text-success" />
-                                    ) : (
-                                      <Copy size={12} />
-                                    )}
-                                  </button>
+                                  <div className="ml-auto flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleMoveToExpected(version, modelOutput)}
+                                      className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-[10px] font-semibold text-base-content/70 hover:bg-base-200"
+                                      title="Set this response as the expected output"
+                                      data-testid={`testcase-version-move-to-expected-${versions.indexOf(version) + 1}`}
+                                    >
+                                      {movedVersion === version ? (
+                                        <>
+                                          <CheckIcon size={12} className="text-success" />
+                                          <span className="text-success">Moved</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ArrowUpToLine size={12} />
+                                          <span>Move to Expected</span>
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenHistory(currentRun?.message_id)}
+                                      className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-xs text-base-content/70 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="View details"
+                                      data-testid={`testcase-version-details-${versions.indexOf(version) + 1}`}
+                                      disabled={!bridgeId || !currentRun?.message_id}
+                                    >
+                                      <Info size={12} />
+                                      <span>More Info</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleCopyResponse(version, modelOutput)}
+                                      className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
+                                      title="Copy response"
+                                      data-testid={`testcase-version-copy-${versions.indexOf(version) + 1}`}
+                                    >
+                                      {copiedVersion === version ? (
+                                        <CheckIcon size={12} className="text-success" />
+                                      ) : (
+                                        <Copy size={12} />
+                                      )}
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -1324,6 +1483,25 @@ const TestCaseDetailsPanel = ({
         toolsDataModalRef={toolsDataModalRef}
         integrationData={{}}
       />
+
+      <>
+        {isHistorySliderOpen && (
+          <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={handleCloseHistory} />
+        )}
+        <div
+          className={`fixed top-8 right-0 h-full w-full max-w-4xl bg-base-100 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+            isHistorySliderOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex items-center justify-between p-3 border-b border-base-300">
+            <h3 className="text-base font-semibold">More details</h3>
+            <button onClick={handleCloseHistory} className="btn btn-ghost btn-sm btn-circle" title="Close">
+              ✕
+            </button>
+          </div>
+          <div id="gtwyHistoryParentId" className="w-full h-[calc(100%-3rem)]" />
+        </div>
+      </>
     </div>
   );
 };

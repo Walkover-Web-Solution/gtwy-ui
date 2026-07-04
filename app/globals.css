@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Restore pointer cursor on all interactive elements globally.
+   Tailwind v3 preflight removed the default cursor:pointer on buttons,
+   so we re-apply it here for buttons, links, role=button, summary,
+   labels tied to inputs, and any element marked with [onclick]. */
+@layer base {
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  summary,
+  label[for],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  select,
+  [onclick] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  a[aria-disabled="true"],
+  [role="button"][aria-disabled="true"],
+  input:disabled,
+  select:disabled,
+  .btn-disabled,
+  .btn[disabled] {
+    cursor: not-allowed;
+  }
+}
+
 @layer utilities {
   .group:hover .group-hover\:opacity-0 {
     opacity: 0;

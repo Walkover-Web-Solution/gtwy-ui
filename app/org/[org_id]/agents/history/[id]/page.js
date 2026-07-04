@@ -5,7 +5,7 @@ import { useDispatch } from "react-redux";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getHistoryAction } from "@/store/action/historyAction";
+import { getHistoryAction, getMessageByIdAction } from "@/store/action/historyAction";
 import { clearThreadData, clearHistoryData, setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 import ChatDetails from "@/components/historyPageComponents/ChatDetails";
@@ -31,7 +31,7 @@ function Page({ params, searchParams }) {
   const sidebarRef = useRef(null);
   const searchRef = useRef();
   const activeFilterByRef = useRef(undefined);
-  const { historyData, thread, selectedVersion, previousPrompt } = useCustomSelector((state) => {
+  const { historyData, thread, selectedVersion, previousPrompt, historyEmbed } = useCustomSelector((state) => {
     return {
       historyData: state?.historyReducer?.history || [],
       thread: state?.historyReducer?.thread || [],
@@ -39,6 +39,7 @@ function Page({ params, searchParams }) {
       previousPrompt:
         state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id]?.[resolvedSearchParams?.version]?.configuration
           ?.prompt || "",
+      historyEmbed: state?.appInfoReducer?.embedUserDetails?.historyEmbed || false,
     };
   });
   const [isSliderOpen, setIsSliderOpen] = useState(false);
@@ -61,8 +62,6 @@ function Page({ params, searchParams }) {
   useEffect(() => {
     if (selectedBatchMessageId !== null) return;
     if (!Array.isArray(thread) || thread.length === 0) return;
-    // Ensure the loaded thread actually belongs to the currently selected thread_id
-    // (prevents auto-selecting a batch from a stale thread when navigating)
     const currentThreadId = resolvedSearchParams?.thread_id;
     if (currentThreadId && thread[0]?.thread_id && thread[0].thread_id !== currentThreadId) return;
     const firstBatch = thread.find((msg) => msg?.batch_data?.batch_id);
@@ -108,6 +107,18 @@ function Page({ params, searchParams }) {
     const fetchInitialData = async (resolvedParams, resolvedSearchParams) => {
       setLoading(true);
       dispatch(clearThreadData());
+      const rawEmbedMessageId = search.get("message_id");
+      const embedMessageId =
+        rawEmbedMessageId && !["none", "null", "undefined"].includes(rawEmbedMessageId.toLowerCase())
+          ? rawEmbedMessageId
+          : null;
+      if (historyEmbed) {
+        if (embedMessageId) {
+          await dispatch(getMessageByIdAction({ message_id: embedMessageId }));
+        }
+        setLoading(false);
+        return;
+      }
       const startDate = resolvedSearchParams?.start;
       const endDate = resolvedSearchParams?.end;
       const keyword = searchRef.current?.value || "";
@@ -149,7 +160,7 @@ function Page({ params, searchParams }) {
       setLoading(false);
     };
     fetchInitialData(resolvedParams, resolvedSearchParams);
-  }, [resolvedParams.id, filterOption, selectedVersion]);
+  }, [resolvedParams.id, filterOption, selectedVersion, search.get("message_id"), historyEmbed]);
 
   const threadHandler = useCallback(
     async (thread_id, item, value) => {
@@ -192,6 +203,14 @@ function Page({ params, searchParams }) {
   );
 
   const fetchMoreData = useCallback(async () => {
+    // In historyEmbed mode with a specific message_id, don't fetch more data.
+    // Only the single message from getMessageByIdApi should be displayed.
+    const embedMessageId = search.get("message_id");
+    if (historyEmbed && embedMessageId) {
+      setHasMore(false);
+      return;
+    }
+
     const nextPage = page + 1;
     setPage(nextPage);
 
@@ -214,7 +233,7 @@ function Page({ params, searchParams }) {
       )
     );
     if (result?.length < 40) setHasMore(false);
-  }, [page, resolvedParams.id]);
+  }, [page, resolvedParams.id, historyEmbed, search]);
 
   const batchPanel = (
     <BatchSubthreadPanel
@@ -238,7 +257,7 @@ function Page({ params, searchParams }) {
     <div className="bg-history-page relative scrollbar-hide text-base-content h-[calc(100vh-40px)]">
       <div className="flex flex-row overflow-hidden bg-history-page min-h-full h-full relative">
         <React.Suspense>
-          <div className="h-full shrink-0 z-50 flex relative">
+          <div className={`h-full shrink-0 z-50 flex relative ${historyEmbed ? "hidden" : ""}`}>
             <Sidebar
               historyData={historyData}
               threadHandler={threadHandler}

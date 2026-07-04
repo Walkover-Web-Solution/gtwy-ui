@@ -477,6 +477,8 @@ export const sendMessageWithApiStreaming =
               dispatch(
                 handleRtLayerMessage(channelId, {
                   id: msgId,
+                  // Preserve backend message_id explicitly (used for testcase creation).
+                  message_id: parsed.message_id || msgId,
                   content: "",
                   role: "assistant",
                   model: parsed.model,

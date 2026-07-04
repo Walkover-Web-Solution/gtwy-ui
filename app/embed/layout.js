@@ -154,11 +154,17 @@ const Layout = ({ children, isEmbedUser }) => {
 
   useEffect(() => {
     const handleNavigation = () => {
-      const { agent_name, agent_id, agent_purpose, org_id, token, folder_id, gtwy_user } = urlParamsObj;
+      const { agent_name, agent_id, agent_purpose, org_id, token, folder_id, historyEmbed, message_id } = urlParamsObj;
 
       if (agent_id && org_id) {
         setIsLoading(true);
-        router.push(`/org/${org_id}/agents/configure/${agent_id}?isEmbedUser=true`);
+        if (historyEmbed) {
+          dispatch(setEmbedUserDetailsAction({ historyEmbed: true }));
+          const msgParam = message_id ? `&message_id=${encodeURIComponent(message_id)}` : "";
+          router.push(`/org/${org_id}/agents/history/${agent_id}?isEmbedUser=true${msgParam}`);
+        } else {
+          router.push(`/org/${org_id}/agents/configure/${agent_id}?isEmbedUser=true`);
+        }
         return;
       }
 
@@ -170,7 +176,11 @@ const Layout = ({ children, isEmbedUser }) => {
 
       if (!openGtwyReceived) return;
 
-      if (org_id && token && (folder_id || gtwy_user)) {
+      // Only auto-route to /agents on a folder navigation flow. Removing
+      // gtwy_user from this condition prevents /embed from unmounting on
+      // the openGtwy postMessage — which would destroy the message listener
+      // before the follow-up gtwyInterfaceData (agent_id/message_id) arrives.
+      if (org_id && token && folder_id) {
         setIsLoading(true);
         router.push(`/org/${org_id}/agents?isEmbedUser=true`);
       } else {
@@ -212,7 +222,19 @@ const Layout = ({ children, isEmbedUser }) => {
           return;
         }
         const version = bridgeData.published_version_id || bridgeData.versions[0];
-        if (messageData?.history) {
+        if (messageData?.historyEmbed) {
+          // Persist historyEmbed flag so downstream UI hides navbar/sidebar
+          dispatch(
+            setEmbedUserDetailsAction({
+              historyEmbed: true,
+            })
+          );
+          const isValidMessageId =
+            messageData.message_id &&
+            !["none", "null", "undefined"].includes(String(messageData.message_id).toLowerCase());
+          const msgParam = isValidMessageId ? `&message_id=${encodeURIComponent(messageData.message_id)}` : "";
+          router.push(`/org/${orgId}/agents/history/${messageData.agent_id}?version=${version}${msgParam}`);
+        } else if (messageData?.history) {
           router.push(
             `/org/${orgId}/agents/history/${messageData.agent_id}?version=${version}&message_id=${messageData.history.message_id}`
           );
