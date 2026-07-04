@@ -15,7 +15,17 @@ import {
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import { PlayIcon } from "@/components/Icons";
-import { FileText, Check, ChevronDownIcon, Trash2, Search, X, SlidersHorizontal, Edit2 } from "lucide-react";
+import {
+  FileText,
+  Check,
+  ChevronDownIcon,
+  Trash2,
+  Search,
+  X,
+  SlidersHorizontal,
+  Edit2,
+  AlertTriangle,
+} from "lucide-react";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import PageHeader from "@/components/Pageheader";
 import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetailsPanel";
@@ -433,7 +443,7 @@ function TestCases({ params }) {
     }
   }, [selectedVersion, router, searchParams]);
 
-  const handleRunAllTestCases = async () => {
+  const executeRunAllTestCases = async () => {
     if (!selectedVersions.length) return;
     // If the user has bulk-selected testcases, run only those; otherwise run all.
     const selectedIds = Array.from(bulkSelectedIds);
@@ -455,6 +465,25 @@ function TestCases({ params }) {
       toast.error("Error running test cases");
       console.error("Error running all test cases:", error);
     }
+  };
+
+  const handleRunAllTestCases = async () => {
+    if (!selectedVersions.length) return;
+    // Count how many testcases will run (bulk selected or all)
+    const selectedIds = Array.from(bulkSelectedIds);
+    const totalTestcases =
+      selectedIds.length > 0 ? selectedIds.length : Array.isArray(testCases) ? testCases.length : 0;
+    // If more than 10, warn the user about potential cost before running
+    if (totalTestcases > 10) {
+      openModal(MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL);
+      return;
+    }
+    await executeRunAllTestCases();
+  };
+
+  const confirmRunAllTestCases = async () => {
+    closeModal(MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL);
+    await executeRunAllTestCases();
   };
 
   const handleRunSingleTestCase = async (testCaseId, variables = null) => {
@@ -494,19 +523,32 @@ function TestCases({ params }) {
   };
 
   const handleRenameTestCase = async (testCaseId) => {
-    if (!renameValue.trim()) {
+    const trimmedName = renameValue.trim();
+    // Close editor if name is empty
+    if (!trimmedName) {
       setRenamingTestCaseId(null);
+      setRenameValue("");
+      return;
+    }
+    const testCaseToRename = testCases.find((tc) => tc._id === testCaseId);
+    if (!testCaseToRename) {
+      setRenamingTestCaseId(null);
+      setRenameValue("");
+      return;
+    }
+    // Skip API call if the trimmed name hasn't changed
+    if ((testCaseToRename.name || "").trim() === trimmedName) {
+      setRenamingTestCaseId(null);
+      setRenameValue("");
       return;
     }
     try {
-      const testCaseToRename = testCases.find((tc) => tc._id === testCaseId);
-      if (!testCaseToRename) return;
       await dispatch(
         updateTestCaseAction({
           testCaseId,
           dataToUpdate: {
             ...testCaseToRename,
-            name: renameValue.trim(),
+            name: trimmedName,
           },
         })
       );
@@ -1130,22 +1172,16 @@ function TestCases({ params }) {
                                         value={renameValue}
                                         onChange={(e) => setRenameValue(e.target.value)}
                                         onKeyDown={(e) => {
-                                          if (e.key === "Enter") handleRenameTestCase(testCase?._id);
+                                          if (e.key === "Enter") {
+                                            e.currentTarget.blur();
+                                          }
                                           if (e.key === "Escape") setRenamingTestCaseId(null);
                                         }}
+                                        onBlur={() => handleRenameTestCase(testCase?._id)}
                                         onClick={(e) => e.stopPropagation()}
                                         className="flex-1 px-2 py-1 text-xs border border-primary rounded bg-base-50 text-base-content outline-none"
                                         placeholder="Test case name"
                                       />
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRenameTestCase(testCase?._id);
-                                        }}
-                                        className="px-2 py-1 text-xs bg-primary text-primary-content rounded hover:bg-primary/90"
-                                      >
-                                        Save
-                                      </button>
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-2 group">
@@ -1270,6 +1306,48 @@ function TestCases({ params }) {
           </PanelGroup>
         </div>
       )}
+
+      <Modal
+        MODAL_ID={MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL}
+        title="Run all test cases?"
+        description="Running many test cases at once may incur significant cost."
+        icon={<AlertTriangle size={18} className="text-warning" />}
+        widthClass="w-[min(520px,92vw)]"
+        onClose={() => closeModal(MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL)}
+        footer={
+          <>
+            <button className="btn btn-sm" onClick={() => closeModal(MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL)}>
+              Cancel
+            </button>
+            <button className="btn btn-sm btn-primary" onClick={confirmRunAllTestCases}>
+              Yes, run all
+            </button>
+          </>
+        }
+      >
+        {(() => {
+          const selectedIds = Array.from(bulkSelectedIds);
+          const total = selectedIds.length > 0 ? selectedIds.length : Array.isArray(testCases) ? testCases.length : 0;
+          const versionsCount = selectedVersions.length;
+          return (
+            <div className="space-y-3">
+              <p className="text-sm text-base-content">
+                You are about to run <span className="font-semibold">{total}</span> test case{total !== 1 ? "s" : ""}
+                {versionsCount > 1 ? (
+                  <>
+                    {" "}
+                    across <span className="font-semibold">{versionsCount}</span> versions
+                  </>
+                ) : null}
+                . This may take a while and could result in <span className="font-semibold">high API cost</span>.
+              </p>
+              <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-sm text-warning">
+                Are you sure you want to continue?
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
 
       <DeleteModal
         modalType={MODAL_TYPE.DELETE_TESTCASE_BULK_MODAL}
