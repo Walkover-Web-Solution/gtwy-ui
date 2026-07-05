@@ -8,6 +8,7 @@ const initialState = {
   recursiveHistoryLoading: false,
   recursiveHistoryError: null,
   selectedVersion: "all",
+  configTabVersionByBridge: {},
   loading: false,
   success: false,
   subThreads: [],
@@ -59,6 +60,12 @@ export const historyReducer = createSlice({
     },
     setSelectedVersion: (state, action) => {
       state.selectedVersion = action.payload;
+    },
+    setConfigTabVersion: (state, action) => {
+      const { bridgeId, versionId } = action.payload || {};
+      if (bridgeId && versionId) {
+        state.configTabVersionByBridge[bridgeId] = versionId;
+      }
     },
     clearHistoryData: (state) => {
       state.history = [];
@@ -115,6 +122,7 @@ export const {
   fetchSubThreadReducer,
   clearSubThreadData,
   setSelectedVersion,
+  setConfigTabVersion,
   clearHistoryData,
   addThreadUsingRtLayer,
   addThreadNMessageUsingRtLayer,

@@ -87,6 +87,7 @@ const Sidebar = memo(
     onAnalyticsSelectSubThread,
     onAnalyticsMessageNavigate,
     searchMessageId = null,
+    isPaginating = false,
   }) => {
     const {
       subThreads,
@@ -545,7 +546,9 @@ const Sidebar = memo(
 
     return (
       <div
-        className={`h-full flex flex-col text-xs ${isAnalytics ? "bg-white dark:bg-base-200" : "bg-base-200"} transition-all duration-300 ease-in-out overflow-hidden ${
+        className={`h-full text-xs ${isAnalytics ? "bg-white dark:bg-base-200" : "bg-base-200"} transition-all duration-300 ease-in-out overflow-hidden flex flex-col ${
+          isAnalytics ? "col-start-3 row-start-1 min-h-0 shrink-0 z-50 relative" : ""
+        } ${
           isCollapsed
             ? `w-[48px] min-w-[48px] max-w-[48px] ${isAnalytics ? "border-l" : "border-r"} border-base-300 ${isAnalytics ? "" : "ml-4"}`
             : `w-[280px] min-w-[280px] max-w-[280px] ${isAnalytics ? "border-l" : "border-r"} border-base-300 relative ${isAnalytics ? "" : "ml-4"}`
@@ -584,8 +587,8 @@ const Sidebar = memo(
           </div>
         ) : (
           <>
-            <CreateFineTuneModal params={params} selectedThreadIds={selectedThreadIds} />
-            <div className="p-2 gap-2 flex flex-col w-full min-w-0">
+            {!isAnalytics && <CreateFineTuneModal params={params} selectedThreadIds={selectedThreadIds} />}
+            <div className="p-2 gap-2 flex flex-col w-full min-w-0 shrink-0">
               <div className="flex items-center justify-between px-1 py-1 shrink-0">
                 <span className="font-bold text-base-content/50 uppercase tracking-widest text-[9px]">
                   Chat Threads
@@ -819,12 +822,19 @@ const Sidebar = memo(
                 )}
               </form>
             </div>
-            <label htmlFor="my-drawer-2" aria-label="close sidebar" className="drawer-overlay"></label>
+            {!isAnalytics && (
+              <label htmlFor="my-drawer-2" aria-label="close sidebar" className="drawer-overlay"></label>
+            )}
 
             {/* Fixed: Render search loader at the top level, not inside InfiniteScroll */}
-            <div className="flex-1 overflow-y-auto" id="sidebar">
-              {historyData.length === 0 &&
-              (loading || searchLoading || (isAnalytics && analyticsThreads === undefined)) ? (
+            <div
+              className={`${isAnalytics ? "flex-1 min-h-0 overflow-y-auto" : "flex-1 overflow-y-auto"}`}
+              id="sidebar"
+            >
+              {isAnalytics && loading && !isPaginating ? (
+                <AnalyticsThreadListSkeleton />
+              ) : historyData.length === 0 &&
+                (loading || searchLoading || (isAnalytics && analyticsThreads === undefined)) ? (
                 isAnalytics ? (
                   <AnalyticsThreadListSkeleton />
                 ) : (

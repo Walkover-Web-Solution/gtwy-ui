@@ -22,6 +22,7 @@ import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeAction, dicardBridgeVersionAction, deleteBridgeAction } from "@/store/action/bridgeAction";
 import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
+import { setConfigTabVersion } from "@/store/reducer/historyReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
 import { toast } from "react-toastify";
@@ -63,6 +64,14 @@ const Navbar = ({ isEmbedUser, params }) => {
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
   const versionId = useMemo(() => searchParams?.get("version"), [searchParams]);
+
+  // Persist config-tab version in Redux (same store as history sidebar version state).
+  useEffect(() => {
+    if (pathname.includes("/agents/configure/") && versionId && bridgeId) {
+      dispatch(setConfigTabVersion({ bridgeId, versionId }));
+    }
+  }, [pathname, versionId, bridgeId, dispatch]);
+
   const isPublished = useMemo(() => searchParams?.get("isPublished") === "true", [searchParams]);
   // Use portal dropdown hook (same as agents page)
   const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown({
@@ -92,6 +101,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     publicAgentConfig,
     bridgeVersionsArray,
     showTestcases,
+    configTabVersionByBridge,
   } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
@@ -132,6 +142,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       publicAgentConfig: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
       bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.versions || [],
       showTestcases: state?.appInfoReducer?.embedUserDetails?.showTestcases !== false,
+      configTabVersionByBridge: state?.historyReducer?.configTabVersionByBridge || {},
     };
   });
   // Define tabs based on user type
@@ -342,11 +353,19 @@ const Navbar = ({ isEmbedUser, params }) => {
             base + (publishedVersion ? `?version=${publishedVersion}${typeQueryPart}` : `?type=${typeValue}`)
           );
         } else if (tabId === "analytics") {
-          // Analytics page: default to all versions
+          // Analytics sidebar uses selectedVersion "all" — keep config version in Redux for return trip.
+          if (versionId) {
+            dispatch(setConfigTabVersion({ bridgeId, versionId }));
+          }
           router.push(base + `?type=${typeValue}`);
         } else {
-          // Normal navigation with current version
-          router.push(base + (versionId ? `?version=${versionId}${typeQueryPart}` : `?type=${typeValue}`));
+          let effectiveVersionId = versionId;
+          if (tabId === "configure" && !effectiveVersionId) {
+            effectiveVersionId = configTabVersionByBridge[bridgeId] || null;
+          }
+          router.push(
+            base + (effectiveVersionId ? `?version=${effectiveVersionId}${typeQueryPart}` : `?type=${typeValue}`)
+          );
         }
       };
 
@@ -358,7 +377,7 @@ const Navbar = ({ isEmbedUser, params }) => {
 
       navigate();
     },
-    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType]
+    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType, configTabVersionByBridge, dispatch]
   );
 
   const handlePublishedClick = useCallback(() => {

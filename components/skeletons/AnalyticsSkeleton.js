@@ -61,12 +61,12 @@ export const AnalyticsThreadListSkeleton = () => {
         <div key={idx} className="space-y-2">
           <div className="h-3 w-16 bg-base-200 rounded animate-pulse mb-2" />
           {Array.from({ length: 2 }).map((_, j) => (
-            <div key={j} className="flex items-center gap-3 p-2.5 rounded-xl bg-base-200/50 animate-pulse">
-              <div className="h-8 w-8 bg-base-200 rounded-full shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3 w-3/4 bg-base-200 rounded" />
-                <div className="h-2.5 w-1/2 bg-base-200 rounded" />
-              </div>
+            <div
+              key={j}
+              className="flex items-center justify-between gap-2 p-2 rounded-lg bg-base-200/50 animate-pulse"
+            >
+              <div className="h-3 w-3/4 bg-base-200 rounded" />
+              <div className="h-3 w-12 bg-base-200 rounded" />
             </div>
           ))}
         </div>

@@ -11,8 +11,18 @@ import { getAgentAnalyticsFiltersApi } from "@/config";
 import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
-import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen } from "lucide-react";
-import { ResponsiveContainer, ComposedChart, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen, ThumbsUp, ThumbsDown, ZoomOut } from "lucide-react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceArea,
+} from "recharts";
 
 import Sidebar from "@/components/historyPageComponents/Sidebar";
 import BatchSubthreadPanel from "@/components/historyPageComponents/BatchSubthreadPanel";
@@ -40,7 +50,13 @@ const FEEDBACK_TO_API = { 1: "good", 2: "bad", good: "good", bad: "bad" };
 
 function buildAnalyticsQueryParams(
   rawParams,
-  { selectedVersion, filterByFields = {}, filterVariableRows = [{ key: "", value: "" }], extra = {} } = {}
+  {
+    selectedVersion,
+    filterByFields = {},
+    filterVariableRows = [{ key: "", value: "" }],
+    filterVariableAbsentRows = [{ key: "" }],
+    extra = {},
+  } = {}
 ) {
   const entries = typeof rawParams?.entries === "function" ? Object.fromEntries(rawParams.entries()) : { ...rawParams };
 
@@ -77,7 +93,7 @@ function buildAnalyticsQueryParams(
   if (!queryParams.model) delete queryParams.model;
   if (!queryParams.knowledgebase_id) delete queryParams.knowledgebase_id;
   if (!queryParams.agent_id) delete queryParams.agent_id;
-  if (!queryParams.interval) queryParams.interval = "1h";
+  delete queryParams.interval;
 
   const activeFilterBy = {};
   if (filterByFields.thread_id?.trim()) activeFilterBy.thread_id = filterByFields.thread_id.trim();
@@ -95,6 +111,17 @@ function buildAnalyticsQueryParams(
   if (Object.keys(presentVars).length > 0) {
     activeFilterBy.variables = presentVars;
   }
+
+  const absentVars = [];
+  for (const row of filterVariableAbsentRows) {
+    const k = row.key.trim();
+    if (!k) continue;
+    absentVars.push(k);
+  }
+  if (absentVars.length > 0) {
+    activeFilterBy.variables_absent = absentVars;
+  }
+
   if (Object.keys(activeFilterBy).length > 0) {
     queryParams.filter_by = activeFilterBy;
   }
@@ -144,6 +171,12 @@ function Page({ params, searchParams }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [executionChartType, setExecutionChartType] = useState("area");
   const [latencyChartType, setLatencyChartType] = useState("area");
+  const [isPaginating, setIsPaginating] = useState(false);
+
+  const [executionZoom, setExecutionZoom] = useState(null);
+  const [latencyZoom, setLatencyZoom] = useState(null);
+  const [executionRefArea, setExecutionRefArea] = useState({ left: null, right: null });
+  const [latencyRefArea, setLatencyRefArea] = useState({ left: null, right: null });
 
   const router = useRouter();
   const { buildUrl } = useQueryParams();
@@ -159,6 +192,7 @@ function Page({ params, searchParams }) {
       llm_message: "",
     },
     filterVariableRows: [{ key: "", value: "" }],
+    filterVariableAbsentRows: [{ key: "" }],
   });
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const customDropdownRef = useRef(null);
@@ -173,6 +207,7 @@ function Page({ params, searchParams }) {
     llm_message: "",
   });
   const [filterVariableRows, setFilterVariableRows] = useState([{ key: "", value: "" }]);
+  const [filterVariableAbsentRows, setFilterVariableAbsentRows] = useState([{ key: "" }]);
   const [isAdvanceFilterOpen, setIsAdvanceFilterOpen] = useState(false);
   const [showAllToolGroup, setShowAllToolGroup] = useState(false);
   const [showAllModels, setShowAllModels] = useState(false);
@@ -204,7 +239,6 @@ function Page({ params, searchParams }) {
   const [filterStart, setFilterStart] = useState(resolvedSearchParams?.start || "");
   const [filterEnd, setFilterEnd] = useState(resolvedSearchParams?.end || "");
   const [filterRange, setFilterRange] = useState(getNormalizedRange(resolvedSearchParams?.range));
-  const [filterInterval, setFilterInterval] = useState(resolvedSearchParams?.interval || "1h");
   const [filterFeedback, setFilterFeedback] = useState(resolvedSearchParams?.feedback || "all");
   const [filterError, setFilterError] = useState(resolvedSearchParams?.error === "true");
   const [filterReviewFailed, setFilterReviewFailed] = useState(resolvedSearchParams?.review_failed === "true");
@@ -231,7 +265,6 @@ function Page({ params, searchParams }) {
   const hasAnyFilter = Boolean(
     filterStart ||
     filterEnd ||
-    (filterInterval && filterInterval !== "1h") ||
     filterFeedback !== "all" ||
     filterError ||
     filterReviewFailed ||
@@ -241,12 +274,14 @@ function Page({ params, searchParams }) {
     filterAgent.length ||
     Object.values(filterByFields).some((v) => v && String(v).trim() !== "") ||
     filterVariableRows.some((row) => row.key.trim() || row.value.trim()) ||
+    filterVariableAbsentRows.some((row) => row.key.trim()) ||
     searchQuery.trim()
   );
 
   const hasAdvancedFilterValues = Boolean(
     Object.values(filterByFields).some((v) => v && String(v).trim() !== "") ||
-    filterVariableRows.some((row) => row.key.trim() || row.value.trim())
+    filterVariableRows.some((row) => row.key.trim() || row.value.trim()) ||
+    filterVariableAbsentRows.some((row) => row.key.trim())
   );
 
   // Auto-clear applied advanced filters when user manually empties all input fields
@@ -254,11 +289,13 @@ function Page({ params, searchParams }) {
     if (!hasAdvancedFilterValues) {
       const hasAppliedFilters =
         Object.values(appliedAdvancedFilters.filterByFields).some((v) => v && String(v).trim() !== "") ||
-        appliedAdvancedFilters.filterVariableRows.some((row) => row.key.trim() || row.value.trim());
+        appliedAdvancedFilters.filterVariableRows.some((row) => row.key.trim() || row.value.trim()) ||
+        appliedAdvancedFilters.filterVariableAbsentRows.some((row) => row.key.trim());
       if (hasAppliedFilters) {
         setAppliedAdvancedFilters({
           filterByFields: { thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" },
           filterVariableRows: [{ key: "", value: "" }],
+          filterVariableAbsentRows: [{ key: "" }],
         });
       }
     }
@@ -302,6 +339,59 @@ function Page({ params, searchParams }) {
     slow: Number(((item.slow || 0) / 1000).toFixed(2)),
     worst: Number(((item.worst || 0) / 1000).toFixed(2)),
   }));
+
+  const displayExecutionData = useMemo(() => {
+    if (!executionZoom) return executionData;
+    return executionData.filter((d) => d.time >= executionZoom.start && d.time <= executionZoom.end);
+  }, [executionData, executionZoom]);
+
+  const displayLatencyData = useMemo(() => {
+    if (!latencyZoom) return latencyData;
+    return latencyData.filter((d) => d.time >= latencyZoom.start && d.time <= latencyZoom.end);
+  }, [latencyData, latencyZoom]);
+
+  // Drag-to-zoom handlers
+  const handleExecutionMouseDown = (e) => {
+    if (!e || !e.activeLabel) return;
+    setExecutionRefArea({ left: e.activeLabel, right: e.activeLabel });
+  };
+  const handleExecutionMouseMove = (e) => {
+    if (!executionRefArea.left || !e || !e.activeLabel) return;
+    setExecutionRefArea((prev) => ({ ...prev, right: e.activeLabel }));
+  };
+  const handleExecutionMouseUp = () => {
+    if (!executionRefArea.left || !executionRefArea.right || executionRefArea.left === executionRefArea.right) {
+      setExecutionRefArea({ left: null, right: null });
+      return;
+    }
+    const [start, end] =
+      executionRefArea.left < executionRefArea.right
+        ? [executionRefArea.left, executionRefArea.right]
+        : [executionRefArea.right, executionRefArea.left];
+    setExecutionZoom({ start, end });
+    setExecutionRefArea({ left: null, right: null });
+  };
+
+  const handleLatencyMouseDown = (e) => {
+    if (!e || !e.activeLabel) return;
+    setLatencyRefArea({ left: e.activeLabel, right: e.activeLabel });
+  };
+  const handleLatencyMouseMove = (e) => {
+    if (!latencyRefArea.left || !e || !e.activeLabel) return;
+    setLatencyRefArea((prev) => ({ ...prev, right: e.activeLabel }));
+  };
+  const handleLatencyMouseUp = () => {
+    if (!latencyRefArea.left || !latencyRefArea.right || latencyRefArea.left === latencyRefArea.right) {
+      setLatencyRefArea({ left: null, right: null });
+      return;
+    }
+    const [start, end] =
+      latencyRefArea.left < latencyRefArea.right
+        ? [latencyRefArea.left, latencyRefArea.right]
+        : [latencyRefArea.right, latencyRefArea.left];
+    setLatencyZoom({ start, end });
+    setLatencyRefArea({ left: null, right: null });
+  };
 
   useEffect(() => {
     const urlVersion = search.get("version") || "all";
@@ -378,7 +468,6 @@ function Page({ params, searchParams }) {
     setFilterStart("");
     setFilterEnd("");
     setFilterRange("30d");
-    setFilterInterval("1h");
     setFilterFeedback("all");
     setFilterError(false);
     setFilterReviewFailed(false);
@@ -390,9 +479,11 @@ function Page({ params, searchParams }) {
     if (searchRef.current) searchRef.current.value = "";
     setFilterByFields({ thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" });
     setFilterVariableRows([{ key: "", value: "" }]);
+    setFilterVariableAbsentRows([{ key: "" }]);
     setAppliedAdvancedFilters({
       filterByFields: { thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" },
       filterVariableRows: [{ key: "", value: "" }],
+      filterVariableAbsentRows: [{ key: "" }],
     });
     dispatch(setSelectedVersion("all"));
 
@@ -426,6 +517,7 @@ function Page({ params, searchParams }) {
         selectedVersion,
         filterByFields: appliedAdvancedFilters.filterByFields,
         filterVariableRows: appliedAdvancedFilters.filterVariableRows,
+        filterVariableAbsentRows: appliedAdvancedFilters.filterVariableAbsentRows,
         extra,
       }),
     [search, selectedVersion, appliedAdvancedFilters]
@@ -473,10 +565,12 @@ function Page({ params, searchParams }) {
 
   const fetchMoreData = useCallback(async () => {
     if (!hasMore || analyticsLoadingRef.current) return;
+    setIsPaginating(true);
     const nextPage = page + 1;
     const queryParams = buildAnalyticsQueryParamsForFetch({ page: nextPage });
     await dispatch(getAgentAnalyticsAction(resolvedParams.id, queryParams, resolvedParams.org_id));
     setPage(nextPage);
+    setIsPaginating(false);
   }, [hasMore, page, buildAnalyticsQueryParamsForFetch, resolvedParams.id, resolvedParams.org_id, dispatch]);
 
   const handleSearch = useCallback(
@@ -622,7 +716,6 @@ function Page({ params, searchParams }) {
     const newStart = updates.start !== undefined ? updates.start : filterStart;
     const newEnd = updates.end !== undefined ? updates.end : filterEnd;
     const newRange = updates.range !== undefined ? updates.range : filterRange;
-    const newInterval = updates.interval !== undefined ? updates.interval : filterInterval;
     const newFeedback = updates.feedback !== undefined ? updates.feedback : filterFeedback;
     const newError = updates.error !== undefined ? updates.error : filterError;
     const newReviewFailed = updates.review_failed !== undefined ? updates.review_failed : filterReviewFailed;
@@ -637,7 +730,6 @@ function Page({ params, searchParams }) {
           start: newStart || null,
           end: newEnd || null,
           range: !newStart && !newEnd && newRange ? newRange : null,
-          interval: newInterval || null,
           feedback: newFeedback && newFeedback !== "all" ? newFeedback : null,
           error: newError ? "true" : null,
           review_failed: newReviewFailed ? "true" : null,
@@ -660,7 +752,6 @@ function Page({ params, searchParams }) {
     setFilterStart("");
     setFilterEnd("");
     setFilterRange("30d");
-    setFilterInterval("1h");
     setFilterFeedback("all");
     setFilterError(false);
     setFilterReviewFailed(false);
@@ -670,12 +761,14 @@ function Page({ params, searchParams }) {
     setFilterAgent([]);
     setFilterByFields({ thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" });
     setFilterVariableRows([{ key: "", value: "" }]);
+    setFilterVariableAbsentRows([{ key: "" }]);
     dispatch(setSelectedVersion("all"));
     setIsCustomOpen(false);
 
     const emptyAdvancedFilters = {
       filterByFields: { thread_id: "", sub_thread_id: "", message_id: "", batch_id: "", user: "", llm_message: "" },
       filterVariableRows: [{ key: "", value: "" }],
+      filterVariableAbsentRows: [{ key: "" }],
     };
     setAppliedAdvancedFilters(emptyAdvancedFilters);
 
@@ -685,7 +778,6 @@ function Page({ params, searchParams }) {
           start: null,
           end: null,
           range: null,
-          interval: "1h",
           feedback: null,
           error: null,
           tool_id: null,
@@ -709,859 +801,990 @@ function Page({ params, searchParams }) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-40px)] w-full overflow-hidden bg-base-200/50">
-      {/* Main Dashboard Area */}
-      <div className="flex-1 relative flex flex-row max-w-full overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            {/* Dashboard Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
+    <div className="grid h-[calc(100vh-40px)] w-full grid-cols-[minmax(0,1fr)_auto_auto] grid-rows-[minmax(0,1fr)] overflow-hidden bg-base-200/50">
+      {/* Main column — filters grow independently; sidebar is not tied to filter height */}
+      <div className="col-start-1 row-start-1 min-w-0 flex flex-col overflow-hidden">
+        <div className="shrink-0 px-6 pt-6 pb-0">
+          {/* Filters Container */}
+          <div
+            className="bg-base-100 border border-base-300 rounded-lg mt-4 mb-8 shadow-sm"
+            style={{ marginTop: "22px" }}
+          >
+            {/* Row 1: Time Range, Interval, Feedback, Error, Advance Toggle */}
+            <div className="flex items-center gap-4 px-4 py-1.5 flex-wrap">
+              {/* Time Range */}
+              <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
+                Time Range
+              </span>
+              <div className="flex gap-1.5 shrink-0 ">
+                {[
+                  { label: "24h", value: "24h" },
+                  { label: "7d", value: "7d" },
+                  { label: "30d", value: "30d" },
+                ].map((item) => {
+                  const isActive = filterRange === item.value && !filterStart && !filterEnd;
+
+                  return (
+                    <button
+                      key={item.value}
+                      onClick={() => {
+                        setFilterRange(item.value);
+                        setFilterStart("");
+                        setFilterEnd("");
+                        applyFilters({ range: item.value, start: "", end: "" });
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        isActive ? "bg-blue-500 text-white" : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+
+                {/* Custom Date Dropdown replacing the pill */}
+                <div ref={customDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomOpen(!isCustomOpen)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border-none outline-none focus:outline-none focus:ring-0 ${
+                      filterStart || filterEnd
+                        ? "bg-blue-500 text-white"
+                        : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                    }`}
+                  >
+                    Custom
+                  </button>
+                  {isCustomOpen && (
+                    <div className="absolute left-0 z-50 menu p-4 shadow-xl border border-base-300 bg-base-100 rounded-box w-80 ">
+                      <h3 className="font-semibold text-sm mb-4 text-base-content">Custom Date Range</h3>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
+                          <input
+                            type="datetime-local"
+                            className="input input-sm input-bordered w-full text-xs"
+                            value={filterStart}
+                            max={filterEnd}
+                            onChange={(e) => {
+                              setFilterStart(e.target.value);
+                              setFilterRange("");
+                            }}
+                            onClick={(e) => e.target.showPicker()}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
+                          <input
+                            type="datetime-local"
+                            className="input input-sm input-bordered w-full text-xs"
+                            value={filterEnd}
+                            min={filterStart}
+                            onChange={(e) => {
+                              setFilterEnd(e.target.value);
+                              setFilterRange("");
+                            }}
+                            onClick={(e) => e.target.showPicker()}
+                          />
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            className="btn btn-sm btn-primary flex-1"
+                            disabled={!filterStart && !filterEnd}
+                            onClick={() => {
+                              applyFilters();
+                              setIsCustomOpen(false);
+                              if (document.activeElement) document.activeElement.blur();
+                            }}
+                          >
+                            Apply
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline flex-1"
+                            disabled={!hasAnyFilter}
+                            onClick={() => {
+                              clearFilters();
+                              setIsCustomOpen(false);
+                            }}
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-px h-4 bg-base-300 shrink-0"></div>
+
+              {/* Feedback */}
+              <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
+                Feedback
+              </span>
+              <div className="flex gap-1.5 shrink-0">
+                {[
+                  { label: "Any", value: "all" },
+                  { label: <ThumbsUp size={14} />, value: "1" },
+                  { label: <ThumbsDown size={14} />, value: "2" },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    onClick={() => {
+                      setFilterFeedback(item.value);
+                      applyFilters({ feedback: item.value });
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      filterFeedback === item.value
+                        ? "bg-blue-500 text-white"
+                        : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Reviewer Failures Toggle */}
+              <label
+                className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
+                  filterReviewFailed ? "bg-[#FD9900] text-white border border-[#FD9900]" : "border border-base-200"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className={`toggle toggle-sm scale-75 origin-center ${filterReviewFailed ? "toggle-warning" : ""}`}
+                  checked={filterReviewFailed}
+                  onChange={(e) => {
+                    setFilterReviewFailed(e.target.checked);
+                    applyFilters({ review_failed: e.target.checked });
+                  }}
+                />
+                <span className={`text-xs font-medium ${filterReviewFailed ? "text-white" : "text-base-content/70"}`}>
+                  Reviewer Failures
+                </span>
+              </label>
+
+              {/* Error Toggle */}
+              <label
+                className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
+                  filterError ? "bg-[#FA2C36] text-white border border-[#FA2C36]" : "border border-base-200"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className={`toggle toggle-sm scale-75 origin-center ${filterError ? "toggle-error" : ""}`}
+                  checked={filterError}
+                  onChange={(e) => {
+                    setFilterError(e.target.checked);
+                    applyFilters({ error: e.target.checked });
+                  }}
+                />
+                <span className={`text-xs font-medium ${filterError ? "text-white" : "text-base-content/70"}`}>
+                  Error History
+                </span>
+              </label>
+
+              {/* Advance Filter Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsAdvanceFilterOpen(!isAdvanceFilterOpen)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${
+                  isAdvanceFilterOpen
+                    ? "bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:border-primary/40"
+                    : "bg-base-100 text-base-content/70 border-base-200 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:bg-base-100 dark:hover:bg-primary/10 dark:hover:text-primary"
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                Search by Fields
+                <ChevronDown className={`w-4 h-4 transition-transform ${isAdvanceFilterOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {hasAnyFilter && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {/* Row 2: Advance Filters (expandable inside same container) */}
+            <div
+              className={`overflow-hidden px-4 pt-2 transition-all duration-300 ${
+                isAdvanceFilterOpen
+                  ? "max-h-[600px] opacity-100  pt-3 pb-3 border-t border-base-200 dark:border-t-base-200 bg-[#F8FAFC] dark:bg-base-200/50 space-y-4"
+                  : "max-h-0 opacity-0"
+              }`}
+            >
+              {/* Tool, Knowledge Base, Agent & Model badges */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
+                {/* Col 1: Tool + Knowledge Base + Agent */}
+                <div>
+                  <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase block mb-1.5">
+                    Tool
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Single All button for Tool + KB + Agent */}
+                    <button
+                      onClick={() => {
+                        setFilterTool([]);
+                        setFilterKnowledgeBase([]);
+                        setFilterAgent([]);
+                        applyFilters({ tool_id: [], knowledgebase_id: [], agent_id: [] });
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        !filterTool.length && !filterKnowledgeBase.length && !filterAgent.length
+                          ? "bg-blue-500 text-white"
+                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      All
+                    </button>
+
+                    {/* Combined Tool + KB + Agent badges */}
+                    {(() => {
+                      const allItems = [
+                        ...Object.entries(filterOptions.tools_data).map(([name, id]) => ({ type: "tool", name, id })),
+                        ...Object.entries(filterOptions.knowledgebase_data).map(([name, id]) => ({
+                          type: "kb",
+                          name: knowledgeBaseNameMap[id] || name,
+                          id,
+                        })),
+                        ...Object.entries(filterOptions.agent_data).map(([name, id]) => ({
+                          type: "agent",
+                          name,
+                          id,
+                        })),
+                      ];
+                      const isSelected = (item) => {
+                        if (item.type === "tool") return filterTool.includes(item.id);
+                        if (item.type === "kb") return filterKnowledgeBase.includes(item.id);
+                        return filterAgent.includes(item.id);
+                      };
+                      const toggle = (item) => {
+                        if (item.type === "tool") {
+                          const next = filterTool.includes(item.id)
+                            ? filterTool.filter((t) => t !== item.id)
+                            : [...filterTool, item.id];
+                          setFilterTool(next);
+                          applyFilters({ tool_id: next });
+                        } else if (item.type === "kb") {
+                          const next = filterKnowledgeBase.includes(item.id)
+                            ? filterKnowledgeBase.filter((k) => k !== item.id)
+                            : [...filterKnowledgeBase, item.id];
+                          setFilterKnowledgeBase(next);
+                          applyFilters({ knowledgebase_id: next });
+                        } else {
+                          const next = filterAgent.includes(item.id)
+                            ? filterAgent.filter((a) => a !== item.id)
+                            : [...filterAgent, item.id];
+                          setFilterAgent(next);
+                          applyFilters({ agent_id: next });
+                        }
+                      };
+                      const visibleItems = showAllToolGroup ? allItems : allItems.slice(0, 8);
+                      return (
+                        <>
+                          {visibleItems.map((item) => {
+                            const selected = isSelected(item);
+                            const iconColor = selected
+                              ? "text-white"
+                              : item.type === "tool"
+                                ? "text-amber-500"
+                                : item.type === "kb"
+                                  ? "text-emerald-500"
+                                  : "text-violet-500";
+                            return (
+                              <button
+                                key={`${item.type}-${item.id}`}
+                                onClick={() => toggle(item)}
+                                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                                  selected
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                                }`}
+                                title={item.name}
+                              >
+                                {item.type === "tool" && <Wrench className={`w-3 h-3 ${iconColor}`} />}
+                                {item.type === "kb" && <BookOpen className={`w-3 h-3 ${iconColor}`} />}
+                                {item.type === "agent" && <Bot className={`w-3 h-3 ${iconColor}`} />}
+                                {item.name.length > 18 ? item.name.slice(0, 18) + "..." : item.name}
+                              </button>
+                            );
+                          })}
+                          {allItems.length > 8 && (
+                            <button
+                              onClick={() => setShowAllToolGroup(!showAllToolGroup)}
+                              className="px-3 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
+                            >
+                              {showAllToolGroup ? "Less" : `+${allItems.length - 8} More`}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Col 2: Model */}
+                <div>
+                  <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase block mb-1.5">
+                    Model
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setFilterModel([]);
+                        applyFilters({ model: [] });
+                      }}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        !filterModel.length
+                          ? "bg-blue-500 text-white"
+                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                      }`}
+                    >
+                      All
+                    </button>
+                    {(showAllModels
+                      ? Object.entries(filterOptions.unique_model).flatMap(([service, models]) =>
+                          models.map((m) => ({ service, model: m }))
+                        )
+                      : Object.entries(filterOptions.unique_model)
+                          .flatMap(([service, models]) => models.map((m) => ({ service, model: m })))
+                          .slice(0, 4)
+                    ).map(({ service, model: m }) => (
+                      <button
+                        key={`${service}-${m}`}
+                        onClick={() => {
+                          const next = filterModel.includes(m)
+                            ? filterModel.filter((x) => x !== m)
+                            : [...filterModel, m];
+                          setFilterModel(next);
+                          applyFilters({ model: next });
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          filterModel.includes(m)
+                            ? "bg-blue-500 text-white"
+                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                    {Object.entries(filterOptions.unique_model).flatMap(([service, models]) => models.map((m) => m))
+                      .length > 4 && (
+                      <button
+                        onClick={() => setShowAllModels(!showAllModels)}
+                        className="px-3 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
+                      >
+                        {showAllModels
+                          ? "Less"
+                          : `+${Object.entries(filterOptions.unique_model).flatMap(([service, models]) => models.map((m) => m)).length - 4} More`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Search by Fields */}
+              <div className="">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { key: "thread_id", label: "Thread ID" },
+                    { key: "sub_thread_id", label: "Sub Thread ID" },
+                    { key: "message_id", label: "Message ID" },
+                    { key: "batch_id", label: "Batch ID" },
+                    { key: "user", label: "User" },
+                    { key: "llm_message", label: "LLM Message" },
+                  ].map((f) => (
+                    <div key={f.key}>
+                      <label className="block text-xs font-medium text-base-content/70 mb-0.5">{f.label}</label>
+                      <input
+                        type="text"
+                        className="input input-sm input-bordered w-full rounded-lg text-xs"
+                        placeholder={`Search ${f.label.toLowerCase()}...`}
+                        value={filterByFields[f.key] || ""}
+                        onChange={(e) => setFilterByFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                  <div className="col-span-2 md:col-span-3">
+                    <label className="block text-xs font-medium text-base-content/70 mb-0.5">Present Variables</label>
+                    <div className="space-y-2">
+                      {filterVariableRows.map((row, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                            placeholder="key"
+                            value={row.key}
+                            onChange={(e) => {
+                              const next = [...filterVariableRows];
+                              next[idx].key = e.target.value;
+                              setFilterVariableRows(next);
+                            }}
+                          />
+                          <input
+                            type="text"
+                            className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                            placeholder="value"
+                            value={row.value}
+                            onChange={(e) => {
+                              const next = [...filterVariableRows];
+                              next[idx].value = e.target.value;
+                              setFilterVariableRows(next);
+                            }}
+                          />
+                          {filterVariableRows.length > 1 && (
+                            <button
+                              type="button"
+                              className="px-2 py-1 rounded-md text-xs font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                              onClick={() => {
+                                const next = filterVariableRows.filter((_, i) => i !== idx);
+                                setFilterVariableRows(next.length ? next : [{ key: "", value: "" }]);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="px-3 py-1 rounded-md text-xs font-medium border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content transition-colors"
+                        onClick={() => setFilterVariableRows((prev) => [...prev, { key: "", value: "" }])}
+                      >
+                        + Add Key/Value
+                      </button>
+                    </div>
+                  </div>
+                  <div className="col-span-2 md:col-span-3">
+                    <label className="block text-xs font-medium text-base-content/70 mb-0.5">
+                      Not Present Variables
+                    </label>
+                    <div className="space-y-2">
+                      {filterVariableAbsentRows.map((row, idx) => (
+                        <div key={idx} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                            placeholder="key"
+                            value={row.key}
+                            onChange={(e) => {
+                              const next = [...filterVariableAbsentRows];
+                              next[idx].key = e.target.value;
+                              setFilterVariableAbsentRows(next);
+                            }}
+                          />
+                          {filterVariableAbsentRows.length > 1 && (
+                            <button
+                              type="button"
+                              className="px-2 py-1 rounded-md text-xs font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                              onClick={() => {
+                                const next = filterVariableAbsentRows.filter((_, i) => i !== idx);
+                                setFilterVariableAbsentRows(next.length ? next : [{ key: "" }]);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="px-3 py-1 rounded-md text-xs font-medium border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content transition-colors"
+                        onClick={() => setFilterVariableAbsentRows((prev) => [...prev, { key: "" }])}
+                      >
+                        + Add Key
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-3">
+                  <button
+                    className="px-5 py-1 rounded-lg text-sm font-medium border border-base-200 text-base-content/70 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:hover:bg-primary/10 dark:hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={!hasAdvancedFilterValues}
+                    onClick={() => {
+                      const emptyFields = {
+                        thread_id: "",
+                        sub_thread_id: "",
+                        message_id: "",
+                        batch_id: "",
+                        user: "",
+                        llm_message: "",
+                      };
+                      setFilterByFields(emptyFields);
+                      setFilterVariableRows([{ key: "", value: "" }]);
+                      setFilterVariableAbsentRows([{ key: "" }]);
+                      dispatchAnalyticsWithAdvancedFilters({
+                        filterByFields: emptyFields,
+                        filterVariableRows: [{ key: "", value: "" }],
+                        filterVariableAbsentRows: [{ key: "" }],
+                      });
+                    }}
+                  >
+                    Reset Fields
+                  </button>
+                  <button
+                    className="px-5 py-1 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={!hasAdvancedFilterValues}
+                    onClick={() => {
+                      if (document.activeElement) document.activeElement.blur();
+                      dispatchAnalyticsWithAdvancedFilters({
+                        filterByFields,
+                        filterVariableRows,
+                        filterVariableAbsentRows,
+                      });
+                    }}
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          <div className="h-full overflow-y-auto">
+            <div className="px-6 pb-6">
+              {/* KPI Stats Row */}
+              {Object.keys(summary).length === 0 ? (
+                <AnalyticsStatsSkeleton />
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
+                  {getStatsConfig(summary).map((stat, idx) => {
+                    const Icon = stat.icon;
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-base-100 p-5 rounded-2xl border border-base-300 shadow-sm flex flex-col gap-1"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color}`}>
+                            <Icon size={16} />
+                          </div>
+                          <div
+                            className={`flex items-center gap-1 text-xs font-semibold ${stat.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
+                          >
+                            {stat.change}
+                          </div>
+                        </div>
+                        <div className="flex flex-col mt-2">
+                          <p className="text-xl font-bold text-base-content">{stat.value}</p>
+                          <h3 className="text-[11px] font-medium text-base-content/60 mt-0.5">{stat.title}</h3>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mb-8">
                 <h1 className="text-2xl font-bold tracking-tight text-base-content">Agent Analytics</h1>
                 <p className="text-sm text-base-content/60 mt-1">
                   Overview of agent performance and execution history.
                 </p>
               </div>
-            </div>
 
-            {/* KPI Stats Row */}
-            {Object.keys(summary).length === 0 ? (
-              <AnalyticsStatsSkeleton />
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
-                {getStatsConfig(summary).map((stat, idx) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div
-                      key={idx}
-                      className="bg-base-100 p-5 rounded-2xl border border-base-300 shadow-sm flex flex-col gap-1"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color}`}>
-                          <Icon size={16} />
-                        </div>
-                        <div
-                          className={`flex items-center gap-1 text-xs font-semibold ${stat.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                          {stat.change}
-                        </div>
-                      </div>
-                      <div className="flex flex-col mt-2">
-                        <p className="text-xl font-bold text-base-content">{stat.value}</p>
-                        <h3 className="text-[11px] font-medium text-base-content/60 mt-0.5">{stat.title}</h3>
-                      </div>
+              {/* Charts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Success / Failure Chart */}
+                <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
+                      <p className="text-xs text-base-content/60">Success vs Failed runs over time</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Filters Container */}
-            <div className="bg-base-100 border border-base-300 rounded-lg  mb-8 shadow-sm">
-              {/* Row 1: Time Range, Interval, Feedback, Error, Advance Toggle */}
-              <div className="flex items-center gap-4 px-4 py-1.5 flex-wrap">
-                {/* Time Range */}
-                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                  Time Range
-                </span>
-                <div className="flex gap-1.5 shrink-0 ">
-                  {[
-                    { label: "24h", value: "24h" },
-                    { label: "7d", value: "7d" },
-                    { label: "30d", value: "30d" },
-                  ].map((item) => {
-                    const isActive = filterRange === item.value && !filterStart && !filterEnd;
-
-                    return (
+                    <div className="flex items-center gap-2">
+                      {executionZoom && (
+                        <button
+                          onClick={() => setExecutionZoom(null)}
+                          className="btn btn-ghost btn-xs btn-circle"
+                          title="Reset zoom"
+                        >
+                          <ZoomOut size={16} />
+                        </button>
+                      )}
                       <button
-                        key={item.value}
-                        onClick={() => {
-                          setFilterRange(item.value);
-                          setFilterStart("");
-                          setFilterEnd("");
-                          applyFilters({ range: item.value, start: "", end: "" });
-                        }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          isActive ? "bg-blue-500 text-white" : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                        }`}
+                        onClick={() => setExecutionChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                        className="btn btn-ghost btn-xs btn-circle"
+                        title="Toggle bar / area"
                       >
-                        {item.label}
+                        <BarChart3 size={16} />
                       </button>
-                    );
-                  })}
-
-                  {/* Custom Date Dropdown replacing the pill */}
-                  <div ref={customDropdownRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomOpen(!isCustomOpen)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border-none outline-none focus:outline-none focus:ring-0 ${
-                        filterStart || filterEnd
-                          ? "bg-blue-500 text-white"
-                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
-                    >
-                      Custom
-                    </button>
-                    {isCustomOpen && (
-                      <div className="absolute left-0 z-50 menu p-4 shadow-xl border border-base-300 bg-base-100 rounded-box w-80 ">
-                        <h3 className="font-semibold text-sm mb-4 text-base-content">Custom Date Range</h3>
-
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
-                            <input
-                              type="datetime-local"
-                              className="input input-sm input-bordered w-full text-xs"
-                              value={filterStart}
-                              max={filterEnd}
-                              onChange={(e) => {
-                                setFilterStart(e.target.value);
-                                setFilterRange("");
-                              }}
-                              onClick={(e) => e.target.showPicker()}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
-                            <input
-                              type="datetime-local"
-                              className="input input-sm input-bordered w-full text-xs"
-                              value={filterEnd}
-                              min={filterStart}
-                              onChange={(e) => {
-                                setFilterEnd(e.target.value);
-                                setFilterRange("");
-                              }}
-                              onClick={(e) => e.target.showPicker()}
-                            />
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <button
-                              className="btn btn-sm btn-primary flex-1"
-                              disabled={!filterStart && !filterEnd}
-                              onClick={() => {
-                                applyFilters();
-                                setIsCustomOpen(false);
-                                if (document.activeElement) document.activeElement.blur();
-                              }}
-                            >
-                              Apply
-                            </button>
-                            <button
-                              className="btn btn-sm btn-outline flex-1"
-                              disabled={!hasAnyFilter}
-                              onClick={() => {
-                                clearFilters();
-                                setIsCustomOpen(false);
-                              }}
-                            >
-                              Clear
-                            </button>
-                          </div>
-                        </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-[240px]">
+                    {analyticsData?.requests_over_time === undefined ? (
+                      <AnalyticsChartSkeleton title="Execution Volume" />
+                    ) : displayExecutionData.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center">
+                        <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
+                        <p className="text-sm text-base-content/50">No content</p>
                       </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart
+                          data={displayExecutionData}
+                          onMouseDown={handleExecutionMouseDown}
+                          onMouseMove={handleExecutionMouseMove}
+                          onMouseUp={handleExecutionMouseUp}
+                        >
+                          <defs>
+                            <linearGradient id="gradSuccess" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                            </linearGradient>
+                            <linearGradient id="gradFailed" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                          <XAxis
+                            dataKey="time"
+                            tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              fontSize: "12px",
+                              borderRadius: "4px",
+                              border: "none",
+                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            }}
+                          />
+                          {executionChartType === "area" ? (
+                            <>
+                              <Area
+                                type="monotone"
+                                dataKey="success"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                fill="url(#gradSuccess)"
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="failed"
+                                stroke="#ef4444"
+                                strokeWidth={2}
+                                fill="url(#gradFailed)"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Bar dataKey="success" fill="#10b981" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="failed" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            </>
+                          )}
+                          {executionRefArea.left &&
+                            executionRefArea.right &&
+                            displayExecutionData.length > 0 &&
+                            (() => {
+                              const [selStart, selEnd] =
+                                executionRefArea.left < executionRefArea.right
+                                  ? [executionRefArea.left, executionRefArea.right]
+                                  : [executionRefArea.right, executionRefArea.left];
+                              const firstX = displayExecutionData[0].time;
+                              const lastX = displayExecutionData[displayExecutionData.length - 1].time;
+                              return (
+                                <>
+                                  {selStart !== firstX && (
+                                    <ReferenceArea
+                                      x1={firstX}
+                                      x2={selStart}
+                                      fill="#000"
+                                      fillOpacity={0.25}
+                                      stroke="none"
+                                      ifOverflow="hidden"
+                                    />
+                                  )}
+                                  {selEnd !== lastX && (
+                                    <ReferenceArea
+                                      x1={selEnd}
+                                      x2={lastX}
+                                      fill="#000"
+                                      fillOpacity={0.25}
+                                      stroke="none"
+                                      ifOverflow="hidden"
+                                    />
+                                  )}
+                                  <ReferenceArea
+                                    x1={selStart}
+                                    x2={selEnd}
+                                    stroke="#3b82f6"
+                                    strokeOpacity={0.6}
+                                    fill="#3b82f6"
+                                    fillOpacity={0.1}
+                                  />
+                                </>
+                              );
+                            })()}
+                        </ComposedChart>
+                      </ResponsiveContainer>
                     )}
                   </div>
                 </div>
 
-                <div className="w-px h-4 bg-base-300 shrink-0"></div>
-
-                {/* Interval */}
-                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                  Interval
-                </span>
-                <div className="flex gap-1.5 shrink-0">
-                  {[
-                    { label: "1h", value: "1h" },
-                    { label: "3h", value: "3h" },
-                    { label: "6h", value: "6h" },
-                    { label: "12h", value: "12h" },
-                    { label: "24h", value: "24h" },
-                  ].map((item) => (
-                    <button
-                      key={item.value}
-                      onClick={() => {
-                        const newInterval = filterInterval === item.value ? "" : item.value;
-                        setFilterInterval(newInterval);
-                        applyFilters({ interval: newInterval });
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        filterInterval === item.value
-                          ? "bg-blue-500 text-white"
-                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="w-px h-4 bg-base-300 shrink-0"></div>
-
-                {/* Feedback */}
-                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                  Feedback
-                </span>
-                <div className="flex gap-1.5 shrink-0">
-                  {[
-                    { label: "Any", value: "all" },
-                    { label: "Good", value: "1" },
-                    { label: "Bad", value: "2" },
-                  ].map((item) => (
-                    <button
-                      key={item.value}
-                      onClick={() => {
-                        setFilterFeedback(item.value);
-                        applyFilters({ feedback: item.value });
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        filterFeedback === item.value
-                          ? "bg-blue-500 text-white"
-                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Reviewer Failures Toggle */}
-                <label
-                  className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
-                    filterReviewFailed ? "bg-[#FD9900] text-white border border-[#FD9900]" : "border border-base-200"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className={`toggle toggle-sm scale-75 origin-center ${filterReviewFailed ? "toggle-warning" : ""}`}
-                    checked={filterReviewFailed}
-                    onChange={(e) => {
-                      setFilterReviewFailed(e.target.checked);
-                      applyFilters({ review_failed: e.target.checked });
-                    }}
-                  />
-                  <span className={`text-xs font-medium ${filterReviewFailed ? "text-white" : "text-base-content/70"}`}>
-                    Reviewer Failures
-                  </span>
-                </label>
-
-                {/* Error Toggle */}
-                <label
-                  className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
-                    filterError ? "bg-[#FA2C36] text-white border border-[#FA2C36]" : "border border-base-200"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className={`toggle toggle-sm scale-75 origin-center ${filterError ? "toggle-error" : ""}`}
-                    checked={filterError}
-                    onChange={(e) => {
-                      setFilterError(e.target.checked);
-                      applyFilters({ error: e.target.checked });
-                    }}
-                  />
-                  <span className={`text-xs font-medium ${filterError ? "text-white" : "text-base-content/70"}`}>
-                    Error History
-                  </span>
-                </label>
-
-                {/* Advance Filter Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsAdvanceFilterOpen(!isAdvanceFilterOpen)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${
-                    isAdvanceFilterOpen
-                      ? "bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:border-primary/40"
-                      : "bg-base-100 text-base-content/70 border-base-200 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:bg-base-100 dark:hover:bg-primary/10 dark:hover:text-primary"
-                  }`}
-                >
-                  <Filter className="w-4 h-4" />
-                  Search by Fields
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isAdvanceFilterOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                {hasAnyFilter && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Clear All
-                  </button>
-                )}
-              </div>
-
-              {/* Row 2: Advance Filters (expandable inside same container) */}
-              <div
-                className={`overflow-hidden px-4 pt-2 transition-all duration-300 ${
-                  isAdvanceFilterOpen
-                    ? "max-h-[600px] opacity-100  pt-3 pb-3 border-t border-base-200 dark:border-t-base-200 bg-[#F8FAFC] dark:bg-base-200/50 space-y-4"
-                    : "max-h-0 opacity-0"
-                }`}
-              >
-                {/* Tool, Knowledge Base, Agent & Model badges */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
-                  {/* Col 1: Tool + Knowledge Base + Agent */}
-                  <div>
-                    <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase block mb-1.5">
-                      Tool
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {/* Single All button for Tool + KB + Agent */}
-                      <button
-                        onClick={() => {
-                          setFilterTool([]);
-                          setFilterKnowledgeBase([]);
-                          setFilterAgent([]);
-                          applyFilters({ tool_id: [], knowledgebase_id: [], agent_id: [] });
-                        }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          !filterTool.length && !filterKnowledgeBase.length && !filterAgent.length
-                            ? "bg-blue-500 text-white"
-                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                        }`}
-                      >
-                        All
-                      </button>
-
-                      {/* Combined Tool + KB + Agent badges */}
-                      {(() => {
-                        const allItems = [
-                          ...Object.entries(filterOptions.tools_data).map(([name, id]) => ({ type: "tool", name, id })),
-                          ...Object.entries(filterOptions.knowledgebase_data).map(([name, id]) => ({
-                            type: "kb",
-                            name: knowledgeBaseNameMap[id] || name,
-                            id,
-                          })),
-                          ...Object.entries(filterOptions.agent_data).map(([name, id]) => ({
-                            type: "agent",
-                            name,
-                            id,
-                          })),
-                        ];
-                        const isSelected = (item) => {
-                          if (item.type === "tool") return filterTool.includes(item.id);
-                          if (item.type === "kb") return filterKnowledgeBase.includes(item.id);
-                          return filterAgent.includes(item.id);
-                        };
-                        const toggle = (item) => {
-                          if (item.type === "tool") {
-                            const next = filterTool.includes(item.id)
-                              ? filterTool.filter((t) => t !== item.id)
-                              : [...filterTool, item.id];
-                            setFilterTool(next);
-                            applyFilters({ tool_id: next });
-                          } else if (item.type === "kb") {
-                            const next = filterKnowledgeBase.includes(item.id)
-                              ? filterKnowledgeBase.filter((k) => k !== item.id)
-                              : [...filterKnowledgeBase, item.id];
-                            setFilterKnowledgeBase(next);
-                            applyFilters({ knowledgebase_id: next });
-                          } else {
-                            const next = filterAgent.includes(item.id)
-                              ? filterAgent.filter((a) => a !== item.id)
-                              : [...filterAgent, item.id];
-                            setFilterAgent(next);
-                            applyFilters({ agent_id: next });
-                          }
-                        };
-                        const visibleItems = showAllToolGroup ? allItems : allItems.slice(0, 8);
-                        return (
-                          <>
-                            {visibleItems.map((item) => {
-                              const selected = isSelected(item);
-                              const iconColor = selected
-                                ? "text-white"
-                                : item.type === "tool"
-                                  ? "text-amber-500"
-                                  : item.type === "kb"
-                                    ? "text-emerald-500"
-                                    : "text-violet-500";
-                              return (
-                                <button
-                                  key={`${item.type}-${item.id}`}
-                                  onClick={() => toggle(item)}
-                                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
-                                    selected
-                                      ? "bg-blue-500 text-white"
-                                      : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                                  }`}
-                                  title={item.name}
-                                >
-                                  {item.type === "tool" && <Wrench className={`w-3 h-3 ${iconColor}`} />}
-                                  {item.type === "kb" && <BookOpen className={`w-3 h-3 ${iconColor}`} />}
-                                  {item.type === "agent" && <Bot className={`w-3 h-3 ${iconColor}`} />}
-                                  {item.name.length > 18 ? item.name.slice(0, 18) + "..." : item.name}
-                                </button>
-                              );
-                            })}
-                            {allItems.length > 8 && (
-                              <button
-                                onClick={() => setShowAllToolGroup(!showAllToolGroup)}
-                                className="px-3 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
-                              >
-                                {showAllToolGroup ? "Less" : `+${allItems.length - 8} More`}
-                              </button>
-                            )}
-                          </>
-                        );
-                      })()}
+                {/* Latency Chart */}
+                <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="text-base font-semibold text-base-content">Average Latency</h3>
+                      <p className="text-xs text-base-content/60">Agent response time (s)</p>
                     </div>
-                  </div>
-
-                  {/* Col 2: Model */}
-                  <div>
-                    <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase block mb-1.5">
-                      Model
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        onClick={() => {
-                          setFilterModel([]);
-                          applyFilters({ model: [] });
-                        }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          !filterModel.length
-                            ? "bg-blue-500 text-white"
-                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                        }`}
-                      >
-                        All
-                      </button>
-                      {(showAllModels
-                        ? Object.entries(filterOptions.unique_model).flatMap(([service, models]) =>
-                            models.map((m) => ({ service, model: m }))
-                          )
-                        : Object.entries(filterOptions.unique_model)
-                            .flatMap(([service, models]) => models.map((m) => ({ service, model: m })))
-                            .slice(0, 4)
-                      ).map(({ service, model: m }) => (
+                    <div className="flex items-center gap-2">
+                      {latencyZoom && (
                         <button
-                          key={`${service}-${m}`}
-                          onClick={() => {
-                            const next = filterModel.includes(m)
-                              ? filterModel.filter((x) => x !== m)
-                              : [...filterModel, m];
-                            setFilterModel(next);
-                            applyFilters({ model: next });
-                          }}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                            filterModel.includes(m)
-                              ? "bg-blue-500 text-white"
-                              : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                          }`}
+                          onClick={() => setLatencyZoom(null)}
+                          className="btn btn-ghost btn-xs btn-circle"
+                          title="Reset zoom"
                         >
-                          {m}
-                        </button>
-                      ))}
-                      {Object.entries(filterOptions.unique_model).flatMap(([service, models]) => models.map((m) => m))
-                        .length > 4 && (
-                        <button
-                          onClick={() => setShowAllModels(!showAllModels)}
-                          className="px-3 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
-                        >
-                          {showAllModels
-                            ? "Less"
-                            : `+${Object.entries(filterOptions.unique_model).flatMap(([service, models]) => models.map((m) => m)).length - 4} More`}
+                          <ZoomOut size={16} />
                         </button>
                       )}
+                      <button
+                        onClick={() => setLatencyChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                        className="btn btn-ghost btn-xs btn-circle"
+                        title="Toggle bar / area"
+                      >
+                        <BarChart3 size={16} />
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                {/* Search by Fields */}
-                <div className="">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      { key: "thread_id", label: "Thread ID" },
-                      { key: "sub_thread_id", label: "Sub Thread ID" },
-                      { key: "message_id", label: "Message ID" },
-                      { key: "batch_id", label: "Batch ID" },
-                      { key: "user", label: "User" },
-                      { key: "llm_message", label: "LLM Message" },
-                    ].map((f) => (
-                      <div key={f.key}>
-                        <label className="block text-xs font-medium text-base-content/70 mb-0.5">{f.label}</label>
-                        <input
-                          type="text"
-                          className="input input-sm input-bordered w-full rounded-lg text-xs"
-                          placeholder={`Search ${f.label.toLowerCase()}...`}
-                          value={filterByFields[f.key] || ""}
-                          onChange={(e) => setFilterByFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                        />
+                  <div className="flex-1 min-h-[240px]">
+                    {analyticsData?.response_time === undefined ? (
+                      <AnalyticsChartSkeleton title="Average Latency" />
+                    ) : displayLatencyData.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center">
+                        <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
+                        <p className="text-sm text-base-content/50">No content</p>
                       </div>
-                    ))}
-                    <div className="col-span-2 md:col-span-3">
-                      <label className="block text-xs font-medium text-base-content/70 mb-0.5">Present Variables</label>
-                      <div className="space-y-2">
-                        {filterVariableRows.map((row, idx) => (
-                          <div key={idx} className="flex gap-2 items-center">
-                            <input
-                              type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
-                              placeholder="key"
-                              value={row.key}
-                              onChange={(e) => {
-                                const next = [...filterVariableRows];
-                                next[idx].key = e.target.value;
-                                setFilterVariableRows(next);
-                              }}
-                            />
-                            <input
-                              type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
-                              placeholder="value"
-                              value={row.value}
-                              onChange={(e) => {
-                                const next = [...filterVariableRows];
-                                next[idx].value = e.target.value;
-                                setFilterVariableRows(next);
-                              }}
-                            />
-                            {filterVariableRows.length > 1 && (
-                              <button
-                                type="button"
-                                className="px-2 py-1 rounded-md text-xs font-medium border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
-                                onClick={() => {
-                                  const next = filterVariableRows.filter((_, i) => i !== idx);
-                                  setFilterVariableRows(next.length ? next : [{ key: "", value: "" }]);
-                                }}
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          className="px-3 py-1 rounded-md text-xs font-medium border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content transition-colors"
-                          onClick={() => setFilterVariableRows((prev) => [...prev, { key: "", value: "" }])}
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart
+                          data={displayLatencyData}
+                          onMouseDown={handleLatencyMouseDown}
+                          onMouseMove={handleLatencyMouseMove}
+                          onMouseUp={handleLatencyMouseUp}
                         >
-                          + Add Key/Value
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-3 mt-3">
-                    <button
-                      className="px-5 py-1 rounded-lg text-sm font-medium border border-base-200 text-base-content/70 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:hover:bg-primary/10 dark:hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      disabled={!hasAdvancedFilterValues}
-                      onClick={() => {
-                        const emptyFields = {
-                          thread_id: "",
-                          sub_thread_id: "",
-                          message_id: "",
-                          batch_id: "",
-                          user: "",
-                          llm_message: "",
-                        };
-                        setFilterByFields(emptyFields);
-                        setFilterVariableRows([{ key: "", value: "" }]);
-                        dispatchAnalyticsWithAdvancedFilters({
-                          filterByFields: emptyFields,
-                          filterVariableRows: [{ key: "", value: "" }],
-                        });
-                      }}
-                    >
-                      Reset Fields
-                    </button>
-                    <button
-                      className="px-5 py-1 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                      disabled={!hasAdvancedFilterValues}
-                      onClick={() => {
-                        if (document.activeElement) document.activeElement.blur();
-                        dispatchAnalyticsWithAdvancedFilters({
-                          filterByFields,
-                          filterVariableRows,
-                        });
-                      }}
-                    >
-                      Apply Filter
-                    </button>
+                          <defs>
+                            <linearGradient id="gradWorst" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
+                            </linearGradient>
+                            <linearGradient id="gradSlow" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+                            </linearGradient>
+                            <linearGradient id="gradTypical" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                          <XAxis
+                            dataKey="time"
+                            tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              fontSize: "12px",
+                              borderRadius: "4px",
+                              border: "none",
+                              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            }}
+                          />
+                          {latencyChartType === "area" ? (
+                            <>
+                              <Area
+                                type="monotone"
+                                dataKey="worst"
+                                stroke="#ef4444"
+                                strokeWidth={2}
+                                fill="url(#gradWorst)"
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="slow"
+                                stroke="#f59e0b"
+                                strokeWidth={2}
+                                fill="url(#gradSlow)"
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="typical"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                fill="url(#gradTypical)"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Bar dataKey="worst" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="slow" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="typical" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                            </>
+                          )}
+                          {latencyRefArea.left &&
+                            latencyRefArea.right &&
+                            displayLatencyData.length > 0 &&
+                            (() => {
+                              const [selStart, selEnd] =
+                                latencyRefArea.left < latencyRefArea.right
+                                  ? [latencyRefArea.left, latencyRefArea.right]
+                                  : [latencyRefArea.right, latencyRefArea.left];
+                              const firstX = displayLatencyData[0].time;
+                              const lastX = displayLatencyData[displayLatencyData.length - 1].time;
+                              return (
+                                <>
+                                  {selStart !== firstX && (
+                                    <ReferenceArea
+                                      x1={firstX}
+                                      x2={selStart}
+                                      fill="#000"
+                                      fillOpacity={0.25}
+                                      stroke="none"
+                                      ifOverflow="hidden"
+                                    />
+                                  )}
+                                  {selEnd !== lastX && (
+                                    <ReferenceArea
+                                      x1={selEnd}
+                                      x2={lastX}
+                                      fill="#000"
+                                      fillOpacity={0.25}
+                                      stroke="none"
+                                      ifOverflow="hidden"
+                                    />
+                                  )}
+                                  <ReferenceArea
+                                    x1={selStart}
+                                    x2={selEnd}
+                                    stroke="#3b82f6"
+                                    strokeOpacity={0.6}
+                                    fill="#3b82f6"
+                                    fillOpacity={0.1}
+                                  />
+                                </>
+                              );
+                            })()}
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Success / Failure Chart */}
-              <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
-                    <p className="text-xs text-base-content/60">Success vs Failed runs over time</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setExecutionChartType((prev) => (prev === "area" ? "bar" : "area"))}
-                      className="btn btn-ghost btn-xs btn-circle"
-                      title="Toggle bar / area"
-                    >
-                      <BarChart3 size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 min-h-[240px]">
-                  {analyticsData?.requests_over_time === undefined ? (
-                    <AnalyticsChartSkeleton title="Execution Volume" />
-                  ) : executionData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
-                      <p className="text-sm text-base-content/50">No content</p>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={executionData}>
-                        <defs>
-                          <linearGradient id="gradSuccess" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                          </linearGradient>
-                          <linearGradient id="gradFailed" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                        <XAxis
-                          dataKey="time"
-                          tick={{ fill: "#9ca3af", fontSize: "11px" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
-                        <Tooltip
-                          contentStyle={{
-                            fontSize: "12px",
-                            borderRadius: "4px",
-                            border: "none",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                          }}
-                        />
-                        {executionChartType === "area" ? (
-                          <>
-                            <Area
-                              type="monotone"
-                              dataKey="success"
-                              stroke="#10b981"
-                              strokeWidth={2}
-                              fill="url(#gradSuccess)"
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="failed"
-                              stroke="#ef4444"
-                              strokeWidth={2}
-                              fill="url(#gradFailed)"
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <Bar dataKey="success" fill="#10b981" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="failed" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                          </>
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-
-              {/* Latency Chart */}
-              <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-base-content">Average Latency</h3>
-                    <p className="text-xs text-base-content/60">Agent response time (s)</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setLatencyChartType((prev) => (prev === "area" ? "bar" : "area"))}
-                      className="btn btn-ghost btn-xs btn-circle"
-                      title="Toggle bar / area"
-                    >
-                      <BarChart3 size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 min-h-[240px]">
-                  {analyticsData?.response_time === undefined ? (
-                    <AnalyticsChartSkeleton title="Average Latency" />
-                  ) : latencyData.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
-                      <p className="text-sm text-base-content/50">No content</p>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={latencyData}>
-                        <defs>
-                          <linearGradient id="gradWorst" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
-                          </linearGradient>
-                          <linearGradient id="gradSlow" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
-                          </linearGradient>
-                          <linearGradient id="gradTypical" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                        <XAxis
-                          dataKey="time"
-                          tick={{ fill: "#9ca3af", fontSize: "11px" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
-                        <Tooltip
-                          contentStyle={{
-                            fontSize: "12px",
-                            borderRadius: "4px",
-                            border: "none",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                          }}
-                        />
-                        {latencyChartType === "area" ? (
-                          <>
-                            <Area
-                              type="monotone"
-                              dataKey="worst"
-                              stroke="#ef4444"
-                              strokeWidth={2}
-                              fill="url(#gradWorst)"
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="slow"
-                              stroke="#f59e0b"
-                              strokeWidth={2}
-                              fill="url(#gradSlow)"
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="typical"
-                              stroke="#3b82f6"
-                              strokeWidth={2}
-                              fill="url(#gradTypical)"
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <Bar dataKey="worst" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="slow" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="typical" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                          </>
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
 
-        {/* Backdrop overlay when slider is open */}
-        {selectedThreadId && (
-          <div
-            className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30 transition-opacity duration-300"
-            onClick={handleCloseAside}
-          />
-        )}
-
-        {/* Slide-in Thread Detail Panel - right to left */}
-        <div
-          className={`absolute top-0 right-0 h-full bg-base-100 shadow-2xl border-l border-base-300 z-40 flex flex-col transform transition-transform duration-300 ease-in-out ${
-            selectedThreadId ? "translate-x-0 w-[85%]" : "translate-x-full w-[85%]"
-          }`}
-        >
-          <div className="h-14 border-b border-base-300 flex items-center justify-between px-4 bg-base-100 shrink-0">
-            <h3 className="font-semibold text-sm truncate">Thread Details</h3>
-            <button onClick={handleCloseAside} className="btn btn-ghost btn-sm btn-circle shrink-0">
-              <X size={16} className="text-base-content/60 hover:text-base-content" />
-            </button>
-          </div>
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <ThreadContainer
-              thread={
-                selectedBatchMessageId && !searchMessageId
-                  ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
-                  : thread
-              }
-              searchParamsHook={search}
-              isFetchingMore={false}
-              setIsFetchingMore={() => {}}
-              searchMessageId={searchMessageId}
-              setSearchMessageId={setSearchMessageId}
-              keepSearchMessageId={true}
-              fillParent={true}
-              pathName={pathName}
-              search={search}
-              historyData={historyData}
-              threadHandler={handleThreadItemClick}
-              setLoading={() => {}}
-              threadPage={1}
-              setThreadPage={() => {}}
-              hasMoreThreadData={false}
-              setHasMoreThreadData={() => {}}
-              selectedVersion={"all"}
-              previousPrompt={""}
-              isErrorTrue={false}
+          {/* Backdrop overlay when slider is open */}
+          {selectedThreadId && (
+            <div
+              className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30 transition-opacity duration-300"
+              onClick={handleCloseAside}
             />
+          )}
+
+          {/* Slide-in Thread Detail Panel - right to left */}
+          <div
+            className={`absolute top-0 right-0 h-full bg-base-100 shadow-2xl border-l border-base-300 z-40 flex flex-col transform transition-transform duration-300 ease-in-out ${
+              selectedThreadId ? "translate-x-0 w-[85%]" : "translate-x-full w-[85%]"
+            }`}
+          >
+            <div className="h-14 border-b border-base-300 flex items-center justify-between px-4 bg-base-100 shrink-0">
+              <h3 className="font-semibold text-sm truncate">Thread Details</h3>
+              <button onClick={handleCloseAside} className="btn btn-ghost btn-sm btn-circle shrink-0">
+                <X size={16} className="text-base-content/60 hover:text-base-content" />
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+              <ThreadContainer
+                thread={
+                  selectedBatchMessageId && !searchMessageId
+                    ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
+                    : thread
+                }
+                searchParamsHook={search}
+                isFetchingMore={false}
+                setIsFetchingMore={() => {}}
+                searchMessageId={searchMessageId}
+                setSearchMessageId={setSearchMessageId}
+                keepSearchMessageId={true}
+                fillParent={true}
+                pathName={pathName}
+                search={search}
+                historyData={historyData}
+                threadHandler={handleThreadItemClick}
+                setLoading={() => {}}
+                threadPage={1}
+                setThreadPage={() => {}}
+                hasMoreThreadData={false}
+                setHasMoreThreadData={() => {}}
+                selectedVersion={"all"}
+                previousPrompt={""}
+                isErrorTrue={false}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Batch Subthread Panel - between main content and sidebar */}
-      <BatchSubthreadPanel
-        thread={thread}
-        subThreadIdFromURL={selectedSubThreadId}
-        parentThreadId={selectedThreadId}
-        selectedBatchMessageId={selectedBatchMessageId}
-        onSelectBatch={handleSelectBatch}
-        onSelectSubThread={handleSelectSubThread}
-      />
-
-      {/* Right Sidebar */}
-      <div className="h-full shrink-0 z-50 flex relative">
-        <Sidebar
-          historyData={historyData}
-          threadHandler={threadHandler}
-          fetchMoreData={fetchMoreData}
-          hasMore={hasMore}
-          loading={analyticsLoading}
-          params={resolvedParams}
-          searchParams={memoizedSearchParams}
-          setSearchMessageId={setSearchMessageId}
-          searchMessageId={searchMessageId}
-          onAnalyticsMessageNavigate={handleAnalyticsMessageNavigate}
-          setPage={setPage}
-          setHasMore={noop}
-          filterOption={filterFeedback}
-          setFilterOption={setFilterFeedback}
-          searchRef={searchRef}
-          setThreadPage={noop}
-          selectedVersion={selectedVersion}
-          setIsErrorTrue={setFilterError}
-          isErrorTrue={filterError}
-          activeFilterByRef={undefined}
-          isAnalytics={true}
-          handleSearch={handleSearch}
-          selectedThreadId={selectedThreadId}
-          sidebarExpandedThreadId={sidebarExpandedThreadId}
-          sidebarExpandedSubThreadId={sidebarExpandedSubThreadId}
-          onAnalyticsSidebarSelect={handleAnalyticsSidebarSelect}
-          onAnalyticsSelectSubThread={handleSelectSubThread}
+      <div className="col-start-2 row-start-1 min-h-0 h-full">
+        <BatchSubthreadPanel
+          thread={thread}
+          subThreadIdFromURL={selectedSubThreadId}
+          parentThreadId={selectedThreadId}
+          selectedBatchMessageId={selectedBatchMessageId}
+          onSelectBatch={handleSelectBatch}
+          onSelectSubThread={handleSelectSubThread}
         />
       </div>
+
+      {/* Right Sidebar — independent height; does not stretch when filters expand */}
+      <Sidebar
+        historyData={historyData}
+        threadHandler={threadHandler}
+        fetchMoreData={fetchMoreData}
+        hasMore={hasMore}
+        loading={analyticsLoading}
+        isPaginating={isPaginating}
+        params={resolvedParams}
+        searchParams={memoizedSearchParams}
+        setSearchMessageId={setSearchMessageId}
+        searchMessageId={searchMessageId}
+        onAnalyticsMessageNavigate={handleAnalyticsMessageNavigate}
+        setPage={setPage}
+        setHasMore={noop}
+        filterOption={filterFeedback}
+        setFilterOption={setFilterFeedback}
+        searchRef={searchRef}
+        setThreadPage={noop}
+        selectedVersion={selectedVersion}
+        setIsErrorTrue={setFilterError}
+        isErrorTrue={filterError}
+        activeFilterByRef={undefined}
+        isAnalytics={true}
+        handleSearch={handleSearch}
+        selectedThreadId={selectedThreadId}
+        sidebarExpandedThreadId={sidebarExpandedThreadId}
+        sidebarExpandedSubThreadId={sidebarExpandedSubThreadId}
+        onAnalyticsSidebarSelect={handleAnalyticsSidebarSelect}
+        onAnalyticsSelectSubThread={handleSelectSubThread}
+      />
 
       <ChatAiConfigDeatilViewModal
         modalContent={selectedItem?.value === "Latency" ? selectedItem?.latency : selectedItem?.AiConfig}
