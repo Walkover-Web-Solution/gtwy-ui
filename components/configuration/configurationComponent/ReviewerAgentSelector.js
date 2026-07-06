@@ -16,16 +16,20 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
   const isReadOnly = isPublished || !isEditor;
   const { isEmbedUser } = useConfigurationContext();
 
-  const { bridges, reviewerAgentId, reviewerPrompt, reviewerTools, reviewerEnabled } = useCustomSelector((state) => {
-    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-    return {
-      bridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
-      reviewerAgentId: versionData?.settings?.reviewer_agent || null,
-      reviewerPrompt: versionData?.settings?.reviewer_prompt || "",
-      reviewerTools: versionData?.settings?.reviewer_tools || [],
-      reviewerEnabled: versionData?.settings?.reviewer_enabled ?? false,
-    };
-  });
+  const { bridges, reviewAgent, reviewerAgentId, reviewerPrompt, reviewerTools, reviewerEnabled } = useCustomSelector(
+    (state) => {
+      const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+      const reviewAgent = versionData?.settings?.review_agent || {};
+      return {
+        bridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
+        reviewAgent,
+        reviewerAgentId: reviewAgent?.reviewer_agent ?? null,
+        reviewerPrompt: reviewAgent?.reviewer_prompt ?? "",
+        reviewerTools: reviewAgent?.reviewer_tools ?? [],
+        reviewerEnabled: reviewAgent?.reviewer_enabled ?? false,
+      };
+    }
+  );
 
   const isEnabled = useMemo(() => {
     if (reviewerAgentId || reviewerPrompt || reviewerTools?.length > 0) {
@@ -53,7 +57,14 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
       updateBridgeVersionAction({
         bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { settings: { reviewer_enabled: checked } },
+        dataToSend: {
+          settings: {
+            review_agent: {
+              ...(reviewAgent || {}),
+              reviewer_enabled: checked,
+            },
+          },
+        },
       })
     );
   };
@@ -63,7 +74,14 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
       updateBridgeVersionAction({
         bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { settings: { reviewer_agent: bridge._id } },
+        dataToSend: {
+          settings: {
+            review_agent: {
+              ...(reviewAgent || {}),
+              reviewer_agent: bridge._id,
+            },
+          },
+        },
       })
     );
   };
@@ -73,7 +91,14 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
       updateBridgeVersionAction({
         bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { settings: { reviewer_agent: null } },
+        dataToSend: {
+          settings: {
+            review_agent: {
+              ...(reviewAgent || {}),
+              reviewer_agent: null,
+            },
+          },
+        },
       })
     );
   };
@@ -126,7 +151,15 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                     updateBridgeVersionAction({
                       bridgeId: params?.id,
                       versionId: searchParams?.version,
-                      dataToSend: { settings: { reviewer_prompt: "", reviewer_tools: [] } },
+                      dataToSend: {
+                        settings: {
+                          review_agent: {
+                            ...(reviewAgent || {}),
+                            reviewer_prompt: "",
+                            reviewer_tools: [],
+                          },
+                        },
+                      },
                     })
                   );
                 }}
@@ -146,7 +179,15 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                     updateBridgeVersionAction({
                       bridgeId: params?.id,
                       versionId: searchParams?.version,
-                      dataToSend: { settings: { reviewer_agent: null, reviewer_tools: [] } },
+                      dataToSend: {
+                        settings: {
+                          review_agent: {
+                            ...(reviewAgent || {}),
+                            reviewer_agent: null,
+                            reviewer_tools: [],
+                          },
+                        },
+                      },
                     })
                   );
                 }}
@@ -166,7 +207,15 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                     updateBridgeVersionAction({
                       bridgeId: params?.id,
                       versionId: searchParams?.version,
-                      dataToSend: { settings: { reviewer_agent: null, reviewer_prompt: "" } },
+                      dataToSend: {
+                        settings: {
+                          review_agent: {
+                            ...(reviewAgent || {}),
+                            reviewer_agent: null,
+                            reviewer_prompt: "",
+                          },
+                        },
+                      },
                     })
                   );
                 }}
@@ -300,7 +349,14 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                       updateBridgeVersionAction({
                         bridgeId: params?.id,
                         versionId: searchParams?.version,
-                        dataToSend: { settings: { reviewer_prompt: newValue } },
+                        dataToSend: {
+                          settings: {
+                            review_agent: {
+                              ...(reviewAgent || {}),
+                              reviewer_prompt: newValue,
+                            },
+                          },
+                        },
                       })
                     );
                   }

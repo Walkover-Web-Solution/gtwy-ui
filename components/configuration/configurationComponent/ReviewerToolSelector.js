@@ -11,16 +11,20 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
   const dispatch = useDispatch();
   const isReadOnly = isPublished || !isEditor;
 
-  const { reviewerTools, functionData, integrationData, embedToken, variablesPath } = useCustomSelector((state) => {
-    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-    return {
-      reviewerTools: versionData?.settings?.reviewer_tools || [],
-      functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
-      integrationData: state?.bridgeReducer?.org?.[params?.org_id]?.integrationData || {},
-      embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token || "",
-      variablesPath: versionData?.variables_path || {},
-    };
-  });
+  const { reviewAgent, reviewerTools, functionData, integrationData, embedToken, variablesPath } = useCustomSelector(
+    (state) => {
+      const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+      const reviewAgent = versionData?.settings?.review_agent || {};
+      return {
+        reviewAgent,
+        reviewerTools: reviewAgent?.reviewer_tools ?? [],
+        functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+        integrationData: state?.bridgeReducer?.org?.[params?.org_id]?.integrationData || {},
+        embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token || "",
+        variablesPath: versionData?.variables_path || {},
+      };
+    }
+  );
 
   const selectedToolId = reviewerTools?.[0] || null;
   const selectedTool = useMemo(() => {
@@ -32,7 +36,14 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
       updateBridgeVersionAction({
         bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { settings: { reviewer_tools: [functionId] } },
+        dataToSend: {
+          settings: {
+            review_agent: {
+              ...(reviewAgent || {}),
+              reviewer_tools: [functionId],
+            },
+          },
+        },
       })
     );
   };
@@ -42,7 +53,14 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
       updateBridgeVersionAction({
         bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { settings: { reviewer_tools: [] } },
+        dataToSend: {
+          settings: {
+            review_agent: {
+              ...(reviewAgent || {}),
+              reviewer_tools: [],
+            },
+          },
+        },
       })
     );
   };
