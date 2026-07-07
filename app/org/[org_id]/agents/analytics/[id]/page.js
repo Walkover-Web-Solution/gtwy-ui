@@ -7,7 +7,6 @@ import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getThread } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
-import { getAgentAnalyticsFiltersApi } from "@/config";
 import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
@@ -21,6 +20,7 @@ import { getStatsConfig, MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
+import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
 
 // URL params that must never be forwarded to the analytics API.
 const UI_ONLY_QUERY_PARAMS = new Set([

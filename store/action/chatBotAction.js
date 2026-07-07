@@ -5,7 +5,7 @@ import {
   getChatBotDetails,
   updateChatBot,
   updateChatBotConfig,
-} from "@/config";
+} from "@/config/chatbotApi";
 import {
   getAllChatBotReducer,
   getChatBotDetailsReducer,

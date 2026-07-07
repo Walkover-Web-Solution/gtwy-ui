@@ -39,3 +39,8 @@ next-env.d.ts
 
 ./package-lock.json
 package-lock.json
+
+AGENTS.md
+config.js
+mcp_config.json 
+docs/*

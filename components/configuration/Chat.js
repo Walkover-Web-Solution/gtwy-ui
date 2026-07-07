@@ -113,6 +113,13 @@ function StreamingMessage({ content, isStreaming }) {
 
 function ToolCallItem({ toolCall, isMessageComplete }) {
   const [open, setOpen] = useState(false);
+
+  // Auto-open when streaming content starts arriving during tool call
+  useEffect(() => {
+    if (toolCall.status === "calling" && toolCall.streamingContent) setOpen(true);
+  }, [toolCall.status, toolCall.streamingContent]);
+
+  // Auto-open when result arrives
   useEffect(() => {
     if (toolCall.status === "done") setOpen(true);
   }, [toolCall.status]);
@@ -120,6 +127,7 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
   useEffect(() => {
     if (isMessageComplete) setOpen(false);
   }, [isMessageComplete]);
+
   let parsedResult = null;
   if (toolCall.result) {
     try {
@@ -128,11 +136,15 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
       parsedResult = toolCall.result;
     }
   }
+
+  const hasBody = toolCall.status === "done" ? !!toolCall.result : !!toolCall.streamingContent;
+  const canToggle = hasBody;
+
   return (
     <div className="rounded-lg border border-base-300 bg-base-200 text-xs overflow-hidden">
       <div
-        className={`flex items-center gap-2 px-3 py-1.5 select-none ${toolCall.status === "done" ? "cursor-pointer" : "cursor-default"}`}
-        onClick={() => toolCall.status === "done" && setOpen((v) => !v)}
+        className={`flex items-center gap-2 px-3 py-1.5 select-none ${canToggle ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => canToggle && setOpen((v) => !v)}
       >
         {toolCall.status === "calling" ? (
           <span className="loading loading-spinner loading-xs text-primary" />
@@ -140,7 +152,7 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
           <Wrench className="h-3.5 w-3.5 text-success shrink-0" />
         )}
         <span className=" font-medium truncate flex-1">{toolCall.name}</span>
-        {toolCall.status === "calling" ? (
+        {!canToggle ? (
           <span className="text-base-content/50 italic">calling…</span>
         ) : open ? (
           <ChevronUp className="h-3.5 w-3.5 shrink-0" />
@@ -148,9 +160,19 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
           <ChevronDown className="h-3.5 w-3.5 shrink-0" />
         )}
       </div>
-      {toolCall.status === "done" && open && (
-        <div className="border-t border-base-300 px-3 py-2 bg-base-100  whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
-          {typeof parsedResult === "object" ? JSON.stringify(parsedResult, null, 2) : String(parsedResult)}
+      {open && hasBody && (
+        <div className="border-t border-base-300 px-3 py-2 bg-base-100 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+          {toolCall.status === "done" ? (
+            // Final tool result
+            typeof parsedResult === "object" ? (
+              JSON.stringify(parsedResult, null, 2)
+            ) : (
+              String(parsedResult)
+            )
+          ) : (
+            // Live streaming output while the tool is executing
+            <span className="text-base-content/70">{toolCall.streamingContent}</span>
+          )}
         </div>
       )}
     </div>
