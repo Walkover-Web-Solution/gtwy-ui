@@ -184,11 +184,6 @@ function EmbedListSuggestionDropdownMenu({
               onChange={handleInputChange} // Update search query on input change
               className="input input-bordered w-full input-sm"
             />
-            {Object.values(function_data || {})?.length > 0 ? (
-              renderEmbedSuggestions
-            ) : (
-              <li className="text-center mt-2">No tools found</li>
-            )}
             {name === "preFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Built-in Pre Tools</li>
@@ -233,6 +228,18 @@ function EmbedListSuggestionDropdownMenu({
                   <li className="text-center mt-2">No prebuilt tools</li>
                 )}
               </>
+            )}
+            <li className="text-sm font-semibold disabled mt-2">
+              {name === "preFunction"
+                ? "Custom Pre Functions"
+                : name === "postFunction"
+                  ? "Custom Post Functions"
+                  : "Custom Tools"}
+            </li>
+            {Object.values(function_data || {})?.length > 0 ? (
+              renderEmbedSuggestions
+            ) : (
+              <li className="text-center mt-2">No tools found</li>
             )}
 
             {!hideCreateFunction && (

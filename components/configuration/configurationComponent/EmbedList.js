@@ -385,24 +385,6 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                   </div>
                 ) : (
                   <>
-                    {bridgeFunctions.length > 0 && (
-                      <RenderEmbed
-                        bridgeFunctions={bridgeFunctions}
-                        integrationData={integrationData}
-                        getStatusClass={getStatusClass}
-                        handleOpenModal={handleOpenModal}
-                        embedToken={embedToken}
-                        params={params}
-                        versionId={searchParams?.version}
-                        name="function"
-                        handleRemoveEmbed={handleRemoveFunctionFromBridge}
-                        handleOpenDeleteModal={handleOpenDeleteModal}
-                        halfLength={1}
-                        isPublished={isPublished}
-                        isEditor={isEditor}
-                      />
-                    )}
-
                     {/* Render selected Prebuilt Tools with same UI */}
                     {selectedPrebuiltTools.map((item) => {
                       const missingDesc = !item?.description;
@@ -493,6 +475,24 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                         </div>
                       );
                     })}
+
+                    {bridgeFunctions.length > 0 && (
+                      <RenderEmbed
+                        bridgeFunctions={bridgeFunctions}
+                        integrationData={integrationData}
+                        getStatusClass={getStatusClass}
+                        handleOpenModal={handleOpenModal}
+                        embedToken={embedToken}
+                        params={params}
+                        versionId={searchParams?.version}
+                        name="function"
+                        handleRemoveEmbed={handleRemoveFunctionFromBridge}
+                        handleOpenDeleteModal={handleOpenDeleteModal}
+                        halfLength={1}
+                        isPublished={isPublished}
+                        isEditor={isEditor}
+                      />
+                    )}
 
                     {hasTools && showAddTool && (
                       <div
