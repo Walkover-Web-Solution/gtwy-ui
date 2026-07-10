@@ -127,12 +127,33 @@ function Canvas({
       }
       let contentString = "";
       if (result && result.updated !== undefined) {
-        contentString = typeof result.updated === "string" ? result.updated : JSON.stringify(result.updated, null, 2);
+        if (typeof result.updated === "object" && result.updated !== null) {
+          contentString = Object.entries(result.updated)
+            .map(([k, v]) => {
+              let capitalizedKey = k.charAt(0).toUpperCase() + k.slice(1);
+              if (capitalizedKey === "Instruction") capitalizedKey = "Instructions";
+              return `**${capitalizedKey}** : ${v}`;
+            })
+            .join("  \n\n");
+        } else {
+          contentString = String(result.updated);
+        }
+
+        if (result.reasoning) {
+          contentString = result.reasoning + "  \n\n" + contentString;
+        }
+
         setShowActions(true);
+      } else if (result && result.reasoning) {
+        // Reasoning/clarification only — show as-is, no apply/copy buttons
+        contentString = result.reasoning;
+        setShowActions(false);
       } else {
         contentString = "No content returned from optimization.";
         setShowActions(false);
       }
+
+      const optimizedPayload = result?.updated;
 
       setMessages((prev) => [
         ...prev,
@@ -140,7 +161,7 @@ function Canvas({
           id: Date.now() + 1,
           sender: "assistant",
           content: contentString,
-          optimized: result?.updated,
+          optimized: optimizedPayload,
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);

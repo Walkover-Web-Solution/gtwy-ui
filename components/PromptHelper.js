@@ -91,7 +91,7 @@ const PromptHelper = ({
           if (variable_key && result[variable_key] !== undefined) {
             result.updated = result[variable_key];
           } else {
-            const { reason, description, ...rest } = result;
+            const { reason, description, reasoning, ...rest } = result;
             const keys = Object.keys(rest);
             if (keys.length === 1 && variable_key) {
               result.updated = rest[keys[0]];
@@ -207,7 +207,7 @@ const PromptHelper = ({
       });
       const merged = { ...currentEmbedValues };
       Object.keys(parsedOptimized).forEach((key) => {
-        if (key === "reason") return;
+        if (key === "reason" || key === "reasoning") return;
         const canonical = embedFieldLookup[normalizeKey(key)] ?? (visibleFieldNames.includes(key) ? key : null);
         if (canonical) {
           merged[canonical] = parsedOptimized[key];
@@ -227,7 +227,7 @@ const PromptHelper = ({
           keyLookup[normalizeKey(k)] = k;
         });
         Object.keys(parsedOptimized).forEach((key) => {
-          if (key === "reason") return;
+          if (key === "reason" || key === "reasoning") return;
           const canonical = keyLookup[normalizeKey(key)] ?? (key in toSave ? key : null);
           if (canonical) {
             toSave[canonical] = parsedOptimized[key];
@@ -237,7 +237,7 @@ const PromptHelper = ({
         // reduxPrompt is a string — converting to a structured prompt object.
         // Normalize keys against PROMPT_SECTION_CONFIG so e.g. "Instructions"
         // becomes "instruction" and the structured-prompt UI renders the value.
-        const { reason: _r, description: _d, ...rest } = parsedOptimized;
+        const { reason: _r, description: _d, reasoning: _rsn, ...rest } = parsedOptimized;
         const sectionLookup = {};
         Object.keys(PROMPT_SECTION_CONFIG).forEach((k) => {
           sectionLookup[normalizeKey(k)] = k;
