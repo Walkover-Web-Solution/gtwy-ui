@@ -54,8 +54,8 @@ const ThreadContainer = ({
   const searchParamsHook = useSearchParams();
   const router = useRouter();
 
-  const threadIdFromURL = searchParamsHook.get("thread_id");
-  const subThreadIdFromURL = searchParamsHook.get("subThread_id");
+  const threadIdFromURL = decodeURIComponent(searchParamsHook.get("thread_id") || "");
+  const subThreadIdFromURL = decodeURIComponent(searchParamsHook.get("subThread_id") || "");
   const versionFromURL = searchParamsHook.get("version");
   const errorFromURL = searchParamsHook.get("error");
 
