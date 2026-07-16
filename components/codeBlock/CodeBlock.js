@@ -119,6 +119,9 @@ function CodeBlock({ inline, className, children, showCopy = true, plain = false
           style: {
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
             background: "transparent",
+            // Break long unbreakable tokens (e.g. URLs) so they don't overflow the container
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
           },
         }}
         PreTag="div"
@@ -287,6 +290,9 @@ function CodeBlock({ inline, className, children, showCopy = true, plain = false
               fontFamily:
                 'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               background: "transparent",
+              // Break long unbreakable tokens (e.g. URLs) so they don't overflow the container
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
             },
           }}
           PreTag="div"

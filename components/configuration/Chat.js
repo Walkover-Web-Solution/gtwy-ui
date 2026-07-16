@@ -1305,7 +1305,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                               <span className="text-primary">{message?.modelName}</span>
                                             </label>
                                             <div className="max-h-0 peer-checked:max-h-96 transition-all duration-300 ease-in-out overflow-hidden bg-base-300/10">
-                                              <pre className="text-xs text-error/90 whitespace-pre-wrap px-3 py-2.5 leading-relaxed ">
+                                              <pre className="text-xs text-error/90 whitespace-pre-wrap break-words px-3 py-2.5 leading-relaxed ">
                                                 {extractErrorMessage(message.firstAttemptError)}
                                               </pre>
                                             </div>
