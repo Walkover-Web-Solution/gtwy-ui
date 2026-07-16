@@ -575,6 +575,10 @@ function FunctionParameterModal({
 
   const prevFunctionIdRef = useRef(functionId);
   const prevFunctionDetailsRef = useRef(function_details);
+  // Baseline for variablesPath dirty-check in Pre Tool / Post Tool mode.
+  // For these modes, args live in _toolEntry.args (not in variables_path keyed by
+  // functionName), so we capture the value passed in at open-time as the reference.
+  const initialVariablesPathRef = useRef(variablesPath);
 
   useEffect(() => {
     const idChanged = prevFunctionIdRef.current !== functionId;
@@ -629,6 +633,16 @@ function FunctionParameterModal({
     }
   }, [functionName, variables_path, name]);
 
+  // When the user selects a different Pre Tool / Post Tool function, the parent
+  // updates variablesPath and functionId together. Refresh our baseline so the
+  // dirty-check starts clean for the newly selected function.
+  useEffect(() => {
+    if (name === "Pre Tool" || name === "Post Tool") {
+      initialVariablesPathRef.current = variablesPath;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [functionId]);
+
   useEffect(() => {
     if (!toolData || !function_details) {
       setIsModified(false);
@@ -636,10 +650,16 @@ function FunctionParameterModal({
     }
 
     const toolDataChanged = !isEqual(normalizeToolData(toolData), normalizeToolData(function_details));
-    const originalVariablesPath = variables_path[functionName] || {};
+    // Pre Tool / Post Tool store their args in _toolEntry.args, not in
+    // variables_path[functionName]. Use the captured initial value as the
+    // baseline so that opening the modal never falsely marks it as modified.
+    const originalVariablesPath =
+      name === "Pre Tool" || name === "Post Tool"
+        ? initialVariablesPathRef.current
+        : variables_path[functionName] || {};
     const variablesPathChanged = !isEqual(variablesPath, originalVariablesPath);
     setIsModified(toolDataChanged || variablesPathChanged);
-  }, [toolData, function_details, variablesPath, variables_path, functionName]);
+  }, [toolData, function_details, variablesPath, variables_path, functionName, name]);
 
   useEffect(() => {
     if (toolData) {
