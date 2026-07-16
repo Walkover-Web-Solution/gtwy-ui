@@ -182,7 +182,7 @@ function Page({ params, searchParams }) {
       if (currentRole === "user" || currentRole === "tools_call" || currentRole === "error") {
         try {
           setSelectedItem({ variables: item.variables, ...item, value });
-          if (value === "AiConfig" || value === "Latency") {
+          if (value === "AiConfig" || value === "Latency" || value === "Memory") {
             openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
           } else {
             const shouldOpenSidebar = value === "more" || item?.[value] === null;
@@ -322,8 +322,20 @@ function Page({ params, searchParams }) {
       </div>
       <ChatDetails selectedItem={selectedItem} setIsSliderOpen={setIsSliderOpen} isSliderOpen={isSliderOpen} />
       <ChatAiConfigDeatilViewModal
-        modalContent={selectedItem?.value === "Latency" ? selectedItem?.latency : selectedItem?.AiConfig}
-        modalTitle={selectedItem?.value === "Latency" ? "Latency Details" : "AI Configuration"}
+        modalContent={
+          selectedItem?.value === "Latency"
+            ? selectedItem?.latency
+            : selectedItem?.value === "Memory"
+              ? selectedItem?.memoryContent
+              : selectedItem?.AiConfig
+        }
+        modalTitle={
+          selectedItem?.value === "Latency"
+            ? "Latency Details"
+            : selectedItem?.value === "Memory"
+              ? "Memory"
+              : "AI Configuration"
+        }
       />
     </div>
   );

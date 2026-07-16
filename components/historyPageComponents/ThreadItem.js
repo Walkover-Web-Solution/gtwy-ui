@@ -44,6 +44,7 @@ import {
   SlidersHorizontal,
   Maximize2,
   User,
+  Brain,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
@@ -218,6 +219,72 @@ const normalizeImageUrls = (imageData, source = "assistant") => {
     });
     return acc;
   }, []);
+};
+
+// ---------------------------------------------------------------------------
+// Memory helpers — extract structured memory JSON from an assistant response
+// ---------------------------------------------------------------------------
+
+const extractJsonSubstring = (content) => {
+  if (!content || typeof content !== "string") return null;
+  const firstBrace = content.indexOf("{");
+  const lastBrace = content.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null;
+  return content.slice(firstBrace, lastBrace + 1);
+};
+
+const parseMemoryContent = (content) => {
+  const jsonString = extractJsonSubstring(content);
+  if (!jsonString) return null;
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed && (parsed.protected_memory || parsed.latest_state)) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const getAssistantResponseContent = (item) => {
+  if (!item) return "";
+  return item.chatbot_message || item.llm_message || item.updated_llm_message || "";
+};
+
+const isMemoryRelatedQuery = (content) => {
+  if (!content || typeof content !== "string") return false;
+  const lower = content.toLowerCase();
+  return lower.includes("provide the summary of the previous conversation stored in the memory?");
+};
+
+const getAssistantTextFromMessage = (message) => {
+  if (!message) return "";
+  if (typeof message.content === "string") return message.content;
+  if (Array.isArray(message.content)) {
+    return message.content.map((part) => (typeof part === "string" ? part : part?.text || "")).join("");
+  }
+  return "";
+};
+
+const extractMemoryFromAiConfigInput = (aiConfig) => {
+  const messages = aiConfig?.input;
+  if (!Array.isArray(messages)) return null;
+  for (let i = 0; i < messages.length - 1; i++) {
+    const msg = messages[i];
+    if (msg?.role !== "user" || typeof msg?.content !== "string") continue;
+    if (!isMemoryRelatedQuery(msg.content)) continue;
+
+    const nextMsg = messages[i + 1];
+    if (nextMsg?.role !== "assistant") continue;
+
+    const assistantContent = getAssistantTextFromMessage(nextMsg);
+    if (!assistantContent) continue;
+
+    const parsed = parseMemoryContent(assistantContent);
+    return parsed || { response: assistantContent };
+  }
+  return null;
 };
 
 // Enhanced fallback component with better UX
@@ -540,6 +607,26 @@ const ThreadItem = ({
     const bridge = orgBridges.find((b) => b?._id === params?.id || b?.id === params?.id);
     return bridge?.name || bridge?.agent_name || bridge?.bridge_name || item?.name || "Agent";
   }, [orgBridges, params?.id, item?.name]);
+
+  const memoryContent = useMemo(() => {
+    const fromAiConfig = extractMemoryFromAiConfigInput(item?.AiConfig);
+    if (fromAiConfig) return fromAiConfig;
+
+    // Fallback: check the next assistant message in the visible thread.
+    const nextItem = thread?.[index + 1];
+    if (!nextItem) return null;
+    const isAssistantResponse = Boolean(
+      nextItem.chatbot_message || nextItem.llm_message || nextItem.updated_llm_message
+    );
+    if (!isAssistantResponse) return null;
+
+    const assistantContent = getAssistantResponseContent(nextItem);
+    const parsedMemory = parseMemoryContent(assistantContent);
+    if (parsedMemory) return parsedMemory;
+
+    return null;
+  }, [thread, index, item]);
+  const hasMemoryContent = Boolean(memoryContent);
 
   useEffect(() => {
     setMessageType(getInitialMessageType());
@@ -885,7 +972,11 @@ const ThreadItem = ({
   );
 
   const handleUserButtonClick = (value) => {
-    threadHandler(item.thread_id, item, value);
+    if (value === "Memory" && memoryContent) {
+      threadHandler(item.thread_id, { ...item, memoryContent }, value);
+    } else {
+      threadHandler(item.thread_id, item, value);
+    }
   };
 
   const handleAskAi = async (item) => {
@@ -1391,6 +1482,19 @@ const ThreadItem = ({
         >
           AI Config
         </ThreadActionPill>
+        {(() => {
+          return hasMemoryContent ? (
+            <ThreadActionPill
+              testId="thread-item-user-memory-button"
+              id="thread-item-user-memory-button"
+              icon={Brain}
+              trailing={Maximize2}
+              onClick={() => handleUserButtonClick("Memory")}
+            >
+              Memory
+            </ThreadActionPill>
+          ) : null;
+        })()}
         {item?.latency ? (
           <ThreadActionPill
             testId="thread-item-user-latency-button"

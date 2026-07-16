@@ -612,7 +612,7 @@ function Page({ params, searchParams }) {
   }, []);
 
   const handleThreadItemClick = useCallback((thread_id, item, value) => {
-    if (value === "AiConfig" || value === "Latency") {
+    if (value === "AiConfig" || value === "Latency" || value === "Memory") {
       setSelectedItem({ variables: item.variables, ...item, value });
       openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
     }
@@ -1564,8 +1564,20 @@ function Page({ params, searchParams }) {
       </div>
 
       <ChatAiConfigDeatilViewModal
-        modalContent={selectedItem?.value === "Latency" ? selectedItem?.latency : selectedItem?.AiConfig}
-        modalTitle={selectedItem?.value === "Latency" ? "Latency Details" : "AI Configuration"}
+        modalContent={
+          selectedItem?.value === "Latency"
+            ? selectedItem?.latency
+            : selectedItem?.value === "Memory"
+              ? selectedItem?.memoryContent
+              : selectedItem?.AiConfig
+        }
+        modalTitle={
+          selectedItem?.value === "Latency"
+            ? "Latency Details"
+            : selectedItem?.value === "Memory"
+              ? "Memory"
+              : "AI Configuration"
+        }
       />
     </div>
   );
