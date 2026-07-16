@@ -28,6 +28,7 @@ import { openModal, closeModal, toggleSidebar, sendDataToParent } from "@/utils/
 import { toast } from "react-toastify";
 const ChatBotSlider = dynamic(() => import("./sliders/ChatBotSlider"), { ssr: false });
 const ConfigHistorySlider = dynamic(() => import("./sliders/ConfigHistorySlider"), { ssr: false });
+import ErrorLogsBanner from "./ErrorLogsBanner";
 import Protected from "./Protected";
 const DeleteModal = dynamic(() => import("./UI/DeleteModal"), { ssr: false });
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
@@ -518,7 +519,14 @@ const Navbar = ({ isEmbedUser, params }) => {
       bridgeType={bridgeType}
     />
   );
-  if (!shouldShowNavbar()) return null;
+  if (!shouldShowNavbar()) {
+    // Even when the full navbar is hidden, still surface API errors so debugging is easy.
+    return (
+      <div data-testid="navbar-error-only" className="sticky top-0 z-high bg-base-100">
+        <ErrorLogsBanner />
+      </div>
+    );
+  }
 
   return (
     <div data-testid="navbar" className="bg-base-100 z-medium">
@@ -845,6 +853,9 @@ const Navbar = ({ isEmbedUser, params }) => {
           </div>
         </div>
       </div>
+
+      {/* Session-only error banner — sits just below the navbar */}
+      <ErrorLogsBanner />
 
       {/* Mobile Version Dropdown - Below navbar */}
       <div id="navbar-mobile-agent-name-display" className="sm:hidden bg-base-100 border-b border-base-200 px-2 py-2">

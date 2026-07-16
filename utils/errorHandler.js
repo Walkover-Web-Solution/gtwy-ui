@@ -1,4 +1,34 @@
 import { toast } from "react-toastify";
+import { store } from "@/store/store";
+import { addErrorLog } from "@/store/reducer/errorLogsReducer";
+
+/**
+ * Push an error entry into the redux error-logs slice (session only).
+ * Safe to call from anywhere — swallows its own failures so it never
+ * masks the original error.
+ */
+export const logErrorToStore = (error, extra = {}) => {
+  try {
+    const message = getErrorMessage(error);
+    store.dispatch(
+      addErrorLog({
+        message,
+        status: error?.response?.status ?? null,
+        url: error?.config?.url || error?.request?.responseURL || null,
+        method: error?.config?.method ? String(error.config.method).toUpperCase() : null,
+        source: extra.source || "api",
+        details:
+          error?.response?.data && typeof error.response.data === "object"
+            ? error.response.data
+            : error?.response?.data
+              ? String(error.response.data).slice(0, 500)
+              : null,
+      })
+    );
+  } catch {
+    // never let logging break the app
+  }
+};
 
 /**
  * Safely extracts error message from axios error or network error
@@ -29,6 +59,9 @@ export const getErrorMessage = (error) => {
 export const handleApiError = (error, fallbackMessage = "Something went wrong") => {
   const isNetworkError = error?.isNetworkError || !error?.response;
   const message = getErrorMessage(error);
+
+  // Always record in the redux error log for the debug slider
+  logErrorToStore(error, { source: "handleApiError" });
 
   if (isNetworkError) {
     toast.error(message);

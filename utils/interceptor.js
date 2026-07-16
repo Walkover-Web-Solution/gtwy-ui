@@ -1,5 +1,6 @@
 import axios from "axios";
 import { clearCookie, getFromCookies, setInCookies } from "./utility";
+import { logErrorToStore } from "./errorHandler";
 export const rawAxios = axios.create();
 
 axios.interceptors.request.use(
@@ -67,6 +68,8 @@ axios.interceptors.response.use(
       error.isNetworkError = true;
       error.message = error.message || "Connection lost. Please check your internet connection.";
     }
+
+    logErrorToStore(error, { source: "axios" });
 
     return Promise.reject(error);
   }
