@@ -41,11 +41,20 @@ const normalizeFieldTree = (fields = {}) =>
     return normalizedFields;
   }, {});
 
-const normalizeToolData = (toolData = {}) => ({
-  ...toolData,
-  thread_id: Boolean(toolData?.thread_id ?? false),
-  fields: normalizeFieldTree(toolData.fields || {}),
-});
+const normalizeToolData = (toolData = {}) => {
+  const result = {
+    ...toolData,
+    thread_id: Boolean(toolData?.thread_id ?? false),
+    fields: normalizeFieldTree(toolData.fields || {}),
+  };
+  // Strip keys whose value is `undefined` so that objects which are semantically
+  // identical but differ only in having an explicit `key: undefined` vs omitting
+  // the key entirely compare as equal (lodash isEqual treats them differently).
+  // This prevents false dirty-detection when the toolData initialisation effect
+  // writes e.g. `version_id: undefined` onto toolData while function_details
+  // simply omits the key.
+  return Object.fromEntries(Object.entries(result).filter(([, v]) => v !== undefined));
+};
 
 const buildFlowEmbedFieldSchema = (field = {}) => {
   const type = field?.type || "string";
@@ -591,8 +600,14 @@ function FunctionParameterModal({
           const environment = function_details?.environment;
           setToolData({ ...function_details, thread_id, environment });
         } else {
-          const version_id = function_details?.version_id;
-          setToolData({ ...function_details, thread_id, version_id });
+          // Only set version_id in the override when it is defined.
+          // Adding an explicit undefined key causes lodash isEqual to return false
+          // vs an object that simply omits the key, producing a false dirty-check.
+          const overrides = { thread_id };
+          if (function_details?.version_id !== undefined) {
+            overrides.version_id = function_details.version_id;
+          }
+          setToolData({ ...function_details, ...overrides });
         }
       } else {
         setToolData({});
