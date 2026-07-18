@@ -350,7 +350,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     theme_config: config?.theme_config || defaultUserTheme,
     tools_id: config?.tools_id || [],
     pre_tool_id: config?.pre_tool_id || null,
-    post_tool_id: config?.post_tool_id || null,
+    post_tool: config?.post_tool || null,
     variables_path: config?.variables_path || {},
     models: config?.models || {},
     apikey_object_id: integrationData?.apikey_object_id || {},
@@ -411,6 +411,56 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     setConfiguration((prev) => ({ ...prev, [key]: value }));
     setHasUnsavedChanges(true);
     window.GtwyEmbed?.sendDataToGtwy({ [key]: value });
+  };
+
+  // Special handler for post_tool changes (nested object format)
+  const handlePostToolChange = (toolId) => {
+    if (!toolId) {
+      const postToolValue = null;
+      setConfiguration((prev) => ({ ...prev, post_tool: postToolValue }));
+      setHasUnsavedChanges(true);
+      window.GtwyEmbed?.sendDataToGtwy({ post_tool: postToolValue });
+    } else {
+      const fn = functionData?.[toolId];
+      const postToolValue = {
+        id: toolId,
+        script_id: fn?.script_id || toolId,
+        args: {},
+      };
+      setConfiguration((prev) => ({ ...prev, post_tool: postToolValue }));
+      setHasUnsavedChanges(true);
+      window.GtwyEmbed?.sendDataToGtwy({ post_tool: postToolValue });
+    }
+  };
+
+  // Special handler for post_tool config/args changes
+  const handlePostToolConfigChange = (key, value) => {
+    if (key === "variables_path") {
+      const scriptId = configuration.post_tool?.script_id;
+
+      // If post_tool doesn't exist, this means it was already removed by handlePostToolChange
+      if (!configuration.post_tool?.id) {
+        return;
+      }
+
+      // If scriptId exists, extract the args from the wrapped structure
+      // ToolsConfiguration wraps it as { [script_id]: args }
+      // We need to unwrap it and store args directly as flat key-value pairs
+      if (scriptId && value?.[scriptId]) {
+        const actualArgs = value[scriptId];
+
+        const updatedPostTool = {
+          id: configuration.post_tool.id,
+          script_id: scriptId,
+          args: actualArgs, // Store args as flat key-value pairs
+        };
+        setConfiguration((prev) => ({ ...prev, post_tool: updatedPostTool }));
+        setHasUnsavedChanges(true);
+        window.GtwyEmbed?.sendDataToGtwy({ post_tool: updatedPostTool });
+      }
+    } else {
+      handleConfigChange(key, value);
+    }
   };
 
   // For text inputs (models, prompt) — only update state on change
@@ -909,12 +959,18 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
             <div className="divider my-2"></div>
             <ToolsConfiguration
               singleToolMode={true}
-              selectedToolId={configuration.post_tool_id}
-              onToolChange={(toolId) => handleConfigChange("post_tool_id", toolId)}
+              selectedToolId={configuration.post_tool?.id || null}
+              onToolChange={handlePostToolChange}
               orgId={data?.org_id}
               params={{ org_id: data?.org_id }}
-              configuration={configuration}
-              onConfigChange={handleConfigChange}
+              configuration={{
+                ...configuration,
+                // Wrap args with script_id for ToolsConfiguration to consume
+                variables_path: configuration.post_tool?.script_id
+                  ? { [configuration.post_tool.script_id]: configuration.post_tool.args || {} }
+                  : {},
+              }}
+              onConfigChange={handlePostToolConfigChange}
               title="Post-Tool Configuration"
               modalType={MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL}
             />

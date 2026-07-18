@@ -62,6 +62,7 @@ function EmbedListSuggestionDropdownMenu({
   const handleBuiltInPreToolClick = (type) => {
     onSelectBuiltInPreTool(type);
   };
+
   const renderEmbedSuggestions = useMemo(
     () =>
       function_data &&
@@ -200,6 +201,11 @@ function EmbedListSuggestionDropdownMenu({
                   ))}
               </>
             )}
+            {name === "postFunction" && (
+              <>
+                <li className="text-sm font-semibold disabled mt-2">Custom Post Functions</li>
+              </>
+            )}
             {name !== "preFunction" && name !== "postFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Prebuilt Tools</li>
@@ -229,13 +235,11 @@ function EmbedListSuggestionDropdownMenu({
                 )}
               </>
             )}
-            <li className="text-sm font-semibold disabled mt-2">
-              {name === "preFunction"
-                ? "Custom Pre Functions"
-                : name === "postFunction"
-                  ? "Custom Post Functions"
-                  : "Custom Tools"}
-            </li>
+            {name !== "postFunction" && (
+              <li className="text-sm font-semibold disabled mt-2">
+                {name === "preFunction" ? "Custom Pre Functions" : "Custom Tools"}
+              </li>
+            )}
             {Object.values(function_data || {})?.length > 0 ? (
               renderEmbedSuggestions
             ) : (
