@@ -345,18 +345,22 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     return initial;
   };
 
-  const [configuration, setConfiguration] = useState(() => ({
-    ...generateInitialConfig(),
-    theme_config: config?.theme_config || defaultUserTheme,
-    tools_id: config?.tools_id || [],
-    pre_tool_id: config?.pre_tool_id || null,
-    post_tool: config?.post_tool || null,
-    variables_path: config?.variables_path || {},
-    models: config?.models || {},
-    apikey_object_id: integrationData?.apikey_object_id || {},
-    prompt: config.prompt || {},
-    response_type: config?.response_type || {},
-  }));
+  const [configuration, setConfiguration] = useState(() => {
+    const initialConfig = generateInitialConfig();
+    return {
+      ...initialConfig,
+      theme_config: config?.theme_config || defaultUserTheme,
+      tools_id: config?.tools_id || [],
+      pre_tool_id: config?.pre_tool_id || null,
+      post_tool: config?.post_tool || null,
+      variables_path: config?.variables_path || {},
+      models: config?.models || {},
+      apikey_object_id: integrationData?.apikey_object_id || {},
+      prompt: config.prompt || {},
+      // If showResponseType is false, response_type should be null
+      response_type: initialConfig.showResponseType === false ? null : config?.response_type || {},
+    };
+  });
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 
   // Cleanup on unmount
@@ -408,9 +412,25 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
 
   // For toggles/selects — update state + send preview immediately
   const handleConfigChange = (key, value) => {
-    setConfiguration((prev) => ({ ...prev, [key]: value }));
+    setConfiguration((prev) => {
+      const updated = { ...prev, [key]: value };
+
+      // When showResponseType is turned off, set response_type to null
+      if (key === "showResponseType" && value === false) {
+        updated.response_type = null;
+      }
+
+      return updated;
+    });
     setHasUnsavedChanges(true);
-    window.GtwyEmbed?.sendDataToGtwy({ [key]: value });
+
+    // Send the appropriate data to preview
+    const dataToSend = { [key]: value };
+    if (key === "showResponseType" && value === false) {
+      dataToSend.response_type = null;
+    }
+
+    window.GtwyEmbed?.sendDataToGtwy(dataToSend);
   };
 
   // Special handler for post_tool changes (nested object format)
@@ -755,6 +775,8 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                           >
                             <CodeMirror
                               value={(() => {
+                                // When showResponseType is false, show empty if response_type is null
+                                if (configuration?.response_type === null) return "";
                                 const schemaValue = configuration?.response_type?.json_schema;
                                 if (schemaValue === undefined || schemaValue === null) return "";
                                 return typeof schemaValue === "object"
@@ -769,13 +791,10 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                               onChange={(val) => {
                                 const raw = val ?? "";
                                 if (raw.trim() === "") {
-                                  // Remove response_type key entirely when empty
-                                  setConfiguration((prev) => {
-                                    const { response_type, ...rest } = prev;
-                                    return rest;
-                                  });
+                                  // Set response_type to null when empty (not removing the key)
+                                  setConfiguration((prev) => ({ ...prev, response_type: null }));
                                   setHasUnsavedChanges(true);
-                                  window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
+                                  window.GtwyEmbed?.sendDataToGtwy({ response_type: null });
                                   return;
                                 }
                                 let schemaToStore = raw;
