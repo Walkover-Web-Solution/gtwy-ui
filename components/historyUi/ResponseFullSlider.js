@@ -71,7 +71,7 @@ export function ResponseFullSlider({ response, onClose }) {
         {content ? (
           <div
             data-testid="response-full-slider-content-text"
-            className="whitespace-pre-wrap text-sm text-base-content"
+            className="whitespace-pre-wrap break-words text-sm text-base-content"
           >
             {content}
           </div>

@@ -96,7 +96,7 @@ const ResourceChunksModal = ({ resourceId, resourceName }) => {
                   </div>
                   <div className="collapse-content">
                     <div className="p-4 bg-base-200 rounded-lg">
-                      <pre className="whitespace-pre-wrap text-sm font-mono text-base-content leading-relaxed">
+                      <pre className="whitespace-pre-wrap break-words text-sm font-mono text-base-content leading-relaxed">
                         {chunk.data || "No content"}
                       </pre>
                     </div>

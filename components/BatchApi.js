@@ -138,7 +138,7 @@ const WebhookForm = ({ params, searchParams }) => {
           <label className="label">
             <span className="label-text text-lg font-semibold">Response Data</span>
           </label>
-          <pre className="bg-gray-100 p-2 rounded whitespace-pre-wrap">{responseData}</pre>
+          <pre className="bg-gray-100 p-2 rounded whitespace-pre-wrap break-words">{responseData}</pre>
         </div>
       )}
 
