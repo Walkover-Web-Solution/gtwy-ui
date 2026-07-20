@@ -192,7 +192,6 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
           modalType={MODAL_TYPE.DELETE_POST_TOOL_MODAL}
           loading={isDeleting}
           isAsync={true}
-          warning={deleteWarning}
         />
 
         <div
