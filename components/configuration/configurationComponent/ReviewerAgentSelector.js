@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -16,8 +16,8 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
   const isReadOnly = isPublished || !isEditor;
   const { isEmbedUser } = useConfigurationContext();
 
-  const { bridges, reviewAgent, reviewerAgentId, reviewerPrompt, reviewerTools, reviewerEnabled } = useCustomSelector(
-    (state) => {
+  const { bridges, reviewAgent, reviewerAgentId, reviewerPrompt, reviewerTools, reviewerEnabled, isLoaded } =
+    useCustomSelector((state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
       const reviewAgent = versionData?.settings?.review_agent || {};
       return {
@@ -27,9 +27,9 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
         reviewerPrompt: reviewAgent?.reviewer_prompt ?? "",
         reviewerTools: reviewAgent?.reviewer_tools ?? [],
         reviewerEnabled: reviewAgent?.reviewer_enabled ?? false,
+        isLoaded: !!versionData,
       };
-    }
-  );
+    });
 
   const isEnabled = useMemo(() => {
     if (reviewerAgentId || reviewerPrompt || reviewerTools?.length > 0) {
@@ -42,9 +42,15 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
     reviewerPrompt ? "prompt" : reviewerTools?.length > 0 && !reviewerAgentId ? "tool" : "agent"
   );
 
-  useEffect(() => {
+  const versionKey = `${params?.id}-${searchParams?.version}`;
+  const [prevVersionKey, setPrevVersionKey] = useState(versionKey);
+  const [prevIsLoaded, setPrevIsLoaded] = useState(isLoaded);
+
+  if (versionKey !== prevVersionKey || (isLoaded && !prevIsLoaded)) {
+    setPrevVersionKey(versionKey);
+    setPrevIsLoaded(isLoaded);
     setReviewerType(reviewerPrompt ? "prompt" : reviewerTools?.length > 0 && !reviewerAgentId ? "tool" : "agent");
-  }, [reviewerPrompt, reviewerTools, reviewerAgentId]);
+  }
 
   const reviewerAgent = useMemo(
     () => bridges.find((b) => b._id === reviewerAgentId) || null,
