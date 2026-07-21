@@ -21,15 +21,22 @@ const CreateOrg = ({ handleSwitchOrg }) => {
   const route = useRouter();
 
   useEffect(() => {
-    // Filter timezones based on search term (trim whitespace and filter by "starts with")
+    // Filter timezones by search term (substring match so segments after "/" like "Kolkata" match "Asia/Kolkata")
     const trimmedSearch = timezoneSearch.trim().toLowerCase();
     const filtered = timezoneData.filter(
       (timezone) =>
-        timezone.identifier.toLowerCase().startsWith(trimmedSearch) ||
-        timezone.offSet.toLowerCase().startsWith(trimmedSearch)
+        timezone.identifier.toLowerCase().includes(trimmedSearch) ||
+        timezone.offSet.toLowerCase().includes(trimmedSearch)
     );
     setFilteredTimezones(filtered);
   }, [timezoneSearch]);
+
+  // Focus the Workspace Name input whenever the modal (re)opens; the input remounts on each open.
+  const nameInputRef = useCallback((node) => {
+    if (node) {
+      node.focus();
+    }
+  }, []);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -117,6 +124,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
               type="submit"
               form="create-org-form"
               className="btn btn-sm btn-primary"
+              disabled={orgDetails.name.trim().length < 3}
             >
               Create
             </button>
@@ -138,6 +146,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
               Workspace Name <RequiredItem />
             </label>
             <input
+              ref={nameInputRef}
               autoComplete="off"
               data-testid="create-org-name-input"
               id="create-org-name-input"
