@@ -1,7 +1,7 @@
 import { createOrgAction } from "@/store/action/orgAction";
 import { userDetails } from "@/store/action/userDetailsAction";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import LoadingSpinner from "./LoadingSpinner";
@@ -31,12 +31,9 @@ const CreateOrg = ({ handleSwitchOrg }) => {
     setFilteredTimezones(filtered);
   }, [timezoneSearch]);
 
-  // Focus the Workspace Name input whenever the modal (re)opens; the input remounts on each open.
-  const nameInputRef = useCallback((node) => {
-    if (node) {
-      node.focus();
-    }
-  }, []);
+  // Ref to the Workspace Name input. Focus is driven by <Modal> once it detects the
+  // dialog has actually opened (see initialFocusRef below), which is reliable on every open.
+  const nameInputRef = useRef(null);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -106,6 +103,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
         description="Set up your new workspace details"
         icon={<Globe size={16} className="text-primary" />}
         widthClass="w-[min(480px,92vw)]"
+        initialFocusRef={nameInputRef}
         onClose={() => closeModal(MODAL_TYPE.CREATE_ORG_MODAL)}
         footer={
           <>

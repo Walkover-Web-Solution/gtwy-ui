@@ -10,12 +10,26 @@ const Modal = ({
   icon,
   widthClass = "w-[min(720px,92vw)]",
   footer,
+  initialFocusRef,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const onCloseRef = React.useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  // Focus the caller-provided element every time the dialog opens.
+  // We defer with requestAnimationFrame so focus runs AFTER the native <dialog>.showModal()
+  // focusing steps and after the children have mounted/painted (the scaleIn animation is
+  // still starting). Doing it here — keyed on the observed `isOpen` state — makes it fire
+  // reliably on every open/close/reopen, unlike a callback ref that races the commit phase.
+  useEffect(() => {
+    if (!isOpen || !initialFocusRef) return;
+    const rafId = requestAnimationFrame(() => {
+      initialFocusRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [isOpen, initialFocusRef]);
 
   useEffect(() => {
     const modalElement = document.getElementById(MODAL_ID);
