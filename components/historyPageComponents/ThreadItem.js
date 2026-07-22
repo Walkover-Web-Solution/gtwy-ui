@@ -32,6 +32,8 @@ import {
 } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
+import GoogleDocIcon from "@/icons/GoogleDocIcon";
+import { isWordFileUrl } from "@/utils/attachmentUtils";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -935,9 +937,10 @@ const ThreadItem = ({
             }
 
             const isPdf = url?.toLowerCase?.().endsWith(".pdf");
+            const isWordDoc = isWordFileUrl(url);
 
-            // PDF style chip (same as provided snippet)
-            if (isPdf) {
+            // PDF / Word doc style chip (same as provided snippet)
+            if (isPdf || isWordDoc) {
               return (
                 <div key={`attachment-pdf-${index}`} className="pr-4">
                   <a
@@ -946,9 +949,9 @@ const ThreadItem = ({
                     rel="noopener noreferrer"
                     className="flex items-center space-x-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 group"
                   >
-                    <PdfIcon height={20} width={20} />
+                    {isWordDoc ? <GoogleDocIcon height={20} width={20} /> : <PdfIcon height={20} width={20} />}
                     <span className="text-sm font-medium max-w-[5rem] truncate text-primary">
-                      {truncate(url.split("/").pop() || "PDF", 20)}
+                      {truncate(url.split("/").pop() || (isWordDoc ? "Document" : "PDF"), 20)}
                     </span>
                     <ExternalLink className="text-primary" size={14} />
                   </a>

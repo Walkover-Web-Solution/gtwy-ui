@@ -2,6 +2,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import ChatTextInput from "./ChatTextInput";
 import { PdfIcon } from "@/icons/pdfIcon";
+import GoogleDocIcon from "@/icons/GoogleDocIcon";
+import { isWordFileUrl } from "@/utils/attachmentUtils";
 import { truncate } from "../historyPageComponents/AssistFile";
 import { AlertIcon, CloseCircleIcon } from "@/components/Icons";
 import {
@@ -819,7 +821,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                   rel="noopener noreferrer"
                   className="flex items-center space-x-1 hover:underline"
                 >
-                  <PdfIcon height={20} width={20} />
+                  {isWordFileUrl(url) ? <GoogleDocIcon height={20} width={20} /> : <PdfIcon height={20} width={20} />}
                   <span className="text-sm overflow-hidden truncate max-w-[10rem]">
                     {truncate(url.split("/").pop(), 20)}
                   </span>
