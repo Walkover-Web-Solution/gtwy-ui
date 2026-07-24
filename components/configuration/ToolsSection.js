@@ -2,6 +2,7 @@ import { memo } from "react";
 import EmbedList from "./configurationComponent/EmbedList";
 import ConnectedAgentList from "./configurationComponent/ConnectedAgentList";
 import KnowledgebaseList from "./configurationComponent/KnowledgebaseList";
+import McpServerList from "./configurationComponent/McpServerList";
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const ToolsSection = memo(({ isPublished }) => {
@@ -12,6 +13,7 @@ const ToolsSection = memo(({ isPublished }) => {
       <EmbedList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
       <ConnectedAgentList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
       <KnowledgebaseList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+      <McpServerList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
     </div>
   );
 });
