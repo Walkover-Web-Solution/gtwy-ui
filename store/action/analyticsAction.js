@@ -3,10 +3,14 @@ import { fetchAnalyticsFailure, fetchAnalyticsStart, fetchAnalyticsSuccess } fro
 
 export const getAgentAnalyticsAction =
   (bridge_id, queryParams = {}, org_id) =>
-  async (dispatch) => {
+  async (dispatch, getState) => {
     dispatch(fetchAnalyticsStart());
     try {
-      const response = await getAgentAnalyticsApi(bridge_id, queryParams, org_id);
+      const state = getState();
+      const user_id =
+        state?.userDetailsReducer?.userDetails?.id ||
+        (typeof window !== "undefined" ? sessionStorage.getItem("gtwy_user_id") : null);
+      const response = await getAgentAnalyticsApi(bridge_id, queryParams, org_id, user_id);
       const pageSize = parseInt(queryParams.page_size, 10) || 20;
       const pageNum = parseInt(queryParams.page, 10) || 1;
       dispatch(

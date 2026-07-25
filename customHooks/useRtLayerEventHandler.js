@@ -543,6 +543,14 @@ function useRtLayerEventHandler(channelIdentifier = "") {
     [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // Reset client state when channelId changes to force re-initialization
+  useEffect(() => {
+    if (client) {
+      setClient(null);
+      setIsConnected(false);
+    }
+  }, [channelId]);
+
   // Initialize WebSocket client – pass channelId so the registry check can
   // happen before a new connection is opened.
   useEffect(() => {

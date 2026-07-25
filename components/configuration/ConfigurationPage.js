@@ -33,7 +33,20 @@ const ConfigurationPage = ({
   const [currentView, setCurrentView] = useState(viewOverride || view);
   const [promptResetKey, setPromptResetKey] = useState(0);
 
-  const channelId = params?.org_id && params?.id ? `${params.org_id}_${params.id}`.replace(/ /g, "_") : "";
+  // Get user role to determine edit permissions
+  const { isAdminOrOwner, currentOrgRole, currentUser } = useCustomSelector((state) => {
+    const orgRole = state?.userDetailsReducer?.organizations?.[params.org_id]?.role_name;
+    const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
+
+    return {
+      isAdminOrOwner,
+      currentOrgRole: orgRole || "",
+      currentUser: state?.userDetailsReducer?.userDetails || {},
+    };
+  });
+
+  const userId = currentUser?.id || (typeof window !== "undefined" ? sessionStorage.getItem("gtwy_user_id") : null);
+  const channelId = params?.org_id && params?.id ? `${params.org_id}_${params.id}_${userId}`.replace(/ /g, "_") : "";
   useRtLayerEventHandler(channelId);
 
   const discardPromptDraft = useCallback(() => {
@@ -46,18 +59,6 @@ const ConfigurationPage = ({
   }, [setPromptState]);
 
   const configState = useConfigurationState(params, searchParams);
-
-  // Get user role to determine edit permissions
-  const { isAdminOrOwner, currentOrgRole, currentUser } = useCustomSelector((state) => {
-    const orgRole = state?.userDetailsReducer?.organizations?.[params.org_id]?.role_name;
-    const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
-
-    return {
-      isAdminOrOwner,
-      currentOrgRole: orgRole || "",
-      currentUser: state?.userDetailsReducer?.userDetails || {},
-    };
-  });
 
   // Determine if user has edit permissions for this agent
   const bridge = useCustomSelector((state) => state?.bridgeReducer?.allBridgesMap?.[params?.id]);

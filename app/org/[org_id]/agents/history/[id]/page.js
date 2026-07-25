@@ -8,6 +8,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { getHistoryAction, getMessageByIdAction } from "@/store/action/historyAction";
 import { clearThreadData, clearHistoryData, setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
+import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import ChatDetails from "@/components/historyPageComponents/ChatDetails";
 import { ChatLoadingSkeleton } from "@/components/historyPageComponents/ChatLayoutLoader";
 import { openModal } from "@/utils/utility";
@@ -28,6 +29,11 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const { buildUrl } = useQueryParams();
   const dispatch = useDispatch();
+  const channelId =
+    resolvedParams?.org_id && resolvedParams?.id
+      ? `${resolvedParams.org_id}_${resolvedParams.id}`.replace(/ /g, "_")
+      : "";
+  useRtLayerEventHandler(channelId);
   const sidebarRef = useRef(null);
   const searchRef = useRef();
   const activeFilterByRef = useRef(undefined);

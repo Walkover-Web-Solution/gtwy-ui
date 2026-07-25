@@ -12,6 +12,7 @@ import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
 import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen } from "lucide-react";
+import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import { ResponsiveContainer, ComposedChart, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 import Sidebar from "@/components/historyPageComponents/Sidebar";
@@ -109,15 +110,24 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const dispatch = useDispatch();
 
-  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading } = useCustomSelector((state) => {
-    return {
-      thread: state?.historyReducer?.thread || [],
-      analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
-      selectedVersion: state?.historyReducer?.selectedVersion || "all",
-      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
-      analyticsLoading: state?.analyticsReducer?.loading || false,
-    };
-  });
+  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading, currentUser } =
+    useCustomSelector((state) => {
+      return {
+        thread: state?.historyReducer?.thread || [],
+        analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
+        selectedVersion: state?.historyReducer?.selectedVersion || "all",
+        knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
+        analyticsLoading: state?.analyticsReducer?.loading || false,
+        currentUser: state?.userDetailsReducer?.userDetails || {},
+      };
+    });
+
+  const userId = currentUser?.id || (typeof window !== "undefined" ? sessionStorage.getItem("gtwy_user_id") : null);
+  const channelId =
+    resolvedParams?.org_id && resolvedParams?.id
+      ? `${resolvedParams.org_id}_${resolvedParams.id}_${userId}`.replace(/ /g, "_")
+      : "";
+  useRtLayerEventHandler(channelId);
 
   // Derive pagination from analytics response
   const hasMore = analyticsData?.pagination?.has_more ?? false;

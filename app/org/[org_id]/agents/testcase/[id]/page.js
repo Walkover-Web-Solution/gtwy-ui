@@ -28,6 +28,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
+import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import PageHeader from "@/components/Pageheader";
 import TestCaseDetailsPanel from "@/components/testcaseComponents/TestCaseDetailsPanel";
 import MatchingTypeDropdown from "@/components/testcaseComponents/MatchingTypeDropdown";
@@ -245,16 +246,32 @@ function TestCases({ params }) {
   const allBridges = useCustomSelector((state) => state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.orgs || [])
     .slice()
     .reverse();
-  const { testCases, isFirstTestcase, testRun, testCasesTotal, currentBridge, bridgeVersionMapping, persistedConfig } =
-    useCustomSelector((state) => ({
-      testCases: state?.testCasesReducer?.testCases?.[resolvedParams?.id] || {},
-      isFirstTestcase: state?.userDetailsReducer?.userDetails?.meta?.onboarding?.TestCasesSetup || "",
-      testRun: state?.testCasesReducer?.testRuns?.[resolvedParams?.id] || null,
-      testCasesTotal: state?.testCasesReducer?.testCasesTotal?.[resolvedParams?.id] || 0,
-      currentBridge: state?.bridgeReducer?.allBridgesMap?.[resolvedParams?.id],
-      bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id] || {},
-      persistedConfig: state?.testCaseConfigReducer?.configs?.[resolvedParams?.id] || null,
-    }));
+  const {
+    testCases,
+    isFirstTestcase,
+    testRun,
+    testCasesTotal,
+    currentBridge,
+    bridgeVersionMapping,
+    persistedConfig,
+    currentUser,
+  } = useCustomSelector((state) => ({
+    testCases: state?.testCasesReducer?.testCases?.[resolvedParams?.id] || {},
+    isFirstTestcase: state?.userDetailsReducer?.userDetails?.meta?.onboarding?.TestCasesSetup || "",
+    testRun: state?.testCasesReducer?.testRuns?.[resolvedParams?.id] || null,
+    testCasesTotal: state?.testCasesReducer?.testCasesTotal?.[resolvedParams?.id] || 0,
+    currentBridge: state?.bridgeReducer?.allBridgesMap?.[resolvedParams?.id],
+    bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id] || {},
+    persistedConfig: state?.testCaseConfigReducer?.configs?.[resolvedParams?.id] || null,
+    currentUser: state?.userDetailsReducer?.userDetails || {},
+  }));
+
+  const userId = currentUser?.id || (typeof window !== "undefined" ? sessionStorage.getItem("gtwy_user_id") : null);
+  const channelId =
+    resolvedParams?.org_id && resolvedParams?.id
+      ? `${resolvedParams.org_id}_${resolvedParams.id}_${userId}`.replace(/ /g, "_")
+      : "";
+  useRtLayerEventHandler(channelId);
 
   // Helper to merge-update the persisted per-bridge testcase config in redux.
   const updatePersistedConfig = useCallback(
