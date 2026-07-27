@@ -927,14 +927,25 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           {/* Add to Test Case button — only when there are messages and the
               conversation has been extended beyond the loaded testcase. */}
           {messages?.length > 0 && messages.length > loadedTestcaseMsgCount && (
-            <div className="tooltip tooltip-bottom" data-tip="Add to Test Case">
+            <div
+              className="tooltip tooltip-bottom"
+              data-tip={
+                !messages ||
+                messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0 ||
+                messages.some((m) => m.sender === "assistant" && m.isLoading)
+                  ? "Wait for response"
+                  : "Add to Test Case"
+              }
+            >
               <button
                 data-testid="chat-add-conversation-to-testcase-button"
                 id="chat-add-conversation-to-testcase-button"
                 className="btn btn-sm gap-1.5 px-3"
                 onClick={handleAddConversationToTestCase}
                 disabled={
-                  !messages || messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0
+                  !messages ||
+                  messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0 ||
+                  messages.some((m) => m.sender === "assistant" && m.isLoading)
                 }
               >
                 + Add To Testcase
