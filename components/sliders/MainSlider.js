@@ -39,6 +39,7 @@ import InviteUserModal from "../modals/InviteuserModal";
 import { logoutUser } from "../../config/authApi";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
+import WalletSidebarWidget from "@/components/wallet/WalletSidebarWidget";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Component                                 */
@@ -897,6 +898,9 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             {/* Footer Actions Section */}
             <div className="border-t border-base-content/20 p-1">
               <div className="space-y-1">
+                {/* Wallet balance -> plans page */}
+                <WalletSidebarWidget orgId={orgId} showLabel={showSidebarContent} />
+
                 {/* Primary action: Admin */}
                 <button
                   id="main-slider-admin-settings-toggle"

@@ -21,7 +21,7 @@ import {
   Wrench,
   Key,
 } from "lucide-react";
-import { AddIcon, KeyIcon } from "@/components/Icons";
+import { AddIcon, KeyIcon, WalletIcon } from "@/components/Icons";
 import GiftIcon from "@/icons/GiftIcon";
 import React from "react";
 
@@ -55,6 +55,7 @@ export const ITEM_ICONS = {
   widgets: <LayoutTemplate size={15} />,
   "model-garden": <Sparkles size={15} />,
   tools: <Wrench size={15} />,
+  plans: <WalletIcon size={15} />,
 };
 
 export const DISPLAY_NAMES = (key) => {
@@ -97,6 +98,8 @@ export const DISPLAY_NAMES = (key) => {
       return "Model Garden";
     case "tools":
       return "Tools";
+    case "plans":
+      return "Plans & Credits";
     default:
       return key;
   }
@@ -107,6 +110,7 @@ export const NAV_SECTIONS = [
   { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets", "model-garden", "tools"] },
   { title: "SECURITY & ACCESS", items: ["pauthkey", "apikeys"] },
   { title: "MONITORING & SUPPORT", items: ["alerts", "metrics"] },
+  { title: "BILLING", items: ["plans"] },
   { title: "Developer", items: ["integration", "RAG_embed"] },
 ];
 
