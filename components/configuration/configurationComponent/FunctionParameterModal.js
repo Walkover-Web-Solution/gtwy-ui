@@ -1380,9 +1380,18 @@ function FunctionParameterModal({
       >
         <div className="flex items-center justify-between gap-3 border-b border-base-content/10 pb-3">
           <p className="text-xs text-base-content/60 leading-relaxed max-w-[70%]">
-            Parameters define the inputs passed to this tool. Toggle <strong>Fill with AI</strong> to let AI generate
-            the value, or turn it off and set a <strong>Value Path</strong> using a variable name — the parameter will
-            be replaced with that variable's value at runtime.
+            {name === "Pre Tool" || name === "Post Tool" ? (
+              <>
+                Parameters define the inputs passed to this tool. Set a <strong>Value Path</strong> using a variable
+                name — the parameter will be replaced with that variable's value at runtime.
+              </>
+            ) : (
+              <>
+                Parameters define the inputs passed to this tool. Toggle <strong>Fill with AI</strong> to let AI
+                generate the value, or turn it off and set a <strong>Value Path</strong> using a variable name — the
+                parameter will be replaced with that variable's value at runtime.
+              </>
+            )}
           </p>
           <div className="flex items-center gap-2 shrink-0">
             <select

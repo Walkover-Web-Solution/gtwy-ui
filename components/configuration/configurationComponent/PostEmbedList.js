@@ -12,7 +12,6 @@ import { isEqual } from "lodash";
 import { AddIcon } from "@/components/Icons";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
-import { AlertTriangle } from "lucide-react";
 
 const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEmbedUser = false }) => {
   const isReadOnly = isPublished || !isEditor;
@@ -283,11 +282,6 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
                   </div>
                 </>
               )}
-
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={14} className="text-warning flex-shrink-0" />
-                <p className="text-xs text-warning">Post-Tool won't run when streaming is enabled.</p>
-              </div>
             </div>
           )}
         </div>

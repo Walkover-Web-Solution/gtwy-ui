@@ -120,11 +120,14 @@ const normaliseDraftList = (list = []) =>
     required: item.required !== false,
   }));
 
-const collectPreToolVariableKeys = (preTools = []) => {
+const collectPreToolVariableKeys = (tools = []) => {
   const keys = new Set();
 
-  (preTools || []).forEach((tool) => {
-    if (tool?.type === "custom_function" && tool?.args) {
+  // Handle both array (pre_tools) and single object (post_tool)
+  const toolsArray = Array.isArray(tools) ? tools : [tools];
+
+  toolsArray.forEach((tool) => {
+    if (tool?.args) {
       Object.values(tool.args).forEach((argValue) => {
         const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
         if (trimmedKey) {
@@ -197,6 +200,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     variablesPath,
     variable_state,
     bridge_pre_tools,
+    post_tool,
   } = useCustomSelector((state) => {
     const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
     const groups = versionState?.groups || [];
@@ -212,6 +216,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       variable_state:
         state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.agent_info?.variables_state || {},
       bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
+      post_tool: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.post_tool || null,
     };
   });
   const [draftVariables, setDraftVariables] = useState([]);
@@ -227,6 +232,10 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     return collectPreToolVariableKeys(bridge_pre_tools);
   }, [bridge_pre_tools]);
 
+  const postToolKeySet = useMemo(() => {
+    return collectPreToolVariableKeys(post_tool);
+  }, [post_tool]);
+
   const functionPathKeySet = useMemo(() => {
     const keys = new Set();
     Object.values(variablesPath || {}).forEach((functionVars = {}) => {
@@ -241,9 +250,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   }, [variablesPath]);
 
   const variablesPathKeySet = useMemo(() => {
-    const keys = new Set([...preToolKeySet, ...functionPathKeySet]);
+    const keys = new Set([...preToolKeySet, ...functionPathKeySet, ...postToolKeySet]);
     return keys;
-  }, [preToolKeySet, functionPathKeySet]);
+  }, [preToolKeySet, functionPathKeySet, postToolKeySet]);
 
   const visibleEmbedFieldNameSet = useMemo(() => {
     if (!isEmbedUser || typeof prompt !== "object" || !Array.isArray(prompt?.embedFields)) {
@@ -336,8 +345,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         });
       });
 
-      // Add variables from bridge_pre_tools
-      collectPreToolVariableKeys(bridge_pre_tools).forEach((trimmedKey) => {
+      // Add variables from bridge_pre_tools and post_tool
+      const allTools = [...(bridge_pre_tools || []), ...(post_tool ? [post_tool] : [])];
+      collectPreToolVariableKeys(allTools).forEach((trimmedKey) => {
         const existsInSource = allVariables.find((v) => v.key === trimmedKey);
 
         if (!existsInSource) {
@@ -389,7 +399,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const { normalised } = validateVariables(filteredVariables, { suppressErrors: true });
       setDraftVariables(normalised);
     },
-    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, bridge_pre_tools, visibleEmbedFieldNameSet]
+    [
+      isEmbedUser,
+      variable_state,
+      variablesKeyValue,
+      variablesPath,
+      bridge_pre_tools,
+      post_tool,
+      visibleEmbedFieldNameSet,
+    ]
   );
 
   useEffect(() => {
