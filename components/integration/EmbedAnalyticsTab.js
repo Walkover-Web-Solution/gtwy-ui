@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   BarChart3,
   Users,
@@ -18,6 +18,8 @@ import { getEmbedAnalyticsApi } from "@/config/analyticsApi";
 import { getStatsConfig } from "@/utils/enums";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
 import { formatRelativeTime, formatDate } from "@/utils/utility";
+
+const USERS_PAGE_SIZE = 5;
 
 const RANGE_OPTIONS = [
   { label: "24h", value: "24h" },
@@ -41,6 +43,13 @@ function formatCost(cost) {
   return `$${n.toFixed(2)}`;
 }
 
+// Identify embed users by the local part of their proxy email — never the full address.
+function emailLocalPart(value) {
+  if (!value || typeof value !== "string") return null;
+  const at = value.indexOf("@");
+  return at > 0 ? value.slice(0, at) : value;
+}
+
 function formatChartTime(t, range) {
   if (!t) return "";
   const d = new Date(t);
@@ -53,7 +62,6 @@ function formatChartTime(t, range) {
 
 const EmbedAnalyticsTab = ({ data }) => {
   const params = useParams();
-  const router = useRouter();
   const orgId = params?.org_id;
   const folderId = data?.folder_id || data?._id;
 
@@ -62,14 +70,30 @@ const EmbedAnalyticsTab = ({ data }) => {
   const [error, setError] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [expandedUserId, setExpandedUserId] = useState(null);
+  const [userPage, setUserPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // One request per settled search term rather than one per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Search-as-you-type can resolve out of order; only the newest request may write state.
+  const requestIdRef = useRef(0);
 
   const fetchAnalytics = useCallback(async () => {
     if (!folderId) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      const res = await getEmbedAnalyticsApi(folderId, { range }, orgId);
+      const res = await getEmbedAnalyticsApi(
+        folderId,
+        { range, search: debouncedSearch, page: userPage, limit: USERS_PAGE_SIZE },
+        orgId
+      );
       // API returns summary/users/agents at the top level (not nested under data).
       // Avoid `res.data ?? res` — empty/undefined data would drop the real payload.
       const payload =
@@ -78,15 +102,17 @@ const EmbedAnalyticsTab = ({ data }) => {
           : res?.data && typeof res.data === "object"
             ? res.data
             : res;
+      if (requestId !== requestIdRef.current) return;
       setAnalytics(payload || null);
     } catch (err) {
       console.error(err);
+      if (requestId !== requestIdRef.current) return;
       setError(err?.response?.data?.message || err?.message || "Failed to load analytics");
       setAnalytics(null);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [folderId, range, orgId]);
+  }, [folderId, range, orgId, debouncedSearch, userPage]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -105,12 +131,15 @@ const EmbedAnalyticsTab = ({ data }) => {
   const showLifetimeHint = !loading && rangeRequests === 0 && lifetimeRequests > 0;
 
   const stats = useMemo(() => {
-    const base = getStatsConfig(summary).map((stat) => {
-      if (stat.title === "Est. Cost") {
-        return { ...stat, value: formatCost(summary?.est_cost) };
-      }
-      return stat;
-    });
+    const base = getStatsConfig(summary)
+      // Feedback counts are agent-level; not shown in embed analytics.
+      .filter((stat) => stat.title !== "Positive" && stat.title !== "Negative")
+      .map((stat) => {
+        if (stat.title === "Est. Cost") {
+          return { ...stat, value: formatCost(summary?.est_cost) };
+        }
+        return stat;
+      });
     const extra = [
       {
         title: "Active Users",
@@ -144,35 +173,15 @@ const EmbedAnalyticsTab = ({ data }) => {
     [requestsOverTime, range]
   );
 
-  const filteredUsers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
-        u.name?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q) ||
-        u.external_user_id?.toLowerCase().includes(q) ||
-        String(u.user_id || "")
-          .toLowerCase()
-          .includes(q)
-    );
-  }, [users, search]);
-
-  const filteredAgents = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return agents;
-    return agents.filter(
-      (a) =>
-        a.name?.toLowerCase().includes(q) ||
-        String(a.bridge_id || "")
-          .toLowerCase()
-          .includes(q)
-    );
-  }, [agents, search]);
+  // Search + pagination are resolved by the API; the server clamps the page.
+  const usersPagination = analytics?.users_pagination || {};
+  const userTotal = Number(usersPagination.total) || 0;
+  const userPageCount = Math.max(1, Number(usersPagination.total_pages) || 1);
+  const currentUserPage = Math.min(Math.max(1, Number(usersPagination.page) || userPage), userPageCount);
 
   const openAgentAnalytics = (bridgeId) => {
     if (!orgId || !bridgeId) return;
-    router.push(`/org/${orgId}/agents/analytics/${bridgeId}`);
+    window.open(`/org/${orgId}/agents/analytics/${bridgeId}`, "_blank", "noopener,noreferrer");
   };
 
   if (!folderId) {
@@ -239,7 +248,7 @@ const EmbedAnalyticsTab = ({ data }) => {
           </div>
         )}
 
-        {loading ? (
+        {!analytics ? (
           <AnalyticsStatsSkeleton />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -268,7 +277,7 @@ const EmbedAnalyticsTab = ({ data }) => {
             <Activity size={16} className="text-base-content/50" />
             <h2 className="text-sm font-semibold">Requests over time</h2>
           </div>
-          {loading ? (
+          {!analytics ? (
             <AnalyticsChartSkeleton />
           ) : chartData.length === 0 ? (
             <p className="text-sm text-base-content/50 text-center py-12">No requests in this range</p>
@@ -298,13 +307,16 @@ const EmbedAnalyticsTab = ({ data }) => {
         <div className="flex items-center gap-3">
           <input
             type="search"
-            placeholder="Search users or agents..."
+            placeholder="Search users..."
             className="input input-sm input-bordered w-full max-w-sm"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setUserPage(1);
+            }}
           />
           <span className="text-xs text-base-content/50">
-            {users.length} users · {agents.length} agents
+            {userTotal} users · {agents.length} agents
           </span>
         </div>
 
@@ -319,9 +331,11 @@ const EmbedAnalyticsTab = ({ data }) => {
             <div className="p-8 flex justify-center">
               <span className="loading loading-spinner loading-md" />
             </div>
-          ) : filteredUsers.length === 0 ? (
+          ) : users.length === 0 ? (
             <p className="text-sm text-base-content/50 text-center py-10">
-              No users yet — users appear when agents are created in this embed.
+              {debouncedSearch
+                ? `No users match "${debouncedSearch}".`
+                : "No users yet — users appear when agents are created in this embed."}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -339,7 +353,7 @@ const EmbedAnalyticsTab = ({ data }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => {
+                  {users.map((user) => {
                     const key = user.user_id || "unknown";
                     const isOpen = expandedUserId === key;
                     return (
@@ -350,15 +364,9 @@ const EmbedAnalyticsTab = ({ data }) => {
                         >
                           <td>{isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</td>
                           <td>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">{user.name}</span>
-                              {user.external_user_id && (
-                                <span className="text-xs text-base-content/50 font-mono">{user.external_user_id}</span>
-                              )}
-                              {!user.external_user_id && user.email && (
-                                <span className="text-xs text-base-content/50">{user.email}</span>
-                              )}
-                            </div>
+                            <span className="font-medium text-sm">
+                              {emailLocalPart(user.external_user_id) || emailLocalPart(user.email) || user.name}
+                            </span>
                           </td>
                           <td>{user.agent_count}</td>
                           <td>{user.total_requests}</td>
@@ -425,79 +433,38 @@ const EmbedAnalyticsTab = ({ data }) => {
               </table>
             </div>
           )}
-        </div>
 
-        {/* Agents table */}
-        <div className="bg-base-100 border border-base-300 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-base-300 flex items-center gap-2">
-            <Bot size={16} className="text-base-content/50" />
-            <h2 className="text-sm font-semibold">Agents</h2>
-          </div>
-          {loading ? (
-            <div className="p-8 flex justify-center">
-              <span className="loading loading-spinner loading-md" />
-            </div>
-          ) : filteredAgents.length === 0 ? (
-            <p className="text-sm text-base-content/50 text-center py-10">No agents in this embed yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-sm">
-                <thead>
-                  <tr className="text-xs uppercase text-base-content/50">
-                    <th>Agent</th>
-                    <th>Owner</th>
-                    <th>Requests</th>
-                    <th>Success</th>
-                    <th>Tokens</th>
-                    <th>Cost</th>
-                    <th>Last active</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAgents.map((agent) => {
-                    const owner = users.find((u) => String(u.user_id) === String(agent.user_id));
-                    return (
-                      <tr key={agent.bridge_id} className="hover:bg-base-200/60">
-                        <td>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-sm">{agent.name}</span>
-                            <span className="text-[11px] text-base-content/40 font-mono truncate max-w-[180px]">
-                              {agent.bridge_id}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="text-sm">{owner?.external_user_id || owner?.name || agent.user_id || "-"}</td>
-                        <td>{agent.total_requests}</td>
-                        <td>{agent.success_rate}%</td>
-                        <td>{formatTokens(agent.total_tokens)}</td>
-                        <td>{formatCost(agent.est_cost)}</td>
-                        <td>
-                          {agent.last_active ? (
-                            <span className="text-xs">{formatRelativeTime(agent.last_active)}</span>
-                          ) : (
-                            <span className="text-base-content/40 text-xs">-</span>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-xs gap-1"
-                            onClick={() => openAgentAnalytics(agent.bridge_id)}
-                            title="Open full agent analytics"
-                          >
-                            Details
-                            <ExternalLink size={12} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {!loading && userPageCount > 1 && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-base-300">
+              <span className="text-xs text-base-content/50">
+                {(currentUserPage - 1) * USERS_PAGE_SIZE + 1}–
+                {Math.min(currentUserPage * USERS_PAGE_SIZE, userTotal)} of {userTotal}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  disabled={currentUserPage <= 1}
+                  onClick={() => setUserPage(currentUserPage - 1)}
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-base-content/60">
+                  {currentUserPage} / {userPageCount}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  disabled={currentUserPage >= userPageCount}
+                  onClick={() => setUserPage(currentUserPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
