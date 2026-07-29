@@ -151,7 +151,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const payload = {
       name: testCaseName,
       ...(conversationData.length > 0 && { conversation: conversationData }),
-      type: isAssistant ? "response" : "function",
+      type: "response",
       expected: {
         ...(isAssistant && { response: lastTestCase.content }),
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
@@ -312,46 +312,25 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           {/* User URLs Section */}
           {userUrlsList.length > 0 && (
             <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
-              <div className="text-sm font-semibold text-base-content mb-4">User URLs</div>
-              <div className="space-y-2">
+              <div className="text-sm font-semibold text-base-content mb-4">Attachments</div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {userUrlsList.map((urlObj, idx) => {
                   const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
                   const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
-
-                  return (
-                    <div key={idx} className="bg-base-100 rounded-lg p-3 border border-base-200">
-                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
-                      {isImageUrl ? (
-                        <div className="flex flex-col gap-2">
-                          <img
-                            src={urlString}
-                            alt={`User URL ${idx + 1}`}
-                            className="max-w-full max-h-64 rounded border border-base-300"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={urlString}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm break-all text-blue-600 hover:underline"
-                          >
-                            {urlString}
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={urlString}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm break-all text-blue-600 hover:underline block"
-                        >
-                          {urlString || JSON.stringify(urlObj)}
-                        </a>
-                      )}
-                    </div>
-                  );
+                  if (isImageUrl) {
+                    return (
+                      <img
+                        key={`user-${idx}`}
+                        src={urlString}
+                        alt={`User Image ${idx + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover rounded-lg cursor-pointer flex-shrink-0"
+                        onClick={() => window.open(urlString, "_blank")}
+                      />
+                    );
+                  }
+                  return null;
                 })}
               </div>
             </div>

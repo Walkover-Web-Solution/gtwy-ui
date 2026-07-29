@@ -29,7 +29,7 @@ import {
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
 import { createConversationForTestCase, toggleSidebar, openModal, extractErrorMessage } from "@/utils/utility";
-import { MODAL_TYPE, DEFAULT_STARTER_QUESTIONS } from "@/utils/enums";
+import { MODAL_TYPE, DEFAULT_STARTER_QUESTIONS, AVAILABLE_MODEL_TYPES } from "@/utils/enums";
 import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 import { runTestCaseAction } from "@/store/action/testCasesAction";
 import { testRunResetReducer } from "@/store/reducer/testCasesReducer";
@@ -934,7 +934,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                 className="btn btn-sm gap-1.5 px-3"
                 onClick={handleAddConversationToTestCase}
                 disabled={
-                  !messages || messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0
+                  !messages ||
+                  messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0 ||
+                  modelType === AVAILABLE_MODEL_TYPES.IMAGE ||
+                  messages.some((m) => m?.llm_urls?.length > 0)
                 }
               >
                 + Add To Testcase

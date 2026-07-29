@@ -1416,7 +1416,7 @@ const ThreadItem = ({
         >
           Copy
         </ThreadActionPill>
-        {!isError && (
+        {!isError && !item?.llm_urls?.length && (
           <ThreadActionPill
             id="thread-item-add-test-case-button"
             testId="thread-item-add-test-case-button"
