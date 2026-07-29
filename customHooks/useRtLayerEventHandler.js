@@ -74,9 +74,9 @@ function useRtLayerEventHandler(channelIdentifier = "") {
   const reconnectTimeoutRef = useRef(null);
   const SERVICES = useSelector((state) => state.serviceReducer.services);
   const isEmbedUser = useSelector((state) => state.appInfoReducer.embedUserDetails?.isEmbedUser);
-  const currentUserId =
-    useSelector((state) => state.userDetailsReducer?.userDetails?.id) || sessionStorage.getItem("gtwy_user_id");
-
+  const currentUserId = isEmbedUser
+    ? sessionStorage.getItem("gtwy_user_id")
+    : useSelector((state) => state.userDetailsReducer?.userDetails?.id);
   // Extract path parameters with error handling
   const { bridgeId, orgId } = useMemo(() => {
     try {
