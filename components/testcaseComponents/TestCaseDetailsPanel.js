@@ -1172,7 +1172,8 @@ const TestCaseDetailsPanel = ({
                                         </>
                                       )}
                                     </button>
-                                    <button
+                                    {/* Commented out to prevent nested embed issues */}
+                                    {/* <button
                                       onClick={() => handleOpenHistory(currentRun?.message_id)}
                                       className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-xs text-base-content/70 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                       title="View details"
@@ -1181,7 +1182,7 @@ const TestCaseDetailsPanel = ({
                                     >
                                       <Info size={12} />
                                       <span>More Info</span>
-                                    </button>
+                                    </button> */}
                                     <button
                                       onClick={() => handleCopyResponse(version, modelOutput)}
                                       className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
