@@ -141,6 +141,7 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                   <EmbedListSuggestionDropdownMenu
                     params={params}
                     searchParams={searchParams}
+                    name="reviewer"
                     onSelect={handleSelectTool}
                     isPublished={isPublished}
                     isEditor={isEditor}
@@ -182,6 +183,7 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                 <EmbedListSuggestionDropdownMenu
                   params={params}
                   searchParams={searchParams}
+                  name="reviewer"
                   onSelect={handleSelectTool}
                   isPublished={isPublished}
                   isEditor={isEditor}
