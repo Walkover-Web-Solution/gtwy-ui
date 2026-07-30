@@ -313,6 +313,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
           variablesPath={variablesPath}
           setVariablesPath={setVariablesPath}
           variables_path={variables_path}
+          originalArgs={bridgePreFunctions.find((t) => t._id === preFunctionId)?._toolEntry?.args || {}}
         />
         <DeleteModal
           onConfirm={removePreFunction}
