@@ -1539,25 +1539,6 @@ const TestCaseDetailsPanel = ({
         toolsDataModalRef={toolsDataModalRef}
         integrationData={{}}
       />
-
-      <>
-        {isHistorySliderOpen && (
-          <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={handleCloseHistory} />
-        )}
-        <div
-          className={`fixed top-8 right-0 h-full w-full max-w-4xl bg-base-100 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-            isHistorySliderOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between p-3 border-b border-base-300">
-            <h3 className="text-base font-semibold">More details</h3>
-            <button onClick={handleCloseHistory} className="btn btn-ghost btn-sm btn-circle" title="Close">
-              ✕
-            </button>
-          </div>
-          <div id="gtwyHistoryParentId" className="w-full h-[calc(100%-3rem)]" />
-        </div>
-      </>
     </div>
   );
 };
