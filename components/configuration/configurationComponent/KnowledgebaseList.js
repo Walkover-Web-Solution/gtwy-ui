@@ -44,8 +44,6 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
 
   const [selectedKnowledgebase, setSelectedKnowledgebase] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
-  const [selectedResourceForChunks, setSelectedResourceForChunks] = useState({ id: null, name: null });
-  const [selectedResourceForQuery, setSelectedResourceForQuery] = useState(null);
   const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE?.DELETE_KNOWLEDGE_BASE_MODAL);
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,12 +117,12 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   };
 
   const handleViewChunks = (item) => {
-    setSelectedResourceForChunks({ id: item?._id, name: item?.title });
+    setSelectedKnowledgebase(item);
     openModal(MODAL_TYPE?.RESOURCE_CHUNKS_MODAL);
   };
 
   const handleTestKnowledgebase = (item) => {
-    setSelectedResourceForQuery({ _id: item?._id, name: item?.title });
+    setSelectedKnowledgebase(item);
     openModal(MODAL_TYPE?.QUERY_KNOWLEDGE_BASE_MODAL);
   };
 
@@ -394,8 +392,11 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         selectedResource={selectedResource}
         setSelectedResource={setSelectedResource}
       />
-      <ResourceChunksModal resourceId={selectedResourceForChunks.id} resourceName={selectedResourceForChunks.name} />
-      <QueryKnowledgeBaseModal resource={selectedResourceForQuery} orgId={params?.org_id} />
+      <ResourceChunksModal resourceId={selectedKnowledgebase?._id} resourceName={selectedKnowledgebase?.title} />
+      <QueryKnowledgeBaseModal
+        resource={selectedKnowledgebase ? { _id: selectedKnowledgebase._id, name: selectedKnowledgebase.title } : null}
+        orgId={params?.org_id}
+      />
     </div>
   );
 };
