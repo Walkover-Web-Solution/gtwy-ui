@@ -198,6 +198,14 @@ export const CONFIG_SCHEMA = [
     defaultValue: false,
     section: "Interface Options",
   },
+  {
+    key: "showMcp",
+    type: "toggle",
+    label: "Show MCP Servers",
+    description: "Display MCP server configuration in the Connectors tab",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 // Theme utility functions
