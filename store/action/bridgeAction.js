@@ -781,7 +781,7 @@ export const updateBridgeVersionAction =
 
         if (parentBridgeId && !skipRollback) {
           dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
-          toast.error("Failed to update version. Changes have been reverted.");
+          toast.error(error?.response?.data?.message || "Failed to update version. Changes have been reverted.");
         }
       }
 

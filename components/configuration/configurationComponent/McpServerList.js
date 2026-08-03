@@ -69,7 +69,7 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
     (index) => {
       const server = servers[index];
       if (!server?.name?.trim() || !server?.url?.trim()) return;
-      persistServers(servers.map((item) => ({ name: item.name.trim(), url: item.url.trim() })));
+      persistServers(servers.map((item) => ({ name: item.name.trim().replace(/ /g, "_"), url: item.url.trim() })));
       setEdited((prev) => ({ ...prev, [index]: false }));
     },
     [persistServers, servers]
