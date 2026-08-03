@@ -804,6 +804,36 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           </div>
         )}
 
+        {/* LLM/Assistant files (pdf/doc) */}
+        {hasLlmImages && message.llm_urls.some((urlObj) => urlObj?.type === "pdf") && (
+          <div className="flex flex-wrap gap-2 bg-base-200 p-2 rounded-md">
+            {message.llm_urls.map((urlObj, fileIndex) => {
+              const fileUrl = typeof urlObj === "string" ? urlObj : urlObj?.url;
+              const isFile = urlObj?.type === "pdf";
+              const displayName = urlObj?.filename || fileUrl?.split("/").pop();
+
+              return fileUrl && isFile ? (
+                <a
+                  data-testid={`chat-llm-file-link-${fileIndex}`}
+                  id={`chat-llm-file-link-${fileIndex}`}
+                  key={`llm-file-${fileIndex}`}
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 hover:underline"
+                >
+                  {isWordFileUrl(fileUrl) ? (
+                    <GoogleDocIcon height={20} width={20} />
+                  ) : (
+                    <PdfIcon height={20} width={20} />
+                  )}
+                  <span className="text-sm overflow-hidden truncate max-w-[10rem]">{truncate(displayName, 20)}</span>
+                </a>
+              ) : null;
+            })}
+          </div>
+        )}
+
         {hasVideo && (
           <div className="flex flex-wrap gap-2">
             <div className="relative">

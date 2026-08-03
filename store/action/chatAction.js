@@ -266,7 +266,11 @@ export const handleRtLayerMessage = (channelId, socketMessage) => (dispatch, get
       : [];
   uiMessage.image_urls = normalizedImages;
   uiMessage.files = Array.isArray(socketMessage.files) ? socketMessage.files : uiMessage.files || [];
-  const llmUrls = buildLlmUrls(normalizedImages, uiMessage.files || []);
+  // Non-image entries (e.g. pdf/file attachments) may already have been normalized
+  // upstream (with filename metadata) - preserve them instead of rebuilding from files.
+  const incomingLlmUrls = Array.isArray(socketMessage.llm_urls) ? socketMessage.llm_urls : [];
+  const nonImageLlmUrls = incomingLlmUrls.filter((urlObj) => urlObj?.type !== "image");
+  const llmUrls = [...buildLlmUrls(normalizedImages, uiMessage.files || []), ...nonImageLlmUrls];
   uiMessage.llm_urls = llmUrls;
   uiMessage.video_data = socketMessage.video_data || uiMessage.video_data || null;
   uiMessage.youtube_url = socketMessage.youtube_url || uiMessage.youtube_url || null;
