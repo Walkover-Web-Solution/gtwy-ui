@@ -6,6 +6,8 @@ import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { GetFileTypeIcon, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
 import KnowledgeBaseModal from "@/components/modals/KnowledgeBaseModal";
+import ResourceChunksModal from "@/components/modals/ResourceChunksModal";
+import QueryKnowledgeBaseModal from "@/components/modals/QueryKnowledgeBaseModal";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
 import OnBoarding from "@/components/OnBoarding";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
@@ -14,7 +16,7 @@ import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
-import { CircleQuestionMark, SquarePenIcon } from "lucide-react";
+import { CircleQuestionMark, FileSearch, SquarePenIcon } from "lucide-react";
 
 const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -112,6 +114,16 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   const handleEditKnowledgebase = (item) => {
     setSelectedResource(item);
     openModal(MODAL_TYPE?.KNOWLEDGE_BASE_MODAL);
+  };
+
+  const handleViewChunks = (item) => {
+    setSelectedKnowledgebase(item);
+    openModal(MODAL_TYPE?.RESOURCE_CHUNKS_MODAL);
+  };
+
+  const handleTestKnowledgebase = (item) => {
+    setSelectedKnowledgebase(item);
+    openModal(MODAL_TYPE?.QUERY_KNOWLEDGE_BASE_MODAL);
   };
 
   useEffect(() => {
@@ -226,6 +238,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             data-testid={`knowledgebase-card-${item._id}`}
             id={`knowledgebase-card-${item._id}`}
             key={resourceId || index}
+            onClick={() => handleViewChunks(item)}
             className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full ${item?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
           >
             <div className="flex items-center gap-2 w-full ml-2">
@@ -249,6 +262,18 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             <div
               className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
             >
+              <button
+                data-testid={`knowledgebase-test-button-${item._id}`}
+                id={`knowledgebase-test-button-${item._id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTestKnowledgebase(item);
+                }}
+                className="btn btn-ghost btn-sm p-1 hover:bg-blue-100 hover:text-primary"
+                title="Test Knowledge Base"
+              >
+                <FileSearch size={16} />
+              </button>
               <button
                 data-testid={`knowledgebase-edit-button-${item._id}`}
                 id={`knowledgebase-edit-button-${item._id}`}
@@ -366,6 +391,11 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         addToVersion={true}
         selectedResource={selectedResource}
         setSelectedResource={setSelectedResource}
+      />
+      <ResourceChunksModal resourceId={selectedKnowledgebase?._id} resourceName={selectedKnowledgebase?.title} />
+      <QueryKnowledgeBaseModal
+        resource={selectedKnowledgebase ? { _id: selectedKnowledgebase._id, name: selectedKnowledgebase.title } : null}
+        orgId={params?.org_id}
       />
     </div>
   );

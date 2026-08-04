@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Code, Settings, Monitor } from "lucide-react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import IntegrationTab from "./IntegrationTab";
 import ConfigurationTab from "./ConfigurationTab";
 import TestingTab from "./TestingTab";
@@ -106,120 +107,128 @@ const IntegrationDetailView = ({ data, onClose }) => {
     <>
       <div className="w-full h-full flex flex-col" data-testid="integration-detail-view">
         {/* Main Content Area with Sidebar */}
-        <div className="flex-1 flex overflow-hidden px-2 mt-2">
-          {/* Sidebar */}
-          <div className="w-80 flex-shrink-0 h-full" data-testid="integration-sidebar">
-            <div className="bg-base-100 pt-6 scroll-hidden border border-base-300 rounded-lg p-2 h-full flex flex-col">
-              {!isConfigMode && !isTestingMode ? (
-                // Main Navigation Tabs with Back Button
-                <div
-                  key="main-nav"
-                  className="flex flex-col space-y-1"
-                  style={{ animation: "slideInLeft 0.3s ease-out both" }}
-                >
-                  <div className="mb-4 flex-shrink-0">
-                    <button
-                      data-testid="integration-main-back-button"
-                      onClick={onClose ? onClose : () => router.back()}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+        <div className="flex-1 overflow-hidden px-2 mt-2">
+          <PanelGroup direction="horizontal">
+            {/* Sidebar */}
+            <Panel defaultSize={20} minSize={15} maxSize={40}>
+              <div className="h-full" data-testid="integration-sidebar">
+                <div className="bg-base-100 pt-6 scroll-hidden border border-base-300 rounded-lg p-2 h-full flex flex-col">
+                  {!isConfigMode && !isTestingMode ? (
+                    // Main Navigation Tabs with Back Button
+                    <div
+                      key="main-nav"
+                      className="flex flex-col space-y-1"
+                      style={{ animation: "slideInLeft 0.3s ease-out both" }}
                     >
-                      <ArrowLeft size={16} />
-                      <span className="text-sm truncate">Back</span>
-                    </button>
-                  </div>
-                  <nav className="space-y-1" data-testid="integration-main-nav">
-                    {TABS.map((tab) => {
-                      const isActive = activeTab === tab.id;
-                      return (
+                      <div className="mb-4 flex-shrink-0">
                         <button
-                          key={tab.id}
-                          data-testid={`integration-tab-${tab.id}`}
-                          onClick={() => handleTabClick(tab.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          data-testid="integration-main-back-button"
+                          onClick={onClose ? onClose : () => router.back()}
+                          className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                        >
+                          <ArrowLeft size={16} />
+                          <span className="text-sm truncate">Back</span>
+                        </button>
+                      </div>
+                      <nav className="space-y-1" data-testid="integration-main-nav">
+                        {TABS.map((tab) => {
+                          const isActive = activeTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              data-testid={`integration-tab-${tab.id}`}
+                              onClick={() => handleTabClick(tab.id)}
+                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                             ${
                               isActive
                                 ? "bg-primary text-primary-content"
                                 : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
                             }`}
+                            >
+                              {tab.icon}
+                              <span>{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </nav>
+                    </div>
+                  ) : isConfigMode ? (
+                    // Configuration sidebar panel
+                    <div
+                      key="config-nav"
+                      className="flex flex-col flex-1 min-h-0"
+                      style={{ animation: "slideInRight 0.3s ease-out both" }}
+                    >
+                      <div className="mb-4 flex-shrink-0">
+                        <button
+                          data-testid="integration-config-back-button"
+                          onClick={handleBackFromConfig}
+                          className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                          title={hasUnsavedChanges ? "You have unsaved changes" : ""}
                         >
-                          {tab.icon}
-                          <span>{tab.label}</span>
+                          <ArrowLeft size={16} />
+                          <span className="text-sm truncate">Back</span>
                         </button>
-                      );
-                    })}
-                  </nav>
-                </div>
-              ) : isConfigMode ? (
-                // Configuration sidebar panel
-                <div
-                  key="config-nav"
-                  className="flex flex-col flex-1 min-h-0"
-                  style={{ animation: "slideInRight 0.3s ease-out both" }}
-                >
-                  <div className="mb-4 flex-shrink-0">
-                    <button
-                      data-testid="integration-config-back-button"
-                      onClick={handleBackFromConfig}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
-                      title={hasUnsavedChanges ? "You have unsaved changes" : ""}
+                      </div>
+                      {/* Configuration Content Passed from ConfigurationTab */}
+                      <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
+                        Configuration
+                      </div>
+                      <div id="config-sidebar-content" className="space-y-1 overflow-y-auto flex-1 min-h-0"></div>
+                    </div>
+                  ) : (
+                    // Testing sidebar panel
+                    <div
+                      key="testing-nav"
+                      className="flex flex-col flex-1 min-h-0"
+                      style={{ animation: "slideInRight 0.3s ease-out both" }}
                     >
-                      <ArrowLeft size={16} />
-                      <span className="text-sm truncate">Back</span>
-                    </button>
-                  </div>
-                  {/* Configuration Content Passed from ConfigurationTab */}
-                  <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
-                    Configuration
-                  </div>
-                  <div id="config-sidebar-content" className="space-y-1 overflow-y-auto flex-1 min-h-0"></div>
+                      <div className="mb-4 flex-shrink-0">
+                        <button
+                          data-testid="integration-testing-back-button"
+                          onClick={handleBackFromTesting}
+                          className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                        >
+                          <ArrowLeft size={16} />
+                          <span className="text-sm truncate">Back</span>
+                        </button>
+                      </div>
+                      <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
+                        Testing
+                      </div>
+                      <div
+                        id="testing-sidebar-content"
+                        data-testid="integration-testing-sidebar-content"
+                        className="space-y-2 overflow-y-auto flex-1 min-h-0"
+                      ></div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                // Testing sidebar panel
-                <div
-                  key="testing-nav"
-                  className="flex flex-col flex-1 min-h-0"
-                  style={{ animation: "slideInRight 0.3s ease-out both" }}
-                >
-                  <div className="mb-4 flex-shrink-0">
-                    <button
-                      data-testid="integration-testing-back-button"
-                      onClick={handleBackFromTesting}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
-                    >
-                      <ArrowLeft size={16} />
-                      <span className="text-sm truncate">Back</span>
-                    </button>
-                  </div>
-                  <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
-                    Testing
-                  </div>
-                  <div
-                    id="testing-sidebar-content"
-                    data-testid="integration-testing-sidebar-content"
-                    className="space-y-2 overflow-y-auto flex-1 min-h-0"
-                  ></div>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </Panel>
 
-          {/* Content Area */}
-          <div className="flex-1 overflow-hidden" data-testid="integration-content-area">
-            <div
-              className={`h-full border border-base-300 rounded-lg bg-base-100 ${activeTab === "integration" ? "overflow-y-auto" : ""}`}
-            >
-              {activeTab === "integration" && <IntegrationTab data={data} />}
-              {activeTab === "configuration" && (
-                <ConfigurationTab
-                  data={data}
-                  isConfigMode={isConfigMode}
-                  onUnsavedChanges={setHasUnsavedChanges}
-                  onSaveRef={configSaveRef}
-                />
-              )}
-              {activeTab === "testing" && <TestingTab data={data} isTestingMode={isTestingMode} />}
-            </div>
-          </div>
+            <PanelResizeHandle className="w-2 mx-1 rounded hover:bg-base-content/20 transition-colors cursor-col-resize" />
+
+            {/* Content Area */}
+            <Panel minSize={30}>
+              <div className="h-full overflow-hidden" data-testid="integration-content-area">
+                <div
+                  className={`h-full border border-base-300 rounded-lg bg-base-100 ${activeTab === "integration" ? "overflow-y-auto" : ""}`}
+                >
+                  {activeTab === "integration" && <IntegrationTab data={data} />}
+                  {activeTab === "configuration" && (
+                    <ConfigurationTab
+                      data={data}
+                      isConfigMode={isConfigMode}
+                      onUnsavedChanges={setHasUnsavedChanges}
+                      onSaveRef={configSaveRef}
+                    />
+                  )}
+                  {activeTab === "testing" && <TestingTab data={data} isTestingMode={isTestingMode} />}
+                </div>
+              </div>
+            </Panel>
+          </PanelGroup>
         </div>
       </div>
       <ConfirmationModal

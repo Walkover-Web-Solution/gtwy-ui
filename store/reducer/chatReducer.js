@@ -286,6 +286,25 @@ export const chatReducer = createSlice({
       messages[idx].toolCalls.push(toolCall);
     },
 
+    // Append a streaming delta chunk into a tool call's streamingContent (deltas emitted between tool_call and tool_result)
+    appendToolCallDelta: (state, action) => {
+      const { channelId, messageId, callId, name, chunk } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const msgIdx = messages.findIndex((m) => m.id === messageId);
+      if (msgIdx === -1) return;
+      const toolCalls = messages[msgIdx].toolCalls;
+      if (!toolCalls) return;
+      // Match by call_id first; fall back to matching by name with status "calling"
+      let tcIdx = toolCalls.findIndex((tc) => tc.call_id === callId);
+      if (tcIdx === -1 && name) {
+        tcIdx = toolCalls.findIndex((tc) => tc.name === name && tc.status === "calling");
+      }
+      if (tcIdx !== -1) {
+        toolCalls[tcIdx].streamingContent = (toolCalls[tcIdx].streamingContent || "") + chunk;
+      }
+    },
+
     // Update a tool_call entry with its result
     updateToolCallResult: (state, action) => {
       const { channelId, messageId, callId, name, result } = action.payload;
@@ -303,6 +322,8 @@ export const chatReducer = createSlice({
       if (tcIdx !== -1) {
         toolCalls[tcIdx].status = "done";
         toolCalls[tcIdx].result = result;
+        // Clear streaming content now that we have the final result
+        toolCalls[tcIdx].streamingContent = null;
       }
     },
 
@@ -457,6 +478,7 @@ export const {
   clearChatTestCaseId,
   clearChannelData,
   addToolCallToMessage,
+  appendToolCallDelta,
   updateToolCallResult,
   appendReasoningChunk,
   setReviewData,

@@ -11,6 +11,7 @@ import {
   GripVertical,
   ArrowUpToLine,
   Info,
+  ExternalLink,
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
@@ -24,6 +25,7 @@ import CodeBlock from "@/components/codeBlock/CodeBlock";
 import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
 import { FileClockIcon } from "@/components/Icons";
 import InfoTooltip from "@/components/InfoTooltip";
+import { PdfIcon } from "@/icons/pdfIcon";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
 
@@ -183,29 +185,6 @@ const TestCaseDetailsPanel = ({
   );
   const [copiedVersion, setCopiedVersion] = useState(null);
   const [movedVersion, setMovedVersion] = useState(null);
-  const [isHistorySliderOpen, setIsHistorySliderOpen] = useState(false);
-
-  const handleOpenHistory = (messageId) => {
-    if (!bridgeId) return;
-    if (typeof window === "undefined" || typeof window.openGtwy !== "function") {
-      console.error("GTWY embed script not loaded yet");
-      return;
-    }
-    setIsHistorySliderOpen(true);
-    // Wait a tick to ensure slider DOM (parentId) is mounted before opening embed.
-    setTimeout(() => {
-      window.GtwyEmbed?.sendDataToGtwy?.({ parentId: "gtwyHistoryParentId" });
-      window.openGtwy({
-        agent_id: bridgeId,
-        historyEmbed: true,
-        message_id: messageId || null,
-      });
-    }, 50);
-  };
-
-  const handleCloseHistory = () => {
-    setIsHistorySliderOpen(false);
-  };
 
   const handleCopyResponse = useCallback((versionId, output) => {
     const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
@@ -716,45 +695,44 @@ const TestCaseDetailsPanel = ({
           {/* User URLs Section */}
           {Array.isArray(selectedTestCase?.user_urls) && selectedTestCase.user_urls.length > 0 && (
             <div className="mb-6">
-              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">User URLs</div>
-              <div className="space-y-2">
+              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">Attachments</div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {selectedTestCase.user_urls.map((urlObj, idx) => {
                   const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
-                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
-                  return (
-                    <div key={idx} className="bg-base-50 rounded-lg p-3 border border-base-200">
-                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
-                      {isImageUrl ? (
-                        <div className="flex flex-col gap-2">
-                          <img
-                            src={urlString}
-                            alt={`User URL ${idx + 1}`}
-                            className="max-w-full max-h-64 rounded border border-base-300"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={urlString}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm break-all text-blue-600 hover:underline"
-                          >
-                            {urlString}
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={urlString}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm break-all text-blue-600 hover:underline block"
-                        >
-                          {urlString || JSON.stringify(urlObj)}
-                        </a>
-                      )}
-                    </div>
-                  );
+                  if (!urlString) return null;
+                  const isImageUrl = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+                  const isPdfUrl = /\.pdf($|\?)/i.test(urlString);
+                  if (isImageUrl) {
+                    return (
+                      <img
+                        key={`user-${idx}`}
+                        src={urlString}
+                        alt={`User Image ${idx + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover rounded-lg cursor-pointer flex-shrink-0"
+                        onClick={() => window.open(urlString, "_blank")}
+                      />
+                    );
+                  }
+                  if (isPdfUrl) {
+                    return (
+                      <a
+                        key={`user-${idx}`}
+                        href={urlString}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 flex-shrink-0"
+                      >
+                        <PdfIcon height={20} width={20} />
+                        <span className="text-sm font-medium max-w-[6rem] truncate text-primary">
+                          {urlString.split("/").pop() || "PDF"}
+                        </span>
+                        <ExternalLink className="text-primary" size={14} />
+                      </a>
+                    );
+                  }
+                  return null;
                 })}
               </div>
             </div>
@@ -1172,16 +1150,6 @@ const TestCaseDetailsPanel = ({
                                       )}
                                     </button>
                                     <button
-                                      onClick={() => handleOpenHistory(currentRun?.message_id)}
-                                      className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-xs text-base-content/70 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="View details"
-                                      data-testid={`testcase-version-details-${versions.indexOf(version) + 1}`}
-                                      disabled={!bridgeId || !currentRun?.message_id}
-                                    >
-                                      <Info size={12} />
-                                      <span>More Info</span>
-                                    </button>
-                                    <button
                                       onClick={() => handleCopyResponse(version, modelOutput)}
                                       className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
                                       title="Copy response"
@@ -1571,25 +1539,6 @@ const TestCaseDetailsPanel = ({
         toolsDataModalRef={toolsDataModalRef}
         integrationData={{}}
       />
-
-      <>
-        {isHistorySliderOpen && (
-          <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={handleCloseHistory} />
-        )}
-        <div
-          className={`fixed top-8 right-0 h-full w-full max-w-4xl bg-base-100 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-            isHistorySliderOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between p-3 border-b border-base-300">
-            <h3 className="text-base font-semibold">More details</h3>
-            <button onClick={handleCloseHistory} className="btn btn-ghost btn-sm btn-circle" title="Close">
-              ✕
-            </button>
-          </div>
-          <div id="gtwyHistoryParentId" className="w-full h-[calc(100%-3rem)]" />
-        </div>
-      </>
     </div>
   );
 };

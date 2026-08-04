@@ -20,17 +20,23 @@ const ConnectedAgentsModal = ({ apiKey, orgId }) => {
     // Get version IDs associated with this API key
     const currentApiKey = apikeyData?.find((item) => item._id === apiKey._id);
     const connectedVersionIds = currentApiKey?.version_ids || [];
+    const publishedVersionIds = currentApiKey?.published_version_ids || [];
 
     if (!connectedVersionIds.length) return [];
 
-    // Create Set for O(1) lookup instead of array.includes()
+    // Create Sets for O(1) lookup
     const versionIdSet = new Set(connectedVersionIds);
+    const publishedVersionIdSet = new Set(publishedVersionIds);
 
     // Transform bridges to connected agents
     return Object.values(bridges)
       .map((bridge) => {
         const matchingVersions = bridge?.versions
-          .map((versionId, index) => (versionIdSet.has(versionId) ? { id: versionId, versionIndex: index } : null))
+          .map((versionId, index) =>
+            versionIdSet.has(versionId)
+              ? { id: versionId, versionIndex: index, isPublished: publishedVersionIdSet.has(versionId) }
+              : null
+          )
           .filter(Boolean);
 
         return matchingVersions.length > 0
@@ -107,9 +113,16 @@ const AgentCard = ({ agent }) => (
           <div className="font-medium mb-1">Versions:</div>
           <div className="flex flex-col gap-1">
             {agent.versions.map((version) => (
-              <span key={version.id} className="inline text-xs font-mono bg-base-300 p-1 rounded w-fit">
-                V{version.versionIndex + 1}:({version.id})
-              </span>
+              <div key={version.id} className="flex items-center gap-2">
+                <span className="inline text-xs font-mono bg-base-300 p-1 rounded w-fit">
+                  V{version.versionIndex + 1}:({version.id})
+                </span>
+                {version.isPublished && (
+                  <span className="inline text-xs font-semibold bg-green-500/20 text-green-600 px-2 py-0.5 rounded border border-green-500/30">
+                    Published
+                  </span>
+                )}
+              </div>
             ))}
           </div>
         </div>

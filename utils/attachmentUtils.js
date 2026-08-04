@@ -1,3 +1,5 @@
+const isWordFileUrl = (url) => typeof url === "string" && /\.docx?($|\?)/i.test(url);
+
 const getUrlIdentifier = (item) => {
   if (!item) return "";
   if (typeof item === "string") return item;
@@ -58,6 +60,7 @@ const extractImageUrlsFromResponse = (parsed) => {
 };
 
 export {
+  isWordFileUrl,
   getUrlIdentifier,
   haveSameItems,
   createUserUrlEntry,

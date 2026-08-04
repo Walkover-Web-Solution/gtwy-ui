@@ -1304,7 +1304,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                         </div>
                       </MainLayout>
 
-                      <div className="flex flex-row flex-wrap gap-4 px-4 pb-3 items-center">
+                      <div className="flex flex-row flex-wrap gap-4 pb-3 items-center">
                         {allBridges.length > 5 && (
                           <SearchItems data={allBridges} setFilterItems={setFilterBridges} item="Agents" />
                         )}

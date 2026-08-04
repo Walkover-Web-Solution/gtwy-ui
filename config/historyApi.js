@@ -104,7 +104,8 @@ export const getThreads = async (
 
 export const getSubThreadIds = async ({ thread_id, error, bridge_id, version_id }) => {
   try {
-    const response = await axios.get(`${URL}/api/v1/config/history/sub-thread/${thread_id}`, {
+    const encodedThreadId = encodeURIComponent(thread_id);
+    const response = await axios.get(`${URL}/api/v1/config/history/sub-thread/${encodedThreadId}`, {
       params: {
         error,
         bridge_id,

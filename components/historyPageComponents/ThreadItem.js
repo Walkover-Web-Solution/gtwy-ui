@@ -32,6 +32,8 @@ import {
 } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
+import GoogleDocIcon from "@/icons/GoogleDocIcon";
+import { isWordFileUrl } from "@/utils/attachmentUtils";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -44,6 +46,7 @@ import {
   SlidersHorizontal,
   Maximize2,
   User,
+  Brain,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
@@ -218,6 +221,72 @@ const normalizeImageUrls = (imageData, source = "assistant") => {
     });
     return acc;
   }, []);
+};
+
+// ---------------------------------------------------------------------------
+// Memory helpers — extract structured memory JSON from an assistant response
+// ---------------------------------------------------------------------------
+
+const extractJsonSubstring = (content) => {
+  if (!content || typeof content !== "string") return null;
+  const firstBrace = content.indexOf("{");
+  const lastBrace = content.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null;
+  return content.slice(firstBrace, lastBrace + 1);
+};
+
+const parseMemoryContent = (content) => {
+  const jsonString = extractJsonSubstring(content);
+  if (!jsonString) return null;
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed && (parsed.protected_memory || parsed.latest_state)) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const getAssistantResponseContent = (item) => {
+  if (!item) return "";
+  return item.chatbot_message || item.llm_message || item.updated_llm_message || "";
+};
+
+const isMemoryRelatedQuery = (content) => {
+  if (!content || typeof content !== "string") return false;
+  const lower = content.toLowerCase();
+  return lower.includes("provide the summary of the previous conversation stored in the memory?");
+};
+
+const getAssistantTextFromMessage = (message) => {
+  if (!message) return "";
+  if (typeof message.content === "string") return message.content;
+  if (Array.isArray(message.content)) {
+    return message.content.map((part) => (typeof part === "string" ? part : part?.text || "")).join("");
+  }
+  return "";
+};
+
+const extractMemoryFromAiConfigInput = (aiConfig) => {
+  const messages = aiConfig?.input;
+  if (!Array.isArray(messages)) return null;
+  for (let i = 0; i < messages.length - 1; i++) {
+    const msg = messages[i];
+    if (msg?.role !== "user" || typeof msg?.content !== "string") continue;
+    if (!isMemoryRelatedQuery(msg.content)) continue;
+
+    const nextMsg = messages[i + 1];
+    if (nextMsg?.role !== "assistant") continue;
+
+    const assistantContent = getAssistantTextFromMessage(nextMsg);
+    if (!assistantContent) continue;
+
+    const parsed = parseMemoryContent(assistantContent);
+    return parsed || { response: assistantContent };
+  }
+  return null;
 };
 
 // Enhanced fallback component with better UX
@@ -540,6 +609,26 @@ const ThreadItem = ({
     const bridge = orgBridges.find((b) => b?._id === params?.id || b?.id === params?.id);
     return bridge?.name || bridge?.agent_name || bridge?.bridge_name || item?.name || "Agent";
   }, [orgBridges, params?.id, item?.name]);
+
+  const memoryContent = useMemo(() => {
+    const fromAiConfig = extractMemoryFromAiConfigInput(item?.AiConfig);
+    if (fromAiConfig) return fromAiConfig;
+
+    // Fallback: check the next assistant message in the visible thread.
+    const nextItem = thread?.[index + 1];
+    if (!nextItem) return null;
+    const isAssistantResponse = Boolean(
+      nextItem.chatbot_message || nextItem.llm_message || nextItem.updated_llm_message
+    );
+    if (!isAssistantResponse) return null;
+
+    const assistantContent = getAssistantResponseContent(nextItem);
+    const parsedMemory = parseMemoryContent(assistantContent);
+    if (parsedMemory) return parsedMemory;
+
+    return null;
+  }, [thread, index, item]);
+  const hasMemoryContent = Boolean(memoryContent);
 
   useEffect(() => {
     setMessageType(getInitialMessageType());
@@ -885,7 +974,11 @@ const ThreadItem = ({
   );
 
   const handleUserButtonClick = (value) => {
-    threadHandler(item.thread_id, item, value);
+    if (value === "Memory" && memoryContent) {
+      threadHandler(item.thread_id, { ...item, memoryContent }, value);
+    } else {
+      threadHandler(item.thread_id, item, value);
+    }
   };
 
   const handleAskAi = async (item) => {
@@ -935,9 +1028,10 @@ const ThreadItem = ({
             }
 
             const isPdf = url?.toLowerCase?.().endsWith(".pdf");
+            const isWordDoc = isWordFileUrl(url);
 
-            // PDF style chip (same as provided snippet)
-            if (isPdf) {
+            // PDF / Word doc style chip (same as provided snippet)
+            if (isPdf || isWordDoc) {
               return (
                 <div key={`attachment-pdf-${index}`} className="pr-4">
                   <a
@@ -946,9 +1040,9 @@ const ThreadItem = ({
                     rel="noopener noreferrer"
                     className="flex items-center space-x-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 group"
                   >
-                    <PdfIcon height={20} width={20} />
+                    {isWordDoc ? <GoogleDocIcon height={20} width={20} /> : <PdfIcon height={20} width={20} />}
                     <span className="text-sm font-medium max-w-[5rem] truncate text-primary">
-                      {truncate(url.split("/").pop() || "PDF", 20)}
+                      {truncate(url.split("/").pop() || (isWordDoc ? "Document" : "PDF"), 20)}
                     </span>
                     <ExternalLink className="text-primary" size={14} />
                   </a>
@@ -1322,7 +1416,7 @@ const ThreadItem = ({
         >
           Copy
         </ThreadActionPill>
-        {!isError && (
+        {!isError && !item?.llm_urls?.length && (
           <ThreadActionPill
             id="thread-item-add-test-case-button"
             testId="thread-item-add-test-case-button"
@@ -1391,6 +1485,19 @@ const ThreadItem = ({
         >
           AI Config
         </ThreadActionPill>
+        {(() => {
+          return hasMemoryContent ? (
+            <ThreadActionPill
+              testId="thread-item-user-memory-button"
+              id="thread-item-user-memory-button"
+              icon={Brain}
+              trailing={Maximize2}
+              onClick={() => handleUserButtonClick("Memory")}
+            >
+              Memory
+            </ThreadActionPill>
+          ) : null;
+        })()}
         {item?.latency ? (
           <ThreadActionPill
             testId="thread-item-user-latency-button"

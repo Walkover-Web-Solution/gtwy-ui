@@ -3,12 +3,12 @@ import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, getIconOfService } from "@/utils/utility";
 import { toast } from "react-toastify";
-import { getInvitedUsers, inviteUser } from "@/config";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { useDispatch } from "react-redux";
 import { UserCircleIcon } from "@/components/Icons";
 import { UserPlus2, Shield } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { getInvitedUsers, inviteUser } from "@/config/organizationApi";
 const AccessManagementModal = ({ agent }) => {
   // agent.users contains the users already added to this agent
   const users = useCustomSelector((state) => state.orgReducer.users) || [];

@@ -684,12 +684,24 @@ export const updateBridgeVersionAction =
         optimisticData.web_search_filters = dataToSend.web_search_filters;
       }
 
-      // Handle settings if present (deep merge)
+      // Handle post_tool if present (complete replacement, not added to function_ids)
+      if (dataToSend.post_tool !== undefined) {
+        optimisticData.post_tool = dataToSend.post_tool;
+      }
+
+      // Handle settings if present (deep merge including nested objects like review_agent)
       if (dataToSend.settings) {
         optimisticData.settings = {
           ...currentVersion.settings,
           ...dataToSend.settings,
         };
+        // Deep merge review_agent if present to preserve existing fields
+        if (dataToSend.settings.review_agent) {
+          optimisticData.settings.review_agent = {
+            ...currentVersion.settings?.review_agent,
+            ...dataToSend.settings.review_agent,
+          };
+        }
       }
 
       // Handle agent_info if present (deep merge)
@@ -697,14 +709,6 @@ export const updateBridgeVersionAction =
         optimisticData.agent_info = {
           ...currentVersion.agent_info,
           ...dataToSend.agent_info,
-        };
-      }
-
-      // Handle settings if present (deep merge)
-      if (dataToSend.settings) {
-        optimisticData.settings = {
-          ...currentVersion.settings,
-          ...dataToSend.settings,
         };
       }
 
@@ -729,10 +733,21 @@ export const updateBridgeVersionAction =
       const updatedVersion = data?.agent;
 
       if (data?.success && updatedVersion) {
-        // Don't update again - the optimistic update is already correct
-        // Only update the status to show success
+        // Merge API response with current optimistic data to preserve fields
+        // that may not be returned by the API (like reviewer_enabled)
+        const mergedVersion = {
+          ...updatedVersion,
+          settings: {
+            ...updatedVersion.settings,
+            review_agent: {
+              ...optimisticData.settings?.review_agent,
+              ...updatedVersion.settings?.review_agent,
+            },
+          },
+        };
+
         dispatch(setSavingStatus({ status: "saved" }));
-        dispatch(updateBridgeVersionReducer({ bridges: updatedVersion }));
+        dispatch(updateBridgeVersionReducer({ bridges: mergedVersion }));
 
         // Clear the status after 3 seconds
         return { success: true };
@@ -766,7 +781,7 @@ export const updateBridgeVersionAction =
 
         if (parentBridgeId && !skipRollback) {
           dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
-          toast.error("Failed to update version. Changes have been reverted.");
+          toast.error(error?.response?.data?.message || "Failed to update version. Changes have been reverted.");
         }
       }
 

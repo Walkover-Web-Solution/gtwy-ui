@@ -15,3 +15,4 @@ export * from "./integrationApi";
 export * from "./richUiTemplateApi";
 export * from "./folderApi";
 export * from "./analyticsApi";
+export * from "./walletApi";

@@ -344,19 +344,31 @@ const Navbar = ({ isEmbedUser, params }) => {
           typeValue = "api";
         }
         const typeQueryPart = `&type=${typeValue}`;
+        // Preserve reviewer-agent linkage params across tab navigation so "Back to Main" persists
+        const parentQueryPart = parentAgentId
+          ? `&parentAgentId=${parentAgentId}${parentVersionId ? `&parentVersionId=${parentVersionId}` : ""}`
+          : "";
 
         // If currently in published mode and navigating to testcase or history
         if (isPublished && (tabId === "testcase" || tabId === "history")) {
           // Use published version ID and remove isPublished parameter
           router.push(
-            base + (publishedVersion ? `?version=${publishedVersion}${typeQueryPart}` : `?type=${typeValue}`)
+            base +
+              (publishedVersion
+                ? `?version=${publishedVersion}${typeQueryPart}${parentQueryPart}`
+                : `?type=${typeValue}${parentQueryPart}`)
           );
         } else if (tabId === "analytics") {
           // Analytics page: default to all versions
-          router.push(base + `?type=${typeValue}`);
+          router.push(base + `?type=${typeValue}${parentQueryPart}`);
         } else {
           // Normal navigation with current version
-          router.push(base + (versionId ? `?version=${versionId}${typeQueryPart}` : `?type=${typeValue}`));
+          router.push(
+            base +
+              (versionId
+                ? `?version=${versionId}${typeQueryPart}${parentQueryPart}`
+                : `?type=${typeValue}${parentQueryPart}`)
+          );
         }
       };
 
@@ -368,7 +380,7 @@ const Navbar = ({ isEmbedUser, params }) => {
 
       navigate();
     },
-    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType]
+    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType, parentAgentId, parentVersionId]
   );
 
   const handlePublishedClick = useCallback(() => {

@@ -19,13 +19,22 @@ import { toast } from "react-toastify";
 import { SendHorizontalIcon, UploadIcon, LinkIcon, PlayIcon, CloseCircleIcon } from "@/components/Icons";
 import { Paperclip } from "lucide-react";
 import { PdfIcon } from "@/icons/pdfIcon";
+import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import { toggleSidebar, openModal, closeModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { buildVariablesObject } from "@/utils/variableValidation";
-import { buildUserUrls } from "@/utils/attachmentUtils";
+import { buildUserUrls, isWordFileUrl } from "@/utils/attachmentUtils";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
+
+const DOC_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const isDocFile = (file) => DOC_MIME_TYPES.includes(file.type);
+const DOC_ACCEPT = ".pdf,.doc,.docx";
 
 function ChatTextInput({
   channelIdentifier,
@@ -533,7 +542,7 @@ function ChatTextInput({
       if (files.length === 0) return;
 
       const newImages = files.filter((file) => file.type.startsWith("image/"));
-      const newFiles = files.filter((file) => file.type === "application/pdf");
+      const newFiles = files.filter((file) => isDocFile(file));
 
       if (newImages.length === 0 && newFiles.length === 0) return;
 
@@ -568,7 +577,7 @@ function ChatTextInput({
       for (let file of files) {
         const formData = new FormData();
         formData.append("image", file);
-        const isPdf = file.type === "application/pdf";
+        const isPdf = isDocFile(file);
         const result = await dispatch(uploadImageAction(formData, isPdf));
 
         if (result.success) {
@@ -624,7 +633,7 @@ function ChatTextInput({
         const result = await dispatch(uploadImageAction(formData));
 
         if (result.success) {
-          if (file.type === "application/pdf") {
+          if (isDocFile(file)) {
             dispatch(setChatUploadedFiles(channelIdentifier, [...uploadedFiles, result.image_url]));
           } else {
             dispatch(setChatUploadedImages(channelIdentifier, [...uploadedImages, result.image_url]));
@@ -676,7 +685,7 @@ function ChatTextInput({
         break;
       case "files":
         if (fileInput) {
-          fileInput.accept = ".pdf";
+          fileInput.accept = DOC_ACCEPT;
           fileInput.click();
         }
         break;
@@ -687,16 +696,16 @@ function ChatTextInput({
         if (fileInput) {
           fileInput.accept =
             isVision && isFileSupported && isVideoSupported
-              ? "image/*,.pdf,video/*"
+              ? `image/*,${DOC_ACCEPT},video/*`
               : isVision && isVideoSupported
                 ? "image/*,video/*"
                 : isVision && isFileSupported
-                  ? "image/*,.pdf"
+                  ? `image/*,${DOC_ACCEPT}`
                   : isVision
                     ? "image/*"
                     : isFileSupported
-                      ? ".pdf"
-                      : "image/*,.pdf,video/*";
+                      ? DOC_ACCEPT
+                      : `image/*,${DOC_ACCEPT},video/*`;
           fileInput.click();
         }
     }
@@ -792,7 +801,7 @@ function ChatTextInput({
           {uploadedFiles.map((url, index) => (
             <div key={index} className="relative flex-shrink-0">
               <div className="flex items-center h-16 gap-2 bg-base-300 p-2 rounded-lg border border-base-300">
-                <PdfIcon height={24} width={24} />
+                {isWordFileUrl(url) ? <GoogleDocIcon height={24} width={24} /> : <PdfIcon height={24} width={24} />}
                 <p className="text-sm max-w-[120px] truncate" title={url}>
                   {url.split("/").pop()}
                 </p>
@@ -932,16 +941,16 @@ function ChatTextInput({
           type="file"
           accept={
             isVision && isFileSupported && isVideoSupported
-              ? "image/*,.pdf,video/*"
+              ? `image/*,${DOC_ACCEPT},video/*`
               : isVision && isVideoSupported
                 ? "image/*,video/*"
                 : isVision && isFileSupported
-                  ? "image/*,.pdf"
+                  ? `image/*,${DOC_ACCEPT}`
                   : isVision
                     ? "image/*"
                     : isFileSupported
-                      ? ".pdf"
-                      : "image/*,.pdf,video/*"
+                      ? DOC_ACCEPT
+                      : `image/*,${DOC_ACCEPT},video/*`
           }
           multiple={isVision || isFileSupported || isVideoSupported}
           onChange={handleFileChange}
@@ -1032,7 +1041,7 @@ function ChatTextInput({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">Upload Documents</div>
-                      <div className="text-xs text-base-content/60">PDF files</div>
+                      <div className="text-xs text-base-content/60">PDF, DOC, DOCX files</div>
                     </div>
                   </a>
                 </li>

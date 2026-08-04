@@ -2,9 +2,9 @@
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { createAuth } from "@/store/action/authAction";
+import { createAuth, getAuthDataAction } from "@/store/action/authAction";
 import CustomTable from "@/components/customTable/CustomTable";
 import { openModal } from "@/utils/utility";
 import { AUTH_COLUMNS, MODAL_TYPE } from "@/utils/enums";
@@ -22,6 +22,12 @@ const Page = ({ params }) => {
     authData: state?.authReducer?.authenticationData?.[resolvedParams?.org_id] || [],
     linksData: state.flowDataReducer.flowData.linksData || [],
   }));
+
+  useEffect(() => {
+    if (resolvedParams?.org_id) {
+      dispatch(getAuthDataAction(resolvedParams?.org_id));
+    }
+  }, [resolvedParams?.org_id]);
 
   const validateUrl = (value) => {
     try {

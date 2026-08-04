@@ -2,7 +2,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { createTestCaseAction } from "@/store/action/testCasesAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
-import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical } from "lucide-react";
+import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical, ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -11,6 +11,7 @@ import Modal from "../UI/Modal";
 import { clearChatTestCaseIdAction } from "@/store/action/chatAction";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import { PdfIcon } from "@/icons/pdfIcon";
 
 function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, channelIdentifier }) {
   const params = useParams();
@@ -151,7 +152,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const payload = {
       name: testCaseName,
       ...(conversationData.length > 0 && { conversation: conversationData }),
-      type: isAssistant ? "response" : "function",
+      type: "response",
       expected: {
         ...(isAssistant && { response: lastTestCase.content }),
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
@@ -312,46 +313,44 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           {/* User URLs Section */}
           {userUrlsList.length > 0 && (
             <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
-              <div className="text-sm font-semibold text-base-content mb-4">User URLs</div>
-              <div className="space-y-2">
+              <div className="text-sm font-semibold text-base-content mb-4">Attachments</div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {userUrlsList.map((urlObj, idx) => {
                   const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
-                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
-
-                  return (
-                    <div key={idx} className="bg-base-100 rounded-lg p-3 border border-base-200">
-                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
-                      {isImageUrl ? (
-                        <div className="flex flex-col gap-2">
-                          <img
-                            src={urlString}
-                            alt={`User URL ${idx + 1}`}
-                            className="max-w-full max-h-64 rounded border border-base-300"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={urlString}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm break-all text-blue-600 hover:underline"
-                          >
-                            {urlString}
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={urlString}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm break-all text-blue-600 hover:underline block"
-                        >
-                          {urlString || JSON.stringify(urlObj)}
-                        </a>
-                      )}
-                    </div>
-                  );
+                  if (!urlString) return null;
+                  const isImageUrl = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+                  const isPdfUrl = /\.pdf($|\?)/i.test(urlString);
+                  if (isImageUrl) {
+                    return (
+                      <img
+                        key={`user-${idx}`}
+                        src={urlString}
+                        alt={`User Image ${idx + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover rounded-lg cursor-pointer flex-shrink-0"
+                        onClick={() => window.open(urlString, "_blank")}
+                      />
+                    );
+                  }
+                  if (isPdfUrl) {
+                    return (
+                      <a
+                        key={`user-${idx}`}
+                        href={urlString}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 flex-shrink-0"
+                      >
+                        <PdfIcon height={20} width={20} />
+                        <span className="text-sm font-medium max-w-[6rem] truncate text-primary">
+                          {urlString.split("/").pop() || "PDF"}
+                        </span>
+                        <ExternalLink className="text-primary" size={14} />
+                      </a>
+                    );
+                  }
+                  return null;
                 })}
               </div>
             </div>

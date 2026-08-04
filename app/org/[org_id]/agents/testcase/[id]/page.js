@@ -35,7 +35,7 @@ import TestCaseModelDropdown from "@/components/testcaseComponents/ModelDropdown
 import DeleteModal from "@/components/UI/DeleteModal";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
-import { openModal, closeModal, getIconOfService, getFromCookies } from "@/utils/utility";
+import { openModal, closeModal, getIconOfService } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
@@ -408,38 +408,6 @@ function TestCases({ params }) {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, []);
-
-  // Load the GTWY embed script so we can open agent history via window.openGtwy()
-  useEffect(() => {
-    if (!resolvedParams?.org_id) return;
-    const scriptId = "gtwy-user-script";
-    if (document.getElementById(scriptId)) return;
-
-    const scriptURl =
-      process.env.NEXT_PUBLIC_ENV === "LOCAL"
-        ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_embed_local.js`
-        : process.env.NEXT_PUBLIC_ENV !== "PROD"
-          ? `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy_dev.js`
-          : `${process.env.NEXT_PUBLIC_FRONTEND_URL}/gtwy.js`;
-    const script = document.createElement("script");
-    script.id = scriptId;
-    script.src = scriptURl;
-    script.setAttribute("skipLoadGtwy", true);
-    script.setAttribute("token", getFromCookies("local_token"));
-    script.setAttribute("org_id", resolvedParams.org_id);
-    script.setAttribute("agent_id", resolvedParams.id);
-    script.setAttribute("historyEmbed", true);
-    script.setAttribute("gtwy_user", true);
-    script.setAttribute("showHeader", false);
-    document.head.appendChild(script);
-
-    return () => {
-      const existing = document.getElementById(scriptId);
-      if (existing) {
-        sessionStorage.removeItem("orchestralUser");
-      }
-    };
-  }, [resolvedParams?.org_id]);
 
   useEffect(() => {
     if (selectedVersion) {

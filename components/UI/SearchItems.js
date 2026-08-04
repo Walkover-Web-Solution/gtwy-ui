@@ -90,19 +90,31 @@ const SearchItems = ({
     }
   }, [searchTerm, filterParam, setParam]);
 
+  const normalizeSearchString = (str) => str?.toLowerCase()?.replace(/[\W_]/g, "").trim() || "";
+
   // Memoize the filtering logic to prevent infinite re-renders
   const filterData = useCallback(() => {
+    const normalizedSearchTerm = normalizeSearchString(searchTerm);
+    const trimmedSearchTerm = searchTerm.toLowerCase().trim();
     const filtered =
       data?.filter(
         (item) =>
-          (item?.name && item?.name?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?.title && item?.title?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?.slugName && item?.slugName?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?.service && item?.service?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?._id && item?._id?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?.flow_name && item?.flow_name?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?.script_id && item?.script_id?.toLowerCase()?.includes(searchTerm.toLowerCase().trim())) ||
-          (item?.id && item?.id?.toString()?.toLowerCase()?.includes(searchTerm.toLowerCase().trim()))
+          (item?.name &&
+            (item?.name?.toLowerCase()?.includes(trimmedSearchTerm) ||
+              normalizeSearchString(item?.name).includes(normalizedSearchTerm))) ||
+          (item?.title &&
+            (item?.title?.toLowerCase()?.includes(trimmedSearchTerm) ||
+              normalizeSearchString(item?.title).includes(normalizedSearchTerm))) ||
+          (item?.slugName &&
+            (item?.slugName?.toLowerCase()?.includes(trimmedSearchTerm) ||
+              normalizeSearchString(item?.slugName).includes(normalizedSearchTerm))) ||
+          (item?.service && item?.service?.toLowerCase()?.includes(trimmedSearchTerm)) ||
+          (item?._id && item?._id?.toLowerCase()?.includes(trimmedSearchTerm)) ||
+          (item?.flow_name &&
+            (item?.flow_name?.toLowerCase()?.includes(trimmedSearchTerm) ||
+              normalizeSearchString(item?.flow_name).includes(normalizedSearchTerm))) ||
+          (item?.script_id && item?.script_id?.toLowerCase()?.includes(trimmedSearchTerm)) ||
+          (item?.id && item?.id?.toString()?.toLowerCase()?.includes(trimmedSearchTerm))
       ) || [];
     return filtered;
   }, [data, searchTerm]);

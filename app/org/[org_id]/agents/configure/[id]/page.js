@@ -20,7 +20,6 @@ import { CircleAlert } from "lucide-react";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 const ConfigurationPage = dynamic(() => import("@/components/configuration/ConfigurationPage"));
 const Chat = dynamic(() => import("@/components/configuration/Chat"), { loading: () => null });
-const WebhookForm = dynamic(() => import("@/components/BatchApi"), { ssr: false });
 const PromptHelper = dynamic(() => import("@/components/PromptHelper"), { ssr: false });
 const NotesPanel = dynamic(() => import("@/components/NotesPanel"), { ssr: false });
 const ConfigurationSkeleton = dynamic(() => import("@/components/skeletons/ConfigurationSkeleton"), { ssr: false });
@@ -150,7 +149,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const containerRef = useRef(null);
 
   // Optimized selector with better memoization
-  const { bridgeType, versionService, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
+  const { bridgeType, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
     useConfigurationSelector(resolvedParams, resolvedSearchParams);
 
   const showPlayground = useCustomSelector((state) => {
@@ -800,20 +799,12 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             <>
                               {!sessionStorage.getItem("orchestralUser") ? (
                                 <div id="chat-content-container" className="flex-1 min-h-0">
-                                  {bridgeType === "batch" && versionService === "openai" ? (
-                                    <WebhookForm
-                                      id="webhook-form"
-                                      params={resolvedParams}
-                                      searchParams={resolvedSearchParams}
-                                    />
-                                  ) : (
-                                    <Chat
-                                      id="chat-component"
-                                      params={resolvedParams}
-                                      searchParams={resolvedSearchParams}
-                                      draftPrompt={draftPromptForPlayground}
-                                    />
-                                  )}
+                                  <Chat
+                                    id="chat-component"
+                                    params={resolvedParams}
+                                    searchParams={resolvedSearchParams}
+                                    draftPrompt={draftPromptForPlayground}
+                                  />
                                 </div>
                               ) : (
                                 <div id="alternative-chat-container" className="flex-1 min-h-0">
@@ -1035,20 +1026,12 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   <>
                     {!sessionStorage.getItem("orchestralUser") ? (
                       <div id="mobile-chat-content-container" className="flex-1 min-h-0">
-                        {bridgeType === "batch" && versionService === "openai" ? (
-                          <WebhookForm
-                            id="mobile-webhook-form"
-                            params={resolvedParams}
-                            searchParams={resolvedSearchParams}
-                          />
-                        ) : (
-                          <Chat
-                            id="mobile-chat-component"
-                            params={resolvedParams}
-                            searchParams={resolvedSearchParams}
-                            draftPrompt={draftPromptForPlayground}
-                          />
-                        )}
+                        <Chat
+                          id="mobile-chat-component"
+                          params={resolvedParams}
+                          searchParams={resolvedSearchParams}
+                          draftPrompt={draftPromptForPlayground}
+                        />
                       </div>
                     ) : (
                       <div id="mobile-alternative-chat-container" className="flex-1 min-h-0">

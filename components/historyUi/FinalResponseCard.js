@@ -46,11 +46,9 @@ export function FinalResponseCard({
       className="w-full relative text-sm text-slate-900 dark:text-zinc-100 group"
       style={{ wordBreak: "break-word" }}
     >
-      {hasToolCalls && <hr className="border-base-300 my-4" />}
-
       {/* Header */}
       {hasToolCalls && (
-        <div className="flex items-center gap-1.5 text-[#c07e2c] dark:text-[#C9A84C] font-bold text-xs tracking-wider uppercase mb-3 select-none">
+        <div className="flex items-center gap-1.5 text-[#c07e2c] dark:text-[#C9A84C] font-bold text-xs tracking-wider uppercase mt-2 mb-3 select-none">
           <Sparkles size={13} className="shrink-0" />
           <span>Final Response</span>
         </div>

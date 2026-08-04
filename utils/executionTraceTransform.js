@@ -149,12 +149,22 @@ const resolveToolKind = (tool) => {
   return "tool";
 };
 
+const extractToolQueryParams = (tool) => {
+  const args = tool?.args && typeof tool.args === "object" ? tool.args : {};
+  const configured = Array.isArray(tool?.query_params)
+    ? Object.fromEntries(tool.query_params.filter((key) => key in args).map((key) => [key, args[key]]))
+    : tool?.query_params || {};
+  const queryParams = { ...configured, ...(tool?.data?.query_params || {}) };
+  return Object.keys(queryParams).length ? queryParams : null;
+};
+
 const toolToStep = (tool) => {
   const metaType = tool?.data?.metadata?.type || tool?.type;
   const displayName = tool?.display_tool_name || tool?.model_tool_name || tool?.name || "tool";
   const response = tool?.data?.response;
   const hasError = tool?.error === true || (tool?.data?.status != null && tool?.data?.status !== 1);
   const toolKind = resolveToolKind(tool);
+  const queryParams = extractToolQueryParams(tool);
 
   if (metaType === "RAG" || displayName === "get_knowledge_base_data") {
     const query = tool?.args?.query || "";
@@ -164,6 +174,7 @@ const toolToStep = (tool) => {
       name: displayName,
       query,
       input: tool?.args || {},
+      queryParams,
       output: response ?? tool?.data ?? null,
       summary: empty ? "no data returned" : summarizeValue(response),
       latency: null,
@@ -183,6 +194,7 @@ const toolToStep = (tool) => {
     toolKind,
     status: hasError ? "error" : "ok",
     input: tool?.args || {},
+    queryParams,
     output: response ?? tool?.data ?? null,
     summary: hasError ? "tool call failed" : summarizeValue(response),
     latency: null,

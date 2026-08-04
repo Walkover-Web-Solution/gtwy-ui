@@ -6,6 +6,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import { AddIcon } from "@/components/Icons";
 import { getSelectedVariablesPath } from "@/utils/variableValidation";
+import { getStatusClass } from "@/utils/utility";
 
 function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
   const dispatch = useDispatch();
@@ -30,6 +31,21 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
   const selectedTool = useMemo(() => {
     return selectedToolId ? functionData[selectedToolId] : null;
   }, [functionData, selectedToolId]);
+
+  const selectedToolStatus = useMemo(() => {
+    return selectedTool ? selectedTool.status || integrationData?.[selectedTool.script_id]?.status : null;
+  }, [selectedTool, integrationData]);
+
+  const statusLabel = useMemo(() => {
+    if (!selectedTool) return "";
+    return selectedTool.description?.trim() === ""
+      ? "Ongoing"
+      : selectedToolStatus === 1
+        ? "active"
+        : selectedToolStatus === 0
+          ? "paused"
+          : selectedToolStatus;
+  }, [selectedTool, selectedToolStatus]);
 
   const handleSelectTool = (functionId) => {
     dispatch(
@@ -99,6 +115,13 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                   selectedTool.script_id ||
                   "Untitled"}
               </span>
+              <span
+                className={`rounded-full capitalize px-1.5 py-0.5 text-[9px] font-semibold text-black ${getStatusClass(
+                  statusLabel
+                )}`}
+              >
+                {statusLabel}
+              </span>
             </div>
             {!isReadOnly && (
               <div className="flex items-center gap-1">
@@ -118,11 +141,11 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                   <EmbedListSuggestionDropdownMenu
                     params={params}
                     searchParams={searchParams}
+                    name="reviewer"
                     onSelect={handleSelectTool}
                     isPublished={isPublished}
                     isEditor={isEditor}
                     connectedFunctions={reviewerTools}
-                    hideCreateFunction
                   />
                 </div>
                 <button
@@ -136,11 +159,16 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-between w-full">
+          <div
+            data-testid="reviewer-tool-no-tools-dropdown"
+            id="reviewer-tool-no-tools-dropdown"
+            className="flex items-center justify-between w-full"
+          >
             <span className="text-xs text-base-content/50 italic p-1">No tool selected</span>
             {!isReadOnly && (
               <div className="dropdown dropdown-end shrink-0">
                 <button
+                  id="reviewer-tool-add-button"
                   tabIndex={0}
                   className="btn btn-xs btn-outline font-normal gap-1"
                   onClick={() => {
@@ -155,11 +183,11 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                 <EmbedListSuggestionDropdownMenu
                   params={params}
                   searchParams={searchParams}
+                  name="reviewer"
                   onSelect={handleSelectTool}
                   isPublished={isPublished}
                   isEditor={isEditor}
                   connectedFunctions={reviewerTools}
-                  hideCreateFunction
                 />
               </div>
             )}

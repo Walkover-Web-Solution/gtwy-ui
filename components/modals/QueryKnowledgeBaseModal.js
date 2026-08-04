@@ -50,7 +50,7 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
       MODAL_ID={MODAL_TYPE.QUERY_KNOWLEDGE_BASE_MODAL}
       onClose={handleClose}
       title="Test Knowledge Base"
-      description={resource?.name ? `Querying: ${resource.name}` : "Run queries against your knowledge base"}
+      description={resource?.title ? `Querying: ${resource.title}` : "Run queries against your knowledge base"}
       icon={<SearchCode size={16} className="text-trace-gold" />}
       widthClass="w-[min(700px,92vw)]"
     >

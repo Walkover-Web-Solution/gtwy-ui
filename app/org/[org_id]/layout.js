@@ -419,7 +419,25 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           folder_id: e?.data?.metadata?.folder_id || null,
         };
         dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
-          if (pathName.includes("agents")) {
+          // Handle reviewer tools - works regardless of page context
+          if (e?.data?.metadata?.createFrom === "reviewer" && path[5] && resolvedSearchParams?.get("version")) {
+            // Add as reviewer tool - preserve existing review_agent settings
+            const currentReviewAgent = versionData?.settings?.review_agent || {};
+            dispatch(
+              updateBridgeVersionAction({
+                bridgeId: path[5],
+                versionId: resolvedSearchParams?.get("version"),
+                dataToSend: {
+                  settings: {
+                    review_agent: {
+                      ...currentReviewAgent,
+                      reviewer_tools: [data?._id],
+                    },
+                  },
+                },
+              })
+            );
+          } else if (pathName.includes("agents")) {
             if (e?.data?.metadata?.createFrom === "preFunction") {
               // Only add as pre-tool if not already present (preTools is an array of objects)
               const alreadyPreTool =
@@ -440,6 +458,21 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                   })
                 );
               }
+            } else if (e?.data?.metadata?.createFrom === "postFunction") {
+              // Add as post tool
+              dispatch(
+                updateBridgeVersionAction({
+                  bridgeId: path[5],
+                  versionId: resolvedSearchParams?.get("version"),
+                  dataToSend: {
+                    post_tool: {
+                      id: data?._id,
+                      script_id: data?.script_id,
+                      args: {},
+                    },
+                  },
+                })
+              );
             } else {
               // Only add as regular tool if not already in versionData
               if (!tools?.includes(data?._id)) {

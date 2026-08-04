@@ -7,7 +7,6 @@ import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getThread } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
-import { getAgentAnalyticsFiltersApi } from "@/config";
 import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
@@ -21,6 +20,7 @@ import { getStatsConfig, MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
+import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
 
 // URL params that must never be forwarded to the analytics API.
 const UI_ONLY_QUERY_PARAMS = new Set([
@@ -612,7 +612,7 @@ function Page({ params, searchParams }) {
   }, []);
 
   const handleThreadItemClick = useCallback((thread_id, item, value) => {
-    if (value === "AiConfig" || value === "Latency") {
+    if (value === "AiConfig" || value === "Latency" || value === "Memory") {
       setSelectedItem({ variables: item.variables, ...item, value });
       openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
     }
@@ -1564,8 +1564,20 @@ function Page({ params, searchParams }) {
       </div>
 
       <ChatAiConfigDeatilViewModal
-        modalContent={selectedItem?.value === "Latency" ? selectedItem?.latency : selectedItem?.AiConfig}
-        modalTitle={selectedItem?.value === "Latency" ? "Latency Details" : "AI Configuration"}
+        modalContent={
+          selectedItem?.value === "Latency"
+            ? selectedItem?.latency
+            : selectedItem?.value === "Memory"
+              ? selectedItem?.memoryContent
+              : selectedItem?.AiConfig
+        }
+        modalTitle={
+          selectedItem?.value === "Latency"
+            ? "Latency Details"
+            : selectedItem?.value === "Memory"
+              ? "Memory"
+              : "AI Configuration"
+        }
       />
     </div>
   );
