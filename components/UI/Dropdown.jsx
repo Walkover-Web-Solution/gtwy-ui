@@ -339,7 +339,7 @@ const Dropdown = ({
                               );
                             })()}
                             {opt.description && (
-                              <span className="truncate text-xs text-base-content/60">{opt.description}</span>
+                              <span className="text-xs text-base-content/50 leading-tight">{opt.description}</span>
                             )}
                           </div>
                         </a>
@@ -397,7 +397,7 @@ const Dropdown = ({
                                   );
                                 })()}
                                 {opt.description && (
-                                  <span className="truncate text-xs text-base-content/60">{opt.description}</span>
+                                  <span className="text-xs text-base-content/50 leading-tight">{opt.description}</span>
                                 )}
                               </div>
                             </a>
