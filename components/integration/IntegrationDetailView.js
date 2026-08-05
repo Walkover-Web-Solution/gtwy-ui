@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Code, Settings, Monitor } from "lucide-react";
+import { ArrowLeft, Code, Settings, Monitor, BarChart3 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import IntegrationTab from "./IntegrationTab";
 import ConfigurationTab from "./ConfigurationTab";
 import TestingTab from "./TestingTab";
+import EmbedAnalyticsTab from "./EmbedAnalyticsTab";
 import ConfirmationModal from "../UI/ConfirmationModal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal } from "@/utils/utility";
@@ -100,6 +101,11 @@ const IntegrationDetailView = ({ data, onClose }) => {
       id: "testing",
       label: "Testing",
       icon: <Monitor className="h-5 w-5" />,
+    },
+    {
+      id: "analytics",
+      label: "Analytics",
+      icon: <BarChart3 className="h-5 w-5" />,
     },
   ];
 
@@ -213,7 +219,9 @@ const IntegrationDetailView = ({ data, onClose }) => {
             <Panel minSize={30}>
               <div className="h-full overflow-hidden" data-testid="integration-content-area">
                 <div
-                  className={`h-full border border-base-300 rounded-lg bg-base-100 ${activeTab === "integration" ? "overflow-y-auto" : ""}`}
+                  className={`h-full border border-base-300 rounded-lg bg-base-100 ${
+                    activeTab === "integration" || activeTab === "analytics" ? "overflow-y-auto" : ""
+                  }`}
                 >
                   {activeTab === "integration" && <IntegrationTab data={data} />}
                   {activeTab === "configuration" && (
@@ -225,6 +233,7 @@ const IntegrationDetailView = ({ data, onClose }) => {
                     />
                   )}
                   {activeTab === "testing" && <TestingTab data={data} isTestingMode={isTestingMode} />}
+                  {activeTab === "analytics" && <EmbedAnalyticsTab data={data} />}
                 </div>
               </div>
             </Panel>

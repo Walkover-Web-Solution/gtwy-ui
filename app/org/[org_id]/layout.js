@@ -532,6 +532,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
 
   const themeUserType = isEmbedUser ? "embed" : "default";
 
+  // Agent analytics opens in its own browser tab (from embed analytics) — render it chrome-free.
+  const isAgentAnalyticsPage = path[3] === "agents" && path[4] === "analytics";
+
   if (!isEmbedUser) {
     const hasFolders = ["agents", "apikeys", "tools", "knowledge_base"].includes(path[3]);
 
@@ -548,11 +551,13 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           <div
             className={`flex-1 ${path.length > 4 ? "ml-0  md:ml-12 lg:ml-12" : ""} flex flex-col overflow-hidden z-medium`}
           >
-            <div
-              className={`sticky top-0 z-medium bg-base-100 border-b border-base-300 ${hasFolders ? "ml-0" : "ml-2"}`}
-            >
-              <Navbar params={resolvedParams} searchParams={resolvedSearchParams} />
-            </div>
+            {!isAgentAnalyticsPage && (
+              <div
+                className={`sticky top-0 z-medium bg-base-100 border-b border-base-300 ${hasFolders ? "ml-0" : "ml-2"}`}
+              >
+                <Navbar params={resolvedParams} searchParams={resolvedSearchParams} />
+              </div>
+            )}
 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -584,7 +589,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         {/* Main Content Area for Embed Users */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Sticky Navbar - hidden in historyEmbed mode */}
-          {(!isEmbedUser || (isEmbedUser && !historyEmbed)) && (
+          {(!isEmbedUser || (isEmbedUser && !historyEmbed)) && !isAgentAnalyticsPage && (
             <div className="sticky top-0 z-medium bg-base-100 border-b border-base-300 ml-2">
               <Navbar params={resolvedParams} searchParams={resolvedSearchParams} />
             </div>
