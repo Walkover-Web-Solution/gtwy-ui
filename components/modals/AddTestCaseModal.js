@@ -1,10 +1,11 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { createTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical, ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
@@ -12,12 +13,17 @@ import { clearChatTestCaseIdAction } from "@/store/action/chatAction";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
 import { PdfIcon } from "@/icons/pdfIcon";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
+import { flattenToolsCallData } from "@/utils/executionTraceTransform";
 
 function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, channelIdentifier }) {
   const params = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
-  const { mongoIdsOfTools } = useCustomSelector((state) => {
+  const mockToolResponsesRef = useRef(null);
+  const { mongoIdsOfTools, functionData, bridgeVersionMapping, publishedFunctionIds } = useCustomSelector((state) => {
     const functionData = state.bridgeReducer.org?.[params.org_id]?.functionData;
     const mongoIds = functionData
       ? Object.values(functionData).reduce((acc, item) => {
@@ -28,8 +34,42 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         }, {})
       : {};
 
-    return { mongoIdsOfTools: mongoIds };
+    return {
+      mongoIdsOfTools: mongoIds,
+      functionData: functionData || {},
+      bridgeVersionMapping: state.bridgeReducer?.bridgeVersionMapping?.[params?.id] || {},
+      publishedFunctionIds: state.bridgeReducer?.allBridgesMap?.[params?.id]?.function_ids || [],
+    };
   });
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Pre-fill mock recordings from the tool calls that actually happened in this
+  // conversation — the same args/response already shown in the history UI —
+  // instead of starting the mock editor blank.
+  const initialToolsResponseFromHistory = useMemo(() => {
+    if (!Array.isArray(testCaseConversation)) return undefined;
+    const grouped = {};
+    testCaseConversation.forEach((message) => {
+      flattenToolsCallData(message?.tools_call_data).forEach((tool) => {
+        const toolName = tool?.name;
+        if (!toolName) return;
+        const isRAGTool = tool?.data?.metadata?.type === "RAG";
+        const isAgentTool = tool?.type?.toUpperCase?.() === "AGENT" || !!tool?.bridge_id;
+        if (isRAGTool || isAgentTool) return;
+        if (!grouped[toolName]) grouped[toolName] = { recordings: [] };
+        grouped[toolName].recordings.push({ args: tool?.args || {}, response: tool?.data?.response ?? null });
+      });
+    });
+    return Object.keys(grouped).length > 0 ? grouped : undefined;
+  }, [testCaseConversation]);
   // Process testCaseConversation - extract from outside AiConfig (from item data)
   const processTestCaseData = () => {
     if (!testCaseConversation || testCaseConversation.length === 0) return [];
@@ -149,6 +189,15 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const isToolsCall = lastTestCase.role === "tools_call";
 
     const conversationData = finalTestCases.slice(0, -1);
+    const { toolsResponse, errors: toolsResponseErrors } = mockToolResponsesRef.current?.getPayload() || {
+      toolsResponse: {},
+      errors: [],
+    };
+    if (toolsResponseErrors.length > 0) {
+      toast.error(toolsResponseErrors[0]);
+      setIsLoading(false);
+      return;
+    }
     const payload = {
       name: testCaseName,
       ...(conversationData.length > 0 && { conversation: conversationData }),
@@ -162,6 +211,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       matching_type: "ai",
       variables: editableVariables,
       ...(userUrlsList.length > 0 && { user_urls: userUrlsList }),
+      ...(Object.keys(toolsResponse).length > 0 && { tools_response: toolsResponse }),
       // Backend resolves ai_config server-side using message_id (see
       // historyService.findHistoryByMessageId). We stop sending ai_config
       // from the client and instead forward the source message_id.
@@ -309,6 +359,14 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
               </div>
             </div>
           )}
+
+          {/* Mock Tool Responses Section */}
+          <MockToolResponsesSection
+            ref={mockToolResponsesRef}
+            tools={bridgeToolOptions}
+            initialValue={initialToolsResponseFromHistory}
+            resetKey={testCaseConversation}
+          />
 
           {/* User URLs Section */}
           {userUrlsList.length > 0 && (
