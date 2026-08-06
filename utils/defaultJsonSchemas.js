@@ -216,11 +216,14 @@ export const isEmptyJsonSchema = (schema) => {
   return Object.keys(schema).length === 0;
 };
 
-/** Build response_type for json_schema; omits json_schema until the user provides one. */
-export const buildJsonSchemaResponseType = ({ json_schema, is_template = false, template_id } = {}) => {
+/**
+ * Build response_type for a schema-backed response. Defaults to `json_schema`
+ * but accepts `json_object` too — both shapes persist the schema under the
+ * `json_schema` key so the rest of the UI can stay model-agnostic.
+ */
+export const buildJsonSchemaResponseType = ({ json_schema, template_id, type = "json_schema" } = {}) => {
   const payload = {
-    type: "json_schema",
-    is_template,
+    type,
   };
   if (template_id !== undefined) {
     payload.template_id = template_id;
