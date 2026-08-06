@@ -2,24 +2,16 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  BarChart3,
-  Users,
-  Bot,
-  Activity,
-  CheckCircle2,
-  DollarSign,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
-import { ResponsiveContainer, ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { BarChart3, Users, Bot, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { getEmbedAnalyticsApi } from "@/config/analyticsApi";
 import { getStatsConfig } from "@/utils/enums";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
 import { formatRelativeTime, formatDate } from "@/utils/utility";
+import SearchItems from "@/components/UI/SearchItems";
 
 const USERS_PAGE_SIZE = 15;
+const EMPTY_USERS = [];
 
 const RANGE_OPTIONS = [
   { label: "24h", value: "24h" },
@@ -50,14 +42,11 @@ function emailLocalPart(value) {
   return at > 0 ? value.slice(0, at) : value;
 }
 
-function formatChartTime(t, range) {
+function formatChartTime(t) {
   if (!t) return "";
   const d = new Date(t);
   if (Number.isNaN(d.getTime())) return String(t);
-  if (range === "24h") {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
 const EmbedAnalyticsTab = ({ data }) => {
@@ -80,8 +69,17 @@ const EmbedAnalyticsTab = ({ data }) => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Always search from page 1 so matches on later pages are not skipped.
+  useEffect(() => {
+    setUserPage(1);
+  }, [debouncedSearch, range]);
+
   // Search-as-you-type can resolve out of order; only the newest request may write state.
   const requestIdRef = useRef(0);
+
+  const handleUserSearchChange = useCallback((term) => {
+    setSearch(term);
+  }, []);
 
   const fetchAnalytics = useCallback(async () => {
     if (!folderId) return;
@@ -163,14 +161,14 @@ const EmbedAnalyticsTab = ({ data }) => {
     return [...base.slice(0, 6), ...extra, ...base.slice(6)];
   }, [summary]);
 
-  const chartData = useMemo(
+  const executionData = useMemo(
     () =>
-      requestsOverTime.map((row) => ({
-        label: formatChartTime(row.t, range),
-        success: Number(row.success) || 0,
-        failed: Number(row.failed) || 0,
+      requestsOverTime.map((item) => ({
+        time: formatChartTime(item.t),
+        success: Number(item.success) || 0,
+        failed: Number(item.failed) || 0,
       })),
-    [requestsOverTime, range]
+    [requestsOverTime]
   );
 
   // Search + pagination are resolved by the API; the server clamps the page.
@@ -178,11 +176,6 @@ const EmbedAnalyticsTab = ({ data }) => {
   const userTotal = Number(usersPagination.total) || 0;
   const userPageCount = Math.max(1, Number(usersPagination.total_pages) || 1);
   const currentUserPage = Math.min(Math.max(1, Number(usersPagination.page) || userPage), userPageCount);
-
-  const openAgentAnalytics = (bridgeId) => {
-    if (!orgId || !bridgeId) return;
-    window.open(`/org/${orgId}/agents/analytics/${bridgeId}`, "_blank", "noopener,noreferrer");
-  };
 
   if (!folderId) {
     return <div className="p-8 text-center text-base-content/60">No embed folder selected.</div>;
@@ -197,7 +190,7 @@ const EmbedAnalyticsTab = ({ data }) => {
               <BarChart3 className="h-5 w-5 text-primary" />
               Embed Analytics
             </h1>
-            <p className="text-sm text-base-content/60 mt-1">
+            <p className="text-sm text-base-content/80 mt-1">
               Usage by embed users (agent owners) and agents in this integration.
             </p>
           </div>
@@ -232,10 +225,7 @@ const EmbedAnalyticsTab = ({ data }) => {
 
         {showEmptyHint && (
           <div className="alert alert-warning text-sm">
-            <span>
-              No conversation logs found for these agents (lifetime requests: {meta.lifetime_requests ?? 0}). Open an
-              agent&apos;s Analytics tab to confirm history exists, or run the embed agents so usage is recorded.
-            </span>
+            <span>No conversation logs found for these agents (lifetime requests: {meta.lifetime_requests ?? 0}).</span>
           </div>
         )}
 
@@ -272,50 +262,78 @@ const EmbedAnalyticsTab = ({ data }) => {
           </div>
         )}
 
-        <div className="bg-base-100 border border-base-300 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={16} className="text-base-content/50" />
-            <h2 className="text-sm font-semibold">Requests over time</h2>
+        <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
+          <div className="mb-6">
+            <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
+            <p className="text-xs text-base-content/70">Success vs Failed runs over time</p>
           </div>
-          {!analytics ? (
-            <AnalyticsChartSkeleton />
-          ) : chartData.length === 0 ? (
-            <p className="text-sm text-base-content/50 text-center py-12">No requests in this range</p>
-          ) : (
-            <div className="h-56">
+          <div className="min-h-[280px] h-72">
+            {!analytics ? (
+              <AnalyticsChartSkeleton title="Execution Volume" />
+            ) : executionData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
+                <p className="text-sm text-base-content/50">No content</p>
+              </div>
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-base-300" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip />
-                  <Area
+                <LineChart data={executionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      fontSize: "12px",
+                      borderRadius: "4px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                    }}
+                  />
+                  <Line
                     type="monotone"
                     dataKey="success"
                     name="Success"
-                    fill="oklch(var(--su) / 0.2)"
-                    stroke="oklch(var(--su))"
+                    stroke="#10b981"
                     strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
                   />
-                  <Bar dataKey="failed" name="Failed" fill="oklch(var(--er))" radius={[2, 2, 0, 0]} />
-                </ComposedChart>
+                  <Line
+                    type="monotone"
+                    dataKey="failed"
+                    name="Failed"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <input
-            type="search"
+        <div className="flex items-center gap-3 flex-wrap">
+          <SearchItems
+            item="Users"
+            data={EMPTY_USERS}
+            setFilterItems={() => {}}
+            onSearchChange={handleUserSearchChange}
             placeholder="Search users..."
-            className="input input-sm input-bordered w-full max-w-sm"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setUserPage(1);
-            }}
+            containerClass="max-w-xs"
+            inputContainerClass="relative"
           />
-          <span className="text-xs text-base-content/50">
+          <span className="text-xs text-base-content/70">
             {userTotal} users · {agents.length} agents
           </span>
         </div>
@@ -323,16 +341,16 @@ const EmbedAnalyticsTab = ({ data }) => {
         {/* Users table */}
         <div className="bg-base-100 border border-base-300 rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-base-300 flex items-center gap-2">
-            <Users size={16} className="text-base-content/50" />
-            <h2 className="text-sm font-semibold">Users</h2>
-            <span className="text-xs text-base-content/50">Agent owners in this embed</span>
+            <Users size={16} className="text-base-content/70" />
+            <h2 className="text-sm font-semibold text-base-content">Users</h2>
+            <span className="text-xs text-base-content/70">Agent owners in this embed</span>
           </div>
           {loading ? (
             <div className="p-8 flex justify-center">
               <span className="loading loading-spinner loading-md" />
             </div>
           ) : users.length === 0 ? (
-            <p className="text-sm text-base-content/50 text-center py-10">
+            <p className="text-sm text-base-content/70 text-center py-10">
               {debouncedSearch
                 ? `No users match "${debouncedSearch}".`
                 : "No users yet — users appear when agents are created in this embed."}
@@ -341,7 +359,7 @@ const EmbedAnalyticsTab = ({ data }) => {
             <div className="overflow-x-auto">
               <table className="table table-sm">
                 <thead>
-                  <tr className="text-xs uppercase text-base-content/50">
+                  <tr className="text-xs uppercase text-base-content/80 font-semibold">
                     <th className="w-8" />
                     <th>User</th>
                     <th>Agents</th>
@@ -377,20 +395,23 @@ const EmbedAnalyticsTab = ({ data }) => {
                             </span>
                           </td>
                           <td>{formatTokens(user.total_tokens)}</td>
-                          <td>
-                            <span className="inline-flex items-center gap-1">
-                              <DollarSign size={12} />
-                              {formatCost(user.est_cost)}
-                            </span>
-                          </td>
+                          <td>{formatCost(user.est_cost)}</td>
                           <td>
                             {user.last_active ? (
-                              <span className="group cursor-help text-xs">
-                                <span className="group-hover:hidden">{formatRelativeTime(user.last_active)}</span>
-                                <span className="hidden group-hover:inline">{formatDate(user.last_active)}</span>
+                              <span className="group relative inline-grid cursor-help text-xs [&>span]:col-start-1 [&>span]:row-start-1 [&>span]:whitespace-nowrap">
+                                {/* Reserve width with the longer absolute date so hover swap never reflows */}
+                                <span className="invisible pointer-events-none" aria-hidden="true">
+                                  {formatDate(user.last_active)}
+                                </span>
+                                <span className="opacity-100 group-hover:opacity-0 transition-opacity duration-150">
+                                  {formatRelativeTime(user.last_active)}
+                                </span>
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                  {formatDate(user.last_active)}
+                                </span>
                               </span>
                             ) : (
-                              <span className="text-base-content/40 text-xs">-</span>
+                              <span className="text-base-content/50 text-xs">-</span>
                             )}
                           </td>
                         </tr>
@@ -398,28 +419,22 @@ const EmbedAnalyticsTab = ({ data }) => {
                           <tr className="bg-base-200/40">
                             <td colSpan={8} className="p-0">
                               <div className="px-10 py-3 space-y-1">
-                                <p className="text-[11px] uppercase tracking-wider text-base-content/40 mb-2">
+                                <p className="text-[11px] uppercase tracking-wider text-base-content/60 mb-2">
                                   Agents for this user
                                 </p>
                                 {(user.agents || []).length === 0 ? (
-                                  <p className="text-xs text-base-content/50">No agents</p>
+                                  <p className="text-xs text-base-content/70">No agents</p>
                                 ) : (
                                   (user.agents || []).map((a) => (
-                                    <button
+                                    <div
                                       key={a.bridge_id}
-                                      type="button"
-                                      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-base-100"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openAgentAnalytics(a.bridge_id);
-                                      }}
+                                      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm"
                                     >
                                       <span className="font-medium truncate">{a.name}</span>
-                                      <span className="text-xs text-base-content/50 shrink-0 flex items-center gap-2">
+                                      <span className="text-xs text-base-content/70 shrink-0">
                                         {a.total_requests} req · {formatCost(a.est_cost)}
-                                        <ExternalLink size={12} />
                                       </span>
-                                    </button>
+                                    </div>
                                   ))
                                 )}
                               </div>
