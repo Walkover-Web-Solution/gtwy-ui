@@ -5,7 +5,6 @@ import timezoneData from "@/utils/timezoneData";
 import { PencilIcon, GlobeIcon, MailIcon, BuildingIcon } from "@/components/Icons";
 import React, { useMemo, useState, useCallback, use, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import WalletCard from "@/components/wallet/WalletCard";
 
 export const runtime = "edge";
 
@@ -149,8 +148,6 @@ export default function SettingsPage({ params }) {
           )}
         </div>
       </div>
-
-      <WalletCard orgId={resolvedParams.org_id} />
     </main>
   );
 }

@@ -95,7 +95,6 @@ import {
   Upload,
   Link,
   Keyboard,
-  Wallet,
 } from "lucide-react";
 
 /**
@@ -215,7 +214,6 @@ export const BrainIcon = (props) => <BrainCircuit {...props} />;
  * Context: Organization management, workspace settings
  */
 export const BuildingIcon = (props) => <Building2 {...props} />;
-export const WalletIcon = (props) => <Wallet {...props} />;
 
 /**
  * Calendar icon showing date selector
