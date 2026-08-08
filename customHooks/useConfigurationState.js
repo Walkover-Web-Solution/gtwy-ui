@@ -36,6 +36,7 @@ export const useConfigurationState = (params, searchParams) => {
       knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
       showAdvancedParameters: state.appInfoReducer.embedUserDetails.showAdvancedParameters,
       showAdvancedConfigurations: state.appInfoReducer.embedUserDetails.showAdvancedConfigurations,
+      showFallbackModel: state.appInfoReducer.embedUserDetails.showFallbackModel,
       service: service,
       showPreTool: state.appInfoReducer.embedUserDetails.showPreTool,
       showReviewAgent: state.appInfoReducer.embedUserDetails.showReviewAgent,

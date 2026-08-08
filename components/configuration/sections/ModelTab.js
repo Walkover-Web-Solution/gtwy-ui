@@ -22,6 +22,7 @@ const ModelTab = () => {
     isEmbedUser,
     showAdvancedParameters,
     showAdvancedConfigurations,
+    showFallbackModel,
     bridgeType,
     isPublished,
     isEditor,
@@ -128,7 +129,7 @@ const ModelTab = () => {
           </div>
         )}
         {/* Fallback Model Section */}
-        {((isEmbedUser && showAdvancedConfigurations) || !isEmbedUser) && modelType !== "image" && (
+        {((isEmbedUser && showFallbackModel) || !isEmbedUser) && modelType !== "image" && (
           <div className="space-y-2">
             <FallbackModel
               params={params}

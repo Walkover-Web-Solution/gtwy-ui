@@ -60,6 +60,14 @@ export const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
+    key: "showFallbackModel",
+    type: "toggle",
+    label: "Show Fallback Model",
+    description: "Display the fallback model section",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
     key: "showPreTool",
     type: "toggle",
     label: "Show Pre Tool",
