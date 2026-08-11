@@ -527,7 +527,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     }
   }, [activeGroup, draftVariables]);
 
-  // Function to check if variables have actually changed (only prompt and variables_path variables)
+  // Function to check if variables have actually changed
   const hasVariablesChanged = useCallback(
     (currentVariables) => {
       const dbVariablesMap = new Map(
@@ -536,7 +536,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
       return currentVariables.some((current) => {
         const key = typeof current?.key === "string" ? current.key.trim() : "";
-        if (!key || (!promptKeySet.has(key) && !variablesPathKeySet.has(key))) {
+        if (!key) {
           return false;
         }
 
@@ -583,10 +583,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         pairsToProcess
           .filter((pair) => {
             const key = typeof pair?.key === "string" ? pair.key.trim() : "";
-            if (!key) {
-              return false;
-            }
-            return promptKeySet.has(key) || variablesPathKeySet.has(key);
+            return Boolean(key);
           })
           .map((pair) => {
             const key = typeof pair?.key === "string" ? pair.key.trim() : "";
