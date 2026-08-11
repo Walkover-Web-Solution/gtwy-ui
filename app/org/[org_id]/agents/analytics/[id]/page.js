@@ -109,15 +109,35 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const dispatch = useDispatch();
 
-  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading } = useCustomSelector((state) => {
-    return {
-      thread: state?.historyReducer?.thread || [],
-      analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
-      selectedVersion: state?.historyReducer?.selectedVersion || "all",
-      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
-      analyticsLoading: state?.analyticsReducer?.loading || false,
+  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading, history_page_chatbot_token } =
+    useCustomSelector((state) => {
+      return {
+        thread: state?.historyReducer?.thread || [],
+        analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
+        selectedVersion: state?.historyReducer?.selectedVersion || "all",
+        knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
+        analyticsLoading: state?.analyticsReducer?.loading || false,
+        history_page_chatbot_token: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.history_page_chatbot_token,
+      };
+    });
+
+  useEffect(() => {
+    const scriptId = "chatbot-main-script";
+    const existingScript = document.getElementById(scriptId);
+    if (existingScript) document.head.removeChild(existingScript);
+
+    const script = document.createElement("script");
+    script.setAttribute("embedToken", history_page_chatbot_token);
+    script.setAttribute("hideIcon", "true");
+    script.id = scriptId;
+    script.src = process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC_PROD;
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.getElementById(scriptId);
+      if (el) document.head.removeChild(el);
     };
-  });
+  }, []);
 
   // Derive pagination from analytics response
   const hasMore = analyticsData?.pagination?.has_more ?? false;

@@ -239,10 +239,15 @@ function Page({ params }) {
         widthClass="w-[min(480px,92vw)]"
         footer={
           <div className="flex gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={handleClosePauthKeyModal}>
+            <button
+              data-testid="pauthkey-modal-cancel-button"
+              className="btn btn-ghost btn-sm"
+              onClick={handleClosePauthKeyModal}
+            >
               Cancel
             </button>
             <button
+              data-testid="pauthkey-modal-create-button"
               className="btn btn-primary btn-sm"
               onClick={(e) => createAuthKeyHandler(e, document.getElementById("authNameInput").value)}
             >

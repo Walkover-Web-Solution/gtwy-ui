@@ -37,6 +37,15 @@ import { useDispatch, useSelector } from "react-redux";
 // ---------------------------------------------------------------------------
 const channelClientRegistry = new Map(); // Map<channelId, { client, refCount }>
 
+// model_config_updated: 1st call immediate; later same-service → 1 call after 30s
+const modelConfigPending = new Map(); // service → timerId | true (waiting for 2nd)
+
+function refreshServiceModels(dispatch, service, services) {
+  const known = services?.some((s) => s?.value === service);
+  if (!known) return dispatch(getServiceAction()).then(() => dispatch(getModelAction({ service })));
+  return dispatch(getModelAction({ service }));
+}
+
 function parseRtMessage(message) {
   return typeof message === "string" ? JSON.parse(message) : message;
 }
@@ -603,40 +612,39 @@ function useRtLayerEventHandler(channelIdentifier = "") {
 
     const globalListener = client.on("global_model_updates", (message) => {
       try {
-        // Parse the message
-        let parsedData = typeof message === "string" ? JSON.parse(message) : message;
+        const data = typeof message === "string" ? JSON.parse(message) : message;
+        if (data?.event !== "model_config_updated") return;
 
-        // Check if this is a model_config_updated event
-        if (parsedData?.event === "model_config_updated") {
-          // Refresh only the specific service that was updated
-          const serviceToRefresh = parsedData.service;
-
-          if (serviceToRefresh) {
-            dispatch(getModelAction({ service: serviceToRefresh }));
-          } else {
-            // Fallback: if no service specified, refresh all services
-            if (Array.isArray(SERVICES) && SERVICES.length > 0) {
-              SERVICES.forEach((service) => {
-                if (service?.value) {
-                  dispatch(getModelAction({ service: service.value }));
-                }
-              });
-            } else {
-              dispatch(getServiceAction());
-            }
-          }
+        const service = data.service;
+        if (!service) {
+          SERVICES?.length
+            ? SERVICES.forEach((s) => s?.value && dispatch(getModelAction({ service: s.value })))
+            : dispatch(getServiceAction());
+          return;
         }
+
+        const state = modelConfigPending.get(service);
+        if (!state) {
+          // 1st event → call now
+          refreshServiceModels(dispatch, service, SERVICES);
+          modelConfigPending.set(service, true);
+          return;
+        }
+        if (state !== true) return; // timer already running
+
+        // 2nd+ → one call after 30s, then clear
+        const timer = setTimeout(() => {
+          modelConfigPending.delete(service);
+          refreshServiceModels(dispatch, service, SERVICES);
+        }, 30_000);
+        modelConfigPending.set(service, timer);
       } catch (error) {
         console.error("Error processing model config update:", error);
       }
     });
 
-    return () => {
-      if (globalListener && typeof globalListener.remove === "function") {
-        globalListener.remove();
-      }
-    };
-  }, [client, dispatch]);
+    return () => globalListener?.remove?.();
+  }, [client, dispatch, SERVICES]);
 
   // Org channel — API key status (org_{org_id})
   useEffect(() => {
