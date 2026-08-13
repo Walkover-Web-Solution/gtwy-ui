@@ -21,6 +21,27 @@ export const uploadImage = async (formData, isVedioOrPdf) => {
   }
 };
 
+// Uploads every selected image/file in a single request. Returns one result per
+// file, aligned with the order of the files argument, each carrying either the
+// uploaded image url or an error.
+export const uploadMultipleImages = async (files) => {
+  try {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("image", file));
+    const response = await axios.post(`${PYTHON_URL}/image/processing/multi`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error("Error uploading files:", error);
+    const errorMessage =
+      error.response?.data?.message || error.response?.data?.detail?.error || error.message || "File upload failed.";
+    throw new Error(errorMessage);
+  }
+};
+
 export const optimizePromptApi = async ({
   bridge_id,
   version_id,
