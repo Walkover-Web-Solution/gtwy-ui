@@ -224,17 +224,29 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     (state) => state?.bridgeReducer?.allBridgesMap?.[params?.id]?.published_version_id
   );
 
+  const currentUserId = isEmbedUser
+    ? typeof window !== "undefined"
+      ? sessionStorage.getItem("gtwy_user_id")
+      : null
+    : useCustomSelector((state) => state?.userDetailsReducer?.userDetails?.id);
+
   const channelIdentifier = useMemo(() => {
     const isPublished = searchParams?.isPublished === "true";
 
     if (isPublished) {
       // For published version, use published version ID in channel identifier
-      return (params.org_id + "_" + params?.id + "_" + publishedVersionId).replace(/ /g, "_");
+      return (params.org_id + "_" + params?.id + "_" + publishedVersionId + "_" + (currentUserId || "")).replace(
+        / /g,
+        "_"
+      );
     } else {
       // For draft versions, include the version
-      return (params.org_id + "_" + params?.id + "_" + searchParams?.version).replace(/ /g, "_");
+      return (params.org_id + "_" + params?.id + "_" + searchParams?.version + "_" + (currentUserId || "")).replace(
+        / /g,
+        "_"
+      );
     }
-  }, [params, searchParams, publishedVersionId]);
+  }, [params, searchParams, publishedVersionId, currentUserId]);
 
   // Redux selectors for chat state
   const {

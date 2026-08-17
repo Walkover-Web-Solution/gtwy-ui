@@ -33,7 +33,13 @@ const ConfigurationPage = ({
   const [currentView, setCurrentView] = useState(viewOverride || view);
   const [promptResetKey, setPromptResetKey] = useState(0);
 
-  const channelId = params?.org_id && params?.id ? `${params.org_id}_${params.id}`.replace(/ /g, "_") : "";
+  const currentUserId = isEmbedUser
+    ? typeof window !== "undefined"
+      ? sessionStorage.getItem("gtwy_user_id")
+      : null
+    : useCustomSelector((state) => state?.userDetailsReducer?.userDetails?.id);
+  const channelId =
+    params?.org_id && params?.id ? `${params.org_id}_${params.id}_${currentUserId || ""}`.replace(/ /g, "_") : "";
   useRtLayerEventHandler(channelId);
 
   const discardPromptDraft = useCallback(() => {
