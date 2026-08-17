@@ -109,15 +109,17 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const dispatch = useDispatch();
 
-  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading } = useCustomSelector((state) => {
-    return {
-      thread: state?.historyReducer?.thread || [],
-      analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
-      selectedVersion: state?.historyReducer?.selectedVersion || "all",
-      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
-      analyticsLoading: state?.analyticsReducer?.loading || false,
-    };
-  });
+  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading, history_page_chatbot_token } =
+    useCustomSelector((state) => {
+      return {
+        thread: state?.historyReducer?.thread || [],
+        analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
+        selectedVersion: state?.historyReducer?.selectedVersion || "all",
+        knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
+        analyticsLoading: state?.analyticsReducer?.loading || false,
+        history_page_chatbot_token: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.history_page_chatbot_token,
+      };
+    });
 
   // Derive pagination from analytics response
   const hasMore = analyticsData?.pagination?.has_more ?? false;
@@ -131,6 +133,34 @@ function Page({ params, searchParams }) {
     });
     return map;
   }, [knowledgeBaseData]);
+
+  // Thread details slider reuses ThreadItem, whose "Debug Agent" action needs the
+  // chatbot embed script — loaded here the same way the history page layout does it.
+  const scriptId = "chatbot-main-script";
+  const scriptSrcProd = process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC_PROD;
+
+  useEffect(() => {
+    if (!history_page_chatbot_token) return;
+
+    const existingScript = document.getElementById(scriptId);
+    if (existingScript) {
+      document.head.removeChild(existingScript);
+    }
+
+    const script = document.createElement("script");
+    script.setAttribute("embedToken", history_page_chatbot_token);
+    script.setAttribute("hideIcon", "true");
+    script.id = scriptId;
+    script.src = scriptSrcProd;
+    document.head.appendChild(script);
+
+    return () => {
+      const script = document.getElementById(scriptId);
+      if (script) {
+        document.head.removeChild(script);
+      }
+    };
+  }, [history_page_chatbot_token]);
 
   const [searchQuery, setSearchQuery] = useState(() => search.get("keyword") || "");
   const [page, setPage] = useState(1);
