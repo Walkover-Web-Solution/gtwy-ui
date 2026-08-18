@@ -229,6 +229,147 @@ export const getGoCode = (bridgeId, isEmbedUser, prompt = "") => {
   ].join("\n");
 };
 
+// --- Official gtwy-sdk examples (Python, Node.js, Java, PHP) ---
+// These call our own SDKs (github.com/... gtwy-sdk) against the real
+// /api/v2/model/chat/completion route directly — NOT the OpenAI-compatible
+// /api/v2/model/openai shim used by the generic language tabs above.
+
+export const getGtwyPythonCode = (bridgeId, isEmbedUser, prompt = "") => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}`;
+  const authKeyLine = isEmbedUser
+    ? "    # No auth key required for embed users"
+    : `    auth_key="YOUR_GENERATED_PAUTHKEY",`;
+
+  return [
+    "# pip install gtwy-sdk",
+    "from gtwy import Gtwy",
+    "",
+    "client = Gtwy(",
+    authKeyLine,
+    `    base_url="${baseUrl}",`,
+    ")",
+    "",
+    "response = client.chat.completions.create(",
+    `    agent_id="${bridgeId}",`,
+    `    user="YOUR_USER_QUESTION",`,
+    `    thread_id="YOUR_THREAD_ID",`,
+    "    variables={",
+    buildPythonVariables(prompt),
+    "    },",
+    ")",
+    "",
+    "print(response.content)",
+  ].join("\n");
+};
+
+export const getGtwyNodeCode = (bridgeId, isEmbedUser, prompt = "") => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}`;
+  const used = extractPromptVariables(prompt);
+  const varsBlock =
+    used.length > 0
+      ? used.map((v) => `    "${v}": "YOUR_${v.toUpperCase()}_VALUE",`).join("\n")
+      : "    // No variables found in prompt";
+  const authKeyLine = isEmbedUser
+    ? "  // No auth key required for embed users"
+    : `  authKey: "YOUR_GENERATED_PAUTHKEY",`;
+
+  return [
+    "// npm install gtwy-sdk",
+    `const { Gtwy } = require("gtwy-sdk");`,
+    "",
+    "const client = new Gtwy({",
+    authKeyLine,
+    `  baseUrl: "${baseUrl}",`,
+    "});",
+    "",
+    "const response = await client.chat.completions.create({",
+    `  agentId: "${bridgeId}",`,
+    `  user: "YOUR_USER_QUESTION",`,
+    `  threadId: "YOUR_THREAD_ID",`,
+    "  variables: {",
+    varsBlock,
+    "  },",
+    "});",
+    "",
+    "console.log(response.content);",
+  ].join("\n");
+};
+
+export const getGtwyJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}`;
+  const used = extractPromptVariables(prompt);
+  const varsLines =
+    used.length > 0
+      ? used.map((v) => `                    Map.entry("${v}", "YOUR_${v.toUpperCase()}_VALUE")`).join(",\n")
+      : "                    // No variables found in prompt";
+  const authKeyLine = isEmbedUser
+    ? "            // No auth key required for embed users"
+    : `            .authKey("YOUR_GENERATED_PAUTHKEY")`;
+
+  return [
+    "// Maven: ai.gtwy:gtwy-sdk",
+    "import ai.gtwy.Gtwy;",
+    "import ai.gtwy.models.ChatCompletion;",
+    "import ai.gtwy.params.ChatCompletionParams;",
+    "import java.util.Map;",
+    "",
+    "public class Main {",
+    "    public static void main(String[] args) {",
+    "        Gtwy client = Gtwy.builder()",
+    authKeyLine,
+    `            .baseUrl("${baseUrl}")`,
+    "            .build();",
+    "",
+    "        ChatCompletion response = client.chat().completions().create(",
+    "            ChatCompletionParams.builder()",
+    `                .agentId("${bridgeId}")`,
+    `                .user("YOUR_USER_QUESTION")`,
+    `                .threadId("YOUR_THREAD_ID")`,
+    "                .variables(Map.ofEntries(",
+    varsLines,
+    "                ))",
+    "                .build());",
+    "",
+    "        System.out.println(response.getContent());",
+    "    }",
+    "}",
+  ].join("\n");
+};
+
+export const getGtwyPhpCode = (bridgeId, isEmbedUser, prompt = "") => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}`;
+  const used = extractPromptVariables(prompt);
+  const varsLines =
+    used.length > 0
+      ? used.map((v) => `        '${v}' => 'YOUR_${v.toUpperCase()}_VALUE',`).join("\n")
+      : "        // No variables found in prompt";
+  const authKeyLine = isEmbedUser
+    ? "    // No auth key required for embed users"
+    : `    authKey: "YOUR_GENERATED_PAUTHKEY",`;
+
+  return [
+    "<?php",
+    "// composer require gtwy/gtwy-sdk",
+    "require 'vendor/autoload.php';",
+    "",
+    "$client = new Gtwy\\Gtwy(",
+    authKeyLine,
+    `    baseUrl: "${baseUrl}",`,
+    ");",
+    "",
+    "$response = $client->chat->completions->create([",
+    `    'agent_id' => "${bridgeId}",`,
+    `    'user' => 'YOUR_USER_QUESTION',`,
+    `    'thread_id' => 'YOUR_THREAD_ID',`,
+    "    'variables' => [",
+    varsLines,
+    "    ],",
+    "]);",
+    "",
+    "echo $response->content;",
+  ].join("\n");
+};
+
 // Response formats
 
 export const getCurlResponseFormat = () =>

@@ -14,6 +14,7 @@ import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
 import java from "react-syntax-highlighter/dist/esm/languages/prism/java";
 import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import go from "react-syntax-highlighter/dist/esm/languages/prism/go";
+import php from "react-syntax-highlighter/dist/esm/languages/prism/php";
 import markdown from "react-syntax-highlighter/dist/esm/languages/prism/markdown";
 import sql from "react-syntax-highlighter/dist/esm/languages/prism/sql";
 
@@ -34,6 +35,7 @@ SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("csharp", csharp);
 SyntaxHighlighter.registerLanguage("cs", csharp);
 SyntaxHighlighter.registerLanguage("go", go);
+SyntaxHighlighter.registerLanguage("php", php);
 SyntaxHighlighter.registerLanguage("markdown", markdown);
 SyntaxHighlighter.registerLanguage("md", markdown);
 SyntaxHighlighter.registerLanguage("sql", sql);
@@ -151,6 +153,7 @@ function CodeBlock({ inline, className, children, showCopy = true, plain = false
     csharp: "C#",
     java: "Java",
     go: "Go",
+    php: "PHP",
   };
 
   const languageLabel = match

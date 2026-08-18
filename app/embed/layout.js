@@ -24,7 +24,13 @@ const Layout = ({ children, isEmbedUser }) => {
 
   const urlParamsObj = useMemo(() => {
     const interfaceDetailsParam = searchParams.get("interfaceDetails");
-    return interfaceDetailsParam ? JSON.parse(interfaceDetailsParam) : {};
+    if (!interfaceDetailsParam) return {};
+    try {
+      return JSON.parse(interfaceDetailsParam);
+    } catch (err) {
+      console.error("Invalid interfaceDetails JSON in embed params", err);
+      return {};
+    }
   }, [searchParams]);
 
   const { allBridges, embedThemeConfig, themeMode } = useCustomSelector((state) => ({
@@ -225,7 +231,7 @@ const Layout = ({ children, isEmbedUser }) => {
           router.push(`/org/${orgId}/agents`);
           return;
         }
-        const version = bridgeData.published_version_id || bridgeData.versions[0];
+        const version = bridgeData.published_version_id || bridgeData.versions?.[0];
         if (messageData?.historyEmbed) {
           // Persist historyEmbed flag so downstream UI hides navbar/sidebar
           dispatch(
