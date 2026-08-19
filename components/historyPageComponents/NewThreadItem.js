@@ -13,7 +13,14 @@ import MessageExecutionTrace from "../historyUi/executionTrace/MessageExecutionT
 import ToolsDataModal from "./ToolsDataModal";
 import { truncate } from "./AssistFile";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { extractErrorMessage, openModal, parseNestedJson } from "@/utils/utility";
+import {
+  allowedAttributes,
+  extractErrorMessage,
+  formatCostValue,
+  formatTokensTable,
+  openModal,
+  parseNestedJson,
+} from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
 import { flattenToolsCallData } from "@/utils/executionTraceTransform";
 import { rerunApi } from "@/config/modelApi";
@@ -129,11 +136,11 @@ const Attachments = ({ list = [] }) => {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-base-300 bg-base-100 px-2 py-1 text-xs text-primary hover:bg-base-200"
+              className="group inline-flex items-center gap-2 rounded-md border border-base-content/10 bg-[var(--pill-bg)] px-2.5 py-1.5 text-xs font-medium text-base-content/90 transition-all duration-150 hover:border-base-content/25 hover:bg-[var(--pill-bg-hover)]"
             >
-              {isDoc ? <GoogleDocIcon height={14} width={14} /> : <PdfIcon height={14} width={14} />}
-              <span className="max-w-[8rem] truncate">{truncate(url.split("/").pop() || "File", 22)}</span>
-              <ExternalLink size={11} />
+              {isDoc ? <GoogleDocIcon height={16} width={16} /> : <PdfIcon height={16} width={16} />}
+              <span className="max-w-[9rem] truncate">{truncate(url.split("/").pop() || "File", 24)}</span>
+              <ExternalLink size={12} className="shrink-0 text-base-content/50 group-hover:text-base-content/80" />
             </a>
           );
         }
@@ -142,14 +149,55 @@ const Attachments = ({ list = [] }) => {
             key={`att-${idx}`}
             type="button"
             onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-            className="overflow-hidden rounded-md border border-base-300"
+            className="group relative overflow-hidden rounded-md border border-base-content/10 transition-colors duration-150 hover:border-base-content/25"
           >
             <Image src={url} alt={`attachment ${idx + 1}`} width={72} height={72} className="h-16 w-16 object-cover" />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-150 group-hover:bg-black/30">
+              <ExternalLink
+                size={14}
+                className="text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+              />
+            </span>
           </button>
         );
       })}
     </div>
   );
+};
+
+// Highlights any substring of `content` that matches an injected variable's value.
+const renderHighlightedSystemPrompt = (content, variables = {}) => {
+  const entries = Object.entries(variables)
+    .map(([key, val]) => ({ key, value: typeof val === "object" ? JSON.stringify(val) : String(val ?? "") }))
+    .filter((e) => e.value.length > 0 && e.value.length <= 200)
+    .sort((a, b) => b.value.length - a.value.length);
+
+  if (entries.length === 0) return <span>{content}</span>;
+
+  let parts;
+  try {
+    const pattern = entries.map((e) => e.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const regex = new RegExp(`\\b(${pattern})\\b`, "g");
+    parts = content.split(regex);
+  } catch {
+    return <span>{content}</span>;
+  }
+
+  return parts.map((part, i) => {
+    const matched = entries.find((e) => e.value === part);
+    if (matched) {
+      return (
+        <span
+          key={i}
+          className="inline rounded px-1 py-0.5 font-mono bg-primary/15 text-primary border border-primary/30"
+          title={`Variable: ${matched.key}`}
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 };
 
 const TypeBadge = ({ tone, children }) => {
@@ -201,7 +249,7 @@ const EventRow = ({
           <div className="w-8 shrink-0" />
         </div>
 
-        {footer ? <div className="px-4 pb-3 flex items-center justify-between w-full">{footer}</div> : null}
+        {footer ? <div className="pl-[104px] pr-4 pb-3 flex w-full flex-col items-start gap-2">{footer}</div> : null}
       </div>
     </div>
   );
@@ -385,12 +433,29 @@ const NewThreadItem = ({
     toolsDataModalRef.current?.close();
   }, []);
 
+  const optionalDetailRows = useMemo(() => {
+    return allowedAttributes.optional
+      .filter(([key]) => key !== "tokens" && key !== "batch_data.batch_id")
+      .map(([key, label]) => {
+        const value = key === "createdAt" ? item?.created_at : item?.[key];
+        if (value === undefined || value === null || value === "") return null;
+        const display = key === "createdAt" ? new Date(value).toLocaleString() : String(value);
+        return { key, label, display };
+      })
+      .filter(Boolean);
+  }, [item]);
+
+  const tokenRows = useMemo(() => formatTokensTable(item?.tokens), [item?.tokens]);
+
   const showMessages = viewFilter === "all" || viewFilter === "messages";
   const showTools = (viewFilter === "all" || viewFilter === "tools") && toolCount > 0;
   if (!showMessages && !showTools) return null;
 
   const turnEventLabel = `${metrics.events} event${metrics.events === 1 ? "" : "s"}`;
   const turnCostLabel = formatMoney(totalCost);
+
+  const batchId = item?.batch_data?.batch_id;
+  const hasMoreDetails = optionalDetailRows.length > 0 || Boolean(batchId) || Boolean(tokenRows?.length);
 
   const userFooter = (
     <>
@@ -435,11 +500,23 @@ const NewThreadItem = ({
             Variables
           </ThreadActionPill>
         ) : null}
+        {hasMoreDetails ? (
+          <ThreadActionPill
+            trailing={ChevronRight}
+            trailingClassName={`transition-transform duration-200 ${userPanel === "more" ? "rotate-90" : ""}`}
+            active={userPanel === "more"}
+            onClick={() => setUserPanel((p) => (p === "more" ? null : "more"))}
+          >
+            More
+          </ThreadActionPill>
+        ) : null}
         <time className="ml-1 shrink-0 text-[11px] text-base-content/45">{formatDateAndTime?.(item?.created_at)}</time>
       </div>
 
       {userPanel === "prompt" && systemPrompt ? (
-        <ThreadSystemPromptPanel className="w-full">{systemPrompt}</ThreadSystemPromptPanel>
+        <ThreadSystemPromptPanel className="w-full">
+          {renderHighlightedSystemPrompt(systemPrompt, variables)}
+        </ThreadSystemPromptPanel>
       ) : null}
 
       {userPanel === "variables" && variableCount > 0 ? (
@@ -479,6 +556,75 @@ const NewThreadItem = ({
           </div>
         </ThreadInlinePanel>
       ) : null}
+
+      {userPanel === "more" && hasMoreDetails ? (
+        <ThreadInlinePanel className="w-full">
+          <div className="border-b border-base-content/10 bg-base-200/50 px-4 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-base-content/70">Optional Details</span>
+          </div>
+          {optionalDetailRows.map(({ key, label, display }) => (
+            <div
+              key={key}
+              className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
+            >
+              <span className="min-w-[120px] shrink-0 font-mono text-xs text-trace-gold">{label}</span>
+              <span className="block whitespace-pre-wrap break-all text-xs text-base-content">{display}</span>
+            </div>
+          ))}
+          {batchId ? (
+            <div className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0">
+              <span className="min-w-[120px] shrink-0 font-mono text-xs text-trace-gold">Batch ID</span>
+              <span className="block whitespace-pre-wrap break-all text-xs text-base-content">{batchId}</span>
+            </div>
+          ) : null}
+          {tokenRows?.length ? (
+            <div className="flex flex-col gap-2 px-4 py-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-trace-gold">Token and Cost</span>
+              <div className="w-full overflow-x-auto rounded-lg border border-base-content/10 bg-base-200/10 shadow-sm">
+                <table className="table table-xs w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-base-content/10 bg-base-200/50">
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-base-content/70">
+                        Type
+                      </th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-base-content/70">
+                        Tokens
+                      </th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-base-content/70">
+                        Cost ($)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-base-content/5">
+                    {tokenRows.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        className={
+                          row.isTotal
+                            ? "border-t border-base-content/15 bg-base-200/40 font-semibold"
+                            : "hover:bg-base-200/20"
+                        }
+                      >
+                        <td className="px-3 py-2 text-left text-xs font-medium text-base-content/90">{row.label}</td>
+                        <td className="px-3 py-2 text-left font-mono text-xs text-base-content/80">
+                          {row.token !== undefined && row.token !== null
+                            ? typeof row.token === "number"
+                              ? row.token.toLocaleString()
+                              : row.token
+                            : "-"}
+                        </td>
+                        <td className="px-3 py-2 text-left font-mono text-xs text-base-content/80">
+                          {formatCostValue(row.cost)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+        </ThreadInlinePanel>
+      ) : null}
     </>
   );
 
@@ -493,11 +639,6 @@ const NewThreadItem = ({
         ) : null}
         {item?.model ? <span>{item.model}</span> : null}
         {totalTokens !== null ? <span>{totalTokens} tok</span> : null}
-        {formatMoney(aiCost) ? (
-          <span className={isError ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}>
-            {formatMoney(aiCost)}
-          </span>
-        ) : null}
       </div>
 
       <div className={`mt-2 flex flex-wrap items-center gap-1.5 ${hoverActionsClass()}`}>
