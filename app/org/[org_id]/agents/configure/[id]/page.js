@@ -782,7 +782,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                         className={`flex-1 overflow-x-hidden ${isGuideVisible ? "overflow-y-hidden" : "overflow-y-auto"}`}
                       >
                         <div id="chat-container" className="h-full flex flex-col">
-                          <AgentSetupGuide
+                          {/* <AgentSetupGuide
                             id="agent-setup-guide"
                             promptTextAreaRef={promptTextAreaRef}
                             apiKeySectionRef={apiKeySectionRef}
@@ -794,7 +794,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             onSwitchToPromptTab={handleSwitchToPromptTab}
                             onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                             setApiKeyError={setApiKeyError}
-                          />
+                          /> */}
                           {!isGuideVisible && (
                             <>
                               {!sessionStorage.getItem("orchestralUser") ? (
@@ -1009,7 +1009,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
           {(!isEmbedUser || (isEmbedUser && showPlayground)) && (
             <div id="parentChatbot" className="min-h-screen">
               <div id="mobile-chat-container" className="h-full flex flex-col">
-                <AgentSetupGuide
+                {/* <AgentSetupGuide
                   id="mobile-agent-setup-guide"
                   promptTextAreaRef={promptTextAreaRef}
                   apiKeySectionRef={apiKeySectionRef}
@@ -1020,9 +1020,9 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   onSwitchToPromptTab={handleSwitchToPromptTab}
                   onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                   setApiKeyError={setApiKeyError}
-                />
+                /> */}
 
-                {!isGuideVisible && (
+                {isGuideVisible && (
                   <>
                     {!sessionStorage.getItem("orchestralUser") ? (
                       <div id="mobile-chat-content-container" className="flex-1 min-h-0">
