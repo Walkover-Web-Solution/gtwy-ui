@@ -14,7 +14,7 @@ const ConnectorsTab = ({ isPublished }) => {
       id="connectors-tab-container"
       className={`w-full relative ${shouldToolsShow ? "" : "overflow-hidden max-h-[46rem]"}`}
     >
-      {!shouldToolsShow && <UnsupportedFeatureOverlay featureName="Connectors" />}
+      {!shouldToolsShow && <UnsupportedFeatureOverlay featureName="Integrations" />}
 
       <ToolsSection isPublished={isPublished} />
     </div>

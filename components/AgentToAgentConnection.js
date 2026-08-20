@@ -432,7 +432,7 @@ function Flow({
         // Prevent deletion of master agent - show error message instead
         console.warn("Cannot delete master agent");
         // You could show a toast notification here if available
-        alert("Cannot remove the master agent. The master agent is required for the orchestral flow to function.");
+        alert("Cannot remove the master agent. The master agent is required for the orchestrator flow to function.");
         return;
       }
 
@@ -1471,7 +1471,7 @@ function Flow({
           >
             <div className="text-center">
               <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
-              <p className="text-base-content/60">Loading orchestral flow...</p>
+              <p className="text-base-content/60">Loading orchestrator flow...</p>
             </div>
           </div>
         ) : (
@@ -1563,7 +1563,7 @@ function Flow({
 
       <FunctionParameterModal
         key={selectedAgent?._id}
-        name="Orchestral Agent"
+        name="Orchestrator Agent"
         Model_Name={MODAL_TYPE.ORCHESTRAL_AGENT_PARAMETER_MODAL}
         function_details={currentVariable || {}}
         functionName={selectedAgent?.name || ""}

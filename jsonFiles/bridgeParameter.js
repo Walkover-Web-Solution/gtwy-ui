@@ -59,15 +59,15 @@ export const DIFFERNCE_DATA_DISPLAY_NAME = (key) => {
     case "prompt":
       return "Prompt";
     case "gpt_memory_context":
-      return "GPT Memory Context";
+      return "Memory Context";
     case "gpt_memory":
-      return "GPT Memory";
+      return "Memory";
     case "IsstarterQuestionEnable":
       return "Starter Question";
     case "user_reference":
-      return "Rich Text context";
+      return "Rich Content context";
     case "is_rich_text":
-      return "Rich Text";
+      return "Rich Content";
     case "actions":
       return "Actions";
     case "is_enable":

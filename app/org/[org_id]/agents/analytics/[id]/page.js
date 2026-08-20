@@ -327,7 +327,7 @@ function Page({ params, searchParams }) {
           return { v: total ? ((d.success || 0) / total) * 100 : 0 };
         }),
       },
-      "Failed Runs": {
+      "Failed Requests": {
         color: "#ef4444",
         data: requestsOverTime.map((d) => ({ v: d.failed || 0 })),
       },
@@ -768,7 +768,7 @@ function Page({ params, searchParams }) {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
                 {getStatsConfig(summary)
-                  .filter((stat) => stat.title !== "Positive" && stat.title !== "Negative")
+                  .filter((stat) => stat.title !== "Positive Feedback" && stat.title !== "Negative Feedback")
                   .map((stat, idx) => {
                     const spark = statSparklines[stat.title];
                     const hasSpark = spark && spark.data.length > 1;
@@ -980,7 +980,7 @@ function Page({ params, searchParams }) {
                     <span
                       className={`text-sm ${filterReviewFailed ? "text-base-content font-medium" : "text-base-content/70"}`}
                     >
-                      Reviewer Failures
+                      Validation Failures
                     </span>
                   </label>
 
@@ -998,7 +998,7 @@ function Page({ params, searchParams }) {
                     <span
                       className={`text-sm ${filterError ? "text-base-content font-medium" : "text-base-content/70"}`}
                     >
-                      Error History
+                      Error Logs
                     </span>
                   </label>
 
@@ -1013,7 +1013,7 @@ function Page({ params, searchParams }) {
                     }`}
                   >
                     <Filter className="w-3.5 h-3.5" />
-                    Search by Fields
+                    Advanced Filters
                     <ChevronDown
                       className={`w-3.5 h-3.5 transition-transform ${isAdvanceFilterOpen ? "rotate-180" : ""}`}
                     />
@@ -1214,8 +1214,8 @@ function Page({ params, searchParams }) {
                 <div className="">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {[
-                      { key: "thread_id", label: "Thread ID" },
-                      { key: "sub_thread_id", label: "Sub Thread ID" },
+                      { key: "thread_id", label: "Conversation ID" },
+                      { key: "sub_thread_id", label: "Sub-Thread ID" },
                       { key: "message_id", label: "Message ID" },
                       { key: "batch_id", label: "Batch ID" },
                       { key: "user", label: "User" },
@@ -1330,8 +1330,8 @@ function Page({ params, searchParams }) {
               <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
                 <div className="flex items-start justify-between gap-4 mb-5">
                   <div>
-                    <h3 className="text-[15px] font-semibold text-base-content">Execution Volume</h3>
-                    <p className="text-xs text-base-content/50 mt-0.5">Success vs Failed runs over time</p>
+                    <h3 className="text-[15px] font-semibold text-base-content">Request Volume</h3>
+                    <p className="text-xs text-base-content/50 mt-0.5">Success vs Failed requests over time</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
@@ -1353,7 +1353,7 @@ function Page({ params, searchParams }) {
                 </div>
                 <div className="flex-1 min-h-[240px]">
                   {analyticsData?.requests_over_time === undefined ? (
-                    <AnalyticsChartSkeleton title="Execution Volume" />
+                    <AnalyticsChartSkeleton title="Request Volume" />
                   ) : executionData.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center">
                       <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
@@ -1427,7 +1427,7 @@ function Page({ params, searchParams }) {
               <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
                 <div className="flex items-start justify-between gap-4 mb-5">
                   <div>
-                    <h3 className="text-[15px] font-semibold text-base-content">Average Latency</h3>
+                    <h3 className="text-[15px] font-semibold text-base-content">Average Response Time</h3>
                     <p className="text-xs text-base-content/50 mt-0.5">Agent response time (s)</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1454,7 +1454,7 @@ function Page({ params, searchParams }) {
                 </div>
                 <div className="flex-1 min-h-[240px]">
                   {analyticsData?.response_time === undefined ? (
-                    <AnalyticsChartSkeleton title="Average Latency" />
+                    <AnalyticsChartSkeleton title="Average Response Time" />
                   ) : latencyData.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center">
                       <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
@@ -1639,7 +1639,7 @@ function Page({ params, searchParams }) {
         }
         modalTitle={
           selectedItem?.value === "Latency"
-            ? "Latency Details"
+            ? "Response Time Details"
             : selectedItem?.value === "Memory"
               ? "Memory"
               : "AI Configuration"

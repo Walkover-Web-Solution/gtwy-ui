@@ -70,7 +70,7 @@ const NotesPanel = ({ isVisible, params, isEmbedUser, onClose, showCloseButton =
             id="notes-panel-close-button"
             onClick={onClose}
             className="btn btn-xs btn-error"
-            title="Close Prompt Helper"
+            title="Close Prompt Optimizer"
           >
             Close Helper
           </button>

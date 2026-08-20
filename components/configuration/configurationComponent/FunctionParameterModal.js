@@ -148,7 +148,7 @@ const ParameterCard = ({
             }}
             placeholder="Parameter name"
           />
-          {name !== "Pre Tool" && name !== "Post Tool" && (
+          {name !== "Pre Tool" && name !== "Post-Call Tool" && (
             <div className="flex items-center mr-4 gap-2">
               <label className="flex items-center gap-1 text-xs">
                 <input
@@ -331,7 +331,7 @@ const ParameterCard = ({
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          {name !== "Pre Tool" && name !== "Post Tool" && (
+          {name !== "Pre Tool" && name !== "Post-Call Tool" && (
             <select
               data-testid={`param-type-select-${currentPath}`}
               id={`param-type-select-${currentPath}`}
@@ -347,7 +347,7 @@ const ParameterCard = ({
               ))}
             </select>
           )}
-          {(name === "Pre Tool" || name === "Post Tool") && !disableValuePath && (
+          {(name === "Pre Tool" || name === "Post-Call Tool") && !disableValuePath && (
             <div className="flex flex-row items-center">
               <label className="text-xs mb-0 mr-1 whitespace-nowrap">Value Path:</label>
               <input
@@ -358,7 +358,9 @@ const ParameterCard = ({
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${
-                  (name === "Pre Tool" || name === "Post Tool") && !variablesPath[currentPath] ? "border-red-500" : ""
+                  (name === "Pre Tool" || name === "Post-Call Tool") && !variablesPath[currentPath]
+                    ? "border-red-500"
+                    : ""
                 }`}
                 value={variablesPath[currentPath] || ""}
                 onChange={(e) => {
@@ -385,7 +387,7 @@ const ParameterCard = ({
       {/* Fill with AI and Value Path Options - Moved to Top */}
 
       {/* Description */}
-      {name !== "Pre Tool" && name !== "Post Tool" && (
+      {name !== "Pre Tool" && name !== "Post-Call Tool" && (
         <div className="text-xs">
           <textarea
             data-testid={`param-description-textarea-${currentPath}`}
@@ -400,9 +402,9 @@ const ParameterCard = ({
 
       {/* Additional Options */}
       <div
-        className={`flex flex-row ${param.type !== "object" && name !== "Pre Tool" && name !== "Post Tool" ? "justify-between" : "justify-end"}`}
+        className={`flex flex-row ${param.type !== "object" && name !== "Pre Tool" && name !== "Post-Call Tool" ? "justify-between" : "justify-end"}`}
       >
-        {name !== "Pre Tool" && name !== "Post Tool" && param.type !== "object" && (
+        {name !== "Pre Tool" && name !== "Post-Call Tool" && param.type !== "object" && (
           <div className="flex items-center gap-1 text-xs mb-1">
             <input
               autoComplete="off"
@@ -447,7 +449,7 @@ const ParameterCard = ({
           </div>
         )}
         {name !== "Pre Tool" &&
-          name !== "Post Tool" &&
+          name !== "Post-Call Tool" &&
           !disableValuePath &&
           ((name === "orchestralAgent" && !isMasterAgent) || name !== "orchestralAgent") && (
             <div className="mb-1 flex flex-row ml-1 items-center justify-end">
@@ -558,7 +560,7 @@ function FunctionParameterModal({
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
   const [toolName, setToolName] = useState(
-    name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent" ? tool_name : toolData?.title
+    name === "Agent" || name === "orchestralAgent" || name === "Orchestrator Agent" ? tool_name : toolData?.title
   );
   const [isToolNameManuallyChanged, setIsToolNameManuallyChanged] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -583,7 +585,7 @@ function FunctionParameterModal({
     if (idChanged || detailsLoaded) {
       if (function_details) {
         const thread_id = function_details?.thread_id ?? false;
-        if (name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent") {
+        if (name === "Agent" || name === "orchestralAgent" || name === "Orchestrator Agent") {
           const environment = function_details?.environment;
           setToolData({ ...function_details, thread_id, environment });
         } else {
@@ -611,7 +613,7 @@ function FunctionParameterModal({
     // Only reset toolName if user hasn't manually changed it
     if (!isToolNameManuallyChanged) {
       setToolName(
-        name === "Agent" || name === "orchestralAgent" || name === "Orchestral Agent" ? tool_name : toolData?.title
+        name === "Agent" || name === "orchestralAgent" || name === "Orchestrator Agent" ? tool_name : toolData?.title
       );
     }
   }, [toolData?.title, tool_name, isToolNameManuallyChanged, name]);
@@ -621,7 +623,7 @@ function FunctionParameterModal({
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
     if (prevFunctionNameRef.current !== functionName) {
-      if (name !== "Pre Tool" && name !== "Post Tool") {
+      if (name !== "Pre Tool" && name !== "Post-Call Tool") {
         const newVariablesPath = variables_path[functionName] || {};
         setVariablesPath(newVariablesPath);
       }
@@ -1303,7 +1305,7 @@ function FunctionParameterModal({
         setIsLoading(true);
         const shouldUpdateFlowDetails =
           toolData?.description?.trim() != function_details?.description?.trim() ||
-          ((name === "Tool" || name === "Pre Tool" || name === "Post Tool") &&
+          ((name === "Tool" || name === "Pre Tool" || name === "Post-Call Tool") &&
             toolData?.title?.trim() !== toolName?.trim());
 
         if (shouldUpdateFlowDetails) {
@@ -1380,7 +1382,7 @@ function FunctionParameterModal({
       >
         <div className="flex items-center justify-between gap-3 border-b border-base-content/10 pb-3">
           <p className="text-xs text-base-content/60 leading-relaxed max-w-[70%]">
-            {name === "Pre Tool" || name === "Post Tool" ? (
+            {name === "Pre Tool" || name === "Post-Call Tool" ? (
               <>
                 Parameters define the inputs passed to this tool. Set a <strong>Value Path</strong> using a variable
                 name — the parameter will be replaced with that variable's value at runtime.
@@ -1427,7 +1429,7 @@ function FunctionParameterModal({
               <div className="flex items-center justify-between gap-1 mr-12 text-xs">
                 <div className="flex items-center gap-2">
                   <label className="label p-0 flex items-center gap-1">
-                    <span className="mr-2">Agent's Thread ID</span>
+                    <span className="mr-2">Agent's Conversation ID</span>
                     <InfoTooltip
                       id="function-param-thread-id-tooltip"
                       className="info"
@@ -1557,7 +1559,7 @@ function FunctionParameterModal({
                     {/* Name Field */}
                     <div>
                       <label className="block text-xs font-medium mb-1">Name</label>
-                      {name === "Orchestral Agent" || name === "Agent" ? (
+                      {name === "Orchestrator Agent" || name === "Agent" ? (
                         <input
                           autoComplete="off"
                           id="function-param-agent-name-input"

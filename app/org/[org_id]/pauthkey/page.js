@@ -161,7 +161,7 @@ function Page({ params }) {
           <TutorialSuggestionToast
             setTutorialState={setTutorialState}
             flagKey="PauthKey"
-            TutorialDetails="Pauth Key Setup"
+            TutorialDetails="GTWY API Key Setup"
           />
         )}
         {tutorialState?.showTutorial && (

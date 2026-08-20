@@ -661,7 +661,7 @@ const Sidebar = memo(
                         </p>
 
                         <div className="flex items-center justify-center gap-2">
-                          <span className="text-xs">Show Error Chat History</span>
+                          <span className="text-xs">Show Error Logs</span>
                           <input
                             autoComplete="off"
                             data-testid="history-sidebar-error-toggle"
@@ -677,7 +677,7 @@ const Sidebar = memo(
                       <div
                         className={`p-2 w-full min-w-0 ${isAnalytics ? "bg-[#F8FAFC] dark:bg-base-100" : "bg-base-100"}`}
                       >
-                        <p className="text-center mb-2 text-xs font-medium">Search by Fields</p>
+                        <p className="text-center mb-2 text-xs font-medium">Advanced Filters</p>
                         <p className="text-xs text-base-content/60 mb-2">
                           Fill in values for fields you want to search. Leave empty to skip that field.
                         </p>

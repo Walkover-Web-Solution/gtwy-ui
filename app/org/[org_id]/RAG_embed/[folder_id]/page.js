@@ -89,7 +89,7 @@ const RAGEmbedDetailPage = ({ params }) => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <span className="loading loading-spinner loading-lg text-primary"></span>
-          <p className="mt-4 text-base-content/70">Loading RAG embed...</p>
+          <p className="mt-4 text-base-content/70">Loading embeddable knowledge base...</p>
         </div>
       </div>
     );

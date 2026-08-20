@@ -47,7 +47,7 @@ function ToolCallCount({ params, searchParams, isPublished, isEditor = true }) {
   return (
     <div className="flex flex-col gap-3 w-full">
       <div className="flex items-center gap-1">
-        <span className="label-text font-medium">Maximum Function Call Limit</span>
+        <span className="label-text font-medium">Parallel Tool Call Limit</span>
         <InfoTooltip
           tooltipContent={
             "This feature sets a limit on function calls. By default, functions are called one at a time, but with 'Parallel Tools' enabled, multiple functions can be called simultaneously within a single function call."

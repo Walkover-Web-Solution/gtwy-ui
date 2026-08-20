@@ -57,7 +57,7 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
       {
         _id: post_tool_id,
         ...fn,
-        title: fn?.title || "Post Tool",
+        title: fn?.title || "Post-Call Tool",
       },
     ];
   }, [post_tool_id, function_data]);
@@ -168,7 +168,7 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
       <div data-testid="post-embed-list-container" id="post-embed-list-container">
         <FunctionParameterModal
           isPublished={isReadOnly}
-          name="Post Tool"
+          name="Post-Call Tool"
           functionId={postFunctionId}
           Model_Name={MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL}
           embedToken={embedToken}
@@ -186,8 +186,8 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
           item={postFunctionId}
           name={postFunctionName}
           title="Are you sure?"
-          description={"This action Remove the selected Post Tool from the Agent."}
-          buttonTitle="Remove Post Tool"
+          description={"This action Remove the selected Post-Call Tool from the Agent."}
+          buttonTitle="Remove Post-Call Tool"
           modalType={MODAL_TYPE.DELETE_POST_TOOL_MODAL}
           loading={isDeleting}
           isAsync={true}
@@ -203,9 +203,9 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
               id="post-embed-header-wrapper"
               className="flex items-center gap-2 group"
             >
-              <InfoTooltip tooltipContent="A post tool processes or transforms the AI response after the model call is complete.">
+              <InfoTooltip tooltipContent="A post-call tool processes or transforms the AI response after the model call is complete.">
                 <div className="flex items-center cursor-help">
-                  <p className="text-sm font-medium text-base-content whitespace-nowrap">Post Tool</p>
+                  <p className="text-sm font-medium text-base-content whitespace-nowrap">Post-Call Tool</p>
                 </div>
               </InfoTooltip>
             </div>

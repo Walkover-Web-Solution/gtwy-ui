@@ -261,7 +261,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     <Modal
       MODAL_ID={MODAL_TYPE.ADD_TEST_CASE_MODAL}
       onClose={handleClose}
-      title="Add Test Case"
+      title="Add Evaluation"
       icon={<FlaskConical size={16} className="text-trace-gold" />}
       widthClass="w-[min(1152px,92vw)]"
       footer={footerContent}
@@ -270,7 +270,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         <div className="space-y-4">
           {/* Test Case Name Section */}
           <div className="space-y-2 bg-base-50 rounded-lg p-4 border border-base-200">
-            <label className="text-sm font-semibold text-base-content">Test Case Name</label>
+            <label className="text-sm font-semibold text-base-content">Evaluation Name</label>
             <input
               data-testid="add-testcase-name-input"
               id="add-testcase-name-input"
@@ -450,14 +450,16 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
           data-testid="add-testcase-bottom-panel"
         >
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase text-base-content tracking-wide">User Expected Output</div>
+            <div className="text-xs font-semibold uppercase text-base-content tracking-wide">
+              User Expected Response
+            </div>
             <div className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2">
               <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                 <AutoResizeTextarea
                   data-testid="add-testcase-expected-output-textarea"
                   value={expectedOutputText}
                   onChange={(e) => setExpectedOutputText(e.target.value)}
-                  placeholder="Enter the expected output..."
+                  placeholder="Enter the expected response..."
                   className="w-full bg-base-100 rounded p-3 text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-0"
                   rows={3}
                 />

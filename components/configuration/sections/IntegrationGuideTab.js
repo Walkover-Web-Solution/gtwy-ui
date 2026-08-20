@@ -52,7 +52,7 @@ const IntegrationGuideTab = ({ isPublished }) => {
       : // If it's API or batch, show both API and Batch API tabs
         [
           { id: "api", label: "API" },
-          { id: "batch", label: "Batch API" },
+          { id: "batch", label: "Batch Processing" },
         ];
 
   // Render tab content based on active tab (from IntegrationGuideSlider logic)
@@ -130,9 +130,9 @@ const IntegrationGuideTab = ({ isPublished }) => {
           <div className="alert alert-warning border border-warning/30 bg-warning/10">
             <Info className="h-5 w-5 text-warning flex-shrink-0 " />
             <div>
-              <p className="font-medium text-base-content">Batch API Limitations</p>
+              <p className="font-medium text-base-content">Batch Processing Limitations</p>
               <p className="text-sm text-base-content/80">
-                Tools call, Agent call and Knowledge base call are not supported when using the Batch API.
+                Tools call, Agent call and Knowledge base call are not supported when using Batch Processing.
               </p>
             </div>
           </div>

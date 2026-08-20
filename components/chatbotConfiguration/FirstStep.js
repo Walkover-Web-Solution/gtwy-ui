@@ -84,7 +84,7 @@ export default function PrivateFormSection({ params, ChooseChatbot, setChatBotId
       <CodeBlock className="language-json">{chatbotPayload}</CodeBlock>
       <div className="flex flex-col gap-2">
         {showInput ? (
-          <InputWithCopyButton label="Access Key" placeholder="Access Key" value={accessKey} />
+          <InputWithCopyButton label="Embed Signing Key" placeholder="Embed Signing Key" value={accessKey} />
         ) : (
           <button
             data-testid="first-step-show-access-key"
@@ -92,7 +92,7 @@ export default function PrivateFormSection({ params, ChooseChatbot, setChatBotId
             className="btn btn-primary w-fit btn-sm"
             onClick={handleGetAccessKey}
           >
-            Show Access Key
+            Show Embed Signing Key
           </button>
         )}
       </div>

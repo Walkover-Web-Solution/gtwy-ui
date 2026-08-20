@@ -496,15 +496,15 @@ const InputConfigComponent = memo(
                             }}
                             title={
                               promptState.activeHelperField === field.name && uiState.isPromptHelperOpen
-                                ? `Close Prompt Helper`
-                                : `Open Prompt Helper for ${field.displayValue || field.name}`
+                                ? `Close Prompt Optimizer`
+                                : `Open Prompt Optimizer for ${field.displayValue || field.name}`
                             }
                           >
                             <BrainIcon size={12} />
                             <span>
                               {promptState.activeHelperField === field.name && uiState.isPromptHelperOpen
                                 ? "Close Helper"
-                                : "Prompt Helper"}
+                                : "Prompt Optimizer"}
                             </span>
                           </button>
                         )}

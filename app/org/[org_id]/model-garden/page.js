@@ -125,7 +125,7 @@ const ModelGardenPage = ({ params }) => {
       { label: "Input Cost", value: selectedModel.inputCost },
       { label: "Output Cost", value: selectedModel.outputCost },
       { label: "Min Tokens", value: selectedModel.minTokens?.toLocaleString?.() || selectedModel.minTokens },
-      { label: "Max Tokens", value: selectedModel.maxTokens?.toLocaleString?.() || selectedModel.maxTokens },
+      { label: "Maximum Output Tokens", value: selectedModel.maxTokens?.toLocaleString?.() || selectedModel.maxTokens },
       { label: "Knowledge Cutoff", value: selectedModel.knowledgeCutoff },
       {
         label: "Vision (Support Images)",

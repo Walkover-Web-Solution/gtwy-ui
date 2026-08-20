@@ -39,7 +39,7 @@ const CONFIG_SCHEMA = [
   {
     key: "showHistory",
     type: "toggle",
-    label: "Show History",
+    label: "Show Conversation Logs",
     description: "Display conversation history",
     defaultValue: false,
     section: "Interface Options",
@@ -95,7 +95,7 @@ const CONFIG_SCHEMA = [
   {
     key: "showPromptHelper",
     type: "toggle",
-    label: "Show Prompt Helper",
+    label: "Show Prompt Optimizer",
     description: "Show prompt helper button",
     defaultValue: true,
     section: "Interface Options",
@@ -135,7 +135,7 @@ const CONFIG_SCHEMA = [
   {
     key: "showTestcases",
     type: "toggle",
-    label: "Show Test Cases",
+    label: "Show Evaluations",
     description: "Display test cases tab in the embedded interface",
     defaultValue: false,
     section: "Interface Options",
@@ -226,7 +226,7 @@ const CONFIG_SCHEMA = [
     key: "showMcp",
     type: "toggle",
     label: "Show MCP Servers",
-    description: "Display MCP server configuration in the Connectors tab",
+    description: "Display MCP server configuration in the Integrations tab",
     defaultValue: false,
     section: "Interface Options",
   },
@@ -1011,10 +1011,10 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                   : {},
               }}
               onConfigChange={handlePostToolConfigChange}
-              title="Post-Tool Configuration"
+              title="Post-Call Tool Configuration"
               modalType={MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL}
             />
-            <p className="text-xs text-warning mt-1">⚠️ Post-Tool won't run when streaming is enabled.</p>
+            <p className="text-xs text-warning mt-1">⚠️ Post-Call Tool won't run when streaming is enabled.</p>
 
             {/* Theme Palette Section */}
             <div className="border-t border-base-300 pt-3 mt-3">

@@ -403,7 +403,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                             />
                           </label>
                           <label className="label cursor-pointer gap-2 py-0 items-center">
-                            <span className="label-text text-sm">Prompt Helper</span>
+                            <span className="label-text text-sm">Prompt Optimizer</span>
                             <input
                               type="checkbox"
                               className="checkbox checkbox-sm"

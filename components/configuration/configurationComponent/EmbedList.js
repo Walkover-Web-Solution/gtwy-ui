@@ -294,10 +294,10 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
         <DeleteModal
           onConfirm={handleDeletePrebuiltTool}
           item={selectedPrebuiltTool}
-          name={"Prebuilt Tool"}
+          name={"Built-in Tool"}
           title="Are you sure?"
-          description={"This action Remove the selected Prebuilt Tool from the Agent."}
-          buttonTitle="Remove Prebuilt Tool"
+          description={"This action Remove the selected Built-in Tool from the Agent."}
+          buttonTitle="Remove Built-in Tool"
           modalType={MODAL_TYPE.DELETE_PREBUILT_TOOL_MODAL}
           loading={isDeletingPrebuiltTool}
           isAsync={true}
@@ -324,7 +324,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                 <p className="text-sm whitespace-nowrap">Tools</p>
                 <InfoTooltip
                   video={getFunctionCreationVideo()}
-                  tooltipContent="Tool calling lets LLMs use external tools to get real-time data and perform complex tasks."
+                  tooltipContent="Function calling lets LLMs use external tools to get real-time data and perform complex tasks."
                 >
                   <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
                 </InfoTooltip>

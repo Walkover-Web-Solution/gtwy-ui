@@ -72,11 +72,11 @@ const Page = ({ params }) => {
         <MainLayout>
           <div className="flex flex-col sm:flex-row">
             <PageHeader
-              title="RAG Embed Integration"
+              title="Embeddable Knowledge Base Integration"
               docLink={linksData?.find((link) => link.title === "RAG as Embed")?.blog_link}
               description={
                 descriptions?.["RAG Embed"] ||
-                "Embedded RAG allows you to seamlessly integrate the full RAG AI interface directly into any product or website."
+                "Embedded knowledge bases let you seamlessly integrate the full RAG AI interface directly into any product or website."
               }
             />
           </div>
@@ -86,11 +86,15 @@ const Page = ({ params }) => {
         <div className="w-full">
           <div className="flex flex-row gap-4">
             {ragEmbedIntegrations?.length > 5 && (
-              <SearchItems data={ragEmbedIntegrations} setFilterItems={setFilterIntegration} item="RAG Embed" />
+              <SearchItems
+                data={ragEmbedIntegrations}
+                setFilterItems={setFilterIntegration}
+                item="Embeddable Knowledge Base"
+              />
             )}
             <div className={`flex-shrink-0 ${ragEmbedIntegrations?.length > 5 ? "mr-2" : "ml-2"}`}>
               <button className="btn btn-primary btn-sm mr-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
-                + Create New RAG Embed
+                + Create New Embeddable Knowledge Base
               </button>
             </div>
           </div>
@@ -111,7 +115,7 @@ const Page = ({ params }) => {
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No RAG Embed entries found</p>
+          <p className="text-gray-500 text-lg">No Embeddable Knowledge Base entries found</p>
         </div>
       )}
 

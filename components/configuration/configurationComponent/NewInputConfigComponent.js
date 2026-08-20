@@ -100,11 +100,11 @@ const NewInputConfigComponent = ({ params }) => {
                 openModal(MODAL_TYPE?.PROMPT_SUMMARY);
               }}
             >
-              <span>Prompt Summary</span>
+              <span>Request Intent Summary</span>
             </button>
             <div
               className="tooltip tooltip-right"
-              data-tip={"Prompt summary is only for the agent not for the Versions"}
+              data-tip={"Request intent summary is only for the agent not for the Versions"}
             >
               <Info size={12} className="ml-2" />
             </div>
@@ -177,7 +177,7 @@ const NewInputConfigComponent = ({ params }) => {
           />
           <div className="collapse-title min-h-[0.75rem] text-xs font-medium flex items-center gap-1 p-2">
             <div className="flex items-center gap-2">
-              <span className="text-nowrap">Default Variables</span>
+              <span className="text-nowrap">Default Prompt Variables</span>
               <p role="alert" className="label-text-alt alert p-2">
                 <Info size={16} className="" />
                 Use these variables in prompt to get their functionality

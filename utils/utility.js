@@ -424,7 +424,7 @@ export function closeModal(modalName) {
 }
 
 export const allowedAttributes = {
-  important: [["latency", "Latency"]],
+  important: [["latency", "Response Time"]],
   optional: [
     ["message_id", "Message ID"],
     ["tokens", "Tokens"],

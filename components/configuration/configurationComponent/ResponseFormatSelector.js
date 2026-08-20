@@ -120,7 +120,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
   return (
     <div>
       <div className="flex items-center gap-2">
-        <span className="label-text">Select Response Format</span>
+        <span className="label-text">Select Output Format</span>
         <InfoTooltip tooltipContent="Choose the format in which you want to receive responses from your agent. The 'Default' option will use the standard response format, while the 'Custom' option allows you to specify a webhook URL and headers for more control over how responses are delivered.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>

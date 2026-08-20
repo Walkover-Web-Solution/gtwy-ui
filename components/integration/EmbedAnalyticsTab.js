@@ -131,9 +131,9 @@ const EmbedAnalyticsTab = ({ data }) => {
   const stats = useMemo(() => {
     const base = getStatsConfig(summary)
       // Feedback counts are agent-level; not shown in embed analytics.
-      .filter((stat) => stat.title !== "Positive" && stat.title !== "Negative")
+      .filter((stat) => stat.title !== "Positive Feedback" && stat.title !== "Negative Feedback")
       .map((stat) => {
-        if (stat.title === "Est. Cost") {
+        if (stat.title === "Estimated Cost") {
           return { ...stat, value: formatCost(summary?.est_cost) };
         }
         return stat;
@@ -264,12 +264,12 @@ const EmbedAnalyticsTab = ({ data }) => {
 
         <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
           <div className="mb-6">
-            <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
-            <p className="text-xs text-base-content/70">Success vs Failed runs over time</p>
+            <h3 className="text-base font-semibold text-base-content">Request Volume</h3>
+            <p className="text-xs text-base-content/70">Success vs Failed requests over time</p>
           </div>
           <div className="min-h-[280px] h-72">
             {!analytics ? (
-              <AnalyticsChartSkeleton title="Execution Volume" />
+              <AnalyticsChartSkeleton title="Request Volume" />
             ) : executionData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />

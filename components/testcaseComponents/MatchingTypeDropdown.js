@@ -62,9 +62,9 @@ const MatchingTypeDropdown = ({
             </div>
 
             {[
-              { id: "AI", label: "AI", description: "LLM judges how well the response matches." },
-              { id: "Exact", label: "Exact", description: "Strict character-by-character match." },
-              { id: "Cosine", label: "Cosine", description: "Semantic similarity via embeddings (0–1)." },
+              { id: "AI", label: "AI Evaluation", description: "LLM judges how well the response matches." },
+              { id: "Exact", label: "Exact Match", description: "Strict character-by-character match." },
+              { id: "Cosine", label: "Semantic Similarity", description: "Semantic similarity via embeddings (0–1)." },
             ].map((opt) => {
               const isActive = matchingType === opt.id;
               return (

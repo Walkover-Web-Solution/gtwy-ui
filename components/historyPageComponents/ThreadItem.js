@@ -455,7 +455,7 @@ const ThreadItem = ({
     const jsonString = JSON.stringify(item?.variables || {}, null, 2);
     navigator.clipboard.writeText(jsonString);
     setCopiedAllVariables(true);
-    toast.success("Variables copied to clipboard");
+    toast.success("Prompt variables copied to clipboard");
     setTimeout(() => {
       setCopiedAllVariables(false);
     }, 2000);
@@ -1194,7 +1194,7 @@ const ThreadItem = ({
     return (
       <ThreadInlinePanel className={panelClassName}>
         <div className="px-4 py-2 border-b border-base-content/10 bg-base-200/50 flex justify-between items-center select-none">
-          <span className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">Variables</span>
+          <span className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">Prompt Variables</span>
           <button
             onClick={handleCopyAllVariables}
             className="btn btn-xs btn-ghost gap-1.5 text-xs text-base-content/70 hover:text-base-content flex items-center"
@@ -1424,7 +1424,7 @@ const ThreadItem = ({
             trailing={ChevronRight}
             onClick={() => handleAddTestCase(item, index)}
           >
-            Test Case
+            Evaluation
           </ThreadActionPill>
         )}
         <ThreadActionPill
@@ -1506,7 +1506,7 @@ const ThreadItem = ({
             trailing={Maximize2}
             onClick={() => handleUserButtonClick("Latency")}
           >
-            Latency
+            Response Time
           </ThreadActionPill>
         ) : null}
         {(() => {
@@ -1551,7 +1551,7 @@ const ThreadItem = ({
               });
             }}
           >
-            Variables
+            Prompt Variables
           </ThreadActionPill>
         ) : null}
         <ThreadActionPill

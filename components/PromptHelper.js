@@ -325,7 +325,7 @@ const PromptHelper = ({
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-base-300 bg-base-50">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-base-content">Prompt Helper</h3>
+          <h3 className="text-base font-semibold text-base-content">Prompt Optimizer</h3>
         </div>
 
         {showCloseButton && (
@@ -334,7 +334,7 @@ const PromptHelper = ({
             id="prompt-helper-close-button"
             onClick={onClose}
             className="btn btn-xs btn-error"
-            title="Close Prompt Helper"
+            title="Close Prompt Optimizer"
           >
             Close Helper
           </button>

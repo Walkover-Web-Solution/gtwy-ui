@@ -42,7 +42,7 @@ const NonImageModelConfig = memo(() => {
         content: <PromptTab isPublished={isPublished} isEmbedUser={isEmbedUser} />,
       },
       { id: "model", label: "Model", icon: BotIcon, content: <ModelTab isPublished={isPublished} /> },
-      { id: "connectors", label: "Connectors", icon: LinkIcon, content: <ConnectorsTab isPublished={isPublished} /> },
+      { id: "connectors", label: "Integrations", icon: LinkIcon, content: <ConnectorsTab isPublished={isPublished} /> },
       { id: "memory", label: "Memory", icon: BrainIcon, content: <MemoryTab isPublished={isPublished} /> },
       { id: "settings", label: "Settings", icon: SettingsIcon, content: <SettingsTab isPublished={isPublished} /> },
     ];

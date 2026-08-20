@@ -33,7 +33,7 @@ const PARAM_DATA = [
   ["agent_id", "string", "The unique ID of the agent to process the request.", "true"],
   ["thread_id", "string", "The ID to maintain conversation context across messages.", "false"],
   ["response_type", "string", 'Specifies the format of the response: "text", "json".', "false"],
-  ["variables", "object", "A key-value map of dynamic variables used in the agent's prompt.", "false"],
+  ["variables", "object", "A key-value map of prompt variables used in the agent's prompt.", "false"],
 ];
 
 const Section = ({ title, caption }) => (
@@ -164,7 +164,7 @@ const ApiGuide = ({ params, modelType, isEmbedUser, prompt = "" }) => {
           id="api-guide-response-section"
           className="flex flex-col gap-4 p-4"
         >
-          <Section title="Response Format" />
+          <Section title="Output Format" />
           <CodeSnippet
             key={`response-${selectedLang}`}
             code={responseFmt}

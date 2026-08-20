@@ -91,8 +91,8 @@ const SettingsTab = () => {
                 className="border border-base-200 p-3 flex items-center justify-between gap-4"
               >
                 <div>
-                  <p className="text-sm font-medium text-base-content">Connected Agent Flow</p>
-                  <p className="text-xs text-base-content/60">Switch to orchestral flow builder.</p>
+                  <p className="text-sm font-medium text-base-content">Agent Workflow</p>
+                  <p className="text-xs text-base-content/60">Switch to orchestrator flow builder.</p>
                 </div>
                 <label className="label cursor-pointer gap-2">
                   <span className="text-xs font-semibold">{currentView === "agent-flow" ? "On" : "Off"}</span>

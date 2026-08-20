@@ -267,7 +267,7 @@ export const TUTORIALS = [
     icon: BotIcon,
   },
   {
-    title: "Pauth Key Setup",
+    title: "GTWY API Key Setup",
     description: "Configure authentication keys for secure access",
     videoUrl: null, // Will be populated dynamically from Redux
     icon: KeyIcon,
@@ -279,7 +279,7 @@ export const TUTORIALS = [
     icon: WrenchIcon,
   },
   {
-    title: "Variable Management",
+    title: "Prompt Variable Management",
     description: "Add and manage variables in your environment",
     videoUrl: null, // Will be populated dynamically from Redux
     icon: SettingsIcon,
@@ -297,8 +297,8 @@ export const TUTORIALS = [
     icon: BookIcon,
   },
   {
-    title: "TestCases Creation",
-    description: "Set up TestCase",
+    title: "Evaluations Creation",
+    description: "Set up Evaluations",
     videoUrl: "https://app.supademo.com/embed/cmav1ocfu4thnho3rijvpzlrq?embed_v=2",
     icon: TestTubeDiagonalIcon,
   },
@@ -433,7 +433,7 @@ export const getStatsConfig = (summary) => {
       bg: "bg-emerald-500/10",
     },
     {
-      title: "Failed Runs",
+      title: "Failed Requests",
       value: summary?.failed_runs ?? 0,
       change: "",
       trend: "down",
@@ -451,7 +451,7 @@ export const getStatsConfig = (summary) => {
       bg: "bg-emerald-500/10",
     },
     {
-      title: "Est. Cost",
+      title: "Estimated Cost",
       value: summary?.est_cost != null ? `$${summary.est_cost.toFixed(2)}` : "$0.00",
       change: "",
       trend: "up",
@@ -460,7 +460,7 @@ export const getStatsConfig = (summary) => {
       bg: "bg-red-500/10",
     },
     {
-      title: "Positive",
+      title: "Positive Feedback",
       value: summary?.positive_feedback ?? 0,
       change: "",
       trend: "up",
@@ -469,7 +469,7 @@ export const getStatsConfig = (summary) => {
       bg: "bg-emerald-500/10",
     },
     {
-      title: "Negative",
+      title: "Negative Feedback",
       value: summary?.negative_feedback ?? 0,
       change: "",
       trend: "down",

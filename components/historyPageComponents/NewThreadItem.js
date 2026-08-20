@@ -291,7 +291,7 @@ const NewThreadItem = ({
   const handleCopyVariables = useCallback(() => {
     navigator.clipboard.writeText(JSON.stringify(variables, null, 2));
     setCopiedVariables(true);
-    toast.success("Variables copied to clipboard");
+    toast.success("Prompt variables copied to clipboard");
     setTimeout(() => setCopiedVariables(false), 2000);
   }, [variables]);
 
@@ -412,7 +412,7 @@ const NewThreadItem = ({
         ) : null}
         {item?.latency ? (
           <ThreadActionPill icon={Clock3} trailing={Maximize2} onClick={() => handleUserButtonClick("Latency")}>
-            Latency
+            Response Time
           </ThreadActionPill>
         ) : null}
         {systemPrompt ? (
@@ -432,7 +432,7 @@ const NewThreadItem = ({
             active={userPanel === "variables"}
             onClick={() => setUserPanel((p) => (p === "variables" ? null : "variables"))}
           >
-            Variables
+            Prompt Variables
           </ThreadActionPill>
         ) : null}
         <time className="ml-1 shrink-0 text-[11px] text-base-content/45">{formatDateAndTime?.(item?.created_at)}</time>
@@ -445,7 +445,7 @@ const NewThreadItem = ({
       {userPanel === "variables" && variableCount > 0 ? (
         <ThreadInlinePanel className="w-full">
           <div className="flex items-center justify-between border-b border-base-content/10 bg-base-200/50 px-4 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-base-content/70">Variables</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-base-content/70">Prompt Variables</span>
             <button type="button" onClick={handleCopyVariables} className="btn btn-ghost btn-xs gap-1.5 text-xs">
               {copiedVariables ? (
                 <>
@@ -514,7 +514,7 @@ const NewThreadItem = ({
         </ThreadActionPill>
         {!isError && !item?.llm_urls?.length ? (
           <ThreadActionPill icon={AddIcon} trailing={ChevronRight} onClick={() => handleAddTestCase(item, index)}>
-            Test Case
+            Evaluation
           </ThreadActionPill>
         ) : null}
         <ThreadActionPill icon={BotMessageIcon} trailing={ChevronRight} onClick={handleAskAi}>

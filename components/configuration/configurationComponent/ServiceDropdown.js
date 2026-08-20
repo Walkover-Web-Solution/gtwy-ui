@@ -286,7 +286,10 @@ const ServiceDropdown = ({
       <div id="service-dropdown-form-control" className="form-control">
         <div id="service-dropdown-wrapper" className="flex items-center gap-2 z-auto">
           {isDisabled && (
-            <InfoTooltip id="service-dropdown-batch-warning" tooltipContent="Batch API is only applicable for OpenAI">
+            <InfoTooltip
+              id="service-dropdown-batch-warning"
+              tooltipContent="Batch Processing is only applicable for OpenAI"
+            >
               <AlertIcon id="service-dropdown-alert-icon" size={16} className="text-warning" />
             </InfoTooltip>
           )}

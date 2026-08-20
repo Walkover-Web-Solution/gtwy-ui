@@ -76,7 +76,7 @@ const PromptHeader = memo(
                 handleCloseTextAreaFocus();
                 setIsTextareaFocused(false);
               }}
-              title="Close Prompt Helper"
+              title="Close Prompt Optimizer"
             >
               <X size={12} />
               Close Helper
@@ -138,10 +138,10 @@ const PromptHeader = memo(
                 e.preventDefault();
                 onOpenPromptHelper();
               }}
-              title={isPublished ? "Cannot use Prompt Helper in published mode" : "Open AI Prompt Helper"}
+              title={isPublished ? "Cannot use Prompt Optimizer in published mode" : "Open AI Prompt Optimizer"}
             >
               <Sparkles size={12} />
-              Prompt Helper
+              Prompt Optimizer
             </button>
           )}
 

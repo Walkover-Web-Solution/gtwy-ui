@@ -437,7 +437,7 @@ function TestCases({ params }) {
         })
       );
     } catch (error) {
-      toast.error("Error running test cases");
+      toast.error("Error running evaluations");
       console.error("Error running all test cases:", error);
     }
   };
@@ -596,7 +596,7 @@ function TestCases({ params }) {
       setHasMore(false);
     } catch (error) {
       console.error("Error deleting all test cases:", error);
-      toast.error("Failed to delete all test cases");
+      toast.error("Failed to delete all evaluations");
     } finally {
       setIsBulkDeleting(false);
       setIsReloadingAfterDelete(false);
@@ -702,8 +702,8 @@ function TestCases({ params }) {
     <div data-testid="testcase-page" className="bg-base-50 h-full flex flex-col overflow-hidden">
       <div className="px-6 pt-4" data-testid="testcase-page-header">
         <PageHeader
-          title="Test Cases"
-          description="Test cases are used to compare outputs from different versions with varying prompts and models. You can add test cases from chat history and choose a comparison type - Exact, AI, or Cosine to measure accuracy."
+          title="Evaluations"
+          description="Evaluations compare outputs from different versions with varying prompts and models. You can add evaluation cases from chat history and choose a comparison type — Exact Match, AI Evaluation, or Semantic Similarity — to measure accuracy."
           docLink="https://gtwy.ai/blogs/features/testcases"
         />
       </div>
@@ -712,7 +712,7 @@ function TestCases({ params }) {
         <TutorialSuggestionToast
           setTutorialState={setTutorialState}
           flagKey={"TestCasesSetup"}
-          TutorialDetails={"TestCases Creation"}
+          TutorialDetails={"Evaluations Creation"}
         />
       )}
 
@@ -931,7 +931,7 @@ function TestCases({ params }) {
                       Deleting...
                     </>
                   ) : (
-                    "Delete All TestCases"
+                    "Delete All Evaluations"
                   )}
                 </button>
               </>
@@ -948,9 +948,9 @@ function TestCases({ params }) {
             <div className="w-16 h-16 rounded-full bg-base-200 flex items-center justify-center mb-4">
               <FileText size={28} className="text-base-content/50" />
             </div>
-            <h3 className="text-lg font-semibold text-base-content mb-2">No test cases present</h3>
+            <h3 className="text-lg font-semibold text-base-content mb-2">No evaluations present</h3>
             <p className="text-sm text-base-content/60 mb-4">
-              Add test cases from chat history to compare outputs across different versions and prompts.
+              Add evaluations from chat history to compare evaluations across different versions and prompts.
             </p>
             <button
               data-testid="testcase-empty-state-generate-button"
@@ -966,7 +966,7 @@ function TestCases({ params }) {
               }}
               className="flex items-center gap-2 bg-primary text-primary-content rounded-lg px-4 py-2 text-sm font-bold cursor-pointer hover:bg-primary/90 transition-colors"
             >
-              Generate Test Cases
+              Generate Evaluations
             </button>
           </div>
         </div>
@@ -994,7 +994,7 @@ function TestCases({ params }) {
                   <input
                     data-testid="testcase-search-input"
                     type="text"
-                    placeholder="Search test cases..."
+                    placeholder="Search evaluations..."
                     value={searchKeyword}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     className="input input-sm input-bordered w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
@@ -1078,7 +1078,7 @@ function TestCases({ params }) {
                               type="checkbox"
                               data-testid="testcase-list-select-all"
                               className="checkbox checkbox-xs"
-                              aria-label="Select all test cases"
+                              aria-label="Select all evaluations"
                               checked={
                                 Array.isArray(testCases) &&
                                 testCases.length > 0 &&
@@ -1302,9 +1302,9 @@ function TestCases({ params }) {
                     <div className="w-16 h-16 rounded-full bg-base-200 flex items-center justify-center mb-4 mx-auto">
                       <FileText size={28} className="text-base-content/50" />
                     </div>
-                    <h3 className="text-lg font-semibold text-base-content mb-2">No test cases found</h3>
+                    <h3 className="text-lg font-semibold text-base-content mb-2">No evaluations found</h3>
                     <p className="text-sm text-base-content/60">
-                      Try adjusting your search or clear it to see all test cases.
+                      Try adjusting your search or clear it to see all evaluations.
                     </p>
                     <button
                       data-testid="testcase-empty-clear-search-btn"
@@ -1339,8 +1339,8 @@ function TestCases({ params }) {
 
       <Modal
         MODAL_ID={MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL}
-        title="Run all test cases?"
-        description="Running many test cases at once may incur significant cost."
+        title="Run all evaluations?"
+        description="Running many evaluations at once may incur significant cost."
         icon={<AlertTriangle size={18} className="text-warning" />}
         widthClass="w-[min(520px,92vw)]"
         onClose={() => closeModal(MODAL_TYPE.RUN_ALL_TESTCASE_CONFIRM_MODAL)}
@@ -1381,7 +1381,7 @@ function TestCases({ params }) {
 
       <DeleteModal
         modalType={MODAL_TYPE.DELETE_TESTCASE_BULK_MODAL}
-        title="Delete Test Cases"
+        title="Delete Evaluations"
         description={`Are you sure you want to delete ${bulkSelectedIds.size} selected test case${bulkSelectedIds.size !== 1 ? "s" : ""}? This action cannot be undone.`}
         onConfirm={confirmBulkDeleteTestCases}
         loading={isBulkDeleting}
@@ -1391,8 +1391,8 @@ function TestCases({ params }) {
 
       <DeleteModal
         modalType={MODAL_TYPE.DELETE_ALL_TESTCASES_MODAL}
-        title="Delete All Test Cases"
-        description="Are you sure you want to delete ALL test cases for this agent? This action cannot be undone."
+        title="Delete All Evaluations"
+        description="Are you sure you want to delete ALL evaluations for this agent? This action cannot be undone."
         onConfirm={confirmDeleteAllTestCases}
         loading={isBulkDeleting}
         buttonTitle="Delete All"

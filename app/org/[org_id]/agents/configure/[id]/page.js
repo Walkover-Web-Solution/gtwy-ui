@@ -72,7 +72,7 @@ const PromptHelperBundle = ({ onClick }) => {
     <div
       id="prompt-helper-bundle-panel"
       className="w-full h-full flex items-center justify-center hover:bg-primary/30 transition-colors duration-200 cursor-pointer"
-      title="Expand Prompt Helper Panel"
+      title="Expand Prompt Optimizer Panel"
       style={{ minWidth: "20px" }}
       onClick={onClick}
     >

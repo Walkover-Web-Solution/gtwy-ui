@@ -208,7 +208,7 @@ const ToolsConfiguration = ({
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-base-content/70">
           {singleToolMode
-            ? "Select a pre-built tool for this integration."
+            ? "Select a built-in tool for this integration."
             : "Select functions/tools that will be available in this integration."}
         </p>
       </div>
@@ -245,7 +245,7 @@ const ToolsConfiguration = ({
           modalType === MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL
             ? "Pre Tool"
             : modalType === MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL
-              ? "Post Tool"
+              ? "Post-Call Tool"
               : "Tool"
         }
         functionId={selectedFunctionId}
