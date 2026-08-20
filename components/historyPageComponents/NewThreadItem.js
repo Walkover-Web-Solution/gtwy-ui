@@ -59,7 +59,6 @@ export const getTurnMetrics = (item) => {
     aiCost,
     totalCost: (aiCost || 0) + (toolCount > 0 ? toolsCost : 0),
     isError,
-    events: 1 + toolCount + 1,
   };
 };
 
@@ -226,6 +225,7 @@ const EventRow = ({
   badge,
   children,
   footer,
+  footerIndent = true,
   id,
 }) => {
   const costTones = {
@@ -249,7 +249,11 @@ const EventRow = ({
           <div className="w-8 shrink-0" />
         </div>
 
-        {footer ? <div className="pl-[104px] pr-4 pb-3 flex w-full flex-col items-start gap-2">{footer}</div> : null}
+        {footer ? (
+          <div className={`${footerIndent ? "pl-[104px]" : "pl-4"} pr-4 pb-3 flex w-full flex-col items-start gap-2`}>
+            {footer}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -291,7 +295,7 @@ const NewThreadItem = ({
   const [userPanel, setUserPanel] = useState(null); // "variables" | "prompt" | null
 
   const metrics = useMemo(() => getTurnMetrics(item), [item]);
-  const { toolCount, aiCost, totalCost, isError } = metrics;
+  const { toolCount, aiCost, isError } = metrics;
 
   const messageId = item?.message_id;
   const userText = item?.user || "";
@@ -450,8 +454,6 @@ const NewThreadItem = ({
   const showMessages = viewFilter === "all" || viewFilter === "messages";
   const showTools = (viewFilter === "all" || viewFilter === "tools") && toolCount > 0;
   if (!showMessages && !showTools) return null;
-
-  const turnEventLabel = `${metrics.events} event${metrics.events === 1 ? "" : "s"}`;
   const turnCostLabel = formatMoney(totalCost);
 
   const batchId = item?.batch_data?.batch_id;
@@ -634,7 +636,7 @@ const NewThreadItem = ({
         {latency !== null ? (
           <span className="inline-flex items-center gap-1">
             <Clock3 size={11} />
-            {latency}s
+            {latency.toFixed(2)}s
           </span>
         ) : null}
         {item?.model ? <span>{item.model}</span> : null}
@@ -682,11 +684,6 @@ const NewThreadItem = ({
       <div className="flex items-center gap-3 bg-base-100 px-4 pb-1.5 pt-4">
         <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-base-content/45">
           Turn {turnNumber}
-        </span>
-        <div className="h-px flex-1 bg-base-200 dark:bg-base-300/50" />
-        <span className="shrink-0 text-[11px] text-base-content/45">
-          {turnEventLabel}
-          {turnCostLabel ? ` · ${turnCostLabel} total` : ""}
         </span>
       </div>
 
@@ -740,6 +737,7 @@ const NewThreadItem = ({
           type="AI"
           badge="ai"
           footer={aiFooter}
+          footerIndent={false}
         >
           <Attachments list={item?.llm_urls} />
 
