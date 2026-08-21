@@ -1,7 +1,7 @@
 // hooks/useRtLayerEventHandler.js
 "use client";
 import { addThreadNMessageUsingRtLayer, addThreadUsingRtLayer } from "@/store/reducer/historyReducer";
-import { setFallbackData } from "@/store/reducer/chatReducer";
+import { setFallbackData, setMessageSuggestions } from "@/store/reducer/chatReducer";
 import {
   handleRtLayerMessage,
   handleRtLayerStreamChunk,
@@ -363,6 +363,22 @@ function useRtLayerEventHandler(channelIdentifier = "") {
                 thread_id: threadData.thread_id,
                 sub_thread_id: threadData.sub_thread_id,
                 Messages,
+              })
+            );
+          }
+          return;
+        }
+
+        // Chatbot follow-up suggestions arrive as their own async RTLayer message on the
+        // same channel, carrying only a suggestions list and no content/id/role, so it
+        // must be intercepted before the generic chat message branch below (which would
+        // otherwise push a bogus empty assistant bubble).
+        if (response.data && Array.isArray(response.data.suggestions)) {
+          if (channelIdentifier) {
+            dispatch(
+              setMessageSuggestions({
+                channelId: channelIdentifier,
+                suggestions: response.data.suggestions,
               })
             );
           }

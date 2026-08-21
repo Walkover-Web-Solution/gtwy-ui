@@ -287,6 +287,14 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     return configured.length > 0 ? configured : DEFAULT_STARTER_QUESTIONS;
   }, [starterQuestions]);
 
+  // Follow-up suggestions attach to the last assistant message; once a new
+  // message is sent it's no longer last, so the chips naturally disappear.
+  const latestAssistantMessage = messages[messages.length - 1];
+  const latestAssistantSuggestions =
+    latestAssistantMessage?.sender === "assistant" && !latestAssistantMessage?.isLoading
+      ? latestAssistantMessage.suggestions
+      : null;
+
   // Initialize channel and RT layer
   useEffect(() => {
     if (channelIdentifier) {
@@ -1604,6 +1612,31 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               className="border-base-content/30 pt-4 pb-4 w-full"
             >
               <div className="relative flex flex-col gap-4 w-full">
+                {/* Follow-up suggestion chips — shown above the input while the latest
+                    assistant message has suggestions attached; disappear once the next
+                    message is sent since a new last message won't carry them. */}
+                {latestAssistantSuggestions?.length > 0 && (
+                  <div data-testid="chat-suggestions" className="flex flex-wrap gap-2">
+                    {latestAssistantSuggestions.map((suggestion, sIndex) => (
+                      <button
+                        key={sIndex}
+                        data-testid={`chat-suggestion-chip-${sIndex}`}
+                        className="px-3 py-1.5 rounded-full border border-base-content/15 bg-base-200/50 hover:bg-primary/10 hover:border-primary/40 text-xs text-base-content/80 transition-colors duration-150"
+                        onClick={() => {
+                          if (handleSendMessageRef.current && inputRef.current) {
+                            inputRef.current.value = suggestion;
+                            setTimeout(() => handleSendMessageRef.current(null, true), 50);
+                            setTimeout(() => {
+                              if (inputRef.current) inputRef.current.value = "";
+                            }, 200);
+                          }
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-row gap-2">
                   <ChatTextInput
                     channelIdentifier={channelIdentifier}
