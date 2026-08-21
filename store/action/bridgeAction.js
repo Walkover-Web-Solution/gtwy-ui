@@ -263,6 +263,9 @@ export const createEmbedAgentAction =
             purpose: purpose.trim(),
             bridgeType: "api",
             name: agent_name?.trim() || null,
+            // embed consumers can't reliably receive RTLayer events, so ask
+            // the backend to return the created agent directly in the response
+            flag: true,
           };
           if (meta) {
             aiDataToSend.meta = meta;
@@ -303,6 +306,9 @@ export const createEmbedAgentAction =
         name: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
+        // embed consumers can't reliably receive RTLayer events, so ask
+        // the backend to return the created agent directly in the response
+        flag: true,
       };
       if (meta) {
         fallbackDataToSend.meta = meta;
