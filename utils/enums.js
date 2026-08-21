@@ -313,7 +313,14 @@ export const HISTORY_FILTER_BY_FIELDS = {
   variables: "",
 };
 
-export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id", "tools_id"]);
+export const EMBED_OBJECT_KEYS = new Set([
+  "theme_config",
+  "prompt",
+  "models",
+  "apikey_object_id",
+  "tools_id",
+  "post_tool",
+]);
 export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
 export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide"]);
 export const EMBED_SKIP_KEYS = new Set([
@@ -345,6 +352,11 @@ export const PRE_TOOL_TOOLTIPS = {
   rag_knowledgebase: "Searches a knowledge base and injects relevant context into the prompt before the AI call.",
   gtwy_web_search: "Scrapes a specified domain and passes the content as context to the AI.",
 };
+
+export const PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD = new Set([
+  PRE_TOOL_TYPES.rag_knowledgebase,
+  PRE_TOOL_TYPES.gtwy_web_search,
+]);
 
 export const PRE_TOOL_CONFIG_SCHEMA = {
   query_refiner: {
