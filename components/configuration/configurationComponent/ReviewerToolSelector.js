@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
@@ -12,8 +12,8 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
   const dispatch = useDispatch();
   const isReadOnly = isPublished || !isEditor;
 
-  const { reviewAgent, reviewerTools, functionData, integrationData, embedToken, variablesPath, isLoaded } =
-    useCustomSelector((state) => {
+  const { reviewAgent, reviewerTools, functionData, integrationData, embedToken, variablesPath } = useCustomSelector(
+    (state) => {
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
       const reviewAgent = versionData?.settings?.review_agent || {};
       return {
@@ -23,36 +23,14 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
         integrationData: state?.bridgeReducer?.org?.[params?.org_id]?.integrationData || {},
         embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token || "",
         variablesPath: versionData?.variables_path || {},
-        isLoaded: !!versionData,
       };
-    });
+    }
+  );
 
   const selectedToolId = reviewerTools?.[0] || null;
   const selectedTool = useMemo(() => {
     return selectedToolId ? functionData[selectedToolId] : null;
   }, [functionData, selectedToolId]);
-
-  // Stale reviewer_tools IDs (tool deleted) still sit in version config — clear them
-  useEffect(() => {
-    if (!isLoaded || isReadOnly || !selectedToolId) return;
-    // Wait until tools have been fetched so we don't clear during initial empty state
-    if (Object.keys(functionData || {}).length === 0) return;
-    if (functionData[selectedToolId]) return;
-    dispatch(
-      updateBridgeVersionAction({
-        bridgeId: params?.id,
-        versionId: searchParams?.version,
-        dataToSend: {
-          settings: {
-            review_agent: {
-              ...(reviewAgent || {}),
-              reviewer_tools: [],
-            },
-          },
-        },
-      })
-    );
-  }, [isLoaded, isReadOnly, selectedToolId, functionData, params?.id, searchParams?.version, reviewAgent, dispatch]);
 
   const selectedToolStatus = useMemo(() => {
     return selectedTool ? selectedTool.status || integrationData?.[selectedTool.script_id]?.status : null;
