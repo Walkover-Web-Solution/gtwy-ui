@@ -71,23 +71,41 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     const modelTypeName = activeData?.configuration?.type?.toLowerCase();
     const modelName = activeData?.configuration?.model;
 
+    // Read from connected_tools array and filter by type "tools"
+    const connectedTools = activeData?.connected_tools || [];
+    const toolEntries = connectedTools.filter((t) => t?.type === "tools");
+    const functionIds = toolEntries.map((t) => t.id);
+    const functionData = orgData?.functionData || {};
+
+    // Read built_in_tools from connected_tools with type "built_in_tools"
+    const builtInToolsEntry = connectedTools.find((t) => t?.type === "built_in_tools");
+    const toolsVersionData = builtInToolsEntry?.built_in_tools || [];
+    const webSearchFilters = builtInToolsEntry?.web_search_filters || [];
+    const gtwyWebSearchFilters = builtInToolsEntry?.gtwy_web_search_filters || [];
+
+    // Build variables_path from individual tool entries
+    const variablesPathFromTools = {};
+    toolEntries.forEach((entry) => {
+      const fn = functionData?.[entry.id];
+      const scriptId = fn?.script_id;
+      if (scriptId && entry.variable_path) {
+        variablesPathFromTools[scriptId] = entry.variable_path;
+      }
+    });
+
     return {
       integrationData: orgData?.integrationData || {},
-      function_data: orgData?.functionData || {},
-      bridge_functions: isPublished ? bridgeDataFromState?.function_ids || [] : versionData?.function_ids || [],
+      function_data: functionData,
+      bridge_functions: functionIds,
       model: modelName,
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
       showInbuiltTools: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.inbuilt_tools,
       embedToken: orgData?.embed_token,
-      variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
+      variables_path: variablesPathFromTools,
       prebuiltToolsData: state?.bridgeReducer?.prebuiltTools,
-      toolsVersionData: isPublished ? bridgeDataFromState?.built_in_tools : versionData?.built_in_tools,
-      webSearchFilters: isPublished
-        ? bridgeDataFromState?.web_search_filters || []
-        : versionData?.web_search_filters || [],
-      gtwyWebSearchFilters: isPublished
-        ? bridgeDataFromState?.gtwy_web_search_filters || []
-        : versionData?.gtwy_web_search_filters || [],
+      toolsVersionData,
+      webSearchFilters,
+      gtwyWebSearchFilters,
     };
   });
   // Use the tutorial videos hook
@@ -138,10 +156,12 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            functionData: {
-              function_id: functionId,
-              function_operation: "1",
+            connected_tool: {
+              type: "tools",
+              id: functionId,
+              variable_path: {},
             },
+            operation: 1,
           },
         })
       );
@@ -155,11 +175,11 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            functionData: {
-              function_id: id,
-              function_operation: "0",
-              script_id: name,
+            connected_tool: {
+              type: "tools",
+              id: id,
             },
+            operation: 0,
           },
         })
       );
@@ -190,7 +210,14 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
-          dataToSend: { variables_path: { [function_name]: cleanedVariablesPath } },
+          dataToSend: {
+            connected_tool: {
+              type: "tools",
+              id: functionId,
+              variable_path: cleanedVariablesPath,
+            },
+            operation: 2,
+          },
         })
       );
     }
@@ -199,10 +226,19 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Handle adding a prebuilt tool into built_in_tools from the Tools dropdown
   const handleAddPrebuiltTool = (item) => {
     if (!item?.value) return;
+    const updatedBuiltInTools = [...(toolsVersionData || []), item?.value];
+    const operation = (toolsVersionData || []).length === 0 ? 1 : 2;
     dispatch(
       updateBridgeVersionAction({
+        bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { built_in_tools_data: { built_in_tools: item?.value, built_in_tools_operation: "1" } },
+        dataToSend: {
+          connected_tool: {
+            type: "built_in_tools",
+            built_in_tools: updatedBuiltInTools,
+          },
+          operation,
+        },
       })
     );
     // Close dropdown after selection
@@ -216,11 +252,20 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Handle removing a prebuilt tool from built_in_tools
   const handleDeletePrebuiltTool = async (item, name) => {
     if (!item?.value) return;
+    const updatedBuiltInTools = (toolsVersionData || []).filter((t) => t !== item?.value);
+    const operation = updatedBuiltInTools.length === 0 ? 0 : 2;
     await executePrebuiltToolDelete(async () => {
       return dispatch(
         updateBridgeVersionAction({
+          bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: { built_in_tools_data: { built_in_tools: item?.value } },
+          dataToSend: {
+            connected_tool: {
+              type: "built_in_tools",
+              built_in_tools: updatedBuiltInTools,
+            },
+            operation,
+          },
         })
       );
     });
@@ -238,15 +283,28 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Handle saving prebuilt tools configuration
   const handleSavePrebuiltConfig = async (domains) => {
     try {
-      // Use different key based on prebuilt tool name
-      const filterKey = prebuiltToolName === "Gtwy_Web_Search" ? "gtwy_web_search_filters" : "web_search_filters";
+      // Get current built_in_tools from state
+      const currentBuiltInTools = toolsVersionData || [];
+      const currentWebSearchFilters = webSearchFilters || [];
+      const currentGtwyWebSearchFilters = gtwyWebSearchFilters || [];
+
+      // Update the appropriate filter based on prebuilt tool name
+      const updatedWebSearchFilters = prebuiltToolName === "web_search" ? domains : currentWebSearchFilters;
+      const updatedGtwyWebSearchFilters =
+        prebuiltToolName === "Gtwy_Web_Search" ? domains : currentGtwyWebSearchFilters;
 
       await dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            [filterKey]: domains,
+            connected_tool: {
+              type: "built_in_tools",
+              built_in_tools: currentBuiltInTools,
+              web_search_filters: updatedWebSearchFilters,
+              gtwy_web_search_filters: updatedGtwyWebSearchFilters,
+            },
+            operation: 2,
           },
         })
       );

@@ -33,9 +33,19 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     const modelTypeName = activeData?.configuration?.type?.toLowerCase();
     const modelName = activeData?.configuration?.model;
 
+    // Read from connected_tools array and filter by type "docs"
+    const connectedTools = activeData?.connected_tools || [];
+    const docEntries = connectedTools.filter((t) => t?.type === "docs");
+
+    // Transform to legacy format for compatibility
+    const knowbaseVersionData = docEntries.map((entry) => ({
+      resource_id: entry.id,
+      collection_id: entry.collection_id,
+    }));
+
     return {
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
-      knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
+      knowbaseVersionData,
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
     };
   });
@@ -64,18 +74,18 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     );
     if (existingItem) return;
 
-    // Format the new item with collection_id and resource_id
-    const newDocItem = {
-      collection_id: knowledgeBaseItem.collectionId,
-      resource_id: id,
-      description: knowledgeBaseItem.description,
-      name: knowledgeBaseItem.title,
-    };
-
     dispatch(
       updateBridgeVersionAction({
+        bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { doc_ids: [...(knowbaseVersionData || []), newDocItem] },
+        dataToSend: {
+          connected_tool: {
+            type: "docs",
+            id: id,
+            collection_id: knowledgeBaseItem.collectionId,
+          },
+          operation: 1,
+        },
       })
     );
     // Close dropdown after selection
@@ -89,16 +99,14 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     await executeDelete(async () => {
       return dispatch(
         updateBridgeVersionAction({
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            doc_ids: knowbaseVersionData.filter((docItem) => {
-              // Handle both old format (string) and new format (object)
-              if (typeof docItem === "string") {
-                return docItem !== item?._id;
-              } else {
-                return docItem.resource_id !== item?._id;
-              }
-            }),
+            connected_tool: {
+              type: "docs",
+              id: item?._id,
+            },
+            operation: 0,
           },
         })
       );

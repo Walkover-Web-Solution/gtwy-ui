@@ -4,6 +4,7 @@ import useExpandableList from "@/customHooks/useExpandableList";
 import InfoTooltip from "@/components/InfoTooltip";
 import { AlertTriangle } from "lucide-react";
 import { getSelectedVariablesPath } from "@/utils/variableValidation";
+import { PRE_TOOL_TYPES } from "@/utils/enums";
 
 const WEB_SEARCH_WARNING_CLASS = "border-warning/40";
 const WEB_SEARCH_TOKEN_WARNING = "Selecting Web Search can cause heavy token utilization and may exceed 10,000 tokens.";
@@ -84,12 +85,17 @@ const RenderEmbed = ({
             onClick={() => {
               if (isReadOnly) return;
               const selectedVariablesPath = getSelectedVariablesPath(variablesPath, functionName);
-              if (value?._type === "custom_function" || !value?._type) {
+              if (
+                value?._type === PRE_TOOL_TYPES.custom_function ||
+                value?._type === "custom_function" ||
+                !value?._type
+              ) {
+                const isPreTool = name === "preFunction";
                 openViasocket(functionName, {
                   embedToken,
                   meta: {
                     createFrom: name,
-                    type: "tool",
+                    type: isPreTool ? "pre_tool" : "tool",
                     bridge_id: params?.id,
                   },
                   dummy_payload: {

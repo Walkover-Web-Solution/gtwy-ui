@@ -10,10 +10,12 @@ import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId }) {
   const [config, setConfig] = useState({});
   const [args, setArgs] = useState({});
+  const [prompt, setPrompt] = useState("");
   const [kbSearch, setKbSearch] = useState("");
   const dispatch = useDispatch();
   const [initialConfig, setInitialConfig] = useState({});
   const [initialArgs, setInitialArgs] = useState({});
+  const [initialPrompt, setInitialPrompt] = useState("");
 
   const { knowledgeBaseData } = useCustomSelector((state) => ({
     knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[orgId] || [],
@@ -27,15 +29,19 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
     if (toolEntry) {
       setConfig(toolEntry.config || {});
       setArgs(toolEntry.args || {});
+      setPrompt(toolEntry.prompt || "");
       setInitialConfig(toolEntry.config || {});
       setInitialArgs(toolEntry.args || {});
+      setInitialPrompt(toolEntry.prompt || "");
     }
   }, [toolEntry]);
 
   const schema = toolEntry ? PRE_TOOL_CONFIG_SCHEMA[toolEntry.type] : null;
 
   const isUnchanged =
-    JSON.stringify(config) === JSON.stringify(initialConfig) && JSON.stringify(args) === JSON.stringify(initialArgs);
+    JSON.stringify(config) === JSON.stringify(initialConfig) &&
+    JSON.stringify(args) === JSON.stringify(initialArgs) &&
+    prompt === initialPrompt;
 
   const isSaveDisabled =
     isUnchanged ||
@@ -53,19 +59,26 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
           : null;
 
   const handleSave = () => {
-    onSave({ ...toolEntry, config, args });
+    onSave({ ...toolEntry, config, args, prompt });
     closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
   };
 
   const renderConfigField = (field) => {
     if (field.type === "textarea") {
+      // For query_refiner prompt field, use the prompt state instead of config
+      const isPromptField = toolEntry?.type === "query_refiner" && field.key === "prompt";
+      const value = isPromptField ? prompt : config[field.key] || "";
+      const onChange = isPromptField
+        ? (e) => setPrompt(e.target.value)
+        : (e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }));
+
       return (
         <textarea
           data-testid={`pretool-config-field-${field.key}`}
           className="textarea textarea-bordered text-xs w-full"
           placeholder={field.placeholder}
-          value={config[field.key] || ""}
-          onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
+          value={value}
+          onChange={onChange}
           rows={3}
         />
       );

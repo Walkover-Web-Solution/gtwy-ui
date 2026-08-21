@@ -120,13 +120,13 @@ const normaliseDraftList = (list = []) =>
     required: item.required !== false,
   }));
 
-const collectPreToolVariableKeys = (preTools = []) => {
+const collectPreToolVariableKeys = (connectedTools = []) => {
   const keys = new Set();
 
-  (preTools || []).forEach((tool) => {
-    if (tool?.type === "custom_function" && tool?.args) {
-      Object.values(tool.args).forEach((argValue) => {
-        const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
+  (connectedTools || []).forEach((tool) => {
+    if (tool?.type === "pre_tool" && tool?.pre_tool_type === "custom_function" && tool?.variable_path) {
+      Object.values(tool.variable_path).forEach((varValue) => {
+        const trimmedKey = typeof varValue === "string" ? varValue.trim() : "";
         if (trimmedKey) {
           keys.add(trimmedKey);
         }
@@ -196,22 +196,25 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     variablesKeyValue,
     variablesPath,
     variable_state,
-    bridge_pre_tools,
+    connectedTools,
   } = useCustomSelector((state) => {
     const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
     const groups = versionState?.groups || [];
     const activeGroupId = versionState?.activeGroupId;
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId];
+
+    // Read connected_tools from the new structure
+    const connectedTools = versionData?.connected_tools || [];
 
     return {
-      prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
+      prompt: versionData?.configuration?.prompt || "",
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
       variablesKeyValue: versionState?.variables || [],
-      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-      variable_state:
-        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.agent_info?.variables_state || {},
-      bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
+      variablesPath: versionData?.variables_path || {},
+      variable_state: versionData?.agent_info?.variables_state || {},
+      connectedTools: connectedTools,
     };
   });
   const [draftVariables, setDraftVariables] = useState([]);
@@ -224,8 +227,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const activeGroupId = activeGroup?.id;
 
   const preToolKeySet = useMemo(() => {
-    return collectPreToolVariableKeys(bridge_pre_tools);
-  }, [bridge_pre_tools]);
+    return collectPreToolVariableKeys(connectedTools);
+  }, [connectedTools]);
 
   const functionPathKeySet = useMemo(() => {
     const keys = new Set();
@@ -336,8 +339,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         });
       });
 
-      // Add variables from bridge_pre_tools
-      collectPreToolVariableKeys(bridge_pre_tools).forEach((trimmedKey) => {
+      // Add variables from connected_tools (pre-tools)
+      collectPreToolVariableKeys(connectedTools).forEach((trimmedKey) => {
         const existsInSource = allVariables.find((v) => v.key === trimmedKey);
 
         if (!existsInSource) {
@@ -389,7 +392,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const { normalised } = validateVariables(filteredVariables, { suppressErrors: true });
       setDraftVariables(normalised);
     },
-    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, bridge_pre_tools, visibleEmbedFieldNameSet]
+    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, connectedTools, visibleEmbedFieldNameSet]
   );
 
   useEffect(() => {
@@ -704,14 +707,17 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
       // Update all variables in Redux
       if (allVariables.length > 0) {
-        dispatch(
-          updateVariables({
-            data: allVariables,
-            bridgeId: params.id,
-            versionId,
-            groupId: activeGroupId,
-          })
-        );
+        // Defer dispatch to avoid calling during render
+        setTimeout(() => {
+          dispatch(
+            updateVariables({
+              data: allVariables,
+              bridgeId: params.id,
+              versionId,
+              groupId: activeGroupId,
+            })
+          );
+        }, 0);
       }
 
       // Check if variables have actually changed compared to DB data before making API calls
