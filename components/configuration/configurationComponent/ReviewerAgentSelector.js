@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -52,10 +52,33 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
     setReviewerType(reviewerPrompt ? "prompt" : reviewerTools?.length > 0 && !reviewerAgentId ? "tool" : "agent");
   }
 
-  const reviewerAgent = useMemo(
-    () => bridges.find((b) => b._id === reviewerAgentId) || null,
-    [bridges, reviewerAgentId]
-  );
+  const reviewerAgent = useMemo(() => {
+    const agent = bridges.find((b) => b._id === reviewerAgentId) || null;
+    // Soft-deleted agents stay in org list but must not appear as an active reviewer
+    if (!agent || agent.deletedAt) return null;
+    return agent;
+  }, [bridges, reviewerAgentId]);
+
+  // If version still points at a deleted/missing reviewer agent, clear it from config
+  useEffect(() => {
+    if (!isLoaded || isReadOnly || !reviewerAgentId || !bridges?.length) return;
+    const agent = bridges.find((b) => b._id === reviewerAgentId);
+    if (agent && !agent.deletedAt) return;
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: {
+          settings: {
+            review_agent: {
+              ...(reviewAgent || {}),
+              reviewer_agent: null,
+            },
+          },
+        },
+      })
+    );
+  }, [isLoaded, isReadOnly, reviewerAgentId, bridges, params?.id, searchParams?.version, reviewAgent, dispatch]);
 
   const handleToggleChange = (e) => {
     const checked = e.target.checked;
