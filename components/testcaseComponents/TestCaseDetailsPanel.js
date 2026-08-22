@@ -25,7 +25,7 @@ import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ReactMarkdown from "react-markdown";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
 import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
-import { FileClockIcon } from "@/components/Icons";
+import { FileClockIcon, BotMessageIcon } from "@/components/Icons";
 import InfoTooltip from "@/components/InfoTooltip";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
@@ -33,6 +33,8 @@ import ExpandCollapse from "@/components/UI/ExpandCollapse";
 import MockToolResponsesSection, {
   computeBridgeToolOptions,
 } from "@/components/testcaseComponents/MockToolResponsesSection";
+import { getMessageByIdApi } from "@/config/historyApi";
+import { toast } from "react-toastify";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -422,6 +424,62 @@ const TestCaseDetailsPanel = ({
       })
     );
   };
+
+  const [debuggingVersion, setDebuggingVersion] = useState(null);
+
+  const handleDebugAgent = useCallback(
+    async (version, currentRun, modelOutput, runErrorMessage) => {
+      if (typeof window.SendDataToChatbot !== "function") {
+        toast.error("Debug agent isn't ready yet. Please refresh the page.");
+        return;
+      }
+      setDebuggingVersion(version);
+      try {
+        let aiconfig = {};
+        if (currentRun?.message_id) {
+          try {
+            const log = await getMessageByIdApi({ message_id: currentRun.message_id });
+            aiconfig = log?.data?.AiConfig || {};
+          } catch (error) {
+            console.error("Failed to fetch AiConfig for debug agent:", error);
+          }
+        }
+        if (!aiconfig || Object.keys(aiconfig).length === 0) {
+          aiconfig = bridgeVersionMapping?.[version]?.configuration || {};
+        }
+
+        window.SendDataToChatbot({
+          parentId: "",
+          bridgeName: "history_page_chabot",
+          threadId: String(
+            currentRun?.message_id || `${selectedTestCase?._id}_${version}_${currentRun?.model || "default"}`
+          ),
+          variables: {
+            "System Prompt": bridgeVersionMapping?.[version]?.configuration?.prompt || "",
+            aiconfig,
+            response: modelOutput || runErrorMessage || "",
+            expected:
+              (typeof currentRun?.expected === "string"
+                ? currentRun.expected
+                : currentRun?.expected
+                  ? JSON.stringify(currentRun.expected, null, 2)
+                  : "") || getExpectedValue(selectedTestCase),
+            score: currentRun?.score ?? "",
+            matching_type: currentRun?.matching_type || selectedTestCase?.matching_type || "",
+            reason: currentRun?.reason || "",
+          },
+          version_id: "null",
+          hideCloseButton: "false",
+        });
+        setTimeout(() => {
+          if (typeof window.openChatbot === "function") window.openChatbot();
+        }, 1000);
+      } finally {
+        setTimeout(() => setDebuggingVersion((curr) => (curr === version ? null : curr)), 1000);
+      }
+    },
+    [bridgeVersionMapping, selectedTestCase?._id]
+  );
 
   // Reset test case variables and alert state when selectedTestCase changes
   useEffect(() => {
@@ -1115,6 +1173,18 @@ const TestCaseDetailsPanel = ({
                                       </button>
                                     </InfoTooltip>
                                   </>
+                                )}
+                                {hasRun && (
+                                  <button
+                                    onClick={() => handleDebugAgent(version, currentRun, modelOutput, runErrorMessage)}
+                                    disabled={debuggingVersion === version}
+                                    className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-[10px] font-semibold text-base-content/70 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Ask AI why this version produced this output"
+                                    data-testid={`testcase-version-debug-agent-${versions.indexOf(version) + 1}`}
+                                  >
+                                    <BotMessageIcon size={12} />
+                                    <span>{debuggingVersion === version ? "Opening..." : "Debug"}</span>
+                                  </button>
                                 )}
                                 {totalRuns > 1 && (
                                   <div className="flex items-center gap-1 ml-1">
