@@ -331,7 +331,7 @@ function Page({ params, searchParams }) {
         }
         modalTitle={
           selectedItem?.value === "Latency"
-            ? "Latency Details"
+            ? "Response Time Details"
             : selectedItem?.value === "Memory"
               ? "Memory"
               : "AI Configuration"

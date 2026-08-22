@@ -151,18 +151,18 @@ const Navbar = ({ isEmbedUser, params }) => {
     if (!isEmbedUser || (isEmbedUser && showTestcases)) {
       baseTabs.push({
         id: "testcase",
-        label: "Test Cases",
+        label: "Evaluations",
         icon: TestTube,
-        shortLabel: "Tests",
+        shortLabel: "Evals",
         shortcut: "G T",
       });
     }
     if (!isEmbedUser || (isEmbedUser && showHistory)) {
       baseTabs.push({
         id: "history",
-        label: "History",
+        label: "Request History",
         icon: MessageCircleMore,
-        shortLabel: "History",
+        shortLabel: "Logs",
         shortcut: "G H",
       });
       baseTabs.push({

@@ -139,7 +139,11 @@ function AiConfigPanel({ config }) {
 const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
   const [copied, setCopied] = useState(false);
 
-  const isLatencyView = modalTitle === "Latency Details" || modalTitle === "Latency";
+  const isLatencyView =
+    modalTitle === "Latency Details" ||
+    modalTitle === "Latency" ||
+    modalTitle === "Response Time Details" ||
+    modalTitle === "Response Time";
 
   const isMemoryView = modalTitle === "Memory";
 
@@ -169,11 +173,15 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
       <Modal
         MODAL_ID={MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL}
         onClose={() => closeModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL)}
-        title={modalTitle || "Latency Details"}
+        title={
+          modalTitle === "Latency" || modalTitle === "Latency Details"
+            ? "Response Time Details"
+            : modalTitle || "Response Time Details"
+        }
         icon={<SlidersHorizontal size={16} className="text-trace-gold" />}
         widthClass="w-[min(720px,92vw)]"
       >
-        <JsonSection label="Latency" data={modalContent} fullHeight={true} />
+        <JsonSection label="Response Time" data={modalContent} fullHeight={true} />
       </Modal>
     );
   }

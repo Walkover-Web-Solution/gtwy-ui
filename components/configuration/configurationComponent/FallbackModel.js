@@ -376,7 +376,7 @@ const FallbackModel = ({
           <div className="grid grid-cols-2 gap-4">
             {/* Fallback Service */}
             <div className="space-y-2 flex-1">
-              <label className="block text-base-content/70 text-xs font-medium">Fallback Service</label>
+              <label className="block text-base-content/70 text-xs font-medium">Fallback Provider</label>
               <div className="relative w-full">
                 <Dropdown
                   testId="fallback-service-dropdown"
@@ -394,7 +394,7 @@ const FallbackModel = ({
 
                 {bridgeType === "batch" && (
                   <div className="absolute right-8 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                    <InfoTooltip tooltipContent="Batch API is only applicable for OpenAI">
+                    <InfoTooltip tooltipContent="Batch Processing is only applicable for OpenAI">
                       <AlertIcon size={16} className="text-warning" />
                     </InfoTooltip>
                   </div>

@@ -66,7 +66,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
       MODAL_ID={MODAL_TYPE.INTEGRATION_MODAL}
       onClose={handleClose}
       title="Create Integration"
-      description={`Enter a name for your ${type === "rag_embed" ? "RAG embed" : "embed"} integration`}
+      description={`Enter a name for your ${type === "rag_embed" ? "embeddable knowledge base" : "embed"} integration`}
       icon={<Blocks size={16} className="text-trace-gold" />}
       widthClass="w-[min(480px,92vw)]"
     >

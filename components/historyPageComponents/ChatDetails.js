@@ -48,7 +48,9 @@ const ChatDetails = ({ selectedItem, setIsSliderOpen, isSliderOpen, params }) =>
               {/* Latency Section */}
               {selectedItem.latency !== undefined && (
                 <div>
-                  <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">Latency</div>
+                  <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">
+                    Response Time
+                  </div>
                   <div className="bg-base-200 p-4 rounded-lg border border-base-content/10 flex items-center justify-between">
                     <span className="text-sm font-medium text-base-content">Response Time</span>
                     <span className="text-sm font-semibold text-primary">

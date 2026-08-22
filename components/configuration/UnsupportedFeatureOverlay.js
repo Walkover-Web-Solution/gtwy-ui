@@ -6,9 +6,9 @@ const FEATURE_MESSAGES = {
     title: "Prompt not available for this model",
     description: "Prompt isn't available for the selected model. Please choose a different model.",
   },
-  Connectors: {
-    title: "Connectors not available for this model",
-    description: "The selected model does not support external connectors. Please choose a different model.",
+  Integrations: {
+    title: "Integrations not available for this model",
+    description: "The selected model does not support external integrations. Please choose a different model.",
   },
   Memory: {
     title: "Memory not available for this model",

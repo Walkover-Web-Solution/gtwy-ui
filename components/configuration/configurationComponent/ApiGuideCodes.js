@@ -18,7 +18,7 @@ export const getCurlCode = (bridgeId, modelType, isEmbedUser, prompt = "") => {
   const url = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/chat/completion`;
   const authHeader = isEmbedUser
     ? `--header 'Content-Type: application/json'`
-    : `--header 'pauthkey: YOUR_GENERATED_PAUTHKEY' \\\n  --header 'Content-Type: application/json'`;
+    : `--header 'pauthkey: YOUR_GTWY_API_KEY' \\\n  --header 'Content-Type: application/json'`;
 
   const body = [
     "{",
@@ -37,9 +37,7 @@ export const getCurlCode = (bridgeId, modelType, isEmbedUser, prompt = "") => {
 
 export const getPythonCode = (bridgeId, isEmbedUser, prompt = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
-  const apiKeyLine = isEmbedUser
-    ? "    # No API key required for embed users"
-    : `    api_key="YOUR_GENERATED_PAUTHKEY",`;
+  const apiKeyLine = isEmbedUser ? "    # No API key required for embed users" : `    api_key="YOUR_GTWY_API_KEY",`;
 
   return [
     "from openai import OpenAI",
@@ -71,7 +69,7 @@ export const getJavaScriptCode = (bridgeId, isEmbedUser, prompt = "") => {
     used.length > 0
       ? used.map((v) => `    "${v}": "YOUR_${v.toUpperCase()}_VALUE",`).join("\n")
       : "    // No variables found in prompt";
-  const apiKeyLine = isEmbedUser ? "  // No API key required for embed users" : `  apiKey: "YOUR_GENERATED_PAUTHKEY",`;
+  const apiKeyLine = isEmbedUser ? "  // No API key required for embed users" : `  apiKey: "YOUR_GTWY_API_KEY",`;
 
   return [
     `import OpenAI from "openai";`,
@@ -105,7 +103,7 @@ export const getDotNetCode = (bridgeId, isEmbedUser, prompt = "") => {
       : "                // No variables found in prompt";
   const apiKeyLine = isEmbedUser
     ? `            apiKey: "",  // No API key required for embed users`
-    : `            apiKey: "YOUR_GENERATED_PAUTHKEY",`;
+    : `            apiKey: "YOUR_GTWY_API_KEY",`;
 
   return [
     "using System;",
@@ -153,7 +151,7 @@ export const getJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
       : "            // No variables found in prompt";
   const apiKeyLine = isEmbedUser
     ? "            // No API key required for embed users"
-    : `            .apiKey("YOUR_GENERATED_PAUTHKEY")`;
+    : `            .apiKey("YOUR_GTWY_API_KEY")`;
 
   return [
     "import com.openai.client.OpenAIClient;",
@@ -191,7 +189,7 @@ export const getGoCode = (bridgeId, isEmbedUser, prompt = "") => {
       : "\t\t// No variables found in prompt";
   const apiKeyLine = isEmbedUser
     ? `\toption.WithAPIKey(""), // No API key required for embed users`
-    : `\toption.WithAPIKey("YOUR_GENERATED_PAUTHKEY"),`;
+    : `\toption.WithAPIKey("YOUR_GTWY_API_KEY"),`;
 
   return [
     "package main",

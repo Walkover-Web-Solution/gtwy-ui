@@ -78,11 +78,11 @@ const UserReferenceForRichText = ({ params, searchParams, isPublished, isEditor 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 {!isRichText && (
-                  <InfoTooltip tooltipContent="Rich Text support is available in the Premium version. Upgrade to unlock advanced formatting with buttons, tables, cards, and markdown.">
+                  <InfoTooltip tooltipContent="Rich Content support is available in the Premium version. Upgrade to unlock advanced formatting with buttons, tables, cards, and markdown.">
                     <Crown size={16} className="text-amber-500 flex-shrink-0 cursor-help" />
                   </InfoTooltip>
                 )}
-                <span className="text-base-content text-sm ml-0">Rich Text Supported</span>
+                <span className="text-base-content text-sm ml-0">Rich Content Supported</span>
                 <InfoTooltip tooltipContent="Rich text supports buttons, tables, cards, and markdown for displaying structured and interactive content. This is a premium feature available in the Pro version.">
                   <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
                 </InfoTooltip>

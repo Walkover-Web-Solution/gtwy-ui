@@ -22,7 +22,7 @@ export const CONFIG_SCHEMA = [
   {
     key: "showHistory",
     type: "toggle",
-    label: "Show History",
+    label: "Show Conversation Logs",
     description: "Display conversation history",
     defaultValue: false,
     section: "Interface Options",
@@ -140,7 +140,7 @@ export const CONFIG_SCHEMA = [
   {
     key: "showTestcases",
     type: "toggle",
-    label: "Show Test Cases",
+    label: "Show Evaluations",
     description: "Display test cases tab in the embedded interface",
     defaultValue: true,
     section: "Interface Options",
@@ -156,7 +156,7 @@ export const CONFIG_SCHEMA = [
   {
     key: "showPromptHelper",
     type: "toggle",
-    label: "Show Prompt Helper",
+    label: "Show Prompt Optimizer",
     description: "Show the prompt helper",
     defaultValue: true,
     section: "Interface Options",
@@ -210,7 +210,7 @@ export const CONFIG_SCHEMA = [
     key: "showMcp",
     type: "toggle",
     label: "Show MCP Servers",
-    description: "Display MCP server configuration in the Connectors tab",
+    description: "Display MCP server configuration in the Integrations tab",
     defaultValue: false,
     section: "Interface Options",
   },

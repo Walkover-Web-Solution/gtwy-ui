@@ -36,7 +36,7 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
         <CodeBlock className="language-json">{apiConfig}</CodeBlock>
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-medium">JWT Access Key</span>
+            <span className="label-text font-medium">JWT Embed Signing Key</span>
           </label>
           <CodeBlock className="language-text">{access_key || "Generating..."}</CodeBlock>
         </div>

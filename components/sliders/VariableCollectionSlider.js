@@ -1148,9 +1148,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       <div className="flex flex-col gap-6 h-full w-full">
         <header className="border-b border-base-300 pb-4">
           <div>
-            <h1 className="text-2xl font-semibold text-base-content">Variables</h1>
+            <h1 className="text-2xl font-semibold text-base-content">Prompt Variables</h1>
             <p className="mt-1 text-sm text-base-content/70 leading-relaxed">
-              Organise reusable variables to control which values your agent uses.
+              Organise reusable prompt variables to control which values your agent uses.
             </p>
             {/* Show missing variables warning without button */}
             {missingVariables.length > 0 && (

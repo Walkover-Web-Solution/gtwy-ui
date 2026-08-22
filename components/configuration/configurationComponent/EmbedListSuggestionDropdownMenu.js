@@ -226,7 +226,7 @@ function EmbedListSuggestionDropdownMenu({
             )}
             {name !== "preFunction" && name !== "postFunction" && (
               <>
-                <li className="text-sm font-semibold disabled mt-2">Prebuilt Tools</li>
+                <li className="text-sm font-semibold disabled mt-2">Built-in Tools</li>
                 {availablePrebuiltTools.length > 0 ? (
                   availablePrebuiltTools.map((item) => (
                     <li
@@ -249,7 +249,7 @@ function EmbedListSuggestionDropdownMenu({
                     </li>
                   ))
                 ) : (
-                  <li className="text-center mt-2">No prebuilt tools</li>
+                  <li className="text-center mt-2">No built-in tools</li>
                 )}
               </>
             )}

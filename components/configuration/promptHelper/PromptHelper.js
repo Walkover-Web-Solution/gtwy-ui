@@ -186,7 +186,7 @@ const PromptHelper = ({
     >
       {/* Header */}
       <div className="flex items-center justify-between p-1 border-b bg-gray-50">
-        <h3 className="font-medium">Prompt Helper</h3>
+        <h3 className="font-medium">Prompt Optimizer</h3>
         <button className="p-1 rounded-full hover:text-error transition-colors z-10" onClick={() => onClose("prompt")}>
           <CloseIcon />
         </button>

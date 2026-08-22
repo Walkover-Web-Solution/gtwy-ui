@@ -103,11 +103,12 @@ const BridgeTypeCards = ({
                     </div>
                   )}
                 </div>
-                <h2 className="card-title text-lg md:text-xl font-semibold text-base-content">Batch API</h2>
+                <h2 className="card-title text-lg md:text-xl font-semibold text-base-content">Batch Processing</h2>
               </div>
               <p className="text-xs md:text-sm text-base-content leading-relaxed">
-                Process multiple prompts or data inputs in a single request using the Batch API. Ideal for large-scale
-                tasks like summarization, generation, or classification—fast, efficient, and built for bulk operations.
+                Process multiple prompts or data inputs in a single request using Batch Processing. Ideal for
+                large-scale tasks like summarization, generation, or classification—fast, efficient, and built for bulk
+                operations.
               </p>
             </div>
           </div>

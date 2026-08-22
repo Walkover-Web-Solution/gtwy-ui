@@ -912,11 +912,11 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           id="chat-toggle-testcases-button"
           className="btn btn-sm btn-square"
           onClick={() => setShowTestCases((prev) => !prev)}
-          title="Toggle Test Cases"
+          title="Toggle Evaluations"
         >
           <div
             className="flex items-center gap-2 tooltip tooltip-right"
-            data-tip={showTestCases ? "Hide Test Cases" : "Show Test Cases"}
+            data-tip={showTestCases ? "Hide Evaluations" : "Show Evaluations"}
           >
             {showTestCases ? <CloseCircleIcon /> : <Menu />}
           </div>
@@ -939,7 +939,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           {/* Add to Test Case button — only when there are messages and the
               conversation has been extended beyond the loaded testcase. */}
           {messages?.length > 0 && messages.length > loadedTestcaseMsgCount && (
-            <div className="tooltip tooltip-bottom" data-tip="Add to Test Case">
+            <div className="tooltip tooltip-bottom" data-tip="Add to Evaluation">
               <button
                 data-testid="chat-add-conversation-to-testcase-button"
                 id="chat-add-conversation-to-testcase-button"
@@ -1164,7 +1164,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       if (document.activeElement) document.activeElement.blur();
                                     }}
                                   >
-                                    Exact
+                                    Exact Match
                                   </button>
                                 </li>
                                 <li>
@@ -1174,7 +1174,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       if (document.activeElement) document.activeElement.blur();
                                     }}
                                   >
-                                    AI
+                                    AI Evaluation
                                   </button>
                                 </li>
                                 <li>
@@ -1184,7 +1184,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       if (document.activeElement) document.activeElement.blur();
                                     }}
                                   >
-                                    Cosine
+                                    Semantic Similarity
                                   </button>
                                 </li>
                               </ul>
@@ -1202,7 +1202,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   {/* Header */}
                                   <div className="flex items-center gap-2 mb-4">
                                     <Target className="h-4 w-4" />
-                                    <span className="text-sm font-medium">Test Case Result</span>
+                                    <span className="text-sm font-medium">Evaluation Result</span>
                                     {message.testCaseResult.success && (
                                       <CheckCircle className="h-4 w-4 text-success ml-auto" />
                                     )}
@@ -1281,7 +1281,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10 pointer-events-none">
                                       <div className="flex items-center gap-2">
                                         <span className="loading loading-spinner loading-sm"></span>
-                                        <span className="text-sm font-medium">Running Test Case...</span>
+                                        <span className="text-sm font-medium">Running Evaluation...</span>
                                       </div>
                                     </div>
                                   )}

@@ -6,7 +6,7 @@ import React from "react";
 const BatchApi = (bridgeId, versionId) => {
   return (
     `curl --location '${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/chat/completion' \\\n` +
-    `--header 'pauthkey: YOUR_GENERATED_PAUTHKEY' \\\n` +
+    `--header 'pauthkey: YOUR_GTWY_API_KEY' \\\n` +
     `--header 'Content-Type: application/json' \\\n` +
     `--data '{\n` +
     `    "webhook": {\n` +
@@ -36,11 +36,11 @@ const BatchApi = (bridgeId, versionId) => {
 const headers = ["Parameter", "Type", "Description", "Required"];
 
 const data = [
-  ["pauthkey", "string", "The key used to authenticate the request.", "true"],
+  ["GTWY API Key (pauthkey)", "string", "The GTWY API key used to authenticate the request (pauthkey header).", "true"],
   ["webhook", "object", "An object containing the webhook URL and headers to receive responses.", "true"],
   ["webhook.url", "string", "The URL where the response will be sent.", "true"],
   ["webhook.header", "object", "headers to include in the webhook request.", "true"],
-  ["batch", "array of strings", "A list of user questions to process in batch.", "true"],
+  ["batch", "array of strings", "A list of messages/requests to process.", "true"],
   ["agent_id", "string", "The unique ID of the agent to process the request.", "true"],
   ["batch_variables", "object", "An object containing variables for each batch item.", "true"],
 ];
@@ -98,7 +98,7 @@ const BatchApiGuide = ({ params, searchParams }) => {
         id="batch-api-guide-step2-section"
         className="flex flex-col gap-4 p-4"
       >
-        <Section title="Step 2" caption="Use the Batch API" />
+        <Section title="Step 2" caption="Use Batch Processing" />
         <CodeSnippet
           code={BatchApi(params.id, searchParams?.version)}
           language="bash"
@@ -114,7 +114,7 @@ const BatchApiGuide = ({ params, searchParams }) => {
         id="batch-api-guide-response-section"
         className="flex flex-col gap-4 p-4"
       >
-        <Section title="Response Format" />
+        <Section title="Output Format" />
         <CodeSnippet code={BatchResponseFormat()} language="json" id="batch-api-guide-response-code-block" />
       </div>
     </div>

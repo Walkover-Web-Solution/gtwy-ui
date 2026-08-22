@@ -38,7 +38,7 @@ function getCurrentCategoryGroup(currentCategory) {
     Auths: "Auth Keys",
     docs: "Knowledge Base",
     integrations: "Integrations",
-    rag_embed: "RAG Embeds",
+    rag_embed: "Embeddable Knowledge Bases",
     widgets: "Widgets",
     tools: "Tools",
   };
@@ -185,7 +185,7 @@ const CommandPalette = ({ isEmbedUser }) => {
             .map((d) => ({
               id: d._id,
               title: d.name || d._id,
-              subtitle: "RAG Embed",
+              subtitle: "Embeddable Knowledge Base",
               type: "rag_embed",
             }));
         case "Auths":
@@ -367,7 +367,7 @@ const CommandPalette = ({ isEmbedUser }) => {
   ).map((d) => ({
     id: d._id,
     title: d.name || d._id,
-    subtitle: "RAG Embed",
+    subtitle: "Embeddable Knowledge Base",
     type: "rag_embed",
   }));
 
@@ -425,7 +425,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       ...items.docs.map((it) => ({ group: "Knowledge Base", ...it })),
       ...items.integrations.map((it) => ({ group: "Integrations", ...it })),
       ...items.auths.map((it) => ({ group: "Auth Keys", ...it })),
-      ...items.rag_embed.map((it) => ({ group: "RAG Embeds", ...it })),
+      ...items.rag_embed.map((it) => ({ group: "Embeddable Knowledge Bases", ...it })),
       ...items.widgets.map((it) => ({ group: "Widgets", ...it })),
       ...items.tools.map((it) => ({ group: "Tools", ...it })),
     ],
@@ -488,7 +488,7 @@ const CommandPalette = ({ isEmbedUser }) => {
       { key: "Auths", label: "Auth Keys", desc: "Configure Auth Keys" },
       { key: "docs", label: "Knowledge Base", desc: "Documents and sources" },
       { key: "integrations", label: "Gtwy as Embed", desc: "Configure integrations" },
-      { key: "rag_embed", label: "RAG Embed", desc: "RAG embed integrations" },
+      { key: "rag_embed", label: "Embeddable Knowledge Base", desc: "Embeddable knowledge base integrations" },
       { key: "widgets", label: "Widgets", desc: "Create and manage UI widgets" },
       { key: "tools", label: "Tools", desc: "Custom tools and integrations" },
     ];

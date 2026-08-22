@@ -136,17 +136,17 @@ const DEFAULT_PARAMETER = {
       "Controls randomness in responses. Higher values produce more creative output; lower values produce more focused and predictable output.",
   },
   max_tokens: {
-    label: "Max Tokens",
+    label: "Maximum Output Tokens",
     description: "Sets the maximum number of tokens (words or characters) the model can generate in a single response.",
   },
   probability_cutoff: {
-    label: "Top-P (Nucleus Sampling)",
+    label: "Response Diversity (Top-P)",
     description:
       "Controls diversity by limiting tokens to a cumulative probability threshold. Lower values result in more focused output.",
   },
   top_p: {
     // Added for completeness based on example JSON
-    label: "Top-P",
+    label: "Response Diversity (Top-P)",
     description:
       "Controls diversity via nucleus sampling. A value of 0.9 means only tokens comprising the top 90% probability mass are considered.",
   },
@@ -179,7 +179,7 @@ const DEFAULT_PARAMETER = {
       "Defines whether tools should be used automatically (`auto`), not at all (`none`), or must be used (`required`).",
   },
   response_type: {
-    label: "Response Format",
+    label: "Output Format",
     description: "Sets the structure of the model's output: plain text, JSON object, or JSON schema.",
   },
   parallel_tool_calls: {

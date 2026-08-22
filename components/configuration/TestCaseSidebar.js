@@ -308,7 +308,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
         id="testcase-sidebar-header"
         className="p-4 border-b border-base-content/20 flex flex-row justify-between"
       >
-        <h2 className="text-lg font-semibold text-base-content">Test Cases</h2>
+        <h2 className="text-lg font-semibold text-base-content">Evaluations</h2>
         <button
           data-testid="testcase-run-all-button"
           id="testcase-run-all-button"
@@ -324,9 +324,9 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
               </span>
             </div>
           ) : testCaseArray.length === 1 ? (
-            `Run Test Case`
+            `Run Evaluation`
           ) : (
-            `Run ${testCaseArray.length} Test Cases`
+            `Run ${testCaseArray.length} Evaluations`
           )}
         </button>
 
@@ -360,7 +360,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
               ) : (
                 <>
                   <Play className="w-4 h-4" />
-                  <span>Generate Test Cases</span>
+                  <span>Generate Evaluations</span>
                 </>
               )}
             </button>

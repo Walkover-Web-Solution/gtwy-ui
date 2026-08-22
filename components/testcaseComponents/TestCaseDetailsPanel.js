@@ -744,7 +744,7 @@ const TestCaseDetailsPanel = ({
               className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide flex items-center gap-1.5"
               data-testid="testcase-expected-label"
             >
-              Expected Output
+              Expected Response
             </div>
             <div
               className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2"
@@ -1134,7 +1134,7 @@ const TestCaseDetailsPanel = ({
                                     <button
                                       onClick={() => handleMoveToExpected(version, modelOutput)}
                                       className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-[10px] font-semibold text-base-content/70 hover:bg-base-200"
-                                      title="Set this response as the expected output"
+                                      title="Set this response as the expected response"
                                       data-testid={`testcase-version-move-to-expected-${versions.indexOf(version) + 1}`}
                                     >
                                       {movedVersion === version ? (

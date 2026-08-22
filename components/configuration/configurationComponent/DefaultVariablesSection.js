@@ -92,12 +92,12 @@ const DefaultVariablesSection = memo(
                 e.stopPropagation();
                 toggleSidebar("variable-collection-slider", "right");
               }}
-              title="Manage Variables"
+              title="Manage Prompt Variables"
               disabled={isPublished || !isEditor}
             >
               <div className="flex items-center gap-1">
                 <SettingsIcon size={12} />
-                <span>Manage Variables</span>
+                <span>Manage Prompt Variables</span>
               </div>
             </button>
           </div>
@@ -114,7 +114,7 @@ const DefaultVariablesSection = memo(
           <div className="border-t border-base-content/10 p-3 bg-base-50">
             {/* Default Variables Info */}
             <div className="mb-4">
-              <h4 className="text-sm font-medium text-base-content mb-2">Default Variables:</h4>
+              <h4 className="text-sm font-medium text-base-content mb-2">Default Prompt Variables:</h4>
               <div className="space-y-2">
                 {defaultVariables.map((variable) => (
                   <div key={variable.name} className="flex items-start gap-2">
@@ -138,7 +138,7 @@ const DefaultVariablesSection = memo(
             {/* Custom Variables Info */}
             {customVariables.length > 0 && (
               <div className="mb-4">
-                <h4 className="text-sm font-medium text-base-content mb-2">Custom Variables:</h4>
+                <h4 className="text-sm font-medium text-base-content mb-2">Custom Prompt Variables:</h4>
                 <div className="space-y-2">
                   {customVariables.map((variable, index) => (
                     <div key={index} className="flex items-start gap-2">

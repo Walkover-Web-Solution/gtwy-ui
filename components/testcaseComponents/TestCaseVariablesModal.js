@@ -90,7 +90,7 @@ const TestCaseVariablesModal = ({
   return (
     <Modal
       MODAL_ID={MODAL_TYPE.TEST_CASE_VARIABLES_MODAL}
-      title="Test Case Variables"
+      title="Evaluation Variables"
       description="Configure values for the variables used in this test case"
       icon={<SlidersHorizontal size={16} className="text-primary" />}
       widthClass="w-[min(672px,92vw)]"
