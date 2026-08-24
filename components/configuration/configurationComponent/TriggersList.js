@@ -43,7 +43,13 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
 
   useEffect(() => {
     if (triggerData) {
-      const filteredTriggers = triggerData.filter((flow) => flow?.metadata?.bridge_id === params?.id) || [];
+      const filteredTriggers =
+        triggerData.filter((flow) => {
+          if (flow?.metadata?.bridge_id !== params?.id) return false;
+          // Draft flows should not appear until they are published
+          const status = flow?.status?.toString().trim().toLowerCase();
+          return status !== "drafted" && status !== "draft";
+        }) || [];
       setTriggers(filteredTriggers);
       return;
     }
@@ -101,29 +107,42 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
     return () => {
       window.removeEventListener("message", handleMessage);
     };
-  }, [params?.id]);
+  }, [params?.id, params?.org_id]);
 
   async function handleMessage(e) {
     const newTrigger = e?.data;
-    if (e.data?.metadata?.type !== "trigger") return;
+    if (newTrigger?.metadata?.type !== "trigger") return;
+    // Ignore events for other agents
+    if (newTrigger?.metadata?.bridge_id && newTrigger.metadata.bridge_id !== params?.id) return;
+
+    const status = (newTrigger?.status || newTrigger?.action || "").toString().trim().toLowerCase();
+    const isPublishedLike = status === "published" || status === "active" || status === "updated";
 
     setTriggers((prevTriggers) => {
       const existingIndex = prevTriggers.findIndex((trigger) => trigger.id === newTrigger.id);
 
       if (existingIndex !== -1) {
-        // Update existing trigger
+        // Already in the list — apply status updates (publish / pause / delete / etc.)
         const updatedTriggers = [...prevTriggers];
         updatedTriggers[existingIndex] = { ...prevTriggers[existingIndex], ...newTrigger };
         return updatedTriggers;
-      } else {
-        // Add new trigger to the beginning
-        dispatch(updateTriggerDataReducer({ dataToSend: newTrigger, orgId: params?.org_id }));
-        return [newTrigger, ...prevTriggers];
       }
+
+      // New trigger: only add once published (or equivalent), not while drafted
+      if (!isPublishedLike) {
+        return prevTriggers;
+      }
+
+      dispatch(updateTriggerDataReducer({ dataToSend: newTrigger, orgId: params?.org_id }));
+      return [newTrigger, ...prevTriggers];
     });
   }
 
-  const activeTriggers = triggers?.filter((trigger) => trigger?.status !== "deleted") || [];
+  const activeTriggers =
+    triggers?.filter((trigger) => {
+      const status = trigger?.status?.toString().trim().toLowerCase();
+      return status !== "deleted" && status !== "drafted" && status !== "draft";
+    }) || [];
 
   const hasTriggers = activeTriggers.length > 0;
 
