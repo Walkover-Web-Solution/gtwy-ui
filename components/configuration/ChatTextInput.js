@@ -77,6 +77,7 @@ function ChatTextInput({
   );
   const [validationError, setValidationError] = useState(null);
   const [imagePreviewLoadedKeys, setImagePreviewLoadedKeys] = useState(() => new Set());
+  const [hasMessageText, setHasMessageText] = useState(false);
   const dispatch = useDispatch();
   const [fileInput, setFileInput] = useState(null); // Use state for the file input element
   const versionId = searchParams?.version;
@@ -288,7 +289,10 @@ function ChatTextInput({
       }
     }
     dispatch(setChatError(channelIdentifier, ""));
-    if (modelType !== "completion") inputRef.current.value = "";
+    if (modelType !== "completion") {
+      inputRef.current.value = "";
+      setHasMessageText(false);
+    }
 
     // Capture current attachments and clear preview immediately for snappier UX.
     const selectedUploadedImages = [...uploadedImages];
@@ -344,6 +348,7 @@ function ChatTextInput({
         // Handle unsuccessful response: rollback via Redux
         if (!responseData || !responseData.success) {
           inputRef.current.value = data.content;
+          setHasMessageText(Boolean(data.content?.trim()));
           dispatch(setChatError(channelIdentifier, "Failed to get response"));
           return;
         }
@@ -382,6 +387,7 @@ function ChatTextInput({
 
         if (!responseData || !responseData.success) {
           inputRef.current.value = data.content;
+          setHasMessageText(Boolean(data.content?.trim()));
           dispatch(setChatError(channelIdentifier, "Failed to get response"));
           return;
         }
@@ -463,6 +469,11 @@ function ChatTextInput({
     }
   }, [handleSendMessageRef, handleSendMessage]);
 
+  // Only image-type models reject image-only turns; require a query before send
+  const requiresMessageForAttachments =
+    modelType === "image" && (uploadedImages.length > 0 || uploadedFiles.length > 0);
+  const isSendDisabled = loading || uploading || (requiresMessageForAttachments && !hasMessageText);
+
   const handleKeyDown = useCallback(
     (event) => {
       if (event.key === "Enter") {
@@ -472,14 +483,16 @@ function ChatTextInput({
           if (hasUnsavedPrompt) {
             event.preventDefault();
             openModal(MODAL_TYPE.UNSAVED_PROMPT_CHAT_MODAL);
-          } else if (!loading && !uploading) {
+          } else if (!isSendDisabled) {
             event.preventDefault();
             handleSendMessage(event);
+          } else {
+            event.preventDefault();
           }
         }
       }
     },
-    [loading, uploading, hasUnsavedPrompt, handleSendMessage]
+    [isSendDisabled, hasUnsavedPrompt, handleSendMessage]
   );
 
   const handlePaste = useCallback(
@@ -930,6 +943,7 @@ function ChatTextInput({
             onInput={(e) => {
               e.target.style.height = "auto"; // Reset height
               e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; // Set to scroll height, max 200px
+              setHasMessageText(e.target.value.trim().length > 0);
             }}
           />
         )}
@@ -1072,18 +1086,25 @@ function ChatTextInput({
           </div>
         )}
         {/* Enhanced Send Button */}
-        <div className="tooltip tooltip-top" data-tip={hasUnsavedPrompt ? "Save your prompt first" : "Send message"}>
+        <div
+          className="tooltip tooltip-top"
+          data-tip={
+            hasUnsavedPrompt
+              ? "Save your prompt first"
+              : requiresMessageForAttachments && !hasMessageText
+                ? "Add a message to send with your image"
+                : "Send message"
+          }
+        >
           <button
             id="chat-send-button"
             className={`btn btn-circle transition-all duration-200 ${
-              loading || uploading
-                ? "btn-disabled"
-                : " btn hover:btn-primary-focus hover:scale-105 shadow-lg hover:shadow-xl"
+              isSendDisabled ? "btn-disabled" : " btn hover:btn-primary-focus hover:scale-105 shadow-lg hover:shadow-xl"
             }`}
             onClick={() => {
-              handleSendMessage();
+              if (!isSendDisabled) handleSendMessage();
             }}
-            disabled={loading || uploading}
+            disabled={isSendDisabled}
           >
             {loading || uploading ? (
               <span className="loading loading-dots loading-md"></span>
