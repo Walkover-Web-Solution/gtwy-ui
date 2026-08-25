@@ -118,7 +118,8 @@ function Page() {
           const agentId = createdAgent?._id;
           const targetVersion = createdAgent?.published_version_id || createdAgent?.versions?.[0];
           if (agentId && targetVersion) {
-            route.push(`/org/${selectedOrg.id}/agents/configure/${agentId}?version=${targetVersion}`);
+            const tab = createdAgent?.published_version_id ? "prompt" : "integration";
+            route.push(`/org/${selectedOrg.id}/agents/configure/${agentId}?version=${targetVersion}&tab=${tab}`);
           } else {
             toast.error("Unable to open the newly created agent. Please try again.");
             updateFormState({ isLoading: false });
