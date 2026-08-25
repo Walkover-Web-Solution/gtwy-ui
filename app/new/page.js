@@ -34,8 +34,9 @@ function Page() {
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
 
-  const { organizations } = useCustomSelector((state) => ({
+  const { organizations, isEmbedUser } = useCustomSelector((state) => ({
     organizations: state.userDetailsReducer.organizations,
+    isEmbedUser: state.appInfoReducer.embedUserDetails.isEmbedUser,
   }));
 
   const queryTemplateId = searchParams.get("template_id");
@@ -118,7 +119,7 @@ function Page() {
           const agentId = createdAgent?._id;
           const targetVersion = createdAgent?.published_version_id || createdAgent?.versions?.[0];
           if (agentId && targetVersion) {
-            const tab = createdAgent?.published_version_id ? "prompt" : "integration";
+            const tab = isEmbedUser || createdAgent?.published_version_id ? "prompt" : "integration";
             route.push(`/org/${selectedOrg.id}/agents/configure/${agentId}?version=${targetVersion}&tab=${tab}`);
           } else {
             toast.error("Unable to open the newly created agent. Please try again.");

@@ -261,7 +261,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
 
           router.push(
             `/org/${orgid}/agents/configure/${data.agent._id}?version=${data.agent.versions[0]}&tab=${
-              data.agent.published_version_id ? "prompt" : "integration"
+              isEmbedUser || data.agent.published_version_id ? "prompt" : "integration"
             }`
           );
           updateState({ isAiLoading: false });
@@ -293,7 +293,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
                 }
                 router.push(
                   `/org/${orgid}/agents/configure/${data.data.agent._id}?version=${data.data.agent.versions[0]}&tab=${
-                    data.data.agent.published_version_id ? "prompt" : "integration"
+                    isEmbedUser || data.data.agent.published_version_id ? "prompt" : "integration"
                   }`
                 );
                 updateState({ isLoading: false });
@@ -338,7 +338,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
 
             router.push(
               `/org/${orgid}/agents/configure/${data.data.agent._id}?version=${data.data.agent.versions[0]}&tab=${
-                data.data.agent.published_version_id ? "prompt" : "integration"
+                isEmbedUser || data.data.agent.published_version_id ? "prompt" : "integration"
               }`
             );
             updateState({ isLoading: false });

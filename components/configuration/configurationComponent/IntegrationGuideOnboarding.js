@@ -45,8 +45,8 @@ const CATEGORIES = [
 ];
 
 const EXAMPLES = [
-  { id: "api", label: "API example" },
-  { id: "batch", label: "Batch API example" },
+  { id: "api", label: "API" },
+  { id: "batch", label: "Batch API" },
 ];
 
 const OPENAI_LANGUAGES = [
@@ -72,6 +72,37 @@ const OPENAI_BATCH_CODE_BY_LANG = {
   java: getJavaBatchCode,
   go: getGoBatchCode,
 };
+
+const SegmentedControl = ({ items, activeId, onChange, testId, itemTestIdPrefix, size = "sm" }) => (
+  <div
+    className="inline-flex w-fit max-w-full items-center gap-0.5 overflow-x-auto rounded-lg bg-base-200 p-1 scrollbar-hide"
+    role="tablist"
+    data-testid={testId}
+  >
+    {items.map((item) => {
+      const isActive = item.id === activeId;
+      return (
+        <button
+          key={item.id}
+          type="button"
+          role="tab"
+          aria-selected={isActive}
+          onClick={() => onChange(item.id)}
+          {...(itemTestIdPrefix ? { "data-testid": `${itemTestIdPrefix}-${item.id}` } : {})}
+          className={`shrink-0 whitespace-nowrap rounded-md transition-colors ${
+            size === "md" ? "px-4 py-1.5 text-sm" : "px-3 py-1 text-xs"
+          } ${
+            isActive
+              ? "bg-base-100 font-semibold text-base-content shadow-sm ring-1 ring-base-content/10"
+              : "text-base-content/55 hover:text-base-content"
+          }`}
+        >
+          {item.label}
+        </button>
+      );
+    })}
+  </div>
+);
 
 const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = "" }) => {
   const [category, setCategory] = useState("curl");
@@ -181,73 +212,50 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2" data-testid="onboarding-category-tabs">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setCategory(cat.id)}
-              data-testid={`onboarding-category-${cat.id}`}
-              className={`btn btn-sm rounded-full ${cat.id === category ? "btn-primary" : "btn-ghost border border-base-300"}`}
+        <SegmentedControl
+          items={CATEGORIES}
+          activeId={category}
+          onChange={setCategory}
+          testId="onboarding-category-tabs"
+          itemTestIdPrefix="onboarding-category"
+          size="md"
+        />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <SegmentedControl
+            items={EXAMPLES}
+            activeId={example}
+            onChange={setExample}
+            testId="onboarding-example-tabs"
+            itemTestIdPrefix="onboarding-example"
+          />
+
+          {category !== "curl" && (
+            <select
+              className="select select-sm select-bordered ml-auto w-auto text-xs"
+              aria-label="Language"
+              data-testid={category === "gtwy" ? "onboarding-gtwy-lang-tabs" : "onboarding-openai-lang-tabs"}
+              value={category === "gtwy" ? gtwyLang : openaiLang}
+              onChange={(e) => (category === "gtwy" ? setGtwyLang(e.target.value) : setOpenaiLang(e.target.value))}
             >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {category === "gtwy" && (
-          <div className="flex flex-wrap items-center gap-2" data-testid="onboarding-gtwy-lang-tabs">
-            {GTWY_SDK_LANGUAGES.map((lang) => (
-              <button
-                key={lang.id}
-                type="button"
-                onClick={() => setGtwyLang(lang.id)}
-                className={`btn btn-xs rounded-full ${lang.id === gtwyLang ? "btn-secondary" : "btn-ghost border border-base-300"}`}
-              >
-                {lang.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {category === "openai" && (
-          <div className="flex flex-wrap items-center gap-2" data-testid="onboarding-openai-lang-tabs">
-            {OPENAI_LANGUAGES.map((lang) => (
-              <button
-                key={lang.id}
-                type="button"
-                onClick={() => setOpenaiLang(lang.id)}
-                className={`btn btn-xs rounded-full ${lang.id === openaiLang ? "btn-secondary" : "btn-ghost border border-base-300"}`}
-              >
-                {lang.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2" data-testid="onboarding-example-tabs">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex.id}
-              type="button"
-              onClick={() => setExample(ex.id)}
-              data-testid={`onboarding-example-${ex.id}`}
-              className={`btn btn-xs rounded-full ${ex.id === example ? "btn-secondary" : "btn-ghost border border-base-300"}`}
-            >
-              {ex.label}
-            </button>
-          ))}
+              {(category === "gtwy" ? GTWY_SDK_LANGUAGES : OPENAI_LANGUAGES).map((lang) => (
+                <option key={lang.id} value={lang.id}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {isBatch && (
           <div
             data-testid="onboarding-batch-limitations"
-            className="alert alert-warning border border-warning/30 bg-warning/10"
+            className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3"
           >
-            <Info className="h-5 w-5 text-warning flex-shrink-0" />
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
             <div>
-              <p className="font-medium text-base-content">Batch API Limitations</p>
-              <p className="text-sm text-base-content/80">
+              <p className="text-sm font-medium text-base-content">Batch API Limitations</p>
+              <p className="text-xs text-base-content/70">
                 Tools call, Agent call and Knowledge base call are not supported when using the Batch API.
               </p>
             </div>
@@ -260,31 +268,25 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
           </CodeBlock>
         )}
 
-        <div className="rounded-xl overflow-hidden border border-base-300">
-          <CodeBlock key={`${category}-${example}-${gtwyLang}-${openaiLang}`} className={`language-${activePrism}`}>
-            {activeCode}
-          </CodeBlock>
-        </div>
+        <CodeBlock key={`${category}-${example}-${gtwyLang}-${openaiLang}`} className={`language-${activePrism}`}>
+          {activeCode}
+        </CodeBlock>
       </div>
 
-      <div className="rounded-xl border border-base-300 p-4">
-        <h4 className="text-sm font-semibold mb-3">Response format</h4>
-        <div className="rounded-lg overflow-hidden border border-base-300">
-          <CodeBlock key={`response-${category}-${example}`} className="language-json">
-            {responseFormat}
-          </CodeBlock>
-        </div>
+      <div className="flex flex-col gap-2">
+        <h4 className="text-sm font-semibold">Response format</h4>
+        <CodeBlock key={`response-${category}-${example}`} className="language-json">
+          {responseFormat}
+        </CodeBlock>
 
         {accessorSnippet && (
-          <div className="mt-4">
-            <p className="text-xs text-base-content/60 mb-2">
+          <div className="mt-2 flex flex-col gap-2">
+            <p className="text-xs text-base-content/60">
               The SDK parses this for you — access the fields you need directly, no need to traverse the JSON:
             </p>
-            <div className="rounded-lg overflow-hidden border border-base-300">
-              <CodeBlock key={`accessor-${gtwyLang}`} className={`language-${activeGtwyLang.prism}`} showCopy={false}>
-                {accessorSnippet}
-              </CodeBlock>
-            </div>
+            <CodeBlock key={`accessor-${gtwyLang}`} className={`language-${activeGtwyLang.prism}`} showCopy={false}>
+              {accessorSnippet}
+            </CodeBlock>
           </div>
         )}
       </div>

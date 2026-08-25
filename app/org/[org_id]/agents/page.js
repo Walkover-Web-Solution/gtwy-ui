@@ -929,7 +929,7 @@ function Home({ params, searchParams, isEmbedUser }) {
     }
     const routeKey = `${row._id}-${row.versionId}`;
     if (!prefetchedRoutes.current.has(routeKey)) {
-      const tab = row.published_version_id ? "prompt" : "integration";
+      const tab = isEmbedUser || row.published_version_id ? "prompt" : "integration";
       const prefetchUrl = `/org/${resolvedParams.org_id}/agents/configure/${row._id}?version=${row.versionId}&type=${bridgeTypeFilter}&tab=${tab}`;
       router.prefetch(prefetchUrl);
       prefetchedRoutes.current.add(routeKey);
@@ -942,7 +942,7 @@ function Home({ params, searchParams, isEmbedUser }) {
 
     setLoadingAgentId(id);
     // Include the type parameter to maintain sidebar selection
-    const tab = publishedVersionId ? "prompt" : "integration";
+    const tab = isEmbedUser || publishedVersionId ? "prompt" : "integration";
     router.push(
       `/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}&tab=${tab}`
     );
