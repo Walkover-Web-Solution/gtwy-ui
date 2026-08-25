@@ -96,9 +96,7 @@ const IntegrationGuideTab = ({ isPublished }) => {
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        <div className="overflow-y-auto h-full scrollbar-hide p-4">{renderTabContent()}</div>
-      </div>
+      <div className="overflow-y-auto h-full scrollbar-hide">{renderTabContent()}</div>
     </div>
   );
 };
