@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { Brain, ChevronRight, Clock3, ExternalLink, Maximize2, RotateCcw, SlidersHorizontal } from "lucide-react";
@@ -13,7 +14,15 @@ import MessageExecutionTrace from "../historyUi/executionTrace/MessageExecutionT
 import ToolsDataModal from "./ToolsDataModal";
 import { truncate } from "./AssistFile";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { extractErrorMessage, openModal, parseNestedJson } from "@/utils/utility";
+import {
+  allowedAttributes,
+  extractErrorMessage,
+  formatCostValue,
+  formatTokensTable,
+  openModal,
+  parseNestedJson,
+} from "@/utils/utility";
+import CodeBlock from "../codeBlock/CodeBlock";
 import { MODAL_TYPE } from "@/utils/enums";
 import { flattenToolsCallData } from "@/utils/executionTraceTransform";
 import { rerunApi } from "@/config/modelApi";
@@ -201,10 +210,45 @@ const EventRow = ({
           <div className="w-8 shrink-0" />
         </div>
 
-        {footer ? <div className="px-4 pb-3 flex items-center justify-between w-full">{footer}</div> : null}
+        {/* Stacked, and indented by the Cost (104px) + Type (92px) columns so the actions
+            and the expandable panels line up with the message text above them. */}
+        {footer ? (
+          <div className="flex w-full min-w-0 flex-col items-start gap-2 pb-3 pl-[196px] pr-4">{footer}</div>
+        ) : null}
       </div>
     </div>
   );
+};
+
+// {{variable}} placeholders left unresolved in the stored system prompt.
+const PROMPT_PLACEHOLDER_REGEX = /(\{\{\s*[\w.-]+\s*\}\})/g;
+
+// Highlight variable *values* inside a plain prompt segment (same rules as the history page).
+const highlightVariableValues = (text, entries, keyPrefix) => {
+  if (!text) return text;
+  if (!entries.length) return text;
+
+  let parts;
+  try {
+    const pattern = entries.map((e) => e.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    parts = text.split(new RegExp(`\\b(${pattern})\\b`, "g"));
+  } catch {
+    return text;
+  }
+
+  return parts.map((part, i) => {
+    const matched = entries.find((e) => e.value === part);
+    if (!matched) return <span key={`${keyPrefix}-t-${i}`}>{part}</span>;
+    return (
+      <span
+        key={`${keyPrefix}-v-${i}`}
+        className="inline rounded border border-primary/30 bg-primary/15 px-1 py-0.5 font-mono text-primary"
+        title={`Variable: ${matched.key}`}
+      >
+        {part}
+      </span>
+    );
+  });
 };
 
 const hoverActionsClass = (forceVisible = false) =>
@@ -228,11 +272,14 @@ const NewThreadItem = ({
   viewFilter = "all",
 }) => {
   const dispatch = useDispatch();
+  const router = useRouter();
 
-  const { embedToken, orgBridges, publishedVersionId } = useCustomSelector((state) => ({
+  const { embedToken, orgBridges, publishedVersionId, allBridgesMap, isEmbedUser } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token,
     orgBridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
     publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[item?.bridge_id]?.published_version_id,
+    allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
+    isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
   }));
 
   const toolsDataModalRef = useRef(null);
@@ -240,7 +287,7 @@ const NewThreadItem = ({
   const [isRerunning, setIsRerunning] = useState(false);
   const [copiedVariables, setCopiedVariables] = useState(false);
 
-  const [userPanel, setUserPanel] = useState(null); // "variables" | "prompt" | null
+  const [userPanel, setUserPanel] = useState(null); // "variables" | "prompt" | "more" | null
 
   const metrics = useMemo(() => getTurnMetrics(item), [item]);
   const { toolCount, aiCost, totalCost, isError } = metrics;
@@ -322,6 +369,9 @@ const NewThreadItem = ({
       originalContent: item.llm_message || "",
       index,
       Id: item.id || item.Id,
+      // Needed by the container to load the "Previous Prompt" and to save against the right version.
+      versionId: item?.version_id || "",
+      prompt: item?.prompt || "",
     });
     openModal(MODAL_TYPE.EDIT_MESSAGE_MODAL);
   }, [item, index, setModalInput]);
@@ -361,9 +411,45 @@ const NewThreadItem = ({
     [threadHandler, item, memoryContent]
   );
 
+  // Agent calls must open that agent's history page, never the viasocket function embed.
+  const handleAgentHistoryClick = useCallback(
+    (event, tool) => {
+      event?.stopPropagation?.();
+      const isAgent = tool?.data?.metadata?.type === "agent" || tool?.type === "AGENT" || Boolean(tool?.bridge_id);
+      const agentId = tool?.data?.metadata?.agent_id || tool?.bridge_id;
+      const orgId = params?.org_id;
+      if (!isAgent || !agentId || !orgId) return false;
+
+      const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "";
+      const toolMessageId = tool?.data?.metadata?.message_id || tool?.message_id;
+      const bridgeFromOrg = orgBridges.find((b) => b?._id === agentId) || allBridgesMap?.[agentId];
+      const agentPublishedVersionId = bridgeFromOrg?.published_version_id;
+      const threadId = tool?.data?.metadata?.thread_id || tool?.thread_id;
+      const subThreadId = tool?.data?.metadata?.sub_thread_id || tool?.data?.metadata?.thread_id || tool?.thread_id;
+
+      const search = new URLSearchParams();
+      if (agentPublishedVersionId) search.set("version", agentPublishedVersionId);
+      if (toolMessageId) search.set("message_id", toolMessageId);
+      if (threadId) search.set("thread_id", threadId);
+      if (subThreadId) search.set("sub_thread_id", subThreadId);
+
+      const path = `/org/${orgId}/agents/history/${agentId}?${search.toString()}`;
+      if (isEmbedUser) {
+        router.push(path);
+        return true;
+      }
+      if (typeof window !== "undefined") {
+        window.open(baseUrl ? `${baseUrl}${path}` : path, "_blank", "noopener,noreferrer");
+      }
+      return true;
+    },
+    [params?.org_id, orgBridges, allBridgesMap, isEmbedUser, router]
+  );
+
   const handleToolLogsClick = useCallback(
     (event, tool) => {
       if (tool?.data?.metadata?.type === "RAG") return;
+      if (handleAgentHistoryClick(event, tool)) return;
       if (typeof window !== "undefined" && window.openViasocket) {
         window.openViasocket(tool?.id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
@@ -372,7 +458,7 @@ const NewThreadItem = ({
         });
       }
     },
-    [embedToken, params?.id]
+    [embedToken, params?.id, handleAgentHistoryClick]
   );
 
   const handleToolDataClick = useCallback((tool) => {
@@ -391,6 +477,167 @@ const NewThreadItem = ({
 
   const turnEventLabel = `${metrics.events} event${metrics.events === 1 ? "" : "s"}`;
   const turnCostLabel = formatMoney(totalCost);
+
+  // Same highlighting as the history page: variable values get highlighted, and any
+  // {{placeholder}} still left in the stored prompt (e.g. the current time block) is
+  // marked instead of being shown as raw text.
+  const renderHighlightedSystemPrompt = (content) => {
+    if (!content || typeof content !== "string") return content || null;
+
+    const entries = Object.entries(variables)
+      .map(([key, val]) => ({ key, value: typeof val === "object" ? JSON.stringify(val) : String(val ?? "") }))
+      .filter((e) => e.value.length > 0 && e.value.length <= 200)
+      .sort((a, b) => b.value.length - a.value.length);
+
+    return content.split(PROMPT_PLACEHOLDER_REGEX).map((segment, idx) => {
+      if (!segment) return null;
+
+      // The regex captures its match, so odd indexes are the placeholders themselves.
+      if (idx % 2 === 1) {
+        const name = segment.replace(/[{}\s]/g, "");
+        const resolved = variables?.[name];
+        const resolvedText =
+          resolved === undefined || resolved === null
+            ? ""
+            : typeof resolved === "object"
+              ? JSON.stringify(resolved)
+              : String(resolved);
+        const createdAtLabel = formatDateAndTime?.(item?.created_at) || "";
+        const title = resolvedText
+          ? `Variable: ${name} = ${resolvedText}`
+          : name === "current_time_date_and_current_identifier"
+            ? `Resolved at request time${createdAtLabel ? ` · ${createdAtLabel}` : ""}`
+            : `Variable: ${name} (resolved at request time)`;
+
+        return (
+          <span
+            key={`prompt-placeholder-${idx}`}
+            className="inline rounded border border-dashed border-primary/40 bg-primary/10 px-1 py-0.5 font-mono text-primary"
+            title={title}
+          >
+            {segment}
+          </span>
+        );
+      }
+
+      return (
+        <React.Fragment key={`prompt-segment-${idx}`}>
+          {highlightVariableValues(segment, entries, `prompt-segment-${idx}`)}
+        </React.Fragment>
+      );
+    });
+  };
+
+  const renderMoreDetailsPanel = () => (
+    <ThreadInlinePanel className="w-full">
+      <div className="text-left">
+        <div className="border-b border-base-content/10 bg-base-200/50 px-4 py-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-base-content/70">Optional Details</span>
+        </div>
+        {allowedAttributes.optional
+          .filter(([key]) => key !== "tokens")
+          .sort((a, b) => a[1].localeCompare(b[1]))
+          .map(([key, displayKey]) => {
+            const value = item[key] !== undefined ? item[key] : key === "createdAt" ? item.created_at : undefined;
+            if (value === undefined || value === null) return null;
+
+            if (typeof value === "object" && key !== "createdAt") {
+              return Object.entries(value).map(([objKey, objValue]) => (
+                <div
+                  key={`${key}-${objKey}`}
+                  className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
+                >
+                  <span className="min-w-[120px] shrink-0 font-mono text-xs font-normal text-trace-gold">
+                    {objKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                  </span>
+                  <div className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs text-base-content">
+                    {typeof objValue === "object" && objValue !== null ? (
+                      <div className="w-full overflow-hidden rounded-lg border border-base-content/20 bg-base-200/50">
+                        <CodeBlock className="language-json" showCopy={false} plain={true}>
+                          {JSON.stringify(objValue, null, 2)}
+                        </CodeBlock>
+                      </div>
+                    ) : (
+                      objValue?.toString()
+                    )}
+                  </div>
+                </div>
+              ));
+            }
+
+            return (
+              <div
+                key={key}
+                className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
+              >
+                <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">{displayKey}</span>
+                <span className="whitespace-pre-wrap break-all text-xs text-base-content">
+                  {key === "createdAt" || key === "created_at" ? new Date(value).toLocaleString() : value?.toString()}
+                </span>
+              </div>
+            );
+          })}
+        {item?.batch_data?.batch_id ? (
+          <div className="flex items-start gap-4 px-4 py-2.5">
+            <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">Batch ID</span>
+            <span className="whitespace-pre-wrap break-all font-mono text-xs text-base-content">
+              {item.batch_data.batch_id}
+            </span>
+          </div>
+        ) : null}
+        {(() => {
+          const rows = item?.tokens && typeof item.tokens === "object" ? formatTokensTable(item.tokens) : null;
+          if (!rows || rows.length === 0) return null;
+          return (
+            <div className="flex flex-col gap-2 px-4 py-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-trace-gold">Token and Cost</span>
+              <div className="w-full overflow-x-auto rounded-lg border border-base-content/10 bg-base-200/10 shadow-sm">
+                <table className="table table-xs w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-base-content/10 bg-base-200/50">
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-base-content/70">
+                        Type
+                      </th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-base-content/70">
+                        Tokens
+                      </th>
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-base-content/70">
+                        Cost ($)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-base-content/5">
+                    {rows.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        className={
+                          row.isTotal
+                            ? "border-t border-base-content/15 bg-base-200/40 font-semibold"
+                            : "hover:bg-base-200/20"
+                        }
+                      >
+                        <td className="px-3 py-2 text-left text-xs font-medium text-base-content/90">{row.label}</td>
+                        <td className="px-3 py-2 text-left font-mono text-xs text-base-content/80">
+                          {row.token !== undefined && row.token !== null
+                            ? typeof row.token === "number"
+                              ? row.token.toLocaleString()
+                              : row.token
+                            : "-"}
+                        </td>
+                        <td className="px-3 py-2 text-left font-mono text-xs text-base-content/80">
+                          {formatCostValue(row.cost)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </ThreadInlinePanel>
+  );
 
   const userFooter = (
     <>
@@ -435,12 +682,24 @@ const NewThreadItem = ({
             Variables
           </ThreadActionPill>
         ) : null}
+        <ThreadActionPill
+          trailing={ChevronRight}
+          trailingClassName={`transition-transform duration-200 ${userPanel === "more" ? "rotate-90" : ""}`}
+          active={userPanel === "more"}
+          onClick={() => setUserPanel((p) => (p === "more" ? null : "more"))}
+        >
+          More
+        </ThreadActionPill>
         <time className="ml-1 shrink-0 text-[11px] text-base-content/45">{formatDateAndTime?.(item?.created_at)}</time>
       </div>
 
       {userPanel === "prompt" && systemPrompt ? (
-        <ThreadSystemPromptPanel className="w-full">{systemPrompt}</ThreadSystemPromptPanel>
+        <ThreadSystemPromptPanel className="w-full">
+          {renderHighlightedSystemPrompt(systemPrompt)}
+        </ThreadSystemPromptPanel>
       ) : null}
+
+      {userPanel === "more" ? renderMoreDetailsPanel() : null}
 
       {userPanel === "variables" && variableCount > 0 ? (
         <ThreadInlinePanel className="w-full">
@@ -472,7 +731,12 @@ const NewThreadItem = ({
                   className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
                 >
                   <span className="min-w-[120px] shrink-0 font-mono text-xs text-trace-gold">{key}</span>
-                  <span className="block whitespace-pre-wrap break-all text-xs text-base-content">{raw}</span>
+                  {/* Same show more / collapse treatment long variable values get on the history page. */}
+                  <span className="block whitespace-pre-wrap break-all text-xs text-base-content">
+                    <ExpandCollapse collapsedHeight={150} fadeHeight={40}>
+                      {raw}
+                    </ExpandCollapse>
+                  </span>
                 </div>
               );
             })}
@@ -493,14 +757,10 @@ const NewThreadItem = ({
         ) : null}
         {item?.model ? <span>{item.model}</span> : null}
         {totalTokens !== null ? <span>{totalTokens} tok</span> : null}
-        {formatMoney(aiCost) ? (
-          <span className={isError ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}>
-            {formatMoney(aiCost)}
-          </span>
-        ) : null}
+        {/* Cost intentionally omitted here — it is already shown in the Cost column of this row. */}
       </div>
 
-      <div className={`mt-2 flex flex-wrap items-center gap-1.5 ${hoverActionsClass()}`}>
+      <div className={`flex flex-wrap items-center gap-1.5 ${hoverActionsClass()}`}>
         <ThreadActionPill
           icon={RotateCcw}
           onClick={handleRerun}
@@ -583,7 +843,7 @@ const NewThreadItem = ({
             onToolLogsClick={handleToolLogsClick}
             onToolDataClick={handleToolDataClick}
             onAgentDataClick={handleToolDataClick}
-            onAgentHistoryClick={handleToolLogsClick}
+            onAgentHistoryClick={handleAgentHistoryClick}
           />
         </EventRow>
       )}
@@ -593,7 +853,13 @@ const NewThreadItem = ({
         <EventRow
           id={`event-ai-${messageId}`}
           accent={isError ? "bg-red-400" : "bg-blue-500"}
-          background={isError ? "bg-red-50/70 dark:bg-red-500/[0.07]" : "bg-[#F7F8FE] dark:bg-blue-400/[0.06]"}
+          // The show-more gradient fades to --expand-collapse-fade, so point it at this row's
+          // tint — otherwise it fades to white and the fade edge shows against the AI background.
+          background={
+            isError
+              ? "bg-red-50/70 dark:bg-red-500/[0.07]"
+              : "bg-[#EDF0FC] dark:bg-blue-400/[0.10] [--expand-collapse-fade:#EDF0FC]"
+          }
           cost={formatMoney(aiCost)}
           costTone={isError ? "error" : "positive"}
           type="AI"

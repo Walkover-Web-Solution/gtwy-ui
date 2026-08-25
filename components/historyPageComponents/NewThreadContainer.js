@@ -18,12 +18,15 @@ import HistoryPagePromptUpdateModal from "../modals/HistoryPagePromptUpdateModal
 import { ChatLoadingSkeleton } from "./ChatLayoutLoader";
 import EditMessageModal from "../modals/EditMessageModal";
 import { improvePrompt } from "@/config/utilityApi";
+import { getBridgeVersionAction } from "@/store/action/bridgeAction";
 
 // ------------------------------------
 // Constants
 // ------------------------------------
 const PAGE_SIZE = 40;
 const SCROLL_BOTTOM_THRESHOLD = 16; // px
+// Same script the history page layout loads — "Debug Agent" needs window.SendDataToChatbot.
+const CHATBOT_SCRIPT_ID = "chatbot-main-script";
 
 const VIEW_TABS = [
   { key: "all", label: "All" },
@@ -73,12 +76,16 @@ const NewThreadContainer = ({
     searchResults: Array.isArray(state?.historyReducer?.search?.results) ? state.historyReducer.search.results : [],
     isSearchActive: state?.historyReducer?.search?.isActive || false,
   }));
-  const { bridgeVersionsArray, publishedVersionId } = useCustomSelector((state) => ({
-    bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.versions)
-      ? state.bridgeReducer.allBridgesMap[bridgeId].versions
-      : [],
-    publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.published_version_id,
-  }));
+  const { bridgeVersionsArray, publishedVersionId, historyPageChatbotToken, bridgeVersionMapping } = useCustomSelector(
+    (state) => ({
+      bridgeVersionsArray: Array.isArray(state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.versions)
+        ? state.bridgeReducer.allBridgesMap[bridgeId].versions
+        : [],
+      publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.published_version_id,
+      historyPageChatbotToken: state?.bridgeReducer?.org?.[orgId]?.history_page_chatbot_token,
+      bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {},
+    })
+  );
 
   const historyRef = useRef(null);
   const contentRef = useRef(null);
@@ -96,6 +103,7 @@ const NewThreadContainer = ({
   const [modalInput, setModalInput] = useState(null);
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [generatedPrompts, setGeneratedPrompts] = useState({}); // Store generated prompts by message ID
+  const [editPreviousPrompt, setEditPreviousPrompt] = useState("");
 
   // UI-only state for the redesigned header
   const [viewFilter, setViewFilter] = useState("all");
@@ -264,6 +272,59 @@ const NewThreadContainer = ({
       isMountedRef.current = false;
     };
   }, []);
+
+  // "Debug Agent" calls window.SendDataToChatbot, which only exists once the chatbot embed
+  // script is present. The history route loads it in its layout; routes that mount this
+  // container (e.g. analytics) do not, so load it here when it is missing.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (document.getElementById(CHATBOT_SCRIPT_ID)) return; // already loaded by a layout
+    const scriptSrc = process.env.NEXT_PUBLIC_CHATBOT_SCRIPT_SRC_PROD;
+    if (!scriptSrc || !historyPageChatbotToken) return;
+
+    const script = document.createElement("script");
+    script.setAttribute("embedToken", historyPageChatbotToken);
+    script.setAttribute("hideIcon", "true");
+    script.id = CHATBOT_SCRIPT_ID;
+    script.src = scriptSrc;
+    document.head.appendChild(script);
+
+    return () => {
+      const existing = document.getElementById(CHATBOT_SCRIPT_ID);
+      if (existing === script) document.head.removeChild(existing);
+    };
+  }, [historyPageChatbotToken]);
+
+  // Resolve the version the edited message belongs to, and load that version's prompt so the
+  // "Previous Prompt" side of the update modal is filled and the save targets a real version.
+  useEffect(() => {
+    if (!modalInput?.Id) return;
+    const versionId = modalInput?.versionId || versionFromURL || thread?.[0]?.version_id || "";
+    if (!versionId) {
+      setEditPreviousPrompt(modalInput?.prompt || "");
+      return;
+    }
+
+    const cachedPrompt = bridgeVersionMapping?.[versionId]?.configuration?.prompt;
+    if (cachedPrompt) {
+      setEditPreviousPrompt(cachedPrompt);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const agent = await dispatch(getBridgeVersionAction({ versionId }));
+      if (cancelled) return;
+      setEditPreviousPrompt(agent?.configuration?.prompt || modalInput?.prompt || "");
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalInput?.Id, modalInput?.versionId, versionFromURL, thread?.[0]?.version_id, dispatch]);
+
+  const editVersionId = modalInput?.versionId || versionFromURL || thread?.[0]?.version_id || "";
+  const resolvedPreviousPrompt = previousPrompt || editPreviousPrompt || modalInput?.prompt || "";
 
   useEffect(() => {
     calcFlexDirection();
@@ -704,9 +765,13 @@ const NewThreadContainer = ({
       <AddTestCaseModal testCaseConversation={testCaseConversation} setTestCaseConversation={setTestCaseConversation} />
 
       <HistoryPagePromptUpdateModal
-        searchParams={Object.fromEntries(searchParamsHook.entries())}
+        searchParams={{
+          ...Object.fromEntries(searchParamsHook.entries()),
+          // The analytics route has no ?version param; save must still target the message's version.
+          version: editVersionId || searchParamsHook.get("version") || "",
+        }}
         promotToUpdate={promotToUpdate}
-        previousPrompt={previousPrompt}
+        previousPrompt={resolvedPreviousPrompt}
         handleRegenerate={modalInput?.Id && generatedPrompts[modalInput?.Id] ? handleRegenerateFromModal : null}
         isRegenerating={isImprovingPrompt}
         onPromptSaved={handlePromptSaved}
