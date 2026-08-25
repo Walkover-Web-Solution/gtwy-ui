@@ -697,6 +697,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         status: item.status,
         bridge_status: item.bridge_status,
         versionId: item?.published_version_id || item?.versions?.[0],
+        published_version_id: item?.published_version_id || null,
         promptDetails:
           promptTotalTokens != null || promptEnhancerPercentage != null ? (
             <div className="flex flex-col text-xs">
@@ -910,6 +911,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
       folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
       settings: item?.settings || {},
+      published_version_id: item?.published_version_id || null,
     };
   });
 
@@ -927,19 +929,23 @@ function Home({ params, searchParams, isEmbedUser }) {
     }
     const routeKey = `${row._id}-${row.versionId}`;
     if (!prefetchedRoutes.current.has(routeKey)) {
-      const prefetchUrl = `/org/${resolvedParams.org_id}/agents/configure/${row._id}?version=${row.versionId}&type=${bridgeTypeFilter}`;
+      const tab = row.published_version_id ? "prompt" : "integration";
+      const prefetchUrl = `/org/${resolvedParams.org_id}/agents/configure/${row._id}?version=${row.versionId}&type=${bridgeTypeFilter}&tab=${tab}`;
       router.prefetch(prefetchUrl);
       prefetchedRoutes.current.add(routeKey);
     }
   };
 
-  const onClickConfigure = (id, versionId) => {
+  const onClickConfigure = (id, versionId, publishedVersionId) => {
     // Prevent multiple clicks while loading
     if (loadingAgentId) return;
 
     setLoadingAgentId(id);
     // Include the type parameter to maintain sidebar selection
-    router.push(`/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}`);
+    const tab = publishedVersionId ? "prompt" : "integration";
+    router.push(
+      `/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}&tab=${tab}`
+    );
   };
 
   const closeUsageFilterPopover = () => {
@@ -1377,9 +1383,11 @@ function Home({ params, searchParams, isEmbedUser }) {
                             "created_by",
                             "updated_by",
                           ]}
-                          handleRowClick={(props) => onClickConfigure(props?._id, props?.versionId)}
+                          handleRowClick={(props) =>
+                            onClickConfigure(props?._id, props?.versionId, props?.published_version_id)
+                          }
                           handleRowHover={handleRowHover}
-                          keysToExtractOnRowClick={["_id", "versionId"]}
+                          keysToExtractOnRowClick={["_id", "versionId", "published_version_id"]}
                           keysToWrap={["name", "model"]}
                           endComponent={EndComponent}
                           onUsageFilterClick={handleUsageFilterIconClick}

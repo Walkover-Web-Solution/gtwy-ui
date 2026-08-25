@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useConfigurationContext } from "../ConfigurationContext";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import ApiGuide from "../configurationComponent/ApiGuide";
-import BatchApiGuide from "../configurationComponent/BatchApiGuide";
+import IntegrationGuideOnboarding from "../configurationComponent/IntegrationGuideOnboarding";
 import SecondStep from "../../chatbotConfiguration/SecondStep";
 import PrivateFormSection from "../../chatbotConfiguration/FirstStep";
 import SlugNameInput from "../configurationComponent/SlugNameInput";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Zap, Settings2 } from "lucide-react";
 
 const IntegrationGuideTab = ({ isPublished }) => {
-  const { params } = useConfigurationContext();
+  const { params, isEmbedUser } = useConfigurationContext();
 
   // Get bridge data and integration data from Redux store
   const { slugName, prompt, bridgeTypeFromRedux, publishedVersionId } = useCustomSelector((state) => {
@@ -23,66 +22,61 @@ const IntegrationGuideTab = ({ isPublished }) => {
     };
   });
 
-  // Initialize activeTab state based on bridge type
-  const [activeTab, setActiveTab] = useState(() => {
-    return bridgeTypeFromRedux !== "trigger" ? bridgeTypeFromRedux : "chatbot";
-  });
+  const isChatbot = bridgeTypeFromRedux === "chatbot";
 
-  useEffect(() => {
-    // Set initial active tab based on the bridge type from Redux
-    let initialTab = bridgeTypeFromRedux !== "trigger" ? bridgeTypeFromRedux : "chatbot";
-
-    // If the bridge type is chatbot from Redux, force chatbot tab
-    if (bridgeTypeFromRedux === "chatbot") {
-      initialTab = "chatbot";
-    }
-    // If bridge type is not chatbot (api or batch), make sure we don't show chatbot tab
-    else if (initialTab === "chatbot") {
-      initialTab = "api"; // Default to API tab for non-chatbot agents
-    }
-
-    setActiveTab(initialTab);
-  }, [bridgeTypeFromRedux]);
-
-  // Determine which tabs to show based on the bridge type
-  const tabs =
-    bridgeTypeFromRedux === "chatbot"
-      ? // If it's a chatbot, only show the chatbot tab
-        [{ id: "chatbot", label: "Chatbot" }]
-      : // If it's API or batch, show both API and Batch API tabs
-        [
-          { id: "api", label: "API" },
-          { id: "batch", label: "Batch API" },
-        ];
-
-  // Render tab content based on active tab (from IntegrationGuideSlider logic)
+  // Render tab content based on bridge type (from IntegrationGuideSlider logic)
   const renderTabContent = () => {
-    switch (activeTab) {
-      case "api":
-        return <ApiGuide params={params} prompt={prompt} />;
-      case "chatbot":
-        return (
-          <div className="">
-            <SlugNameInput params={params} />
-            <PrivateFormSection params={params} ChooseChatbot={true} />
-            <SecondStep slugName={slugName} prompt={prompt} />
-          </div>
-        );
-      case "batch":
-        return <BatchApiGuide params={params} />;
-      default:
-        return null;
+    if (isChatbot) {
+      return (
+        <div className="">
+          <SlugNameInput params={params} />
+          <PrivateFormSection params={params} ChooseChatbot={true} />
+          <SecondStep slugName={slugName} prompt={prompt} />
+        </div>
+      );
     }
+    return <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} />;
   };
 
   // Treat route state and persisted state as published signals.
   const hasPublishedVersion = Boolean(publishedVersionId || isPublished);
 
   return (
-    <div data-testid="integration-guide-container" id="integration-guide-container" className="p-6 space-y-6">
-      <div className="mb-6">
+    <div
+      data-testid="integration-guide-container"
+      id="integration-guide-container"
+      className="p-6 space-y-6 max-w-7xl mx-auto"
+    >
+      <div className="mb-2">
         <h2 className="text-xl font-semibold text-base-content mb-2">Integration Guide</h2>
-        <p className="text-sm text-base-content/70">Choose your integration type and follow the guide</p>
+        <p className="text-sm text-base-content/70">Choose your integration type and follow the guide below.</p>
+      </div>
+
+      <div
+        data-testid="integration-guide-runtime-vs-configured"
+        id="integration-guide-runtime-vs-configured"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+      >
+        <div className="rounded-xl border border-base-300 bg-base-100 p-4 flex gap-3">
+          <Zap className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-base-content text-sm">Send it at runtime</p>
+            <p className="text-xs text-base-content/70 mt-1">
+              Pass <code>configuration</code>, <code>settings</code>, <code>variables</code> and other params directly
+              in the API request to override this agent for that single call — no changes here required.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-base-300 bg-base-100 p-4 flex gap-3">
+          <Settings2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-base-content text-sm">Or configure it once in GTWY</p>
+            <p className="text-xs text-base-content/70 mt-1">
+              Set the model, prompt, connectors and settings on the Prompt/Model/Settings tabs for this{" "}
+              <code>agent_id</code> so every request uses them by default, with no need to send them each time.
+            </p>
+          </div>
+        </div>
       </div>
 
       {!hasPublishedVersion && (
@@ -103,42 +97,6 @@ const IntegrationGuideTab = ({ isPublished }) => {
       )}
 
       <div className="flex flex-col gap-4">
-        {/* Dynamic Tabs based on bridge type */}
-        {!tabs.some((tab) => tab.id === "chatbot") && (
-          <div
-            data-testid="integration-guide-tabs"
-            id="integration-guide-tabs"
-            className="tabs tabs-boxed bg-base-100 p-1 rounded-lg"
-          >
-            {tabs.map((tab) => (
-              <button
-                data-testid={`integration-tab-${tab.id}`}
-                id={`integration-tab-${tab.id}`}
-                key={tab.id}
-                className={`tab flex-1 transition-colors ${
-                  activeTab === tab.id ? "tab-active bg-base-200 font-medium shadow-sm" : "hover:bg-base-200/50"
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {activeTab === "batch" && (
-          <div className="alert alert-warning border border-warning/30 bg-warning/10">
-            <Info className="h-5 w-5 text-warning flex-shrink-0 " />
-            <div>
-              <p className="font-medium text-base-content">Batch API Limitations</p>
-              <p className="text-sm text-base-content/80">
-                Tools call, Agent call and Knowledge base call are not supported when using the Batch API.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Tab Content */}
         <div className="overflow-y-auto h-full scrollbar-hide p-4">{renderTabContent()}</div>
       </div>
     </div>
