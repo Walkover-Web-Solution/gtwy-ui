@@ -56,6 +56,8 @@ export const analyticsSlice = createSlice({
         state.analyticsData[bridge_id].requests_over_time = data.requests_over_time;
       } else if (type === "response_time") {
         state.analyticsData[bridge_id].response_time = data.response_time;
+      } else if (type === "cost_over_time") {
+        state.analyticsData[bridge_id].cost_over_time = data.cost_over_time;
       }
     },
     fetchAnalyticsFailure: (state, action) => {
