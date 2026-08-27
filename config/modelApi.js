@@ -4,6 +4,25 @@ import { toast } from "react-toastify";
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
 
+export const getHuggingFaceModelProviders = async (modelId) => {
+  try {
+    if (!modelId || !modelId.trim()) return null;
+    const response = await axios.get(`${URL}/api/huggingface/models/providers`, {
+      params: { model: modelId.trim() },
+    });
+    const data = response.data;
+    if (!data?.success) {
+      toast.error(data?.error || "Could not resolve inference providers for this model.");
+      return null;
+    }
+    return data;
+  } catch (error) {
+    console.error(error);
+    toast.error(error?.response?.data?.error || error?.message || "Failed to reach Hugging Face provider lookup.");
+    return null;
+  }
+};
+
 export const getAllModels = async (service) => {
   try {
     const response = await axios.get(`${URL}/api/service/${service}`);

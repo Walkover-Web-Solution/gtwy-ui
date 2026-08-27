@@ -17,6 +17,7 @@ import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
 import GroqIcon from "@/icons/GroqIcon";
+import HuggingFaceIcon from "@/icons/HuggingFaceIcon";
 import MinimaxIcon from "@/icons/minimax";
 import MistralIcon from "@/icons/MistralIcon";
 import MoonshotIcon from "@/icons/MoonshotIcon";
@@ -313,6 +314,8 @@ export const getIconOfService = (service, height, width) => {
       return <MoonshotIcon height={height} width={width} />;
     case "neev_cloud":
       return <NeevCloudIcon height={height} width={width} />;
+    case "huggingface":
+      return <HuggingFaceIcon height={height} width={width} />;
     case "minimax":
       return <MinimaxIcon height={height} width={width} />;
     default:

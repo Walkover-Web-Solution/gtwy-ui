@@ -105,6 +105,15 @@ const PLACEHOLDERS = {
     knowledge_cutoff: "e.g., Mar 2024",
     usecase: "One per line, e.g., Low-latency private data inference",
   },
+  huggingface: {
+    display_name: "e.g., Llama 3.1 8B Instruct",
+    model_name: "e.g., meta-llama/Llama-3.1-8B-Instruct",
+    input_cost: "e.g., 0.05",
+    output_cost: "e.g., 0.08",
+    description: "A conversational model served via the Hugging Face Inference Providers Router.",
+    knowledge_cutoff: "e.g., Dec 2024",
+    usecase: "One per line, e.g., Open-source model experimentation",
+  },
   open_router: {
     display_name: "e.g., Deepseek Chat",
     model_name: "e.g., deepseek/deepseek-chat-v3-0324:free",

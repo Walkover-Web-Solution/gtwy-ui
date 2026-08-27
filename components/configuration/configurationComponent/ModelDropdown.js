@@ -10,6 +10,7 @@ import { CircleQuestionMark, Sparkles, CircleAlert, Plus } from "lucide-react";
 import InfoTooltip from "@/components/InfoTooltip";
 import AddNewModelModal from "@/components/modals/AddNewModal";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
+import HuggingFaceModelResolver from "./HuggingFaceModelResolver";
 
 // Model Preview component to display model specifications
 export const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
@@ -158,6 +159,7 @@ const ModelDropdown = ({
     fallbackModel,
     configuration,
     serviceModels,
+    providerConfig,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -183,6 +185,7 @@ const ModelDropdown = ({
       fallbackModel: activeData?.settings?.fall_back,
       configuration: activeData?.configuration,
       serviceModels: state?.modelReducer?.serviceModels,
+      providerConfig: activeData?.configuration?.provider_config,
     };
   });
 
@@ -403,7 +406,7 @@ const ModelDropdown = ({
         id="model-dropdown-container"
         className="flex flex-col items-start gap-4 relative"
       >
-        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-start gap-2 w-full">
           <div className="flex-1" ref={dropdownRef}>
             {isAutoModelSelected ? (
               <Dropdown
@@ -417,6 +420,16 @@ const ModelDropdown = ({
                 placeholder="Select basis"
                 size="sm"
                 key={selectedAutoModelBasedOn}
+              />
+            ) : service?.trim?.().toLowerCase() === "huggingface" ? (
+              <HuggingFaceModelResolver
+                params={params}
+                searchParams={searchParams}
+                isReadOnly={isReadOnly}
+                currentModel={model}
+                currentModelType={modelType}
+                currentProviderConfig={providerConfig}
+                catalogModelOptions={modelOptions}
               />
             ) : (
               <Dropdown
