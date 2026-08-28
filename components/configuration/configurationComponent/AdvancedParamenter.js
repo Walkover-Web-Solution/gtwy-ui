@@ -189,9 +189,19 @@ const AdvancedParameters = ({
 
   useEffect(() => {
     const schema = configuration?.response_type?.json_schema;
-    setObjectFieldValue(!isEmptyJsonSchema(schema) ? JSON.stringify(schema, undefined, 4) : null);
+    const hasSchema = !isEmptyJsonSchema(schema);
+    setObjectFieldValue(hasSchema ? JSON.stringify(schema, undefined, 4) : null);
     // Reset the last submitted ref when the schema changes externally (e.g. loaded from server)
-    lastSubmittedSchemaRef.current = !isEmptyJsonSchema(schema) ? JSON.stringify(schema) : null;
+    lastSubmittedSchemaRef.current = hasSchema ? JSON.stringify(schema) : null;
+
+    // Visual/AI/fullscreen builders update the schema through Redux rather than
+    // this editor's onChange handler. Clear any stale editor validation once
+    // one of those paths has supplied a non-empty schema.
+    if (hasSchema) {
+      setJsonSchemaError(null);
+      setJsonSchemaErrorExpanded(false);
+      setIsErrorTruncated(false);
+    }
   }, [configuration?.response_type?.json_schema]);
 
   useEffect(() => {
