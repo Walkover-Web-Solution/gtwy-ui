@@ -1015,8 +1015,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
 
           {/* Chat Panel */}
           {(!isEmbedUser || (isEmbedUser && showPlayground)) && (
-            <div id="parentChatbot" className="min-h-screen">
-              <div id="mobile-chat-container" className="h-full flex flex-col">
+            <div id="parentChatbot" className="h-[100dvh] flex flex-col">
+              <div id="mobile-chat-container" className="flex-1 min-h-0 flex flex-col">
                 <AgentSetupGuide
                   id="mobile-agent-setup-guide"
                   promptTextAreaRef={promptTextAreaRef}
@@ -1024,6 +1024,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                   params={resolvedParams}
                   searchParams={resolvedSearchParams}
                   draftPrompt={promptState.newContent}
+                  onVisibilityChange={setIsGuideVisible}
                   onSwitchToModelTab={handleSwitchToModelTab}
                   onSwitchToPromptTab={handleSwitchToPromptTab}
                   onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
