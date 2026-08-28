@@ -168,6 +168,7 @@ function Page({ params, searchParams }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [executionChartType, setExecutionChartType] = useState("area");
   const [latencyChartType, setLatencyChartType] = useState("area");
+  const [costChartType, setCostChartType] = useState("area");
 
   const router = useRouter();
   const { buildUrl } = useQueryParams();
@@ -308,6 +309,7 @@ function Page({ params, searchParams }) {
   const summary = analyticsData?.summary || {};
   const requestsOverTime = analyticsData?.requests_over_time || [];
   const responseTime = analyticsData?.response_time || [];
+  const costOverTime = analyticsData?.cost_over_time || [];
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -325,6 +327,11 @@ function Page({ params, searchParams }) {
     typical: Number(((item.typical || 0) / 1000).toFixed(2)),
     slow: Number(((item.slow || 0) / 1000).toFixed(2)),
     worst: Number(((item.worst || 0) / 1000).toFixed(2)),
+  }));
+
+  const costData = costOverTime.map((item) => ({
+    time: formatDate(item.t),
+    cost: Number(Number(item.cost || 0).toFixed(4)),
   }));
 
   const statSparklines = useMemo(
@@ -348,8 +355,12 @@ function Page({ params, searchParams }) {
         color: "#f59e0b",
         data: responseTime.map((d) => ({ v: Number(((d.typical || 0) / 1000).toFixed(2)) })),
       },
+      "Est. Cost": {
+        color: "#ef4444",
+        data: costOverTime.map((d) => ({ v: Number(d.cost || 0) })),
+      },
     }),
-    [requestsOverTime, responseTime]
+    [requestsOverTime, responseTime, costOverTime]
   );
 
   useEffect(() => {
@@ -1548,11 +1559,88 @@ function Page({ params, searchParams }) {
                   )}
                 </div>
               </div>
+
+              {/* Cost Chart */}
+              <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-base-content">Cost</h3>
+                    <p className="text-xs text-base-content/50 mt-0.5">Estimated spend over time ($)</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#0d9488]" />
+                      Cost
+                    </span>
+                    <button
+                      onClick={() => setCostChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                      className="btn btn-ghost btn-xs btn-circle"
+                      title="Toggle bar / area"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-[240px]">
+                  {analyticsData?.cost_over_time === undefined ? (
+                    <AnalyticsChartSkeleton title="Cost" />
+                  ) : costData.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
+                      <p className="text-sm text-base-content/50">No content</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={costData}>
+                        <defs>
+                          <linearGradient id="gradCost" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis
+                          dataKey="time"
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          minTickGap={24}
+                        />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={42}
+                          tickFormatter={(v) => `$${Number(v).toFixed(v >= 1 ? 2 : 4)}`}
+                        />
+                        <Tooltip
+                          formatter={(value) => [`$${Number(value).toFixed(4)}`, "Cost"]}
+                          contentStyle={{
+                            fontSize: "12px",
+                            borderRadius: "4px",
+                            border: "none",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        {costChartType === "area" ? (
+                          <Area
+                            type="monotone"
+                            dataKey="cost"
+                            stroke="#0d9488"
+                            strokeWidth={1.5}
+                            fill="url(#gradCost)"
+                          />
+                        ) : (
+                          <Bar dataKey="cost" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                        )}
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Backdrop overlay when slider is open */}
         {selectedThreadId && (
           <div
             className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30 transition-opacity duration-300"

@@ -150,7 +150,8 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
         if (
           parsedData.type === "summary" ||
           parsedData.type === "requests_over_time" ||
-          parsedData.type === "response_time"
+          parsedData.type === "response_time" ||
+          parsedData.type === "cost_over_time"
         ) {
           dispatch(updateAnalyticsFromRtLayer(parsedData));
           return;
