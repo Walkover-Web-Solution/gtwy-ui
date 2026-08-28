@@ -782,20 +782,6 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       footer={footerContent}
     >
       <div id="publish-bridge-modal-container" data-testid="publish-version-modal" className="flex flex-col gap-4">
-        {/* Comparison Toggle Button */}
-        <div className="flex justify-end">
-          <button
-            id="publish-toggle-comparison-button"
-            data-testid="publish-version-comparison-toggle"
-            onClick={toggleComparison}
-            className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
-            title="Compare Version Changes"
-          >
-            <ArrowRightLeft size={16} />
-            {showComparison ? "Hide Changes" : "View Changes"}
-          </button>
-        </div>
-
         {/* Warning Section */}
         {!showComparison && (
           <div className="flex flex-col gap-3 mb-6">
@@ -933,6 +919,19 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         {showComparison && (
           <div>
             <div className="bg-base-100 rounded-lg p-2">
+              {/* Comparison Toggle Button */}
+              <div className="flex justify-end mt-3">
+                <button
+                  id="publish-toggle-comparison-button"
+                  data-testid="publish-version-comparison-toggle"
+                  onClick={toggleComparison}
+                  className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
+                  title="Compare Version Changes"
+                >
+                  <ArrowRightLeft size={16} />
+                  {showComparison ? "Hide Changes" : "View Changes"}
+                </button>
+              </div>
               <PublishVersionDataComparisonView
                 oldData={filteredBridgeData}
                 newData={filteredVersionData}
