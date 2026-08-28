@@ -180,6 +180,7 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
           variablesPath={variablesPath}
           setVariablesPath={setVariablesPath}
           variables_path={variables_path}
+          originalArgs={post_tool_args}
         />
         <DeleteModal
           onConfirm={removePostFunction}
