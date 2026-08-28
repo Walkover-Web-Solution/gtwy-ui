@@ -25,6 +25,7 @@ import { useThemeManager } from "@/customHooks/useThemeManager";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import { linter, lintGutter } from "@codemirror/lint";
+import { resolveConfigParam } from "@/utils/configHistoryUtils";
 
 const AdvancedParameters = ({
   params,
@@ -57,12 +58,25 @@ const AdvancedParameters = ({
   const [messages, setMessages] = useState([]);
   const [activeWidgetButtons, setActiveWidgetButtons] = useState([]);
   const [jsonSchemaFullscreen, setJsonSchemaFullscreen] = useState(false);
+  const [responseTypePickerOpen, setResponseTypePickerOpen] = useState(false);
   const [jsonSchemaError, setJsonSchemaError] = useState(null);
   const [jsonSchemaErrorExpanded, setJsonSchemaErrorExpanded] = useState(false);
   const [isErrorTruncated, setIsErrorTruncated] = useState(false);
   const errorTextRef = useRef(null);
   const lastSubmittedSchemaRef = useRef(null);
   const dropdownContainerRef = useRef(null);
+  const responseTypePickerRef = useRef(null);
+
+  useEffect(() => {
+    if (!responseTypePickerOpen) return;
+    const handleClickOutside = (e) => {
+      if (responseTypePickerRef.current && !responseTypePickerRef.current.contains(e.target)) {
+        setResponseTypePickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [responseTypePickerOpen]);
   const dispatch = useDispatch();
   const router = useRouter();
   const { actualTheme } = useThemeManager();
@@ -104,6 +118,7 @@ const AdvancedParameters = ({
     connected_agents,
     modelInfoData,
     bridge,
+    bridgeType,
     richUiWidgets,
     showResponseType,
     orgBridges,
@@ -146,6 +161,7 @@ const AdvancedParameters = ({
       connected_agents: isPublished ? bridgeDataFromState?.connected_agents : versionData?.connected_agents,
       modelInfoData,
       bridge: activeData,
+      bridgeType: bridgeDataFromState?.bridgeType || "",
       richUiWidgets: state?.richUiTemplateReducer?.templates || [],
       showResponseType: state.appInfoReducer.embedUserDetails.showResponseType,
       orgBridges,
@@ -186,7 +202,6 @@ const AdvancedParameters = ({
 
   const level1Parameters = getParametersByLevel(1); // Regular parameters (not in accordion)
   const level2Parameters = getParametersByLevel(2); // Outside accordion parameters
-
   useEffect(() => {
     const schema = configuration?.response_type?.json_schema;
     setObjectFieldValue(!isEmptyJsonSchema(schema) ? JSON.stringify(schema, undefined, 4) : null);
@@ -331,7 +346,6 @@ const AdvancedParameters = ({
 
     const parsedObjectValue = typeof newValue === "string" ? JSON.parse(newValue) : newValue;
     const typeKey = defaultValue?.key || "type";
-
     if (e.target.value === "json_schema") {
       if (isEmptyJsonSchema(parsedObjectValue)) {
         const hadPersistedSchema = !isEmptyJsonSchema(configuration?.response_type?.json_schema);
@@ -563,7 +577,8 @@ const AdvancedParameters = ({
     // Use name and description from modelInfoData instead of static file
     const displayName = name || modelInfoData?.[key]?.name || key;
     const displayDescription = description || modelInfoData?.[key]?.description || "";
-    const isDefaultValue = configuration?.[key] === "default" || configuration?.[key] === undefined;
+    const paramValue = resolveConfigParam(configuration?.[key], modelInfoData?.[key]);
+    const isDefaultValue = paramValue.isDefault;
     // Check if this parameter has a default value defined in model info
     const hasDefaultValue = modelInfoData?.[key]?.default !== undefined;
     const inputSizeClass = "input-sm h-8";
@@ -575,21 +590,24 @@ const AdvancedParameters = ({
 
     let error = false;
     if (field === "slider" && !isDefaultValue) {
+      const sliderNumericValue = paramValue.numeric ?? paramValue.display;
       error =
-        !(min <= configuration?.[key] && configuration?.[key] <= max) && configuration?.["key"]?.type === "string";
+        typeof sliderNumericValue === "number" &&
+        !(min <= sliderNumericValue && sliderNumericValue <= max) &&
+        configuration?.["key"]?.type === "string";
     }
 
-    const sliderDisplayValue =
-      field === "slider" && !isDefaultValue
-        ? configuration?.[key] === "min" || configuration?.[key] === "max" || configuration?.[key] === "default"
-          ? modelInfoData?.[key]?.[configuration?.[key]]
-          : configuration?.[key]
-        : null;
+    const sliderDisplayValue = field === "slider" && !isDefaultValue ? paramValue.display : null;
+
+    const sliderRenderableValue =
+      sliderDisplayValue !== null && typeof sliderDisplayValue === "object"
+        ? JSON.stringify(sliderDisplayValue)
+        : sliderDisplayValue;
 
     const sliderValueNode =
       !isDefaultValue && sliderDisplayValue !== null ? (
         <span className={`text-xs ${error ? "text-error" : "text-base-content/70"}`} id={sliderValueId}>
-          {sliderDisplayValue}
+          {sliderRenderableValue}
         </span>
       ) : null;
 
@@ -635,19 +653,146 @@ const AdvancedParameters = ({
                 );
               })()}
           </div>
+          {/* response_type: dropdown to add/change/remove the response type inline with the label */}
+          {key === "response_type" &&
+            !isReadOnly &&
+            (() => {
+              const currentType = configuration?.[key]?.is_template ? "widget" : configuration?.[key]?.type;
+              const hasType =
+                currentType === "text" ||
+                currentType === "json_schema" ||
+                currentType === "json_object" ||
+                currentType === "widget";
+              const bridgeKind = bridgeType?.toString()?.toLowerCase();
+              const typeLabels = {
+                text: "Text",
+                json_schema: "JSON Schema",
+                json_object: "JSON Schema",
+                widget: "Widget",
+              };
+              const applySelection = (selectedValue) => {
+                setResponseTypePickerOpen(false);
+                guardedResponseTypeAction(() => {
+                  if (selectedValue === "remove") {
+                    setSliderValue("default", key, isDeafaultObject);
+                    return;
+                  }
+                  if (selectedValue === "widget") {
+                    const defaultSchema = generateCombinedSchema([], richUiWidgets);
+                    dispatch(
+                      updateBridgeVersionAction({
+                        bridgeId: params?.id,
+                        versionId: searchParams?.version,
+                        dataToSend: {
+                          configuration: {
+                            response_type: {
+                              type: "json_schema",
+                              json_schema: defaultSchema,
+                              is_template: true,
+                              template_id: [],
+                            },
+                          },
+                        },
+                      })
+                    );
+                  } else if (selectedValue === "json_schema") {
+                    setObjectFieldValue(null);
+                    dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
+                      localOnly: true,
+                    });
+                  } else if (selectedValue === "text") {
+                    dispatch(
+                      updateBridgeVersionAction({
+                        bridgeId: params?.id,
+                        versionId: searchParams?.version,
+                        dataToSend: {
+                          configuration: {
+                            response_type: { type: "text", text: "" },
+                          },
+                        },
+                      })
+                    );
+                  }
+                });
+              };
+              const triggerLabel = hasType ? (
+                <>
+                  {typeLabels[currentType] || currentType}
+                  <ChevronDownIcon size={12} />
+                </>
+              ) : (
+                <>
+                  <span className="text-base leading-none">+</span> Add
+                </>
+              );
+              return (
+                <div
+                  ref={responseTypePickerRef}
+                  className={`dropdown dropdown-end ${responseTypePickerOpen ? "dropdown-open" : ""}`}
+                >
+                  <button
+                    type="button"
+                    tabIndex={0}
+                    data-testid={`advanced-param-add-response-type-${key}`}
+                    className={`btn btn-xs gap-1 ${hasType ? "btn-outline" : "btn-outline"}`}
+                    onClick={() => setResponseTypePickerOpen((v) => !v)}
+                  >
+                    {triggerLabel}
+                  </button>
+                  {responseTypePickerOpen && (
+                    <ul
+                      tabIndex={0}
+                      className="dropdown-content z-[60] p-0 mt-1 shadow-lg bg-base-100 rounded-md border border-base-300 w-44 overflow-hidden"
+                    >
+                      {[
+                        { value: "text", label: "Text", isActive: currentType === "text" },
+                        {
+                          value: "json_schema",
+                          label: "JSON Schema",
+                          isActive: currentType === "json_schema" || currentType === "json_object",
+                        },
+                        ...(bridgeKind === "chatbot" && !isEmbedUser
+                          ? [{ value: "widget", label: "Widget", isActive: !!configuration?.[key]?.is_template }]
+                          : []),
+                      ].map((opt) => (
+                        <li key={opt.value} className="border-b border-base-200">
+                          <button
+                            type="button"
+                            className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-base-200 ${
+                              opt.isActive ? "bg-primary/10 text-primary font-medium" : ""
+                            }`}
+                            onClick={() => applySelection(opt.value)}
+                          >
+                            <span>{opt.label}</span>
+                            {opt.isActive && <Check size={14} className="text-primary" />}
+                          </button>
+                        </li>
+                      ))}
+                      {hasType && (
+                        <li>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm text-error hover:bg-error/10"
+                            onClick={() => applySelection("remove")}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
           {/* Set Default button - shows when parameter has default value and is not currently default */}
-          {hasDefaultValue && !isDefaultValue && !isReadOnly && (
+          {key !== "response_type" && hasDefaultValue && !isDefaultValue && !isReadOnly && (
             <button
               data-testid={`advanced-param-reset-${key}`}
               id={`advanced-param-set-default-btn-${key}`}
               type="button"
               className="btn btn-xs btn-ghost text-primary hover:bg-primary/10"
               onClick={() => {
-                if (key === "response_type") {
-                  guardedResponseTypeAction(() => setSliderValue("default", key, isDeafaultObject));
-                } else {
-                  setSliderValue("default", key, isDeafaultObject);
-                }
+                setSliderValue("default", key, isDeafaultObject);
               }}
               title="Reset to default value"
             >
@@ -720,102 +865,133 @@ const AdvancedParameters = ({
             {/* Select input */}
             {field === "select" && (
               <div className="w-full">
-                <select
-                  data-testid={`advanced-param-select-${key}`}
-                  id={`advanced-param-select-${key}`}
-                  value={(() => {
-                    if (key === "response_type") {
-                      // Handle response_type specifically
-                      if (configuration?.[key]?.is_template) {
-                        return "widget";
-                      } else if (configuration?.[key]?.type) {
-                        return configuration?.[key]?.type;
-                      } else if (configuration?.[key] === "default") {
-                        return "default";
-                      } else {
-                        return configuration?.[key] || "default";
-                      }
-                    }
-                    // For other keys, use the original logic
-                    return isDefaultValue
-                      ? "default"
-                      : configuration?.[key]?.[defaultValue?.key] || configuration?.[key];
-                  })()}
-                  onChange={(e) => {
-                    const selectedValue = e.target.value;
-                    if (key === "response_type") {
-                      guardedResponseTypeAction(() => {
-                        if (selectedValue === "widget") {
-                          // Use generateCombinedSchema with empty array to get normal schema without anyOf
-                          const defaultSchema = generateCombinedSchema([], richUiWidgets);
-                          const updatedDataToSend = {
-                            configuration: {
-                              response_type: {
-                                type: "json_schema",
-                                json_schema: defaultSchema, // Use normal schema without anyOf when no widgets selected
-                                is_template: true,
-                                template_id: [], // Clear existing template IDs
-                              },
-                            },
-                          };
-                          dispatch(
-                            updateBridgeVersionAction({
-                              bridgeId: params?.id,
-                              versionId: searchParams?.version,
-                              dataToSend: { ...updatedDataToSend },
-                            })
-                          );
-                          return;
-                        } else if (selectedValue === "json_schema") {
-                          setObjectFieldValue(null);
-                          dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
-                            localOnly: true,
-                          });
-                          return;
-                        } else if (selectedValue === "default") {
-                          // Handle default case
-                          setSliderValue("default", key, isDeafaultObject);
-                          return;
+                {key !== "response_type" && (
+                  <select
+                    data-testid={`advanced-param-select-${key}`}
+                    id={`advanced-param-select-${key}`}
+                    value={(() => {
+                      if (key === "response_type") {
+                        // Handle response_type specifically
+                        if (configuration?.[key]?.is_template) {
+                          return "widget";
+                        } else if (
+                          configuration?.[key]?.type === "json_schema" ||
+                          configuration?.[key]?.type === "json_object"
+                        ) {
+                          return "json_schema";
+                        } else if (configuration?.[key]?.type) {
+                          return configuration?.[key]?.type;
+                        } else if (configuration?.[key] === "default") {
+                          return "default";
                         } else {
-                          dispatch(
-                            updateBridgeVersionAction({
-                              bridgeId: params?.id,
-                              versionId: searchParams?.version,
-                              dataToSend: {
-                                configuration: {
-                                  [key]: { type: selectedValue },
+                          return configuration?.[key] || "default";
+                        }
+                      }
+                      // For other keys, use the original logic
+                      return isDefaultValue
+                        ? "default"
+                        : configuration?.[key]?.[defaultValue?.key] || configuration?.[key];
+                    })()}
+                    onChange={(e) => {
+                      const selectedValue = e.target.value;
+                      if (key === "response_type") {
+                        guardedResponseTypeAction(() => {
+                          if (selectedValue === "widget") {
+                            // Use generateCombinedSchema with empty array to get normal schema without anyOf
+                            const defaultSchema = generateCombinedSchema([], richUiWidgets);
+                            const updatedDataToSend = {
+                              configuration: {
+                                response_type: {
+                                  type: "json_schema",
+                                  json_schema: defaultSchema,
+                                  is_template: true,
+                                  template_id: [],
                                 },
                               },
-                            })
-                          );
-                          return;
-                        }
-                      }); // end guardedResponseTypeAction
-                      return;
-                    }
-                    // Fallback for other keys or normal types
-                    handleSelectChange(e, key, defaultValue, "{}", isDeafaultObject);
-                  }}
-                  className={`select select-bordered ${selectSizeClass} w-full`}
-                  name={key}
-                  disabled={isReadOnly}
-                >
-                  {hasDefaultValue && <option value="default">default</option>}
-                  {options?.map((option) => (
-                    <option
-                      key={typeof option === "object" ? option?.value || option?.type : option}
-                      value={typeof option === "object" ? option?.value || option?.type : option}
-                    >
-                      {typeof option === "object" ? option?.displayName || option?.type || option?.value : option}
-                    </option>
-                  ))}
-                  {key === "response_type" &&
-                    !isEmbedUser &&
-                    options?.some((opt) => {
-                      const optType = typeof opt === "object" ? opt?.type || opt?.value : opt;
-                      return optType === "json_schema";
-                    }) && <option value="widget">Widget</option>}
-                </select>
+                            };
+                            dispatch(
+                              updateBridgeVersionAction({
+                                bridgeId: params?.id,
+                                versionId: searchParams?.version,
+                                dataToSend: { ...updatedDataToSend },
+                              })
+                            );
+                            return;
+                          } else if (selectedValue === "json_schema") {
+                            setObjectFieldValue(null);
+                            dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
+                              localOnly: true,
+                            });
+                            return;
+                          } else if (selectedValue === "text") {
+                            dispatch(
+                              updateBridgeVersionAction({
+                                bridgeId: params?.id,
+                                versionId: searchParams?.version,
+                                dataToSend: {
+                                  configuration: {
+                                    response_type: {
+                                      type: "text",
+                                      text: configuration?.response_type?.text || "",
+                                    },
+                                  },
+                                },
+                              })
+                            );
+                            return;
+                          } else if (selectedValue === "default") {
+                            // Handle default case
+                            setSliderValue("default", key, isDeafaultObject);
+                            return;
+                          } else {
+                            dispatch(
+                              updateBridgeVersionAction({
+                                bridgeId: params?.id,
+                                versionId: searchParams?.version,
+                                dataToSend: {
+                                  configuration: {
+                                    [key]: { type: selectedValue },
+                                  },
+                                },
+                              })
+                            );
+                            return;
+                          }
+                        }); // end guardedResponseTypeAction
+                        return;
+                      }
+                      // Fallback for other keys or normal types
+                      handleSelectChange(e, key, defaultValue, "{}", isDeafaultObject);
+                    }}
+                    className={`select select-bordered ${selectSizeClass} w-full`}
+                    name={key}
+                    disabled={isReadOnly}
+                  >
+                    {hasDefaultValue && <option value="default">default</option>}
+                    {(() => {
+                      const rawOptions = Array.isArray(options) ? options : [];
+                      if (key !== "response_type") {
+                        return rawOptions.map((option) => (
+                          <option
+                            key={typeof option === "object" ? option?.value || option?.type : option}
+                            value={typeof option === "object" ? option?.value || option?.type : option}
+                          >
+                            {typeof option === "object" ? option?.displayName || option?.type || option?.value : option}
+                          </option>
+                        ));
+                      }
+
+                      const bridgeKind = bridgeType?.toString()?.toLowerCase();
+                      return (
+                        <>
+                          <option value="text">Text</option>
+                          <option value="json_schema">JSON Schema</option>
+                          {bridgeKind === "chatbot" && !isEmbedUser && <option value="widget">Widget</option>}
+                        </>
+                      );
+                    })()}
+                  </select>
+                )}
 
                 {/* Widget UI - Only show if response_type is widget (is_template = true) */}
                 {key === "response_type" && configuration?.[key]?.is_template && (
@@ -944,10 +1120,45 @@ const AdvancedParameters = ({
                     />
                   </div>
                 )}
-                {/* JSON Schema textarea and modal - positioned below the key/label */}
                 {field === "select" &&
                   !isDefaultValue &&
-                  configuration?.[key]?.type === "json_schema" &&
+                  key === "response_type" &&
+                  configuration?.[key]?.type === "text" && (
+                    <div
+                      id={`advanced-param-example-output-${key}`}
+                      data-testid={`advanced-param-example-output-${key}`}
+                      className="mt-3 space-y-2"
+                    >
+                      <label className="text-xs font-medium block">Example Output</label>
+                      <textarea
+                        data-testid={`advanced-param-example-output-textarea-${key}`}
+                        className="textarea textarea-bordered w-full text-xs font-mono"
+                        rows={6}
+                        placeholder="Enter an example output the model should produce..."
+                        disabled={isReadOnly}
+                        defaultValue={configuration?.[key]?.text ?? configuration?.[key]?.example_output ?? ""}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          const current = configuration?.[key]?.text ?? configuration?.[key]?.example_output ?? "";
+                          if (val === current) return;
+                          dispatch(
+                            updateBridgeVersionAction({
+                              bridgeId: params?.id,
+                              versionId: searchParams?.version,
+                              dataToSend: {
+                                configuration: {
+                                  response_type: { type: "text", text: val },
+                                },
+                              },
+                            })
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
+                {field === "select" &&
+                  !isDefaultValue &&
+                  (configuration?.[key]?.type === "json_schema" || configuration?.[key]?.type === "json_object") &&
                   !configuration?.[key]?.is_template && (
                     <div
                       id={`advanced-param-json-schema-${key}`}
@@ -1256,7 +1467,7 @@ const AdvancedParameters = ({
                   max={max || 100}
                   step={step || 1}
                   key={`${key}-${configuration?.[key]}-${service}-${model}`}
-                  defaultValue={isDefaultValue ? "default" : (sliderDisplayValue ?? "")}
+                  defaultValue={isDefaultValue ? "default" : (paramValue.numeric ?? sliderRenderableValue ?? "")}
                   onChange={(e) => {
                     // Only update the display value and local state, don't trigger API call
                     const numValue = String(e.target.value)?.includes(".")

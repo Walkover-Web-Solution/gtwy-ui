@@ -427,17 +427,14 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
           : newValue !== (reduxPrompt || "").trim();
 
       if (hasChanged) {
+        const dataToSend = { configuration: { prompt: newValue } };
+        if (JSON.stringify(variablesState) !== JSON.stringify(currentVariablesState)) {
+          dataToSend.agent_info = { variables_state: variablesState };
+        }
         dispatch(
           updateBridgeVersionAction({
             versionId: resolvedSearchParams?.version,
-            dataToSend: {
-              configuration: {
-                prompt: newValue,
-              },
-              agent_info: {
-                variables_state: variablesState,
-              },
-            },
+            dataToSend,
           })
         );
       }
