@@ -276,6 +276,23 @@ export const bridgeReducer = createSlice({
       if (state.org[orgId]?.functionData?.[functionId]) {
         delete state.org[orgId].functionData[functionId];
       }
+
+      // Keep version config in sync when a tool used as reviewer_tool / post_tool is deleted
+      const scrubVersionConfig = (version) => {
+        if (!version) return;
+        if (version.post_tool?.id === functionId) {
+          version.post_tool = null;
+        }
+        const reviewerTools = version.settings?.review_agent?.reviewer_tools;
+        if (Array.isArray(reviewerTools) && reviewerTools.includes(functionId)) {
+          version.settings.review_agent.reviewer_tools = reviewerTools.filter((id) => id !== functionId);
+        }
+      };
+
+      Object.values(state.bridgeVersionMapping || {}).forEach((versionsByBridge) => {
+        Object.values(versionsByBridge || {}).forEach(scrubVersionConfig);
+      });
+      Object.values(state.allBridgesMap || {}).forEach(scrubVersionConfig);
     },
     setThreadIdForVersionReducer: (state, action) => {
       const { bridgeId, versionId, thread_id } = action.payload;

@@ -797,10 +797,19 @@ export const deleteBridgeAction =
           agent_id: bridgeId,
           org_id: org_id,
         });
+        return response;
       }
-      return response;
+      const errorMessage =
+        response?.data?.error || response?.data?.message || `Failed to ${restore ? "restore" : "delete"} agent`;
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
     } catch (error) {
-      toast.error(error?.response?.data?.error || error?.message || error || "Failed to delete agent");
+      // Avoid double-toast when we already toasted for success:false above
+      if (error?.response) {
+        toast.error(
+          error?.response?.data?.error || error?.response?.data?.message || error?.message || "Failed to delete agent"
+        );
+      }
       console.error("Failed to delete bridge:", error);
       throw error;
     }
