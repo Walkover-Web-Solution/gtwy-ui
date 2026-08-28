@@ -239,10 +239,15 @@ function Page({ params }) {
         widthClass="w-[min(480px,92vw)]"
         footer={
           <div className="flex gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={handleClosePauthKeyModal}>
+            <button
+              data-testid="create-auth-key-cancel-button"
+              className="btn btn-ghost btn-sm"
+              onClick={handleClosePauthKeyModal}
+            >
               Cancel
             </button>
             <button
+              data-testid="create-auth-key-create-button"
               className="btn btn-primary btn-sm"
               onClick={(e) => createAuthKeyHandler(e, document.getElementById("authNameInput").value)}
             >
@@ -258,6 +263,7 @@ function Page({ params }) {
               type="text"
               className="input input-bordered w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
               id="authNameInput"
+              data-testid="create-auth-key-name-input"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   const authName = e.target.value.trim();
