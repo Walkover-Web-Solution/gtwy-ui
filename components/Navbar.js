@@ -52,6 +52,11 @@ const Navbar = ({ isEmbedUser, params }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const { isDeleting: isDiscardingWithHook, executeDelete } = useDeleteOperation();
+  // Separate instance so the agent-delete flow closes DELETE_AGENT_MODAL,
+  // not the discard-changes DELETE_MODAL that the default hook targets.
+  const { isDeleting: isDeletingAgent, executeDelete: executeDeleteAgent } = useDeleteOperation(
+    MODAL_TYPE.DELETE_AGENT_MODAL
+  );
   const ellipsisMenuRef = useRef(null);
   const [selectedAgentForAccess, setSelectedAgentForAccess] = useState(null);
   const pendingNavRef = useRef(null);
@@ -505,12 +510,12 @@ const Navbar = ({ isEmbedUser, params }) => {
     );
 
   const handleDeleteAgentConfirm = useCallback(async () => {
-    await executeDelete(async () => {
+    await executeDeleteAgent(async () => {
       const response = await dispatch(deleteBridgeAction({ bridgeId, org_id: orgId }));
       toast.success(response?.data?.message || "Agent deleted successfully");
       router.push(`/org/${orgId}/agents`);
     });
-  }, [executeDelete, dispatch, bridgeId, orgId, router]);
+  }, [executeDeleteAgent, dispatch, bridgeId, orgId, router]);
 
   const EllipsisMenu = () => (
     <AgentActionMenu
@@ -1048,7 +1053,7 @@ const Navbar = ({ isEmbedUser, params }) => {
         title="Delete Agent"
         description="Are you sure you want to delete this agent? It will be moved to deleted items and permanently removed after 30 days."
         buttonTitle="Delete"
-        loading={isDiscardingWithHook}
+        loading={isDeletingAgent}
         isAsync={true}
       />
 
