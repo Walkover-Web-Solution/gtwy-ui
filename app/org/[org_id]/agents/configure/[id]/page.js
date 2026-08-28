@@ -866,6 +866,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                       savePrompt={savePrompt}
                       isEmbedUser={isEmbedUser}
                       variable_key={promptState.activeHelperField || null}
+                      draftPrompt={promptState.draftPromptValue}
                       setPrompt={(value) => {
                         // Update prompt state for diff/summary
                         setPromptState((prev) => ({ ...prev, newContent: value }));

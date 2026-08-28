@@ -349,6 +349,17 @@ const InputConfigComponent = memo(
       [currentPromptValue, savedPromptSnapshot]
     );
 
+    // Expose the in-progress (unsaved) prompt values so the Prompt Helper can merge
+    // its result on top of them instead of on the last saved prompt — otherwise
+    // applying a helper result for one field wipes the unsaved edits of the others.
+    useEffect(() => {
+      setPromptState((prev) =>
+        JSON.stringify(prev.draftPromptValue) === JSON.stringify(currentPromptValue)
+          ? prev
+          : { ...prev, draftPromptValue: currentPromptValue }
+      );
+    }, [currentPromptValue, setPromptState]);
+
     // Keep the global guard in sync so navigation interceptors can check it
     useEffect(() => {
       unsavedPromptGuard.hasUnsavedChanges = hasPromptChanges;
