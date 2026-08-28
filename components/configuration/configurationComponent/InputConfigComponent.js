@@ -13,7 +13,11 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { promptObjectToString } from "@/utils/promptUtils";
 import Protected from "@/components/Protected";
 import FullscreenEditorModal, { FullscreenEditorButton } from "../../modals/FullscreenEditorModal";
+import FixedHeightTextarea from "./FixedHeightTextarea";
 import { BrainIcon } from "@/components/Icons";
+
+const STRUCTURED_PROMPT_FIELD_HEIGHT = 288; // h-72
+const EMBED_PROMPT_FIELD_HEIGHT = 128; // min-h-32
 
 const sortPromptValue = (value) => {
   if (Array.isArray(value)) {
@@ -220,12 +224,13 @@ const InputConfigComponent = memo(
 
     const handleFieldChange = useCallback(
       (key, value) => {
+        let updated;
         setStructuredFields((prev) => {
           const base = prev || (isStructuredPrompt ? reduxPrompt : {});
-          const updated = { ...base, [key]: value };
-          setPromptState((p) => ({ ...p, newContent: updated }));
+          updated = { ...base, [key]: value };
           return updated;
         });
+        setPromptState((p) => ({ ...p, newContent: updated }));
       },
       [reduxPrompt, isStructuredPrompt, setPromptState]
     );
@@ -513,10 +518,9 @@ const InputConfigComponent = memo(
                   </div>
                   <div className="relative">
                     {field.type === "textarea" ? (
-                      <textarea
-                        className={`textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-32 pr-8 ${
-                          field.deprecated ? "opacity-60" : ""
-                        }`}
+                      <FixedHeightTextarea
+                        height={EMBED_PROMPT_FIELD_HEIGHT}
+                        className={`pr-8 ${field.deprecated ? "opacity-60" : ""}`}
                         value={activeEmbedFieldValues[field.name] || ""}
                         onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
                         readOnly={field.deprecated}
@@ -608,9 +612,10 @@ const InputConfigComponent = memo(
                   </label>
                   <div className="relative">
                     {fieldConfig.type === "textarea" ? (
-                      <textarea
+                      <FixedHeightTextarea
                         key={`${params?.id || "agent"}-${searchParams?.version || "version"}-${key}`}
-                        className="textarea textarea-bordered w-full h-72 min-h-72 text-sm leading-relaxed resize-y overflow-y-auto pr-8"
+                        height={STRUCTURED_PROMPT_FIELD_HEIGHT}
+                        className="pr-8"
                         value={(structuredFields || {})[key] || ""}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         onFocus={handleTextareaFocus}
