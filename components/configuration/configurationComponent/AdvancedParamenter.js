@@ -724,6 +724,8 @@ const AdvancedParameters = ({
                   data-testid={`advanced-param-select-${key}`}
                   id={`advanced-param-select-${key}`}
                   value={(() => {
+                    // No "default" option anymore — fall back to the model's own default.
+                    const fallback = defaultValue?.[defaultValue?.key] ?? defaultValue ?? "";
                     if (key === "response_type") {
                       // Handle response_type specifically
                       if (configuration?.[key]?.is_template) {
@@ -731,14 +733,14 @@ const AdvancedParameters = ({
                       } else if (configuration?.[key]?.type) {
                         return configuration?.[key]?.type;
                       } else if (configuration?.[key] === "default") {
-                        return "default";
+                        return fallback;
                       } else {
-                        return configuration?.[key] || "default";
+                        return configuration?.[key] || fallback;
                       }
                     }
                     // For other keys, use the original logic
                     return isDefaultValue
-                      ? "default"
+                      ? fallback
                       : configuration?.[key]?.[defaultValue?.key] || configuration?.[key];
                   })()}
                   onChange={(e) => {
@@ -800,7 +802,6 @@ const AdvancedParameters = ({
                   name={key}
                   disabled={isReadOnly}
                 >
-                  {hasDefaultValue && <option value="default">default</option>}
                   {options?.map((option) => (
                     <option
                       key={typeof option === "object" ? option?.value || option?.type : option}
