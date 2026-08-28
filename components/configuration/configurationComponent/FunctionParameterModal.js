@@ -41,11 +41,20 @@ const normalizeFieldTree = (fields = {}) =>
     return normalizedFields;
   }, {});
 
-const normalizeToolData = (toolData = {}) => ({
-  ...toolData,
-  thread_id: Boolean(toolData?.thread_id ?? false),
-  fields: normalizeFieldTree(toolData.fields || {}),
-});
+const normalizeToolData = (toolData = {}) => {
+  const result = {
+    ...toolData,
+    thread_id: Boolean(toolData?.thread_id ?? false),
+    fields: normalizeFieldTree(toolData.fields || {}),
+  };
+  // Strip keys whose value is `undefined` so that objects which are semantically
+  // identical but differ only in having an explicit `key: undefined` vs omitting
+  // the key entirely compare as equal (lodash isEqual treats them differently).
+  // This prevents false dirty-detection when the toolData initialisation effect
+  // writes e.g. `version_id: undefined` onto toolData while function_details
+  // simply omits the key.
+  return Object.fromEntries(Object.entries(result).filter(([, v]) => v !== undefined));
+};
 
 const buildFlowEmbedFieldSchema = (field = {}) => {
   const type = field?.type || "string";
@@ -575,6 +584,10 @@ function FunctionParameterModal({
 
   const prevFunctionIdRef = useRef(functionId);
   const prevFunctionDetailsRef = useRef(function_details);
+  // Baseline for variablesPath dirty-check in Pre Tool / Post Tool mode.
+  // For these modes, args live in _toolEntry.args (not in variables_path keyed by
+  // functionName), so we capture the value passed in at open-time as the reference.
+  const initialVariablesPathRef = useRef(variablesPath);
 
   useEffect(() => {
     const idChanged = prevFunctionIdRef.current !== functionId;
@@ -587,8 +600,14 @@ function FunctionParameterModal({
           const environment = function_details?.environment;
           setToolData({ ...function_details, thread_id, environment });
         } else {
-          const version_id = function_details?.version_id;
-          setToolData({ ...function_details, thread_id, version_id });
+          // Only set version_id in the override when it is defined.
+          // Adding an explicit undefined key causes lodash isEqual to return false
+          // vs an object that simply omits the key, producing a false dirty-check.
+          const overrides = { thread_id };
+          if (function_details?.version_id !== undefined) {
+            overrides.version_id = function_details.version_id;
+          }
+          setToolData({ ...function_details, ...overrides });
         }
       } else {
         setToolData({});
@@ -629,6 +648,16 @@ function FunctionParameterModal({
     }
   }, [functionName, variables_path, name]);
 
+  // When the user selects a different Pre Tool / Post Tool function, the parent
+  // updates variablesPath and functionId together. Refresh our baseline so the
+  // dirty-check starts clean for the newly selected function.
+  useEffect(() => {
+    if (name === "Pre Tool" || name === "Post Tool") {
+      initialVariablesPathRef.current = variablesPath;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [functionId]);
+
   useEffect(() => {
     if (!toolData || !function_details) {
       setIsModified(false);
@@ -636,10 +665,16 @@ function FunctionParameterModal({
     }
 
     const toolDataChanged = !isEqual(normalizeToolData(toolData), normalizeToolData(function_details));
-    const originalVariablesPath = variables_path[functionName] || {};
+    // Pre Tool / Post Tool store their args in _toolEntry.args, not in
+    // variables_path[functionName]. Use the captured initial value as the
+    // baseline so that opening the modal never falsely marks it as modified.
+    const originalVariablesPath =
+      name === "Pre Tool" || name === "Post Tool"
+        ? initialVariablesPathRef.current
+        : variables_path[functionName] || {};
     const variablesPathChanged = !isEqual(variablesPath, originalVariablesPath);
     setIsModified(toolDataChanged || variablesPathChanged);
-  }, [toolData, function_details, variablesPath, variables_path, functionName]);
+  }, [toolData, function_details, variablesPath, variables_path, functionName, name]);
 
   useEffect(() => {
     if (toolData) {
