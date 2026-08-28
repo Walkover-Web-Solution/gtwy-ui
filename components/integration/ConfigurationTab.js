@@ -61,14 +61,6 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key: "showCreateManuallyButton",
-    type: "toggle",
-    label: "Show Create Agent Manually Button",
-    description: "Display create agent manually button",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
     key: "showAdvancedConfigurations",
     type: "toggle",
     label: "Show Advanced Configurations",
@@ -168,6 +160,7 @@ const CONFIG_SCHEMA = [
     description: "Show the full screen toggle button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showCloseButton",
@@ -176,6 +169,7 @@ const CONFIG_SCHEMA = [
     description: "Show the close button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showHeader",
@@ -710,8 +704,12 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                   {sectionName}
                 </h5>
                 <div className="space-y-2">
-                  {configs.map((config) => (
-                    <React.Fragment key={config.key}>
+                  {configs.map((config) => {
+                    if (config.dependsOn && !configuration[config.dependsOn]) {
+                      return null;
+                    }
+                    return (
+                      <React.Fragment key={config.key}>
                       <div className="bg-base-200 rounded-lg p-2">
                         <label
                           className={`flex items-center justify-between ${config.type === "toggle" ? "cursor-pointer" : ""}`}
@@ -944,7 +942,8 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                         </div>
                       )}
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Show API Keys input when addDefaultApiKeys is enabled in Display Settings */}

@@ -43,7 +43,6 @@ const IntegrationModal = ({ params, type = "embed" }) => {
         showAdvancedParameters: true,
         showAdvancedConfigurations: true,
         showPreTool: true,
-        showCreateManuallyButton: true,
         showPromptHelper: true,
         showMcp: false,
         prompt: {
