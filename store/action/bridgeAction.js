@@ -29,6 +29,7 @@ import {
   updateFunctionApi,
   updateapi,
   uploadImage,
+  uploadMultipleImages,
 } from "@/config/index";
 import { toast } from "react-toastify";
 import posthog, { trackAgentEvent } from "@/utils/posthog";
@@ -918,6 +919,16 @@ export const uploadImageAction = (formData, isVedioOrPdf) => async (dispatch) =>
     return response;
   } catch (error) {
     console.error("Error uploading image:", error);
+    throw error;
+  }
+};
+
+export const uploadMultipleImagesAction = (files) => async (dispatch) => {
+  try {
+    const response = await uploadMultipleImages(files);
+    return response;
+  } catch (error) {
+    console.error("Error uploading files:", error);
     throw error;
   }
 };
