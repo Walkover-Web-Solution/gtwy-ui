@@ -19,7 +19,7 @@
 }
 
 /* Performance optimizations for devices with limited hardware */
-@media (max-width: 768px) and (max-device-memory: 2GB) {
+@media (max-width: 768px) {
   .sidebar {
     transition-duration: 150ms !important;
     transition-timing-function: ease-out !important;
@@ -45,7 +45,7 @@
 }
 
 /* Disable expensive effects on low-end devices */
-@media (max-width: 768px) and (max-device-memory: 1GB) {
+@media (max-width: 768px) {
   .sidebar {
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -99,7 +99,7 @@
 }
 
 /* Very aggressive optimizations for extremely low-end devices */
-@media (max-width: 768px) and (max-device-memory: 1GB) {
+@media (max-width: 768px) {
   .sidebar {
     transition: width 80ms linear !important;
     transform: none !important;

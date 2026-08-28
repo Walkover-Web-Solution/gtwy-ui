@@ -47,16 +47,38 @@ const buildLlmUrls = (images = [], files = []) => {
   return [...imageEntries, ...fileEntries];
 };
 
+const normalizeBackendLlmUrlEntry = (item) => {
+  if (!item) return null;
+  if (typeof item === "string") return createLlmUrlEntry(item, "image");
+  const url = item.permanent_url || item.image_url || item.file_url || item.url;
+  if (!url) return null;
+  const type = item.type === "image" ? "image" : "pdf";
+  return {
+    url,
+    type,
+    filename: item.filename,
+    source: "llm",
+  };
+};
+
+const buildLlmUrlsFromBackend = (rawLlmUrls = []) =>
+  Array.isArray(rawLlmUrls) ? rawLlmUrls.map(normalizeBackendLlmUrlEntry).filter(Boolean) : [];
+
 const extractImageUrlsFromResponse = (parsed) => {
+  const data = parsed.response?.data || {};
+
   let rawImages = [];
-  if (parsed.response?.data?.image_urls && Array.isArray(parsed.response.data.image_urls)) {
-    rawImages = parsed.response.data.image_urls
+  if (Array.isArray(data.image_urls)) {
+    rawImages = data.image_urls
       .map((imageObj) => {
         return imageObj.permanent_url || imageObj.image_url || imageObj;
       })
       .filter(Boolean);
   }
-  return buildLlmUrls(rawImages, []);
+
+  const backendLlmUrls = buildLlmUrlsFromBackend(data.llm_urls);
+
+  return [...buildLlmUrls(rawImages, []), ...backendLlmUrls];
 };
 
 export {
@@ -67,5 +89,6 @@ export {
   buildUserUrls,
   createLlmUrlEntry,
   buildLlmUrls,
+  buildLlmUrlsFromBackend,
   extractImageUrlsFromResponse,
 };
