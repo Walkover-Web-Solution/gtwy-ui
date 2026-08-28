@@ -421,7 +421,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           openaiToolJson: e?.data?.openaiToolJson,
           folder_id: e?.data?.metadata?.folder_id || null,
         };
-        dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
+        dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then(async (data) => {
           // Handle reviewer tools - works regardless of page context
           if (e?.data?.metadata?.createFrom === "reviewer" && path[5] && resolvedSearchParams?.get("version")) {
             // Add as reviewer tool - preserve existing review_agent settings
@@ -446,6 +446,17 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
               const alreadyPreTool =
                 Array.isArray(preTools) && preTools.some((pt) => pt?.config?.function_id === data?._id);
               if (!alreadyPreTool) {
+                // Only one pre-tool can be active at a time — remove the currently
+                // connected pre-tools so the newly created one replaces them.
+                for (const existingPreTool of Array.isArray(preTools) ? preTools : []) {
+                  await dispatch(
+                    updateApiAction(path[5], {
+                      pre_tools: existingPreTool,
+                      status: "0",
+                      version_id: resolvedSearchParams?.get("version"),
+                    })
+                  );
+                }
                 dispatch(
                   updateApiAction(path[5], {
                     pre_tools: {
