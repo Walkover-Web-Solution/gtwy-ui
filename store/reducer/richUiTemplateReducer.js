@@ -30,6 +30,11 @@ const richUiTemplateSlice = createSlice({
       state.templates = [action.payload, ...state.templates];
       state.isError = false;
     },
+    deleteRichUiTemplateSuccess: (state, action) => {
+      state.isLoading = false;
+      state.templates = state.templates.filter((template) => template._id !== action.payload);
+      state.isError = false;
+    },
   },
 });
 
@@ -38,6 +43,7 @@ export const {
   getRichUiTemplatesSuccess,
   getRichUiTemplatesError,
   createRichUiTemplateApiSuccess,
+  deleteRichUiTemplateSuccess,
 } = richUiTemplateSlice.actions;
 
 export default richUiTemplateSlice.reducer;

@@ -5,18 +5,20 @@ import PageHeader from "@/components/Pageheader";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, formatRelativeTime, formatDate, generateRandomID } from "@/utils/utility";
-import { PlayIcon, Sparkles, X, SendHorizontal, Send } from "lucide-react";
+import { PlayIcon, Sparkles, X, SendHorizontal, Send, Trash2 } from "lucide-react";
 import React, { useEffect, useState, use, useRef } from "react";
 import InfoTooltip from "@/components/InfoTooltip";
 import SearchItems from "@/components/UI/SearchItems";
 import TemplatePlayground from "@/components/modals/TemplatePlayground";
 import SaveWidgetModal from "@/components/modals/SaveWidgetModal";
+import DeleteModal from "@/components/UI/DeleteModal";
+import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import { generateRichUITemplate } from "@/config/utilityApi";
 import ReactMarkdown from "@/components/LazyMarkdown";
 import { mdComponentsDark, mdRemarkPlugins } from "@/utils/markdownComponents";
-import { createRichUiTemplateAction } from "@/store/action/richUiTemplateAction";
+import { createRichUiTemplateAction, deleteRichUiTemplateAction } from "@/store/action/richUiTemplateAction";
 import { useDispatch } from "react-redux";
 
 export const runtime = "edge";
@@ -40,6 +42,8 @@ const TemplatesPage = ({ params }) => {
   // Data States
   const [filterWidgets, setFilterWidgets] = useState(widgetsData || []);
   const [playgroundWidget, setPlaygroundWidget] = useState(null);
+  const [selectedWidgetToDelete, setSelectedWidgetToDelete] = useState(null);
+  const { isDeleting, executeDelete } = useDeleteOperation();
 
   // Chat State
   const [messages, setMessages] = useState([]);
@@ -82,6 +86,19 @@ const TemplatesPage = ({ params }) => {
     const originalItem = widgetsData.find((widget) => widget._id === item._id);
     setPlaygroundWidget(originalItem);
     openModal(MODAL_TYPE?.TEMPLATE_PLAYGROUND);
+  };
+
+  const handleOpenDeleteModal = (widget) => {
+    setSelectedWidgetToDelete(widget);
+    openModal(MODAL_TYPE.DELETE_MODAL);
+  };
+
+  const handleDeleteWidget = async (widget) => {
+    if (!widget?._id) return;
+
+    await executeDelete(async () => {
+      return dispatch(deleteRichUiTemplateAction(widget._id));
+    });
   };
 
   const handleCreateNew = () => {
@@ -501,6 +518,15 @@ const TemplatesPage = ({ params }) => {
                       >
                         <PlayIcon size={16} />
                       </button>
+                      {String(widget.org_id) === String(resolvedParams.org_id) && (
+                        <button
+                          onClick={() => handleOpenDeleteModal(widget)}
+                          className="btn btn-sm btn-circle btn-ghost text-white hover:bg-error"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -540,6 +566,14 @@ const TemplatesPage = ({ params }) => {
           )}
 
           <TemplatePlayground template={playgroundWidget} setTemplate={setPlaygroundWidget} />
+          <DeleteModal
+            onConfirm={handleDeleteWidget}
+            item={selectedWidgetToDelete}
+            title="Delete Widget"
+            description={`Are you sure you want to delete the widget "${selectedWidgetToDelete?.name || "Untitled Widget"}"? This action cannot be undone.`}
+            loading={isDeleting}
+            isAsync={true}
+          />
         </div>
       )}
     </>
