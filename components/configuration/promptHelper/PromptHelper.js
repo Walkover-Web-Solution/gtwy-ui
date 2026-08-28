@@ -52,10 +52,18 @@ const PromptHelper = ({
 
         const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
 
+        // Normalize: if no result.updated yet, derive it from structured fields
+        // Reasoning-only responses are left as-is so Canvas shows no Apply/Copy
+        if (result && typeof result === "object" && result.updated === undefined && !result.reasoning) {
+          const { reason, description, reasoning, ...rest } = result;
+          if (Object.keys(rest).length > 0) {
+            result.updated = rest;
+          }
+        }
+
         // Store the optimized prompt
         if (result?.updated) {
           setOptimizedPrompt(result.updated);
-          localStorage.setItem(`optimized_prompt_${promptParams.id}_${promptParams.version}`, result.updated);
           dispatch(optimizePromptReducer({ bridgeId: promptParams.id, prompt: result.updated }));
         }
 
@@ -68,14 +76,12 @@ const PromptHelper = ({
     [promptParams, thread_id, dispatch]
   );
 
-  // Apply optimized prompt
-  const handleApplyOptimizedPrompt = () => {
-    if (optimizedPrompt && setPrompt) {
-      setPrompt(optimizedPrompt);
-      if (savePrompt) {
-        savePrompt(optimizedPrompt);
-      }
-    }
+  // Apply optimized prompt — Canvas passes message.optimized (object or string)
+  const handleApplyOptimizedPrompt = (promptToApply) => {
+    const content = promptToApply || optimizedPrompt;
+    if (!content) return;
+    if (setPrompt) setPrompt(content);
+    if (savePrompt) savePrompt(content);
   };
 
   const handleScriptLoad = () => {
