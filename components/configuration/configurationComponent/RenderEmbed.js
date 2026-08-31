@@ -187,7 +187,7 @@ const RenderEmbed = ({
                   id={`render-embed-refresh-button-${value?._id}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleChangePreTool();
+                    handleChangePreTool(value?._id);
                   }}
                   className="btn btn-ghost btn-sm p-1"
                   title={isChangePreToolDropdownOpen ? undefined : "Change Pre Tool"}

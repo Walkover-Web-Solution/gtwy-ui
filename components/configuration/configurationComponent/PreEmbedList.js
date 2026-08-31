@@ -27,6 +27,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [preToolData, setPreToolData] = useState(null);
   const [variablesPath, setVariablesPath] = useState({});
   const [showChangePicker, setShowChangePicker] = useState(false);
+  const [changingPreToolId, setChangingPreToolId] = useState(null);
   const [isAddPreToolDropdownFocused, setIsAddPreToolDropdownFocused] = useState(false);
   const [selectedPreTool, setSelectedPreTool] = useState(null); // for built-in modal
   const [deleteWarning, setDeleteWarning] = useState(null); // Warning message for delete modal
@@ -177,21 +178,9 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     });
   };
 
-  const disableAllPreTools = async () => {
-    for (const toolItem of bridgePreFunctions) {
-      await dispatch(
-        updateApiAction(params.id, {
-          pre_tools: toolItem._toolEntry,
-          version_id: searchParams?.version,
-          status: "0",
-        })
-      );
-    }
-  };
-
   const onChangeFunctionSelect = async (id) => {
-    guardedAction(async () => {
-      await disableAllPreTools();
+    guardedAction(() => {
+      const preToolIdToReplace = changingPreToolId || bridgePreFunctions[0]?._id;
       dispatch(
         updateApiAction(params.id, {
           pre_tools: {
@@ -203,24 +192,28 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
             },
           },
           version_id: searchParams?.version,
-          status: "1",
+          status: "2",
+          pre_tool_id: preToolIdToReplace,
         })
       );
       setShowChangePicker(false);
+      setChangingPreToolId(null);
     });
   };
 
   const onChangeBuiltInPreToolSelect = async (type) => {
-    guardedAction(async () => {
-      await disableAllPreTools();
+    guardedAction(() => {
+      const preToolIdToReplace = changingPreToolId || bridgePreFunctions[0]?._id;
       dispatch(
         updateApiAction(params.id, {
           pre_tools: { type },
           version_id: searchParams?.version,
-          status: "1",
+          status: "2",
+          pre_tool_id: preToolIdToReplace,
         })
       );
       setShowChangePicker(false);
+      setChangingPreToolId(null);
       setSelectedPreTool({ type, config: {}, args: {} });
       openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
     });
@@ -244,8 +237,9 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     });
   };
 
-  const handleChangePreTool = () => {
+  const handleChangePreTool = (preToolId) => {
     guardedAction(() => {
+      setChangingPreToolId(preToolId || bridgePreFunctions[0]?._id || null);
       setShowChangePicker(true);
     });
   };
@@ -420,7 +414,13 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
                 {bridgePreFunctions.length > 0 && (
                   <>
                     {showChangePicker && (
-                      <div className="fixed inset-0 z-10" onClick={() => setShowChangePicker(false)} />
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => {
+                          setShowChangePicker(false);
+                          setChangingPreToolId(null);
+                        }}
+                      />
                     )}
                     <div
                       data-testid="pre-embed-add-more-dropdown"
