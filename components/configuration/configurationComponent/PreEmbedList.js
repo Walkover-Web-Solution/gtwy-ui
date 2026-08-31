@@ -6,7 +6,7 @@ import { useConfigurationContext } from "../ConfigurationContext";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
-import { MODAL_TYPE, PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
+import { MODAL_TYPE, PRE_TOOL_TYPES, PRE_TOOL_LABELS, PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD } from "@/utils/enums";
 import RenderEmbed from "./RenderEmbed";
 import InfoTooltip from "@/components/InfoTooltip";
 import { isEqual } from "lodash";
@@ -29,6 +29,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [showChangePicker, setShowChangePicker] = useState(false);
   const [isAddPreToolDropdownFocused, setIsAddPreToolDropdownFocused] = useState(false);
   const [selectedPreTool, setSelectedPreTool] = useState(null); // for built-in modal
+  const [isPendingPreToolAdd, setIsPendingPreToolAdd] = useState(false);
   const [deleteWarning, setDeleteWarning] = useState(null); // Warning message for delete modal
 
   // Pending action to run after the user confirms leaving unsaved prompt changes
@@ -112,6 +113,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         setVariablesPath(toolItem._toolEntry?.args || {});
         openModal(MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL);
       } else {
+        setIsPendingPreToolAdd(false);
         setSelectedPreTool(toolItem._toolEntry);
         openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
       }
@@ -160,8 +162,21 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     });
   };
 
+  const openBuiltInPreToolConfig = (type, { pendingAdd = false } = {}) => {
+    setIsPendingPreToolAdd(pendingAdd);
+    setSelectedPreTool({ type, config: {}, args: {} });
+    openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+    setTimeout(() => {
+      if (typeof document !== "undefined") document.activeElement?.blur?.();
+    }, 0);
+  };
+
   const onBuiltInPreToolSelect = (type) => {
     guardedAction(() => {
+      if (PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD.has(type)) {
+        openBuiltInPreToolConfig(type, { pendingAdd: true });
+        return;
+      }
       dispatch(
         updateApiAction(params.id, {
           pre_tools: { type },
@@ -169,11 +184,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
           status: "1",
         })
       );
-      setSelectedPreTool({ type, config: {}, args: {} });
-      openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
-      setTimeout(() => {
-        if (typeof document !== "undefined") document.activeElement?.blur?.();
-      }, 0);
+      openBuiltInPreToolConfig(type);
     });
   };
 
@@ -212,6 +223,10 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
 
   const onChangeBuiltInPreToolSelect = async (type) => {
     guardedAction(async () => {
+      if (PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD.has(type)) {
+        openBuiltInPreToolConfig(type, { pendingAdd: true });
+        return;
+      }
       await disableAllPreTools();
       dispatch(
         updateApiAction(params.id, {
@@ -221,8 +236,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         })
       );
       setShowChangePicker(false);
-      setSelectedPreTool({ type, config: {}, args: {} });
-      openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+      openBuiltInPreToolConfig(type);
     });
   };
 
@@ -279,7 +293,29 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
     );
   };
 
-  const handleSaveBuiltInPreTool = (updatedToolEntry) => {
+  const handleCloseBuiltInPreToolConfig = () => {
+    setIsPendingPreToolAdd(false);
+    setSelectedPreTool(null);
+    closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+  };
+
+  const handleSaveBuiltInPreTool = async (updatedToolEntry) => {
+    if (isPendingPreToolAdd) {
+      if (bridge_pre_tools.length > 0) {
+        await disableAllPreTools();
+      }
+      setShowChangePicker(false);
+      setIsPendingPreToolAdd(false);
+      setSelectedPreTool(updatedToolEntry);
+      dispatch(
+        updateApiAction(params.id, {
+          pre_tools: updatedToolEntry,
+          version_id: searchParams?.version,
+          status: "1",
+        })
+      );
+      return;
+    }
     const updatedPreTools = bridge_pre_tools.map((t) => {
       if (t.type === updatedToolEntry.type) {
         return updatedToolEntry;
@@ -330,6 +366,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         <PrebuiltPreToolConfigModal
           toolEntry={selectedPreTool}
           onSave={handleSaveBuiltInPreTool}
+          onClose={handleCloseBuiltInPreToolConfig}
+          isPendingAdd={isPendingPreToolAdd}
           orgId={params?.org_id}
         />
 

@@ -366,6 +366,11 @@ export const PRE_TOOL_TOOLTIPS = {
   gtwy_web_search: "Scrapes a specified domain and passes the content as context to the AI.",
 };
 
+export const PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD = new Set([
+  PRE_TOOL_TYPES.rag_knowledgebase,
+  PRE_TOOL_TYPES.gtwy_web_search,
+]);
+
 export const PRE_TOOL_CONFIG_SCHEMA = {
   query_refiner: {
     configFields: [
