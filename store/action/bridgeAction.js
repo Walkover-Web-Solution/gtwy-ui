@@ -398,6 +398,7 @@ export const getAllBridgesAction = (onSuccess) => async (dispatch) => {
     const triggerEmbedToken = response?.data?.trigger_embed_token;
     const average_response_time = response?.data?.avg_response_time;
     const doctstar_embed_token = response?.data?.doctstar_embed_token;
+    const default_agent = response?.data?.default_agent || null;
     const bridgesPayload = response?.data?.agent || [];
 
     if (onSuccess) onSuccess(bridgesPayload);
@@ -405,6 +406,7 @@ export const getAllBridgesAction = (onSuccess) => async (dispatch) => {
       fetchAllBridgeReducer({
         bridges: bridgesPayload,
         orgId: response?.data?.org_id,
+        default_agent,
         embed_token,
         doctstar_embed_token,
         alerting_embed_token,
