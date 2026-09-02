@@ -3,10 +3,11 @@ import EmbedList from "./configurationComponent/EmbedList";
 import ConnectedAgentList from "./configurationComponent/ConnectedAgentList";
 import KnowledgebaseList from "./configurationComponent/KnowledgebaseList";
 import McpServerList from "./configurationComponent/McpServerList";
+import SkillsList from "./configurationComponent/SkillsList";
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const ToolsSection = memo(({ isPublished }) => {
-  const { params, searchParams, isEditor, isEmbedUser, showMcp } = useConfigurationContext();
+  const { params, searchParams, isEditor, isEmbedUser, showMcp, showSkills } = useConfigurationContext();
 
   return (
     <div data-testid="tools-section-container" id="tools-section-container" className="flex mt-4 gap-4 flex-col">
@@ -15,6 +16,9 @@ const ToolsSection = memo(({ isPublished }) => {
       <KnowledgebaseList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
       {(!isEmbedUser || showMcp) && (
         <McpServerList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
+      )}
+      {(!isEmbedUser || showSkills) && (
+        <SkillsList params={params} searchParams={searchParams} isPublished={isPublished} isEditor={isEditor} />
       )}
     </div>
   );

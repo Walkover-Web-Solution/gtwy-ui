@@ -277,6 +277,39 @@ export const bridgeReducer = createSlice({
         delete state.org[orgId].functionData[functionId];
       }
     },
+
+    // Skills Management Reducers
+    fetchAllSkillsReducer: (state, action) => {
+      const { orgId, skillsData } = action.payload;
+      state.org = { ...state.org, [orgId]: { ...state.org?.[orgId], skillsData } };
+      state.loading = false;
+    },
+    createSkillReducer: (state, action) => {
+      const { orgId, skill } = action.payload;
+      if (!state.org[orgId]) {
+        state.org[orgId] = {};
+      }
+      if (!state.org[orgId].skillsData) {
+        state.org[orgId].skillsData = {};
+      }
+      state.org[orgId].skillsData[skill._id] = skill;
+    },
+    updateSkillReducer: (state, action) => {
+      const { orgId, skill } = action.payload;
+      if (state.org[orgId]?.skillsData?.[skill._id]) {
+        state.org[orgId].skillsData[skill._id] = {
+          ...state.org[orgId].skillsData[skill._id],
+          ...skill,
+        };
+      }
+    },
+    deleteSkillReducer: (state, action) => {
+      const { orgId, skillId } = action.payload;
+      if (state.org[orgId]?.skillsData?.[skillId]) {
+        delete state.org[orgId].skillsData[skillId];
+      }
+    },
+
     setThreadIdForVersionReducer: (state, action) => {
       const { bridgeId, versionId, thread_id } = action.payload;
       if (!state.bridgeVersionMapping[bridgeId]) {
@@ -404,6 +437,10 @@ export const {
   optimizePromptReducer,
   updateTriggerDataReducer,
   removeFunctionDataReducer,
+  fetchAllSkillsReducer,
+  createSkillReducer,
+  updateSkillReducer,
+  deleteSkillReducer,
   webhookURLForBatchAPIReducer,
   getPrebuiltToolsReducer,
   updateAllBridgeReducerAgentVariable,
