@@ -46,6 +46,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
         showCreateManuallyButton: true,
         showPromptHelper: true,
         showMcp: false,
+        showSkills: false,
         prompt: {
           useDefaultPrompt: true,
           customPrompt: "",

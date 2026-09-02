@@ -214,6 +214,14 @@ export const CONFIG_SCHEMA = [
     defaultValue: false,
     section: "Interface Options",
   },
+  {
+    key: "showSkills",
+    type: "toggle",
+    label: "Show Skills",
+    description: "Display skills configuration in the Connectors tab",
+    defaultValue: false,
+    section: "Interface Options",
+  },
 ];
 
 // Theme utility functions
