@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
+import { useParams } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, getIconOfService } from "@/utils/utility";
 import { updateTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import TestCaseVariablesModal from "./TestCaseVariablesModal";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ReactMarkdown from "react-markdown";
@@ -28,6 +30,9 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -44,6 +49,8 @@ const TestCaseDetailsPanel = ({
   bridgeId,
 }) => {
   const dispatch = useDispatch();
+  const params = useParams();
+  const mockToolResponsesRef = useRef(null);
 
   // Comparison versions follow the single source of truth: `selectedVersions` from header.
   // Fall back to first 2 versions if nothing selected (defensive only).
@@ -380,6 +387,41 @@ const TestCaseDetailsPanel = ({
   const bridgeVersionMapping = useCustomSelector(
     (state) => state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {}
   );
+
+  // Source of truth for the bridge's configured tools — same slices the
+  // bridge/agent tool configuration screen (EmbedList) reads from.
+  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
+  }));
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Autosave hook for MockToolResponsesSection — fired on JSON field blur and on
+  // add/remove-recording clicks, so there's no separate "Save mocks" button.
+  const handleMockToolResponsesChange = (toolsResponse) => {
+    if (!selectedTestCase?._id) return;
+    dispatch(
+      updateTestCaseAction({
+        testCaseId: selectedTestCase._id,
+        dataToUpdate: {
+          conversation: selectedTestCase?.conversation,
+          type: selectedTestCase?.type,
+          expected: selectedTestCase?.expected,
+          matching_type: selectedTestCase?.matching_type,
+          variables: selectedTestCase?.variables,
+          tools_response: toolsResponse,
+        },
+      })
+    );
+  };
 
   // Reset test case variables and alert state when selectedTestCase changes
   useEffect(() => {
@@ -792,6 +834,17 @@ const TestCaseDetailsPanel = ({
               </ExpandCollapse>
             </div>
           </div>
+          {/* Mock Tool Responses */}
+          <div className="mb-6">
+            <MockToolResponsesSection
+              ref={mockToolResponsesRef}
+              tools={bridgeToolOptions}
+              initialValue={selectedTestCase?.tools_response}
+              resetKey={selectedTestCase?._id}
+              onBlurSave={handleMockToolResponsesChange}
+            />
+          </div>
+
           {/* Version Comparison — driven by header "Versions" selector (single source of truth) */}
           <div data-testid="testcase-comparison-section">
             <div className="mb-5 flex items-center gap-2 flex-wrap" data-testid="testcase-comparison-controls">
