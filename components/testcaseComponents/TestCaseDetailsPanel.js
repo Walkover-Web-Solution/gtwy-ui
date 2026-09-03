@@ -247,26 +247,6 @@ const TestCaseDetailsPanel = ({
     publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
   }));
 
-  // tools_call_data entries store the viasocket script_id as `id` (and usually
-  // `model_tool_name`). Fall back to org functionData when id was dropped
-  // (e.g. mocked testcase tool logs).
-  const resolveToolScriptId = useCallback(
-    (tool) => {
-      if (tool?.id) return tool.id;
-      if (tool?.script_id) return tool.script_id;
-      if (tool?.model_tool_name) return tool.model_tool_name;
-
-      const displayName = tool?.name || tool?.display_tool_name;
-      if (!displayName) return null;
-
-      const match = Object.values(functionData || {}).find(
-        (fn) => fn?.script_id === displayName || fn?.title === displayName
-      );
-      return match?.script_id || null;
-    },
-    [functionData]
-  );
-
   const handleToolPrimaryClick = useCallback(
     async (tool) => {
       // Check if this is a RAG tool - don't call openViasocket for RAG tools
@@ -289,12 +269,9 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      const scriptId = resolveToolScriptId(tool);
-
-      // Call openViasocket for other tools — first arg must be script_id so the
-      // embed opens that tool's log (flowHitId) instead of the all-tools list.
-      if (typeof window !== "undefined" && window.openViasocket && scriptId) {
-        window.openViasocket(scriptId, {
+      // First arg must be script_id so the embed opens that tool's log.
+      if (typeof window !== "undefined" && window.openViasocket && tool?.script_id) {
+        window.openViasocket(tool.script_id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
@@ -309,7 +286,7 @@ const TestCaseDetailsPanel = ({
       setToolsData(tool);
       toolsDataModalRef.current?.showModal();
     },
-    [embedToken, bridgeId, resolveToolScriptId]
+    [embedToken, bridgeId]
   );
 
   // Get current expected value as string for editing
