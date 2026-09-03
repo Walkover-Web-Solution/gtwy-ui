@@ -294,7 +294,6 @@ export const createEmbedAgentAction =
         name: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
-        flag: true,
       };
       if (meta) {
         fallbackDataToSend.meta = meta;
