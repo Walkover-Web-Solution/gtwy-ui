@@ -269,9 +269,9 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      // First arg must be script_id so the embed opens that tool's log.
-      if (typeof window !== "undefined" && window.openViasocket && tool?.script_id) {
-        window.openViasocket(tool.script_id, {
+      // First arg is tool.id (viasocket script_id) so the embed opens that tool's log.
+      if (typeof window !== "undefined" && window.openViasocket && tool?.id) {
+        window.openViasocket(tool.id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
