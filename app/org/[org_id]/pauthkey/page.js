@@ -28,16 +28,19 @@ function Page({ params }) {
 
   const resolvedParams = use(params);
   const dispatch = useDispatch();
-  const { authData, isFirstPauthCreation, descriptions, orgRole, linksData } = useCustomSelector((state) => {
-    const user = state.userDetailsReducer.userDetails || [];
-    return {
-      authData: state?.authDataReducer?.authData || [],
-      isFirstPauthCreation: user?.meta?.onboarding?.PauthKey,
-      descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
-      orgRole: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]?.role_name,
-      linksData: state.flowDataReducer.flowData.linksData || [],
-    };
-  });
+  const { authData, isFirstPauthCreation, descriptions, orgRole, linksData, isOrgBlocked } = useCustomSelector(
+    (state) => {
+      const user = state.userDetailsReducer.userDetails || [];
+      return {
+        authData: state?.authDataReducer?.authData || [],
+        isFirstPauthCreation: user?.meta?.onboarding?.PauthKey,
+        descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
+        orgRole: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]?.role_name,
+        linksData: state.flowDataReducer.flowData.linksData || [],
+        isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams.org_id) || false,
+      };
+    }
+  );
 
   const [filterPauthKeys, setFilterPauthKeys] = useState(authData);
   const [selectedDataToDelete, setselectedDataToDelete] = useState(null);
@@ -86,6 +89,10 @@ function Page({ params }) {
    * @param {string} name Name of the new auth key
    */
   const createAuthKeyHandler = async (e, name) => {
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create auth keys. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     const isDuplicate = authData.some((item) => item.name === name);
     if (isDuplicate) {
       toast.error("The name has already been taken");
@@ -190,7 +197,20 @@ function Page({ params }) {
               <SearchItems data={authData} setFilterItems={setFilterPauthKeys} item="Auth Key" />
             )}
             <div className={`flex-shrink-0 ${authData?.length > 5 ? "mr-2" : "ml-2"}`}>
-              <button className="btn btn-primary btn-sm" onClick={() => openModal(MODAL_TYPE.PAUTH_KEY_MODAL)}>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  if (isOrgBlocked) {
+                    toast.error(
+                      "Your org is blocked. You cannot create auth keys. Contact support@gtwy.ai for assistance."
+                    );
+                    return;
+                  }
+                  openModal(MODAL_TYPE.PAUTH_KEY_MODAL);
+                }}
+                disabled={isOrgBlocked}
+                title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
+              >
                 + Create New Auth Key
               </button>
             </div>
@@ -245,6 +265,8 @@ function Page({ params }) {
             <button
               className="btn btn-primary btn-sm"
               onClick={(e) => createAuthKeyHandler(e, document.getElementById("authNameInput").value)}
+              disabled={isOrgBlocked}
+              title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
             >
               Create
             </button>

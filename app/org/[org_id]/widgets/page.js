@@ -28,9 +28,10 @@ const TemplatesPage = ({ params }) => {
   const searchParams = useSearchParams();
   const createParam = searchParams.get("create");
 
-  const { widgetsData, linksData } = useCustomSelector((state) => ({
+  const { widgetsData, linksData, isOrgBlocked } = useCustomSelector((state) => ({
     widgetsData: state?.richUiTemplateReducer?.templates || [],
     linksData: state.flowDataReducer.flowData.linksData || [],
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams?.org_id) || false,
   }));
 
   // State for Navigation/View Mode
@@ -85,6 +86,10 @@ const TemplatesPage = ({ params }) => {
   };
 
   const handleCreateNew = () => {
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create widgets. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     router.push(`?create=true`);
     setViewMode("create_prompt");
   };
@@ -448,6 +453,8 @@ const TemplatesPage = ({ params }) => {
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={handleCreateNew}
+                  disabled={isOrgBlocked}
+                  title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
                   data-testid="create-widget-button-header"
                 >
                   + Create Widget
@@ -533,7 +540,13 @@ const TemplatesPage = ({ params }) => {
               <div className="text-6xl mb-4">📄</div>
               <p className="text-gray-500 text-lg mb-2">No widgets found</p>
               <p className="text-gray-400 text-sm mb-6">Create your first widget to get started</p>
-              <button className="btn btn-primary" onClick={handleCreateNew} data-testid="create-widget-button-empty">
+              <button
+                className="btn btn-primary"
+                onClick={handleCreateNew}
+                disabled={isOrgBlocked}
+                title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
+                data-testid="create-widget-button-empty"
+              >
                 + Create Widget
               </button>
             </div>

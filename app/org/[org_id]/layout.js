@@ -42,6 +42,8 @@ import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { getAllAuthData } from "@/store/action/authkeyAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
+import { getBlockedOrgs } from "@/config/organizationApi";
+import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
 const MainSlider = dynamic(() => import("@/components/sliders/MainSlider"), { loading: () => <LoadingSpinner /> });
@@ -120,6 +122,19 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(getApiKeyGuideAction());
     }
   }, [pathName, resolvedParams.org_id, isEmbedUser]);
+
+  // Blocked orgs are also fetched on the /org page, but the layout may be the first
+  // page a user lands on (direct link or refresh), so fetch it here too.
+  useEffect(() => {
+    if (isEmbedUser) return;
+    getBlockedOrgs()
+      .then((response) => {
+        dispatch(setBlockedOrgs(response?.data?.data || []));
+      })
+      .catch((error) => {
+        console.error("Failed to fetch blocked organizations", error);
+      });
+  }, [resolvedParams.org_id, isEmbedUser]);
 
   const { changeTheme } = useThemeManager();
 
@@ -537,6 +552,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
 
   if (!isEmbedUser) {
     const hasFolders = ["agents", "apikeys", "tools", "knowledge_base"].includes(path[3]);
+    // Embed detail pages collapse the MainSlider and render their own left rail,
+    // so the banner needs extra left padding to clear it.
+    const isEmbedPageOpen = (path[3] === "RAG_embed" || path[3] === "embed") && Boolean(path[4]);
 
     return (
       <div className="h-screen flex flex-col overflow-hidden">
@@ -551,7 +569,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           <div
             className={`flex-1 ${path.length > 4 ? "ml-0  md:ml-12 lg:ml-12" : ""} flex flex-col overflow-hidden z-medium`}
           >
-            {isOrgBlocked ? <BlockedOrgBanner /> : null}
+            {isOrgBlocked ? <BlockedOrgBanner className={isEmbedPageOpen ? "pl-16" : ""} /> : null}
             <div
               className={`sticky top-0 z-medium bg-base-100 border-b border-base-300 ${hasFolders ? "ml-0" : "ml-2"}`}
             >
