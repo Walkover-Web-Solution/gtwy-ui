@@ -277,16 +277,12 @@ const ModelDropdown = ({
           label: displayLabel,
           // pass meta to use in onChange and onOptionHover
           meta: { group, modelName, specs },
-          created_at: cfg?.created_at || null,
+          created_at: cfg?.created_at,
         });
       });
     });
-    // Latest models first (API also returns created_at / insertion order).
-    opts.sort((a, b) => {
-      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return bTime - aTime;
-    });
+    // Latest models first (created_at from API / DB).
+    opts.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     return opts;
   }, [modelsList, bridgeType, modelsConfig, service]);
   const [pendingSelection, setPendingSelection] = useState(null);
