@@ -159,9 +159,9 @@ export const runTestCaseAction =
         include_default,
       });
 
-      // New flow: backend returns immediately with rtlayer_cred and streams results via RTLayer.
-      // The `useRtLayerEventHandler` hook listens on `${orgId}_${bridgeId}` and updates the
-      // store via `testRunResultReducer` / `testRunCompletedReducer`. Nothing else to do here.
+      // New flow: backend returns immediately and streams results via RTLayer on
+      // `${orgId}_${bridgeId}_${userId}`. The testcase page / ConfigurationPage
+      // subscribe to that channel; `useRtLayerEventHandler` updates the store.
       if (response?.rtlayer_cred && !response?.results) {
         return response;
       }

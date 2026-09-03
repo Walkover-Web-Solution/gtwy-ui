@@ -168,8 +168,9 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
         }
 
         // ---------- Testcase run events (RTLayer-driven) ----------
-        // Channel name from backend is `${org_id}_${bridge_id}`. We trust the
-        // bridge_id present in the payload, falling back to the parsed path.
+        // Channel from backend is `${org_id}_${bridge_id}_${user_id}` (pages must
+        // subscribe with that id). We trust bridge_id in the payload, falling back
+        // to the parsed path.
         if (
           event === "run_started" ||
           event === "testcase_result" ||
