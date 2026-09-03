@@ -460,7 +460,9 @@ const ParameterCard = ({
                 type="text"
                 placeholder="your_path"
                 className={`input input-xs input-bordered text-xs ${
-                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                  currentPath in variablesPath && !String(variablesPath[currentPath] || "").trim()
+                    ? "border-red-500"
+                    : ""
                 }`}
                 value={variablesPath[currentPath] || ""}
                 onChange={(e) => {
@@ -1343,6 +1345,9 @@ function FunctionParameterModal({
     ]
   );
 
+  // Fill with AI off (key present) but Value Path empty → block save
+  const hasMissingValuePath = Object.values(variablesPath || {}).some((v) => !String(v ?? "").trim());
+
   return (
     <Modal
       MODAL_ID={Model_Name}
@@ -1365,7 +1370,7 @@ function FunctionParameterModal({
             data-testid="function-parameter-save-button"
             className="btn btn-sm btn-primary"
             onClick={handleSaveData}
-            disabled={!isModified || isLoading || isPublished}
+            disabled={!isModified || isLoading || isPublished || hasMissingValuePath}
           >
             {isLoading && <span className="loading loading-xs loading-spinner mr-1"></span>}
             Save
