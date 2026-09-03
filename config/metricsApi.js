@@ -35,32 +35,6 @@ export const getMetricsDataApi = async ({
   }
 };
 
-// Real success vs failed request counts per time bucket, sourced from
-// conversation_logs (same table the Agent Analytics page uses) - not the
-// Timescale rollups, which never track failures. bridge_id/model/service are
-// optional multi-select filters (array or single value); there is no
-// apikey_id filter here because conversation_logs has no apikey_id column.
-// Also returns `by_agent`: real per-agent input/output token totals from the
-// same source, for the Models table's token breakdown columns.
-export const getRequestsActivityApi = async ({ bridge_id, model, service, start_date, end_date }) => {
-  try {
-    const response = await axios.post(`${URL}/api/metrics/requests-activity`, {
-      bridge_id,
-      model,
-      service,
-      start_date,
-      end_date,
-    });
-    return {
-      data: response.data?.data || [],
-      byAgent: response.data?.by_agent || [],
-    };
-  } catch (error) {
-    console.error(error);
-    return { data: [], byAgent: [] };
-  }
-};
-
 // User Feedback and Analytics APIs
 export const userFeedbackCount = async ({ bridge_id, user_feedback }) => {
   try {

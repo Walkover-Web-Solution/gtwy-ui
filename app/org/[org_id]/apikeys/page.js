@@ -16,14 +16,14 @@ import {
   toggleSidebar,
   getApiKeyStatusClass,
 } from "@/utils/utility";
-import { BookIcon, ChartIcon, RefreshIcon, SquarePenIcon, TrashIcon } from "@/components/Icons";
+import { BookIcon, RefreshIcon, SquarePenIcon, TrashIcon } from "@/components/Icons";
 import ResourcePage from "@/components/folders/ResourcePage";
 import FolderTabs from "@/components/folders/FolderTabs";
 import MoveToFolderMenu from "@/components/folders/MoveToFolderMenu";
 import useFolders from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
 import { Folder } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import DeleteModal from "@/components/UI/DeleteModal";
@@ -37,7 +37,6 @@ export const runtime = "edge";
 
 const Page = ({ isEmbedUser = false }) => {
   const pathName = usePathname();
-  const router = useRouter();
   const dispatch = useDispatch();
   const path = pathName?.split("?")[0].split("/");
   const orgId = path[2] || "";
@@ -182,16 +181,6 @@ const Page = ({ isEmbedUser = false }) => {
   const EndComponent = ({ row }) => {
     return (
       <div className="flex gap-3 justify-center items-center" onClick={(e) => e.stopPropagation()}>
-        <div
-          className="tooltip tooltip-primary"
-          data-tip="View Metrics"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/org/${orgId}/metrics?apikey_ids=${row._id}&factor=1`);
-          }}
-        >
-          <ChartIcon size={16} />
-        </div>
         <div
           className="tooltip tooltip-primary"
           data-tip="delete"
