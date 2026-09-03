@@ -240,6 +240,33 @@ const TestCaseDetailsPanel = ({
       state?.bridgeReducer?.org?.[bridgeId]?.embed_token,
   }));
 
+  // Source of truth for the bridge's configured tools — same slices the
+  // bridge/agent tool configuration screen (EmbedList) reads from.
+  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
+  }));
+
+  // tools_call_data entries store the viasocket script_id as `id` (and usually
+  // `model_tool_name`). Fall back to org functionData when id was dropped
+  // (e.g. mocked testcase tool logs).
+  const resolveToolScriptId = useCallback(
+    (tool) => {
+      if (tool?.id) return tool.id;
+      if (tool?.script_id) return tool.script_id;
+      if (tool?.model_tool_name) return tool.model_tool_name;
+
+      const displayName = tool?.name || tool?.display_tool_name;
+      if (!displayName) return null;
+
+      const match = Object.values(functionData || {}).find(
+        (fn) => fn?.script_id === displayName || fn?.title === displayName
+      );
+      return match?.script_id || null;
+    },
+    [functionData]
+  );
+
   const handleToolPrimaryClick = useCallback(
     async (tool) => {
       // Check if this is a RAG tool - don't call openViasocket for RAG tools
@@ -262,9 +289,12 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      // Call openViasocket for other tools
-      if (typeof window !== "undefined" && window.openViasocket) {
-        window.openViasocket(tool?.id, {
+      const scriptId = resolveToolScriptId(tool);
+
+      // Call openViasocket for other tools — first arg must be script_id so the
+      // embed opens that tool's log (flowHitId) instead of the all-tools list.
+      if (typeof window !== "undefined" && window.openViasocket && scriptId) {
+        window.openViasocket(scriptId, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
@@ -279,7 +309,7 @@ const TestCaseDetailsPanel = ({
       setToolsData(tool);
       toolsDataModalRef.current?.showModal();
     },
-    [embedToken, bridgeId]
+    [embedToken, bridgeId, resolveToolScriptId]
   );
 
   // Get current expected value as string for editing
@@ -387,13 +417,6 @@ const TestCaseDetailsPanel = ({
   const bridgeVersionMapping = useCustomSelector(
     (state) => state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {}
   );
-
-  // Source of truth for the bridge's configured tools — same slices the
-  // bridge/agent tool configuration screen (EmbedList) reads from.
-  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
-    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
-    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
-  }));
 
   useEffect(() => {
     if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
