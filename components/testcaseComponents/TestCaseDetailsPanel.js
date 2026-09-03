@@ -240,6 +240,13 @@ const TestCaseDetailsPanel = ({
       state?.bridgeReducer?.org?.[bridgeId]?.embed_token,
   }));
 
+  // Source of truth for the bridge's configured tools — same slices the
+  // bridge/agent tool configuration screen (EmbedList) reads from.
+  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
+  }));
+
   const handleToolPrimaryClick = useCallback(
     async (tool) => {
       // Check if this is a RAG tool - don't call openViasocket for RAG tools
@@ -262,9 +269,9 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      // Call openViasocket for other tools
-      if (typeof window !== "undefined" && window.openViasocket) {
-        window.openViasocket(tool?.id, {
+      // First arg must be script_id so the embed opens that tool's log.
+      if (typeof window !== "undefined" && window.openViasocket && tool?.script_id) {
+        window.openViasocket(tool.script_id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
@@ -387,13 +394,6 @@ const TestCaseDetailsPanel = ({
   const bridgeVersionMapping = useCustomSelector(
     (state) => state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {}
   );
-
-  // Source of truth for the bridge's configured tools — same slices the
-  // bridge/agent tool configuration screen (EmbedList) reads from.
-  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
-    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
-    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
-  }));
 
   useEffect(() => {
     if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
