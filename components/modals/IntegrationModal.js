@@ -2,7 +2,7 @@ import { createIntegrationAction } from "@/store/action/integrationAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import React from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Modal from "@/components/UI/Modal";
 import { toast } from "react-toastify";
 import { Blocks } from "lucide-react";
@@ -10,7 +10,14 @@ import { Blocks } from "lucide-react";
 const IntegrationModal = ({ params, type = "embed" }) => {
   const integrationNameRef = React.useRef("");
   const dispatch = useDispatch();
+  const isOrgBlocked = useSelector(
+    (state) => state?.userDetailsReducer?.blockedOrgIds?.includes(params?.org_id) || false
+  );
   const handleCreateNewIntegration = () => {
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create embeds. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     if (integrationNameRef?.current?.value?.trim() === "") {
       toast.error("Embed name should not be empty");
       return;
@@ -103,6 +110,8 @@ const IntegrationModal = ({ params, type = "embed" }) => {
             id="integration-create-button"
             className="btn btn-sm btn-primary"
             onClick={handleCreateNewIntegration}
+            disabled={isOrgBlocked}
+            title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
           >
             Create
           </button>

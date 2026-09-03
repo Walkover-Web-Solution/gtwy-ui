@@ -609,7 +609,8 @@ const InputConfigComponent = memo(
                   <div className="relative">
                     {fieldConfig.type === "textarea" ? (
                       <textarea
-                        className="textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-72 pr-8"
+                        key={`${params?.id || "agent"}-${searchParams?.version || "version"}-${key}`}
+                        className="textarea textarea-bordered w-full h-72 min-h-72 text-sm leading-relaxed resize-y overflow-y-auto pr-8"
                         value={(structuredFields || {})[key] || ""}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         onFocus={handleTextareaFocus}

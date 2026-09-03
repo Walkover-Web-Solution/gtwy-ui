@@ -45,6 +45,7 @@ import { getAllChatBotAction } from "@/store/action/chatBotAction";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
 const MainSlider = dynamic(() => import("@/components/sliders/MainSlider"), { loading: () => <LoadingSpinner /> });
+const BlockedOrgBanner = dynamic(() => import("@/components/organization/BlockedOrgBanner"));
 const ChatDetails = dynamic(() => import("@/components/historyPageComponents/ChatDetails"), {
   loading: () => <LoadingSpinner />,
 });
@@ -80,6 +81,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     functionData,
     tools,
     historyEmbed,
+    isOrgBlocked,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -98,6 +100,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
     functionData: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.functionData || {},
     historyEmbed: state?.appInfoReducer?.embedUserDetails?.historyEmbed || false,
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams.org_id) || false,
   }));
   useEffect(() => {
     if (!isEmbedUser) {
@@ -548,6 +551,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           <div
             className={`flex-1 ${path.length > 4 ? "ml-0  md:ml-12 lg:ml-12" : ""} flex flex-col overflow-hidden z-medium`}
           >
+            {isOrgBlocked ? <BlockedOrgBanner /> : null}
             <div
               className={`sticky top-0 z-medium bg-base-100 border-b border-base-300 ${hasFolders ? "ml-0" : "ml-2"}`}
             >

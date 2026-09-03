@@ -10,6 +10,7 @@ import Modal from "../UI/Modal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { FolderContext } from "@/components/folders/FolderContext";
 import { Key } from "lucide-react";
+import { toast } from "react-toastify";
 
 const ApiKeyModal = ({
   params,
@@ -41,7 +42,10 @@ const ApiKeyModal = ({
   const path = pathName?.split("?")[0].split("/");
   const orgId = path[2] || "";
   const dispatch = useDispatch();
-  const { SERVICES } = useCustomSelector((state) => ({ SERVICES: state?.serviceReducer?.services }));
+  const { SERVICES, isOrgBlocked } = useCustomSelector((state) => ({
+    SERVICES: state?.serviceReducer?.services,
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(orgId) || false,
+  }));
   const lockedService = service || selectedService || "";
 
   // Reset ischanged state when modal opens/closes
@@ -105,6 +109,13 @@ const ApiKeyModal = ({
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
+
+      if (isOrgBlocked) {
+        toast.error(
+          "Your org is blocked. You cannot create or update API keys. Contact support@gtwy.ai for assistance."
+        );
+        return;
+      }
 
       const formData = new FormData(event.target);
       const data = {
@@ -193,6 +204,7 @@ const ApiKeyModal = ({
       selectedService,
       executeOperation,
       activeFolderId,
+      isOrgBlocked,
     ]
   );
 
@@ -214,9 +226,12 @@ const ApiKeyModal = ({
         type="submit"
         form="apikey-modal-form"
         className={`btn btn-sm btn-primary ${
-          isLoading || (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd) ? "btn-disabled" : ""
+          isLoading || isOrgBlocked || (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd)
+            ? "btn-disabled"
+            : ""
         }`}
-        disabled={isLoading || (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd)}
+        disabled={isLoading || isOrgBlocked || (isEditing && !ischanged.isUpdate) || (!isEditing && !ischanged.isAdd)}
+        title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
       >
         {isLoading ? "Saving..." : isEditing ? "Update" : "Add"}
       </button>

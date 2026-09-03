@@ -20,6 +20,8 @@ const Layout = ({ children, isEmbedUser }) => {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(true);
   const [openGtwyReceived, setOpenGtwyReceived] = useState(false);
+  const [embedUserId, setEmbedUserId] = useState(null);
+  const [embedOrgId, setEmbedOrgId] = useState(null);
   const bridgesFetchedRef = useRef(false);
 
   const urlParamsObj = useMemo(() => {
@@ -40,7 +42,12 @@ const Layout = ({ children, isEmbedUser }) => {
 
   const { changeTheme } = useThemeManager();
 
-  useRtLayerEventHandler();
+  const agentCreateChannel = useMemo(() => {
+    if (!embedOrgId || !embedUserId) return null;
+    return `org_${embedOrgId}_${embedUserId}`.replace(/ /g, "_");
+  }, [embedOrgId, embedUserId]);
+
+  useRtLayerEventHandler("", agentCreateChannel);
 
   useEffect(() => {
     if (isEmbedUser && themeMode && urlParamsObj.folder_id) {
@@ -122,6 +129,8 @@ const Layout = ({ children, isEmbedUser }) => {
       sessionStorage.setItem("gtwy_org_id", urlParamsObj.org_id);
       sessionStorage.setItem("gtwy_folder_id", urlParamsObj.folder_id);
       sessionStorage.setItem("gtwy_user_id", urlParamsObj.user_id);
+      setEmbedOrgId(urlParamsObj.org_id);
+      setEmbedUserId(urlParamsObj.user_id);
       if (urlParamsObj.folder_id) {
         sessionStorage.setItem("embedUser", true);
       }

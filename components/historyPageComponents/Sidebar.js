@@ -362,8 +362,8 @@ const Sidebar = memo(
         if (currentMessageId) finalUrl.searchParams.set("message_id", currentMessageId);
         if (searchParams?.type) finalUrl.searchParams.set("type", searchParams.type);
 
-        if (result?.data?.length) {
-          const firstResult = result.data[0];
+        if (result?.length) {
+          const firstResult = result[0];
           const rawThreadId = firstResult.thread_id;
           const rawSubThreadId = firstResult.sub_thread?.[0]?.sub_thread_id || rawThreadId;
           finalUrl.searchParams.set("thread_id", rawThreadId);
@@ -411,7 +411,7 @@ const Sidebar = memo(
         const startDate = searchParams?.start;
         const endDate = searchParams?.end;
 
-        await dispatch(
+        const result = await dispatch(
           getHistoryAction(
             params?.id,
             1,
@@ -432,6 +432,15 @@ const Sidebar = memo(
         // Remove message_id
         clearUrl.searchParams.delete("message_id");
         if (searchParams?.type) clearUrl.searchParams.set("type", searchParams.type);
+
+        if (!searchParams?.thread_id && result?.length) {
+          const firstResult = result[0];
+          const rawThreadId = firstResult.thread_id;
+          const rawSubThreadId = firstResult.sub_thread?.[0]?.sub_thread_id || rawThreadId;
+          clearUrl.searchParams.set("thread_id", rawThreadId);
+          clearUrl.searchParams.set("subThread_id", rawSubThreadId);
+          dispatch(clearThreadData());
+        }
 
         router.push(clearUrl.pathname + clearUrl.search, undefined, { shallow: true });
 

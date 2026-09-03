@@ -757,7 +757,6 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                     onChange={(e) => {
                       const value = e.target.value;
                       handleTopLevelChange("model_name", value);
-                      handleConfigChange("model", "default", value);
                       setConfig((prev) => ({
                         ...prev,
                         configuration: {
@@ -952,7 +951,10 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                     </div>
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text">Use Case</span>
+                        <span className="label-text">
+                          Use Case
+                          <RequiredItem />
+                        </span>
                       </label>
                       <textarea
                         id="add-model-usecase-textarea"
@@ -960,7 +962,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         onChange={(e) =>
                           handleSpecificationChange("usecase", e.target.value.split("\n").filter(Boolean))
                         }
-                        onBlur={(e) => handleSpecificationChange("usecase", e.target.value.trim().split("\n"))}
+                        onBlur={(e) => handleSpecificationChange("usecase", e.target.value.split("\n").filter(Boolean))}
                         className="textarea bg-base-100 textarea-bordered w-full"
                         rows={3}
                         placeholder={PLACEHOLDERS[config.service]?.usecase}

@@ -11,13 +11,20 @@ const SearchItems = ({
   isEmbedUser,
   containerClass = "",
   inputContainerClass = "",
+  onSearchChange,
+  placeholder,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const searchParams = useSearchParams();
   const { setParam } = useQueryParams();
   const filterParam = searchParams.get("filter");
+  const isServerSearch = typeof onSearchChange === "function";
   const isWorkspaceItem =
-    item === "Organizations" || item === "Workspaces" || (item === "Agents" && isEmbedUser) || item === "metrics";
+    item === "Organizations" ||
+    item === "Workspaces" ||
+    (item === "Agents" && isEmbedUser) ||
+    item === "metrics" ||
+    isServerSearch;
   const itemLabel = item === "Organizations" ? "Workspaces" : item;
   const userClearedSearch = useRef(false);
   const searchInputRef = useRef(null);
@@ -52,8 +59,9 @@ const SearchItems = ({
     setSearchTerm("");
   };
 
-  // Handle URL filter parameter
+  // Handle URL filter parameter (client-side filter mode only)
   useEffect(() => {
+    if (isServerSearch) return;
     if (filterParam && data && !userClearedSearch.current) {
       // Find the item that matches the filter parameter
       const matchedItem = data.find(
@@ -80,7 +88,7 @@ const SearchItems = ({
       setSearchTerm("");
       userClearedSearch.current = false;
     }
-  }, [filterParam, data]);
+  }, [filterParam, data, isServerSearch]);
 
   // Auto-clear filter when search term is completely removed by user
   useEffect(() => {
@@ -120,13 +128,21 @@ const SearchItems = ({
   }, [data, searchTerm]);
 
   useEffect(() => {
+    if (isServerSearch) {
+      onSearchChange(searchTerm);
+      return;
+    }
     const filtered = filterData();
-    setFilterItems(filtered);
-  }, [filterData, setFilterItems]);
+    setFilterItems?.(filtered);
+  }, [filterData, setFilterItems, isServerSearch, onSearchChange, searchTerm]);
+
+  const clearServerSearch = () => setSearchTerm("");
 
   const containerClasses =
     containerClass || (isWorkspaceItem ? `${item === "org" ? "w-full mt-2" : "max-w-xs ml-2"}` : "max-w-xs ml-2");
-  const inputClasses = style ? style : "input input-sm w-full border bg-base-200 border-base-content/50 pr-16";
+  const inputClasses = style
+    ? style
+    : `input input-sm w-full border bg-base-200 border-base-content/50 ${isServerSearch ? "pr-8" : "pr-16"}`;
 
   return (
     <div className={containerClasses}>
@@ -138,7 +154,7 @@ const SearchItems = ({
           type="text"
           ref={searchInputRef}
           aria-label={`Search ${itemLabel} by Name, SlugName, Service, or ID`}
-          placeholder={filterParam ? "Filtered - Click X to clear" : "Search"}
+          placeholder={filterParam ? "Filtered - Click X to clear" : placeholder || "Search"}
           value={searchTerm}
           className={inputClasses}
           data-allow-org-nav={isWorkspaceItem ? "true" : "false"}
@@ -153,27 +169,43 @@ const SearchItems = ({
           onClick={!isWorkspaceItem && !filterParam ? openCommandPalette : undefined}
           readOnly={!filterParam && !isWorkspaceItem}
         />
-        {!isWorkspaceItem && (
-          <div className="absolute inset-y-0 right-2 flex items-center gap-1">
-            {filterParam && (
+        {isServerSearch ? (
+          searchTerm ? (
+            <div className="absolute inset-y-0 right-2 flex items-center">
               <button
-                data-testid="search-items-clear-filter-button"
-                id="search-items-clear-filter-button"
-                onClick={clearFilter}
+                type="button"
+                data-testid="search-items-clear-server-button"
+                onClick={clearServerSearch}
                 className="btn btn-xs btn-ghost btn-square h-6 min-h-0 w-6 p-0 hover:bg-error hover:text-error-content"
-                title="Clear filter"
+                title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
-            )}
-            {!filterParam && (
-              <kbd
-                className={`kbd kbd-xs bg-base-200 text-base-content/70 border border-base-content/20 ${isMac ? "px-1.5" : "px-1"}`}
-              >
-                {shortcutText}
-              </kbd>
-            )}
-          </div>
+            </div>
+          ) : null
+        ) : (
+          !isWorkspaceItem && (
+            <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+              {filterParam && (
+                <button
+                  data-testid="search-items-clear-filter-button"
+                  id="search-items-clear-filter-button"
+                  onClick={clearFilter}
+                  className="btn btn-xs btn-ghost btn-square h-6 min-h-0 w-6 p-0 hover:bg-error hover:text-error-content"
+                  title="Clear filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {!filterParam && (
+                <kbd
+                  className={`kbd kbd-xs bg-base-200 text-base-content/70 border border-base-content/20 ${isMac ? "px-1.5" : "px-1"}`}
+                >
+                  {shortcutText}
+                </kbd>
+              )}
+            </div>
+          )
         )}
       </div>
     </div>

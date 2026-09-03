@@ -453,6 +453,18 @@ export const chatReducer = createSlice({
         }
       }
     },
+
+    // Attach AI-generated follow-up suggestions to the last assistant message
+    // (the suggestions payload carries no message id to match against)
+    setMessageSuggestions: (state, action) => {
+      const { channelId, suggestions } = action.payload;
+      if (state.messagesByChannel[channelId]) {
+        const messageIndex = state.messagesByChannel[channelId].findLastIndex((msg) => msg.sender === "assistant");
+        if (messageIndex !== -1) {
+          state.messagesByChannel[channelId][messageIndex].suggestions = suggestions;
+        }
+      }
+    },
   },
 });
 
@@ -485,6 +497,7 @@ export const {
   appendReviewDelta,
   setReviewError,
   setFallbackData,
+  setMessageSuggestions,
 } = chatReducer.actions;
 
 export default chatReducer.reducer;

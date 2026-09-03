@@ -103,3 +103,14 @@ export const getUsers = async () => {
     throw error;
   }
 };
+
+// Blocked Organization APIs
+export const getBlockedOrgs = async () => {
+  try {
+    const response = await axios.get(`${URL}/api/block_org`);
+    return response;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};

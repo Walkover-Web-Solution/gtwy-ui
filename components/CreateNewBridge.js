@@ -11,6 +11,7 @@ import Protected from "./Protected";
 import { BotIcon, Info, Plus, AlertCircle } from "lucide-react";
 import { CloseIcon } from "./Icons";
 import { FolderContext } from "@/components/folders/FolderContext";
+import { toast } from "react-toastify";
 
 const buildInitialState = () => ({
   selectedService: "openai",
@@ -114,8 +115,9 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
   const folderContext = useContext(FolderContext);
   const activeFolderId = folderContext?.activeFolderId;
 
-  const { SERVICES } = useCustomSelector((state) => ({
+  const { SERVICES, isOrgBlocked } = useCustomSelector((state) => ({
     SERVICES: state?.serviceReducer?.services,
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(orgid) || false,
   }));
   const bridgeTypeForContext = useMemo(
     () => (defaultBridgeType?.toLowerCase() === "chatbot" ? "chatbot" : "api"),
@@ -226,6 +228,10 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
   }, [activeFolderId, orgid]);
 
   const handleCreateAgent = useCallback(() => {
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create agents. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     const purpose = textAreaPurposeRef?.current?.value?.trim();
     const resolvedFolderId = getResolvedFolderId();
     updateState({
@@ -364,6 +370,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
     getResolvedFolderId,
     activeFolderId,
     folderContext,
+    isOrgBlocked,
   ]);
 
   const handleCloseModal = useCallback(() => {
@@ -491,7 +498,8 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
                   id="create-new-bridge-submit-button"
                   className="btn btn-sm btn-primary min-w-[8.5rem]"
                   onClick={handleCreateAgent}
-                  disabled={state.isLoading}
+                  disabled={state.isLoading || isOrgBlocked}
+                  title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
                 >
                   {state.isLoading ? (
                     <>

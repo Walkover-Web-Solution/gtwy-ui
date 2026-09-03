@@ -339,7 +339,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
   }));
 
   const integrationData = useCustomSelector((state) =>
-    state?.integrationReducer?.integrationData?.[data?.org_id].find((f) => f._id === data?.folder_id)
+    state?.integrationReducer?.integrationData?.[data?.org_id]?.find((f) => f._id === data?.folder_id)
   );
 
   const config = integrationData?.config || {};

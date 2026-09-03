@@ -23,3 +23,15 @@ export const getAgentAnalyticsFiltersApi = async (bridge_id) => {
     throw error;
   }
 };
+
+export const getEmbedAnalyticsApi = async (folder_id, queryParams = {}, org_id) => {
+  try {
+    const response = await axios.get(`${URL}/api/analytics/embed/${encodeURIComponent(folder_id)}`, {
+      params: { ...queryParams, ...(org_id && { org_id }) },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching embed analytics:", error);
+    throw error;
+  }
+};

@@ -56,7 +56,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     const orgId = params?.org_id;
     const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
     const currentUser = state.userDetailsReducer.userDetails;
-    const agentUsers = bridgeDataFromState?.users || [];
+    const agentUsers = bridgeDataFromState?.settings?.editAccess || [];
 
     // Determine if user is allowed to edit based on role and agent access
     const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
@@ -65,8 +65,8 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       (currentOrgRole === "Editor" &&
         (agentUsers?.length === 0 ||
           !agentUsers ||
-          (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
-      (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
+          (agentUsers?.length > 0 && agentUsers?.some((user) => String(user) === String(currentUser?.id))))) ||
+      (currentOrgRole === "Viewer" && agentUsers?.some((user) => String(user) === String(currentUser?.id))) ||
       currentOrgRole === "Creator" ||
       isAdminOrOwner;
 

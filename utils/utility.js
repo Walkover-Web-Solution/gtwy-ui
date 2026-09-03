@@ -970,6 +970,12 @@ export const formatRelativeTime = (dateString) => {
   return `${Math.floor(diffInSeconds / 31536000)}y ago`;
 };
 
+export const toUtcIso = (value) => {
+  if (!value) return value;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toISOString();
+};
+
 export const formatDate = (dateString) => {
   const normalized = normalizeToUTC(dateString);
   if (!normalized) return "No records found";

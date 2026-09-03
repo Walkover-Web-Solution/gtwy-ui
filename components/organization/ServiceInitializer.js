@@ -5,6 +5,8 @@ import { getServiceAction } from "@/store/action/serviceAction";
 import { getModelAction } from "@/store/action/modelAction";
 import { userDetails } from "@/store/action/userDetailsAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { getBlockedOrgs } from "@/config/organizationApi";
+import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 import Protected from "../Protected";
 
 const ServiceInitializer = ({ isEmbedUser }) => {
@@ -18,6 +20,13 @@ const ServiceInitializer = ({ isEmbedUser }) => {
     if (isOrgPage && !isEmbedUser) {
       dispatch(userDetails());
       dispatch(getServiceAction());
+      getBlockedOrgs()
+        .then((response) => {
+          dispatch(setBlockedOrgs(response?.data?.data || []));
+        })
+        .catch((error) => {
+          console.error("Failed to fetch blocked organizations", error);
+        });
     } else if (!isOrgPage) {
       const hasServices = Array.isArray(SERVICES) && SERVICES.length > 0;
       if (!hasServices) {

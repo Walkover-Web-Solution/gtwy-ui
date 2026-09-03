@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
+import { useParams } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, getIconOfService } from "@/utils/utility";
 import { updateTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import TestCaseVariablesModal from "./TestCaseVariablesModal";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ReactMarkdown from "react-markdown";
@@ -28,6 +30,9 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -44,6 +49,8 @@ const TestCaseDetailsPanel = ({
   bridgeId,
 }) => {
   const dispatch = useDispatch();
+  const params = useParams();
+  const mockToolResponsesRef = useRef(null);
 
   // Comparison versions follow the single source of truth: `selectedVersions` from header.
   // Fall back to first 2 versions if nothing selected (defensive only).
@@ -233,6 +240,13 @@ const TestCaseDetailsPanel = ({
       state?.bridgeReducer?.org?.[bridgeId]?.embed_token,
   }));
 
+  // Source of truth for the bridge's configured tools — same slices the
+  // bridge/agent tool configuration screen (EmbedList) reads from.
+  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
+  }));
+
   const handleToolPrimaryClick = useCallback(
     async (tool) => {
       // Check if this is a RAG tool - don't call openViasocket for RAG tools
@@ -255,9 +269,9 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      // Call openViasocket for other tools
-      if (typeof window !== "undefined" && window.openViasocket) {
-        window.openViasocket(tool?.id, {
+      // First arg must be script_id so the embed opens that tool's log.
+      if (typeof window !== "undefined" && window.openViasocket && tool?.script_id) {
+        window.openViasocket(tool.script_id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
@@ -380,6 +394,34 @@ const TestCaseDetailsPanel = ({
   const bridgeVersionMapping = useCustomSelector(
     (state) => state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {}
   );
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Autosave hook for MockToolResponsesSection — fired on JSON field blur and on
+  // add/remove-recording clicks, so there's no separate "Save mocks" button.
+  const handleMockToolResponsesChange = (toolsResponse) => {
+    if (!selectedTestCase?._id) return;
+    dispatch(
+      updateTestCaseAction({
+        testCaseId: selectedTestCase._id,
+        dataToUpdate: {
+          conversation: selectedTestCase?.conversation,
+          type: selectedTestCase?.type,
+          expected: selectedTestCase?.expected,
+          matching_type: selectedTestCase?.matching_type,
+          variables: selectedTestCase?.variables,
+          tools_response: toolsResponse,
+        },
+      })
+    );
+  };
 
   // Reset test case variables and alert state when selectedTestCase changes
   useEffect(() => {
@@ -792,6 +834,17 @@ const TestCaseDetailsPanel = ({
               </ExpandCollapse>
             </div>
           </div>
+          {/* Mock Tool Responses */}
+          <div className="mb-6">
+            <MockToolResponsesSection
+              ref={mockToolResponsesRef}
+              tools={bridgeToolOptions}
+              initialValue={selectedTestCase?.tools_response}
+              resetKey={selectedTestCase?._id}
+              onBlurSave={handleMockToolResponsesChange}
+            />
+          </div>
+
           {/* Version Comparison — driven by header "Versions" selector (single source of truth) */}
           <div data-testid="testcase-comparison-section">
             <div className="mb-5 flex items-center gap-2 flex-wrap" data-testid="testcase-comparison-controls">
@@ -825,7 +878,7 @@ const TestCaseDetailsPanel = ({
             {/* Version Outputs Grid */}
             {comparisonVersions.length > 0 ? (
               <div
-                className={`grid gap-4 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"}`}
+                className={`grid gap-4 min-w-0 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"}`}
                 data-testid="testcase-version-output-grid"
               >
                 {comparisonVersions.map((version, idx) => {
@@ -938,7 +991,7 @@ const TestCaseDetailsPanel = ({
                       onDragOver={handleVersionDragOver}
                       onDrop={(e) => handleVersionDrop(e, version)}
                       onDragEnd={handleVersionDragEnd}
-                      className={`bg-base-50 border rounded-lg p-4 h-fit relative transition-all cursor-grab active:cursor-grabbing ${
+                      className={`bg-base-50 border rounded-lg p-4 h-fit relative transition-all cursor-grab active:cursor-grabbing min-w-0 overflow-hidden ${
                         draggedVersion === version ? "opacity-50" : ""
                       } ${draggedVersion && draggedVersion !== version ? "ring-2 ring-primary/30" : ""} ${
                         isVersionPending ? "border-primary/40" : runErrorMessage ? "border-error/40" : "border-base-200"
@@ -1241,12 +1294,12 @@ const TestCaseDetailsPanel = ({
                               {runErrorMessage}
                             </div>
                           ) : (
-                            <div className="text-sm text-base-content leading-relaxed mb-3">
+                            <div className="text-sm text-base-content leading-relaxed mb-3 min-w-0 max-w-full overflow-x-auto break-words [overflow-wrap:anywhere] [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:whitespace-pre-wrap [&_code]:break-all [&_a]:break-all [&_img]:max-w-full [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
                               {/* Render images if llm_urls exists */}
                               {llmUrls && llmUrls.length > 0 && (
                                 <div className="mb-3 flex flex-wrap gap-2">
                                   {llmUrls.map((urlObj, idx) => (
-                                    <div key={idx} className="relative">
+                                    <div key={idx} className="relative max-w-full">
                                       {urlObj.type === "image" && urlObj.permanent_url && (
                                         <img
                                           src={urlObj.permanent_url}

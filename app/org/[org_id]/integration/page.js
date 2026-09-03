@@ -25,10 +25,11 @@ const Page = ({ params }) => {
   const router = useRouter();
 
   const dispatch = useDispatch();
-  const { integrationData, descriptions, linksData } = useCustomSelector((state) => ({
+  const { integrationData, descriptions, linksData, isOrgBlocked } = useCustomSelector((state) => ({
     integrationData: state?.integrationReducer?.integrationData?.[resolvedParams?.org_id] || [],
     descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
     linksData: state.flowDataReducer.flowData.linksData || [],
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams?.org_id) || false,
   }));
 
   const [embedIntegrations, setEmbedIntegrations] = useState([]); // Type-filtered integrations
@@ -247,7 +248,12 @@ const Page = ({ params }) => {
             <SearchItems data={embedIntegrations} setFilterItems={setFilterIntegration} item="Integration" />
           )}
         </div>
-        <button className="btn btn-primary btn-sm ml-2 mb-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
+        <button
+          className="btn btn-primary btn-sm ml-2 mb-2"
+          onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}
+          disabled={isOrgBlocked}
+          title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
+        >
           + Create New Embed
         </button>
       </div>

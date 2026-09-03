@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { formatDate, formatRelativeTime } from "@/utils/utility";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 const OrganizationGrid = ({ displayedOrganizations = [], handleSwitchOrg, currentUserId }) => {
   const [loadingOrgId, setLoadingOrgId] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const tableBodyRef = useRef(null);
   const rowRef = useRef([]);
+  const { blockedOrgIds, blockedOrgReasons } = useCustomSelector((state) => ({
+    blockedOrgIds: state?.userDetailsReducer?.blockedOrgIds || [],
+    blockedOrgReasons: state?.userDetailsReducer?.blockedOrgReasons || {},
+  }));
   const formattedOrganizations = useMemo(() => {
     return displayedOrganizations
       .slice()
@@ -16,8 +21,12 @@ const OrganizationGrid = ({ displayedOrganizations = [], handleSwitchOrg, curren
         createdAt: formatRelativeTime(org?.created_at),
         createdAtRaw: formatDate(org?.created_at),
         role: org?.role_name,
+        isBlocked: blockedOrgIds.includes(String(org?.id)),
+        blockedReason: blockedOrgReasons[org?.id],
       }));
-  }, [displayedOrganizations, currentUserId]);
+  }, [displayedOrganizations, currentUserId, blockedOrgIds, blockedOrgReasons]);
+
+  console.log(formattedOrganizations);
 
   useEffect(() => {
     if (!formattedOrganizations.length) {
@@ -159,6 +168,19 @@ const OrganizationGrid = ({ displayedOrganizations = [], handleSwitchOrg, curren
                       <div className="flex items-center gap-2">
                         {isLoading && <span className="loading loading-spinner loading-sm"></span>}
                         <span className="font-medium text-base-content">{org.name}</span>
+                        {org.isBlocked && (
+                          <span
+                            className="badge badge-error badge-sm"
+                            data-testid={`org-status-blocked-${org.id}`}
+                            title={
+                              org.blockedReason
+                                ? `Your org is blocked (${org.blockedReason}). Contact support@gtwy.ai for assistance.`
+                                : "Your org is blocked. Contact support@gtwy.ai for assistance."
+                            }
+                          >
+                            Blocked
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-base-content" title={org.createdAtRaw}>

@@ -168,6 +168,7 @@ export const createBridgeAction = (dataToSend, onSuccess) => async (dispatch, ge
 
     // Always expect RT layer response now (backend always returns 202)
     const rtPromise = waitForAgentCreateRtResult();
+    dataToSend.dataToSend.flag = true; //create normal agent without rtlayer
     const response = await createBridge(dataToSend.dataToSend);
 
     // Check if backend returned 202 (RT layer response)
@@ -251,31 +252,21 @@ export const createEmbedAgentAction =
   async (dispatch, getState) => {
     try {
       dispatch(isPending());
-
-      // Generate unique name if not provided
-
       let response;
-
       if (purpose && purpose.trim()) {
-        // Try AI creation with purpose first
         try {
           const aiDataToSend = {
             purpose: purpose.trim(),
             bridgeType: "api",
             name: agent_name?.trim() || null,
-            // embed consumers can't reliably receive RTLayer events, so ask
-            // the backend to return the created agent directly in the response
             flag: true,
           };
           if (meta) {
             aiDataToSend.meta = meta;
           }
-
           response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
-
           if (response?.data) {
             const createdAgent = response.data.agent;
-
             if (isEmbedUser && sendDataToParent) {
               sendDataToParent(
                 "drafted",
@@ -286,16 +277,13 @@ export const createEmbedAgentAction =
                 "Agent created Successfully"
               );
             }
-
             if (router && createdAgent) {
               router.push(`/org/${orgId}/agents/configure/${createdAgent._id}?version=${createdAgent.versions[0]}`);
             }
-
             return { success: true, agent: createdAgent };
           }
         } catch (aiError) {
           console.log("AI creation failed, falling back to manual creation:", aiError);
-          // Fall through to manual creation
         }
       }
 
@@ -306,14 +294,10 @@ export const createEmbedAgentAction =
         name: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
-        // embed consumers can't reliably receive RTLayer events, so ask
-        // the backend to return the created agent directly in the response
-        flag: true,
       };
       if (meta) {
         fallbackDataToSend.meta = meta;
       }
-
       response = await new Promise((resolve, reject) => {
         dispatch(
           createBridgeAction({ dataToSend: fallbackDataToSend, orgid: orgId }, (data) => {
