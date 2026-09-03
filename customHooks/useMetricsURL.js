@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { useQueryParams } from "./useQueryParams";
-import { METRICS_TIME_RANGE_OPTIONS } from "@/utils/enums";
 
 export const useMetricsURL = () => {
   const { setParams } = useQueryParams();
@@ -12,13 +11,26 @@ export const useMetricsURL = () => {
     [setParams]
   );
 
-  // Map an underlying range code (e.g. 2/4/6) to its display label.
-  const getTimeRangeLabel = useCallback((range) => {
-    return METRICS_TIME_RANGE_OPTIONS.find((option) => option.range === range)?.label || "Select Range";
+  const getDisplayRangeText = useCallback((range, customStartDate, customEndDate, TIME_RANGE_OPTIONS) => {
+    if (range === 10 && customStartDate && customEndDate) {
+      const formatDisplayDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      };
+
+      const start = formatDisplayDate(customStartDate);
+      const end = formatDisplayDate(customEndDate);
+      return `${start} - ${end}`;
+    }
+    return TIME_RANGE_OPTIONS[range] || "Select Range";
   }, []);
 
   return {
     updateURLParams,
-    getTimeRangeLabel,
+    getDisplayRangeText,
   };
 };

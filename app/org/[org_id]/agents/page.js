@@ -1206,18 +1206,6 @@ function Home({ params, searchParams, isEmbedUser }) {
               </div>
             ) : null}
           </div>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-              className="btn btn-outline btn-ghost btn-sm"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                router.push(`/org/${resolvedParams.org_id}/metrics?bridge_ids=${row._id}&factor=0`);
-              }}
-            >
-              Metrics
-            </button>
-          </div>
           {(isEditor || (isEmbedUser && showDeleteAgentOption)) && (
             <div className="bg-transparent">
               <div

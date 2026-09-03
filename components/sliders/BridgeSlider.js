@@ -7,19 +7,13 @@ import CreateNewBridge from "../CreateNewBridge";
 import { MODAL_TYPE } from "@/utils/enums";
 import SearchItems from "../UI/SearchItems";
 
-// Stable fallback reference: `someSelector() || []` recreates a new array on
-// every render while the selected value is falsy, which defeats downstream
-// useCallback/useEffect memoization (SearchItems' filterData/effect) and can
-// spiral into "Maximum update depth exceeded".
-const EMPTY_BRIDGES_LIST = [];
-
 function BridgeSlider() {
   const router = useRouter();
   const pathName = usePathname();
   const searchParams = useSearchParams();
   const path = pathName.split("?")[0].split("/");
 
-  const bridgesList = useCustomSelector((state) => state.bridgeReducer.org[path[2]]?.orgs) || EMPTY_BRIDGES_LIST;
+  const bridgesList = useCustomSelector((state) => state.bridgeReducer.org[path[2]]?.orgs) || [];
   const defaultBridgeType = searchParams?.get("type")?.toLowerCase() === "chatbot" ? "chatbot" : "api";
 
   const [filteredBridgesList, setFilteredBridgesList] = useState(bridgesList);
