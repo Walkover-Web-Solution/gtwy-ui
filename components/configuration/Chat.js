@@ -22,6 +22,7 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   SquarePen,
   Copy,
   Check,
@@ -195,6 +196,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const isAtBottomRef = useRef(true);
   const dispatch = useDispatch();
   const inputRef = useRef(null);
+  const suggestionsScrollRef = useRef(null);
   const [showTestCases, setShowTestCases] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState("exact");
   const [testCaseId, setTestCaseId] = useState(null);
@@ -1616,25 +1618,44 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                     assistant message has suggestions attached; disappear once the next
                     message is sent since a new last message won't carry them. */}
                 {latestAssistantSuggestions?.length > 0 && (
-                  <div data-testid="chat-suggestions" className="flex flex-wrap gap-2">
-                    {latestAssistantSuggestions.map((suggestion, sIndex) => (
-                      <button
-                        key={sIndex}
-                        data-testid={`chat-suggestion-chip-${sIndex}`}
-                        className="px-3 py-1.5 rounded-full border border-base-content/15 bg-base-200/50 hover:bg-primary/10 hover:border-primary/40 text-xs text-base-content/80 transition-colors duration-150"
-                        onClick={() => {
-                          if (handleSendMessageRef.current && inputRef.current) {
-                            inputRef.current.value = suggestion;
-                            setTimeout(() => handleSendMessageRef.current(null, true), 50);
-                            setTimeout(() => {
-                              if (inputRef.current) inputRef.current.value = "";
-                            }, 200);
-                          }
-                        }}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
+                  <div className="relative w-full">
+                    <div
+                      ref={suggestionsScrollRef}
+                      data-testid="chat-suggestions"
+                      className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide pr-8"
+                    >
+                      {latestAssistantSuggestions.map((suggestion, sIndex) => (
+                        <button
+                          key={sIndex}
+                          data-testid={`chat-suggestion-chip-${sIndex}`}
+                          className="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full border border-base-content/15 bg-base-200/50 hover:bg-primary/10 hover:border-primary/40 text-xs text-base-content/80 transition-colors duration-150"
+                          onClick={() => {
+                            if (handleSendMessageRef.current && inputRef.current) {
+                              inputRef.current.value = suggestion;
+                              setTimeout(() => handleSendMessageRef.current(null, true), 50);
+                              setTimeout(() => {
+                                if (inputRef.current) inputRef.current.value = "";
+                              }, 200);
+                            }
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Scroll suggestions right"
+                      onClick={() => {
+                        suggestionsScrollRef.current?.scrollBy({
+                          left: 120,
+                          behavior: "smooth",
+                        });
+                      }}
+                      className="absolute right-0 top-0 bottom-0 flex items-center justify-center w-8 bg-gradient-to-l from-base-100 via-base-100/80 to-transparent"
+                    >
+                      <ChevronRight className="w-4 h-4 text-base-content/60" />
+                    </button>
                   </div>
                 )}
                 <div className="flex flex-row gap-2">

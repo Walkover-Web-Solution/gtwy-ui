@@ -71,14 +71,8 @@ export function ExpandCollapse({
           onClick={() => setExpanded(true)}
           title={expandLabel}
         >
-          {/* Gradient fade using CSS vars so it works with any theme */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "linear-gradient(to bottom, transparent 0%, var(--expand-collapse-fade, oklch(var(--b1) / 0.97)) 100%)",
-            }}
-          />
+          {/* Gradient fade — light mode fades to a light shade, dark mode fades to a dark shade */}
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent to-[#f5f5f5] dark:to-[#1f1f1f]" />
 
           {/* Show-more button on top of the gradient */}
           <button

@@ -854,11 +854,12 @@ const NewThreadItem = ({
           id={`event-ai-${messageId}`}
           accent={isError ? "bg-red-400" : "bg-blue-500"}
           // The show-more gradient fades to --expand-collapse-fade, so point it at this row's
-          // tint — otherwise it fades to white and the fade edge shows against the AI background.
+          // tint in both themes — otherwise it fades to white and the fade edge shows against
+          // the (dark) AI background.
           background={
             isError
-              ? "bg-red-50/70 dark:bg-red-500/[0.07]"
-              : "bg-[#EDF0FC] dark:bg-blue-400/[0.10] [--expand-collapse-fade:#EDF0FC]"
+              ? "bg-red-50/70 dark:bg-red-500/[0.07] [--expand-collapse-fade:#FEF2F2] dark:[--expand-collapse-fade:#453939]"
+              : "bg-[#EDF0FC] dark:bg-blue-400/[0.10] [--expand-collapse-fade:#EDF0FC] dark:[--expand-collapse-fade:#3C434B]"
           }
           cost={formatMoney(aiCost)}
           costTone={isError ? "error" : "positive"}
