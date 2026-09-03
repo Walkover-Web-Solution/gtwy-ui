@@ -1,7 +1,7 @@
 import { createOrgAction } from "@/store/action/orgAction";
 import { userDetails } from "@/store/action/userDetailsAction";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import LoadingSpinner from "./LoadingSpinner";
@@ -21,15 +21,19 @@ const CreateOrg = ({ handleSwitchOrg }) => {
   const route = useRouter();
 
   useEffect(() => {
-    // Filter timezones based on search term (trim whitespace and filter by "starts with")
+    // Filter timezones by search term (substring match so segments after "/" like "Kolkata" match "Asia/Kolkata")
     const trimmedSearch = timezoneSearch.trim().toLowerCase();
     const filtered = timezoneData.filter(
       (timezone) =>
-        timezone.identifier.toLowerCase().startsWith(trimmedSearch) ||
-        timezone.offSet.toLowerCase().startsWith(trimmedSearch)
+        timezone.identifier.toLowerCase().includes(trimmedSearch) ||
+        timezone.offSet.toLowerCase().includes(trimmedSearch)
     );
     setFilteredTimezones(filtered);
   }, [timezoneSearch]);
+
+  // Ref to the Workspace Name input. Focus is driven by <Modal> once it detects the
+  // dialog has actually opened (see initialFocusRef below), which is reliable on every open.
+  const nameInputRef = useRef(null);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -99,6 +103,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
         description="Set up your new workspace details"
         icon={<Globe size={16} className="text-primary" />}
         widthClass="w-[min(480px,92vw)]"
+        initialFocusRef={nameInputRef}
         onClose={() => closeModal(MODAL_TYPE.CREATE_ORG_MODAL)}
         footer={
           <>
@@ -117,6 +122,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
               type="submit"
               form="create-org-form"
               className="btn btn-sm btn-primary"
+              disabled={orgDetails.name.trim().length < 3}
             >
               Create
             </button>
@@ -138,6 +144,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
               Workspace Name <RequiredItem />
             </label>
             <input
+              ref={nameInputRef}
               autoComplete="off"
               data-testid="create-org-name-input"
               id="create-org-name-input"
