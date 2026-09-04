@@ -110,7 +110,9 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Add this script tag to your HTML</span>
             </label>
-            <CodeBlock className="language-jsx">{integrationScript}</CodeBlock>
+            <CodeBlock className="language-jsx" fromIntegration={true}>
+              {integrationScript}
+            </CodeBlock>
           </div>
           <div className="overflow-x-auto mt-4">
             <table className="table table-sm">
