@@ -126,7 +126,7 @@ export const bridgeReducer = createSlice({
       }
     },
     updateBridgeReducer: (state, action) => {
-      const { bridges, functionData } = action.payload;
+      const { bridges } = action.payload;
       const { _id, configuration, ...extraData } = bridges;
 
       state.allBridgesMap[_id] = {
@@ -146,19 +146,6 @@ export const bridgeReducer = createSlice({
         }
       }
 
-      if (functionData) {
-        const existingBridgeIds = state.org[bridges.org_id].functionData[functionData.function_id]?.bridge_ids || [];
-
-        if (functionData?.function_operation) {
-          // Create a new array with the added bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = [...existingBridgeIds, _id];
-        } else {
-          // Create a new array without the removed bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = existingBridgeIds.filter(
-            (id) => id !== _id
-          );
-        }
-      }
       if (bridges?.name) {
         const allData = state.org[bridges.org_id]?.orgs;
         if (allData) {
@@ -176,26 +163,10 @@ export const bridgeReducer = createSlice({
       state.loading = false;
     },
     updateBridgeVersionReducer: (state, action) => {
-      const { bridges, functionData } = action.payload;
+      const { bridges } = action.payload;
       // Use the complete bridges object that was already merged in the action
       // Don't destructure or we'll lose fields like agents, variables_path, etc.
       state.bridgeVersionMapping[bridges.parent_id][bridges._id] = bridges;
-      if (functionData) {
-        const existingBridgeIds = state.org[bridges.org_id].functionData[functionData.function_id]?.bridge_ids || [];
-
-        if (functionData?.function_operation) {
-          // Create a new array with the added bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = [
-            ...existingBridgeIds,
-            bridges._id,
-          ];
-        } else {
-          // Create a new array without the removed bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = existingBridgeIds.filter(
-            (id) => id !== bridges._id
-          );
-        }
-      }
       state.loading = false;
     },
 
