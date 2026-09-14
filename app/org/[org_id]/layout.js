@@ -21,6 +21,7 @@ import { getRichUiTemplatesAction } from "@/store/action/richUiTemplateAction";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import { updateUserMetaOnboarding, updateOrgMetaAction, getUsersAction } from "@/store/action/orgAction";
 import { getServiceAction } from "@/store/action/serviceAction";
+import { getPlanAction } from "@/store/action/planAction";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, use } from "react";
@@ -42,9 +43,12 @@ import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { getAllAuthData } from "@/store/action/authkeyAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
+import { getBlockedOrgs } from "@/config/organizationApi";
+import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
 const MainSlider = dynamic(() => import("@/components/sliders/MainSlider"), { loading: () => <LoadingSpinner /> });
+const BlockedOrgBanner = dynamic(() => import("@/components/organization/BlockedOrgBanner"));
 const ChatDetails = dynamic(() => import("@/components/historyPageComponents/ChatDetails"), {
   loading: () => <LoadingSpinner />,
 });
@@ -80,6 +84,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     functionData,
     tools,
     historyEmbed,
+    isOrgBlocked,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -98,6 +103,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
     functionData: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.functionData || {},
     historyEmbed: state?.appInfoReducer?.embedUserDetails?.historyEmbed || false,
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams.org_id) || false,
   }));
   useEffect(() => {
     if (!isEmbedUser) {
@@ -117,6 +123,19 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(getApiKeyGuideAction());
     }
   }, [pathName, resolvedParams.org_id, isEmbedUser]);
+
+  // Blocked orgs are also fetched on the /org page, but the layout may be the first
+  // page a user lands on (direct link or refresh), so fetch it here too.
+  useEffect(() => {
+    if (isEmbedUser) return;
+    getBlockedOrgs()
+      .then((response) => {
+        dispatch(setBlockedOrgs(response?.data?.data || []));
+      })
+      .catch((error) => {
+        console.error("Failed to fetch blocked organizations", error);
+      });
+  }, [resolvedParams.org_id, isEmbedUser]);
 
   const { changeTheme } = useThemeManager();
 
@@ -255,6 +274,10 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(getServiceAction());
     }
   }, [SERVICES]);
+
+  useEffect(() => {
+    dispatch(getPlanAction());
+  }, [dispatch]);
 
   useEffect(() => {
     if (isValidOrg) {
@@ -419,7 +442,25 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           folder_id: e?.data?.metadata?.folder_id || null,
         };
         dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
-          if (pathName.includes("agents")) {
+          // Handle reviewer tools - works regardless of page context
+          if (e?.data?.metadata?.createFrom === "reviewer" && path[5] && resolvedSearchParams?.get("version")) {
+            // Add as reviewer tool - preserve existing review_agent settings
+            const currentReviewAgent = versionData?.settings?.review_agent || {};
+            dispatch(
+              updateBridgeVersionAction({
+                bridgeId: path[5],
+                versionId: resolvedSearchParams?.get("version"),
+                dataToSend: {
+                  settings: {
+                    review_agent: {
+                      ...currentReviewAgent,
+                      reviewer_tools: [data?._id],
+                    },
+                  },
+                },
+              })
+            );
+          } else if (pathName.includes("agents")) {
             if (e?.data?.metadata?.createFrom === "preFunction") {
               // Only add as pre-tool if not already present (preTools is an array of objects)
               const alreadyPreTool =
@@ -440,6 +481,21 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                   })
                 );
               }
+            } else if (e?.data?.metadata?.createFrom === "postFunction") {
+              // Add as post tool
+              dispatch(
+                updateBridgeVersionAction({
+                  bridgeId: path[5],
+                  versionId: resolvedSearchParams?.get("version"),
+                  dataToSend: {
+                    post_tool: {
+                      id: data?._id,
+                      script_id: data?.script_id,
+                      args: {},
+                    },
+                  },
+                })
+              );
             } else {
               // Only add as regular tool if not already in versionData
               if (!tools?.includes(data?._id)) {
@@ -501,6 +557,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
 
   if (!isEmbedUser) {
     const hasFolders = ["agents", "apikeys", "tools", "knowledge_base"].includes(path[3]);
+    // Embed detail pages collapse the MainSlider and render their own left rail,
+    // so the banner needs extra left padding to clear it.
+    const isEmbedPageOpen = (path[3] === "RAG_embed" || path[3] === "embed") && Boolean(path[4]);
 
     return (
       <div className="h-screen flex flex-col overflow-hidden">
@@ -515,6 +574,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           <div
             className={`flex-1 ${path.length > 4 ? "ml-0  md:ml-12 lg:ml-12" : ""} flex flex-col overflow-hidden z-medium`}
           >
+            {isOrgBlocked ? <BlockedOrgBanner className={isEmbedPageOpen ? "pl-16" : ""} /> : null}
             <div
               className={`sticky top-0 z-medium bg-base-100 border-b border-base-300 ${hasFolders ? "ml-0" : "ml-2"}`}
             >

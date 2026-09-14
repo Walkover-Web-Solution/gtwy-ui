@@ -26,6 +26,7 @@ import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
 import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/errorHandler";
 const ChatBotSlider = dynamic(() => import("./sliders/ChatBotSlider"), { ssr: false });
 const ConfigHistorySlider = dynamic(() => import("./sliders/ConfigHistorySlider"), { ssr: false });
 import Protected from "./Protected";
@@ -165,6 +166,9 @@ const Navbar = ({ isEmbedUser, params }) => {
         shortLabel: "History",
         shortcut: "G H",
       });
+    }
+    // Analytics is never exposed to embed users, even when history is enabled
+    if (!isEmbedUser) {
       baseTabs.push({
         id: "analytics",
         label: "Analytics",
@@ -269,7 +273,9 @@ const Navbar = ({ isEmbedUser, params }) => {
           bridgeId: bridgeId,
           dataToSend: { name: trimmed },
         })
-      );
+      ).catch((error) => {
+        toast.error(getErrorMessage(error) || "Failed to update agent name");
+      });
       isEmbedUser &&
         sendDataToParent(
           "updated",
@@ -344,19 +350,31 @@ const Navbar = ({ isEmbedUser, params }) => {
           typeValue = "api";
         }
         const typeQueryPart = `&type=${typeValue}`;
+        // Preserve reviewer-agent linkage params across tab navigation so "Back to Main" persists
+        const parentQueryPart = parentAgentId
+          ? `&parentAgentId=${parentAgentId}${parentVersionId ? `&parentVersionId=${parentVersionId}` : ""}`
+          : "";
 
         // If currently in published mode and navigating to testcase or history
         if (isPublished && (tabId === "testcase" || tabId === "history")) {
           // Use published version ID and remove isPublished parameter
           router.push(
-            base + (publishedVersion ? `?version=${publishedVersion}${typeQueryPart}` : `?type=${typeValue}`)
+            base +
+              (publishedVersion
+                ? `?version=${publishedVersion}${typeQueryPart}${parentQueryPart}`
+                : `?type=${typeValue}${parentQueryPart}`)
           );
         } else if (tabId === "analytics") {
           // Analytics page: default to all versions
-          router.push(base + `?type=${typeValue}`);
+          router.push(base + `?type=${typeValue}${parentQueryPart}`);
         } else {
           // Normal navigation with current version
-          router.push(base + (versionId ? `?version=${versionId}${typeQueryPart}` : `?type=${typeValue}`));
+          router.push(
+            base +
+              (versionId
+                ? `?version=${versionId}${typeQueryPart}${parentQueryPart}`
+                : `?type=${typeValue}${parentQueryPart}`)
+          );
         }
       };
 
@@ -368,7 +386,7 @@ const Navbar = ({ isEmbedUser, params }) => {
 
       navigate();
     },
-    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType]
+    [router, orgId, bridgeId, versionId, isPublished, publishedVersion, bridgeType, parentAgentId, parentVersionId]
   );
 
   const handlePublishedClick = useCallback(() => {
@@ -470,7 +488,9 @@ const Navbar = ({ isEmbedUser, params }) => {
           if (timeoutId) clearTimeout(timeoutId);
         } else if (e.key === "a" || e.key === "A") {
           e.preventDefault();
-          handleTabChange("analytics");
+          if (!isEmbedUser) {
+            handleTabChange("analytics");
+          }
           gPressed = false;
           if (timeoutId) clearTimeout(timeoutId);
         }

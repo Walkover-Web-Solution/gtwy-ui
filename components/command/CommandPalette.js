@@ -270,13 +270,13 @@ const CommandPalette = ({ isEmbedUser }) => {
 
   const filterBy = (list, fields) => {
     if (!query) return [];
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = query.toLowerCase().trim();
+    const normalizedQuery = lowerQuery.replace(/[\W_]/g, "");
     return list.filter((it) =>
-      fields.some((f) =>
-        String(it?.[f] || "")
-          .toLowerCase()
-          .includes(lowerQuery)
-      )
+      fields.some((f) => {
+        const value = String(it?.[f] || "").toLowerCase();
+        return value.includes(lowerQuery) || value.replace(/[\W_]/g, "").includes(normalizedQuery);
+      })
     );
   };
 

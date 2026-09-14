@@ -24,9 +24,20 @@ const ModelGardenPage = ({ params }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(null);
 
+  const serviceList = Array.isArray(services) ? services : Object.entries(services || {}).map(([key]) => key);
+
   useEffect(() => {
     dispatch(getServiceAction());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!selectedService && serviceList.length > 0) {
+      const firstService = serviceList[0];
+      const serviceKey = typeof firstService === "object" ? firstService.value : firstService;
+      setSelectedService(serviceKey);
+      setIsPanelOpen(true);
+    }
+  }, [serviceList, selectedService]);
 
   // Fetch models when a service is selected
   useEffect(() => {
@@ -111,8 +122,6 @@ const ModelGardenPage = ({ params }) => {
     if (typeof service === "string") return service;
     return service?.value || "Unknown";
   };
-
-  const serviceList = Array.isArray(services) ? services : Object.entries(services || {}).map(([key]) => key);
 
   // Build detail rows for the slider from the selected model
   const detailFields = useMemo(() => {

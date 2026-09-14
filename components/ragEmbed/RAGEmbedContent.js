@@ -52,7 +52,9 @@ function RAGEmbedContent({ params, folderId, embedToken }) {
     return (
       <div className="flex w-full flex-col gap-4 bg-base-100 shadow p-8 mb-6 rounded-lg">
         <Section title="Step 2" caption="Add below code in your product." />
-        <CodeBlock className="language-jsx">{DataObject.script}</CodeBlock>
+        <CodeBlock className="language-jsx" fromIntegration={true}>
+          {DataObject.script}
+        </CodeBlock>
       </div>
     );
   };

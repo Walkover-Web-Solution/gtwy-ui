@@ -36,7 +36,7 @@
             const script = document.getElementById('gtwy-user-script') || document.getElementById('gtwy-main-script');
             if (!script) return {};
 
-            const attrs = ['embedToken', 'showCloseButton', 'parentId', 'showFullScreenButton', 'showHeader', 'defaultOpen', 'slide', 'agent_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId', 'historyEmbed'];
+            const attrs = ['embedToken', 'showCloseButton', 'parentId', 'showFullScreenButton', 'showHeader', 'defaultOpen', 'slide', 'agent_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId', 'historyEmbed','message_id'];
             return attrs.reduce((props, attr) => {
                 if (script.hasAttribute(attr)) {
                     const value = script.getAttribute(attr);
@@ -188,7 +188,10 @@
         }
         openGtwy(agent_id = null, meta = {}, agent_name = null, agent_purpose = null, history = null, replaceMeta = null, historyEmbed = null, message_id = null) {
             if (!this.state.isInitialized) {
-                this.initializeGtwyEmbed().then(() => this.openGtwy());
+                // Preserve original args across the async initialize
+                this.initializeGtwyEmbed().then(() =>
+                    this.openGtwy(agent_id, meta, agent_name, agent_purpose, history, replaceMeta, historyEmbed, message_id)
+                );
                 return;
             }
 
@@ -513,6 +516,7 @@
                     document.body.removeChild(gtwyEmbedManager.parentContainer);
                 }
             }
+            gtwyEmbedManager.state.isConfigReady = false;
             gtwyEmbedManager.updateProps({ parentId: dataToSend.parentId });
             gtwyEmbedManager.changeContainer(dataToSend.parentId || '');
         }

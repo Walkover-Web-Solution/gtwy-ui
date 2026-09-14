@@ -13,7 +13,11 @@ const IntegrationTab = ({ data }) => {
   const jwtPayload = `{
   "org_id": "${data?.org_id}",
   "folder_id": "${data?.folder_id}",
-  "user_id": "Your_user_id"
+  "unique_identifier": "Your_unique_identifier",
+  "meta": {
+    "name": "Your_user_name",
+    "email": "Your_user_email"
+  }
 }`;
 
   const integrationScript = `<script
@@ -110,7 +114,9 @@ window.addEventListener('message', (event) => {
             <label className="label">
               <span className="label-text">Add this script tag to your HTML</span>
             </label>
-            <CodeBlock className="language-jsx">{integrationScript}</CodeBlock>
+            <CodeBlock className="language-jsx" fromIntegration={true}>
+              {integrationScript}
+            </CodeBlock>
           </div>
           <div className="overflow-x-auto mt-4">
             <table className="table table-sm">

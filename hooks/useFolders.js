@@ -1,5 +1,6 @@
 import { useEffect, useContext } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import {
   getAllFoldersAction,
   createFolderAction,
@@ -14,6 +15,7 @@ export const useFolders = (resourceType, orgId, passedIsEmbedUser) => {
   const dispatch = useDispatch();
   const foldersStateRaw = useSelector((state) => state.folderReducer?.folders);
   const foldersState = Array.isArray(foldersStateRaw) ? foldersStateRaw : [];
+  const isOrgBlocked = useSelector((state) => state?.userDetailsReducer?.blockedOrgIds?.includes(orgId) || false);
   const folderContext = useContext(FolderContext);
   const clearSelection = folderContext?.clearSelection || (() => {});
 
@@ -32,6 +34,10 @@ export const useFolders = (resourceType, orgId, passedIsEmbedUser) => {
 
   const handleCreateFolder = async (name) => {
     if (!name) return;
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create folders. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     try {
       return await dispatch(createFolderAction({ name, type: resourceType, config: {} }));
     } catch (err) {

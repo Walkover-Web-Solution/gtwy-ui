@@ -29,6 +29,7 @@ import {
   updateFunctionApi,
   updateapi,
   uploadImage,
+  uploadMultipleImages,
 } from "@/config/index";
 import { toast } from "react-toastify";
 import posthog, { trackAgentEvent } from "@/utils/posthog";
@@ -168,6 +169,7 @@ export const createBridgeAction = (dataToSend, onSuccess) => async (dispatch, ge
 
     // Always expect RT layer response now (backend always returns 202)
     const rtPromise = waitForAgentCreateRtResult();
+    dataToSend.dataToSend.flag = true; //create normal agent without rtlayer
     const response = await createBridge(dataToSend.dataToSend);
 
     // Check if backend returned 202 (RT layer response)
@@ -251,28 +253,21 @@ export const createEmbedAgentAction =
   async (dispatch, getState) => {
     try {
       dispatch(isPending());
-
-      // Generate unique name if not provided
-
       let response;
-
       if (purpose && purpose.trim()) {
-        // Try AI creation with purpose first
         try {
           const aiDataToSend = {
             purpose: purpose.trim(),
             bridgeType: "api",
             name: agent_name?.trim() || null,
+            flag: true,
           };
           if (meta) {
             aiDataToSend.meta = meta;
           }
-
           response = await dispatch(createBridgeWithAiAction({ dataToSend: aiDataToSend, orgId }));
-
           if (response?.data) {
             const createdAgent = response.data.agent;
-
             if (isEmbedUser && sendDataToParent) {
               sendDataToParent(
                 "drafted",
@@ -283,16 +278,13 @@ export const createEmbedAgentAction =
                 "Agent created Successfully"
               );
             }
-
             if (router && createdAgent) {
               router.push(`/org/${orgId}/agents/configure/${createdAgent._id}?version=${createdAgent.versions[0]}`);
             }
-
             return { success: true, agent: createdAgent };
           }
         } catch (aiError) {
           console.log("AI creation failed, falling back to manual creation:", aiError);
-          // Fall through to manual creation
         }
       }
 
@@ -307,7 +299,6 @@ export const createEmbedAgentAction =
       if (meta) {
         fallbackDataToSend.meta = meta;
       }
-
       response = await new Promise((resolve, reject) => {
         dispatch(
           createBridgeAction({ dataToSend: fallbackDataToSend, orgid: orgId }, (data) => {
@@ -684,12 +675,24 @@ export const updateBridgeVersionAction =
         optimisticData.web_search_filters = dataToSend.web_search_filters;
       }
 
-      // Handle settings if present (deep merge)
+      // Handle post_tool if present (complete replacement, not added to function_ids)
+      if (dataToSend.post_tool !== undefined) {
+        optimisticData.post_tool = dataToSend.post_tool;
+      }
+
+      // Handle settings if present (deep merge including nested objects like review_agent)
       if (dataToSend.settings) {
         optimisticData.settings = {
           ...currentVersion.settings,
           ...dataToSend.settings,
         };
+        // Deep merge review_agent if present to preserve existing fields
+        if (dataToSend.settings.review_agent) {
+          optimisticData.settings.review_agent = {
+            ...currentVersion.settings?.review_agent,
+            ...dataToSend.settings.review_agent,
+          };
+        }
       }
 
       // Handle agent_info if present (deep merge)
@@ -697,14 +700,6 @@ export const updateBridgeVersionAction =
         optimisticData.agent_info = {
           ...currentVersion.agent_info,
           ...dataToSend.agent_info,
-        };
-      }
-
-      // Handle settings if present (deep merge)
-      if (dataToSend.settings) {
-        optimisticData.settings = {
-          ...currentVersion.settings,
-          ...dataToSend.settings,
         };
       }
 
@@ -729,10 +724,21 @@ export const updateBridgeVersionAction =
       const updatedVersion = data?.agent;
 
       if (data?.success && updatedVersion) {
-        // Don't update again - the optimistic update is already correct
-        // Only update the status to show success
+        // Merge API response with current optimistic data to preserve fields
+        // that may not be returned by the API (like reviewer_enabled)
+        const mergedVersion = {
+          ...updatedVersion,
+          settings: {
+            ...updatedVersion.settings,
+            review_agent: {
+              ...optimisticData.settings?.review_agent,
+              ...updatedVersion.settings?.review_agent,
+            },
+          },
+        };
+
         dispatch(setSavingStatus({ status: "saved" }));
-        dispatch(updateBridgeVersionReducer({ bridges: updatedVersion }));
+        dispatch(updateBridgeVersionReducer({ bridges: mergedVersion }));
 
         // Clear the status after 3 seconds
         return { success: true };
@@ -742,6 +748,7 @@ export const updateBridgeVersionAction =
         }
         // Update status to show warning
         dispatch(setSavingStatus({ status: "failed" }));
+        toast.error(data?.message || data?.error || "Failed to update version");
 
         // Clear the status after 3 seconds
         setTimeout(() => {
@@ -752,23 +759,21 @@ export const updateBridgeVersionAction =
     } catch (error) {
       console.error(error);
 
-      if (versionId) {
-        let parentBridgeId = bridgeId;
-        if (!parentBridgeId) {
-          const state = getState().bridgeReducer;
-          for (const bId in state.bridgeVersionMapping) {
-            if (state.bridgeVersionMapping[bId][versionId]) {
-              parentBridgeId = bId;
-              break;
-            }
+      let parentBridgeId = bridgeId;
+      if (versionId && !parentBridgeId) {
+        const state = getState().bridgeReducer;
+        for (const bId in state.bridgeVersionMapping) {
+          if (state.bridgeVersionMapping[bId][versionId]) {
+            parentBridgeId = bId;
+            break;
           }
         }
-
-        if (parentBridgeId && !skipRollback) {
-          dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
-          toast.error("Failed to update version. Changes have been reverted.");
-        }
       }
+
+      if (versionId && parentBridgeId && !skipRollback) {
+        dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
+      }
+      toast.error(error?.response?.data?.message || "Failed to update version. Changes have been reverted.");
 
       dispatch(isError());
       // Show error status
@@ -842,10 +847,13 @@ export const publishBridgeVersionAction =
       if (data?.success) {
         dispatch(publishBrigeVersionReducer({ versionId: data?.version_id, bridgeId, orgId }));
         toast.success("Agent Version published successfully");
+      } else {
+        toast.error(data?.message || data?.error || "Failed to publish agent version");
       }
       return data;
     } catch (error) {
       console.error(error);
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to publish agent version");
     }
   };
 
@@ -916,6 +924,16 @@ export const uploadImageAction = (formData, isVedioOrPdf) => async (dispatch) =>
   }
 };
 
+export const uploadMultipleImagesAction = (files) => async (dispatch) => {
+  try {
+    const response = await uploadMultipleImages(files);
+    return response;
+  } catch (error) {
+    console.error("Error uploading files:", error);
+    throw error;
+  }
+};
+
 export const genrateSummaryAction =
   ({ bridgeId, versionId, orgId }) =>
   async (dispatch) => {
@@ -924,6 +942,7 @@ export const genrateSummaryAction =
       return response;
     } catch (error) {
       dispatch(isError());
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to generate summary");
       console.error("Failed to update summary: ", error);
     }
   };

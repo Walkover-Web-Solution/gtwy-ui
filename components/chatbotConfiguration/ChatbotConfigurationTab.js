@@ -5,8 +5,112 @@ import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getChatBotDetailsAction, updateChatBotConfigAction } from "@/store/action/chatBotAction";
+import { getServiceAction } from "@/store/action/serviceAction";
+import { getModelAction } from "@/store/action/modelAction";
+import { getServiceDisplayName } from "@/utils/utility";
 import ChatbotPreview from "./ChatbotPreview";
 import { ExternalLink, Trash2, Save, Plus, Server } from "lucide-react";
+
+function ModelCustomization({ value = {}, onChange, onBlur }) {
+  const dispatch = useDispatch();
+  const { serviceModels, SERVICES } = useCustomSelector((state) => ({
+    serviceModels: state?.modelReducer?.serviceModels || {},
+    SERVICES: state?.serviceReducer?.services || [],
+  }));
+  const [expandedServices, setExpandedServices] = useState({});
+
+  useEffect(() => {
+    dispatch(getServiceAction());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (Array.isArray(SERVICES)) {
+      SERVICES.forEach((svc) => {
+        if (svc?.value) dispatch(getModelAction({ service: svc.value }));
+      });
+    }
+  }, [SERVICES, dispatch]);
+
+  const toggleService = (service) => setExpandedServices((prev) => ({ ...prev, [service]: !prev[service] }));
+
+  const handleModelChange = (service, modelName, field, fieldValue, triggerBlur = false) => {
+    const updatedModels = { ...value };
+    updatedModels[service] = updatedModels[service] ? { ...updatedModels[service] } : {};
+    updatedModels[service][modelName] = updatedModels[service][modelName]
+      ? { ...updatedModels[service][modelName] }
+      : { hide: false, value: undefined };
+    updatedModels[service][modelName][field] = fieldValue;
+    onChange(updatedModels);
+    if (triggerBlur) onBlur?.(updatedModels);
+  };
+
+  const availableServiceValues = Array.isArray(SERVICES) ? SERVICES.map((s) => s?.value).filter(Boolean) : [];
+  const filteredServiceModels = Object.entries(serviceModels).filter(([svc]) => availableServiceValues.includes(svc));
+
+  if (filteredServiceModels.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {filteredServiceModels.map(([service, types]) => {
+        const allModels = [];
+        Object.entries(types || {}).forEach(([, models]) => {
+          Object.keys(models || {}).forEach((m) => {
+            if (!allModels.includes(m)) allModels.push(m);
+          });
+        });
+        if (allModels.length === 0) return null;
+        return (
+          <div key={service} className="border border-base-300 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              data-testid={`chatbot-config-model-service-toggle-${service}`}
+              onClick={() => toggleService(service)}
+              className="w-full flex items-center justify-between p-2 bg-base-200 text-sm"
+            >
+              <span className="font-medium">{getServiceDisplayName(service, SERVICES)}</span>
+              <span className="text-xs text-base-content/60">
+                {expandedServices[service] ? "▼" : "▶"} {allModels.length} models
+              </span>
+            </button>
+            {expandedServices[service] && (
+              <div className="p-2 space-y-2 bg-base-200">
+                {allModels.map((modelName) => {
+                  const modelConfig = value[service]?.[modelName] || { hide: false, value: undefined };
+                  return (
+                    <div key={modelName} className="flex items-start gap-2 p-2 bg-base-100 rounded">
+                      <input
+                        autoComplete="off"
+                        type="checkbox"
+                        className="checkbox checkbox-xs mt-1"
+                        checked={!modelConfig.hide}
+                        onChange={(e) => handleModelChange(service, modelName, "hide", !e.target.checked, true)}
+                        title="Show/Hide model"
+                        data-testid={`chatbot-config-model-visibility-${service}-${modelName}`}
+                      />
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <span className="text-xs text-base-content/60 truncate">{modelName}</span>
+                        <input
+                          autoComplete="off"
+                          type="text"
+                          className="input input-bordered input-xs w-full bg-base-200"
+                          value={modelConfig.value !== undefined ? modelConfig.value : modelName}
+                          onChange={(e) => handleModelChange(service, modelName, "value", e.target.value)}
+                          onBlur={(e) => handleModelChange(service, modelName, "value", e.target.value, true)}
+                          placeholder={modelName}
+                          data-testid={`chatbot-config-model-alias-${service}-${modelName}`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function RadioGroup({ onChange, name, value }) {
   const options = [
@@ -106,6 +210,8 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     iconUrl: "",
     allowBridgeSwitch: false,
     bridges: [],
+    allowModalSwitch: false,
+    models: {},
     side: "left",
     defaultErrorMessage: "",
     hide_tool: false,
@@ -233,6 +339,21 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
           [name]: !prevFormData[name],
         };
         dispatch(updateChatBotConfigAction(chatBotId, updatedFormData));
+        return updatedFormData;
+      });
+    },
+    [dispatch, chatBotId]
+  );
+
+  // Handler for the model show/hide + display-name customization map
+  const handleModelsChange = useCallback(
+    (updatedModels, persist = false) => {
+      setFormData((prevFormData) => {
+        const updatedFormData = {
+          ...prevFormData,
+          models: updatedModels,
+        };
+        if (persist) dispatch(updateChatBotConfigAction(chatBotId, updatedFormData));
         return updatedFormData;
       });
     },
@@ -374,6 +495,51 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
               />
             </label>
           </div>
+
+          {/* Allow Model Switch Toggle */}
+          <div className="form-control">
+            <label
+              data-testid="chatbot-config-allow-modal-switch-toggle"
+              className="label cursor-pointer justify-between gap-8 px-0"
+            >
+              <div className="flex flex-col">
+                <span className="label-text font-medium text-xs">Allow Model Switch</span>
+                <span className="text-xs text-base-content/50">
+                  {formData.allowModalSwitch
+                    ? "Users can switch the AI model in chat"
+                    : "AI model is fixed for this chatbot"}
+                </span>
+              </div>
+              <input
+                autoComplete="off"
+                data-testid="chatbot-config-allow-modal-switch-checkbox"
+                id="chatbot-config-allow-modal-switch-checkbox"
+                type="checkbox"
+                className="toggle toggle-sm toggle-primary"
+                checked={formData.allowModalSwitch}
+                onChange={(event) => {
+                  event.preventDefault();
+                  handleToggleChange("allowModalSwitch");
+                }}
+              />
+            </label>
+          </div>
+
+          {formData.allowModalSwitch && (
+            <div className="form-control w-full">
+              <div className="label">
+                <span className="label-text font-medium text-xs">Models Shown In Switch</span>
+              </div>
+              <p className="text-xs text-base-content/50 mb-2">
+                Choose which models users can switch to, and optionally rename how they appear in the chat.
+              </p>
+              <ModelCustomization
+                value={formData.models || {}}
+                onChange={(updatedModels) => handleModelsChange(updatedModels, false)}
+                onBlur={(updatedModels) => handleModelsChange(updatedModels, true)}
+              />
+            </div>
+          )}
 
           <label className="form-control w-full">
             <div className="label">

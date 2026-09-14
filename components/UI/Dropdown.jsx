@@ -238,7 +238,7 @@ const Dropdown = ({
 
       <div
         ref={menuRef}
-        className={cx("dropdown-content z-[60] w-full hover:bg-base-200", menuClassName)}
+        className={cx("dropdown-content z-[60] hover:bg-base-200", fullWidth ? "w-full" : "", menuClassName)}
         role="listbox"
       >
         <div className="bg-base-100 rounded-box shadow-xl border border-base-content/20 w-full overflow-hidden">
@@ -275,7 +275,7 @@ const Dropdown = ({
                         key={String(opt.value)}
                         className={cx(
                           "whitespace-nowrap group",
-                          opt.disabled ? "disabled opacity-50 cursor-not-allowed pointer-events-none" : ""
+                          opt.disabled ? "disabled opacity-50 cursor-not-allowed" : ""
                         )}
                       >
                         <a
@@ -365,7 +365,10 @@ const Dropdown = ({
                         const Icon = opt.icon;
                         const isActive = String(opt.value) === String(value);
                         return (
-                          <li key={String(opt.value)} className="whitespace-nowrap">
+                          <li
+                            key={String(opt.value)}
+                            className={cx("whitespace-nowrap", opt.disabled ? "opacity-50 cursor-not-allowed" : "")}
+                          >
                             <a
                               data-testid={`${testId}-grouped-option-${opt.value}`}
                               id={`dropdown-grouped-option-${opt.value}`}
@@ -373,10 +376,15 @@ const Dropdown = ({
                                 "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
                                 isActive ? "active text-primary" : ""
                               )}
-                              onClick={() => handleSelect(opt.value, opt)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (opt.disabled) return;
+                                handleSelect(opt.value, opt);
+                              }}
                               onMouseEnter={() => onOptionHover && onOptionHover(opt)}
                               role="option"
                               aria-selected={isActive}
+                              aria-disabled={opt.disabled || undefined}
                             >
                               {Icon && <Icon className="h-4 w-4 mt-0.5 opacity-80" />}
                               <div className="flex flex-col min-w-0">

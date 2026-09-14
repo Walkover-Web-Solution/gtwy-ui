@@ -56,7 +56,7 @@ const getColumnLabel = (column) => {
   }
 };
 
-const EmptyState = ({ onAddTool }) => (
+const EmptyState = ({ onAddTool, isBlocked }) => (
   <div className="w-full flex justify-center">
     <div
       className="w-full max-w-2xl flex flex-col items-center justify-center text-center px-6 py-12 mx-auto"
@@ -91,6 +91,8 @@ const EmptyState = ({ onAddTool }) => (
         onClick={onAddTool}
         className="btn btn-primary inline-flex items-center gap-2 px-6"
         style={{ borderRadius: 6, fontWeight: 600, letterSpacing: "0.04em" }}
+        disabled={isBlocked}
+        title={isBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
       >
         <Plus size={16} strokeWidth={2.5} />
         NEW TOOLS
@@ -109,16 +111,25 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
   const searchParams = useSearchParams();
   const filterParam = searchParams?.get("filter");
 
-  const { functionData, integrationData, embedToken, descriptions, linksData, allBridges, agentsVersionsData } =
-    useCustomSelector((state) => ({
-      functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
-      integrationData: state?.bridgeReducer?.org?.[orgId]?.integrationData || {},
-      embedToken: state?.bridgeReducer?.org?.[orgId]?.embed_token,
-      descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
-      linksData: state.flowDataReducer.flowData.linksData || [],
-      allBridges: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
-      agentsVersionsData: state?.bridgeReducer?.agentsVersionsData || {},
-    }));
+  const {
+    functionData,
+    integrationData,
+    embedToken,
+    descriptions,
+    linksData,
+    allBridges,
+    agentsVersionsData,
+    isOrgBlocked,
+  } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[orgId]?.functionData || {},
+    integrationData: state?.bridgeReducer?.org?.[orgId]?.integrationData || {},
+    embedToken: state?.bridgeReducer?.org?.[orgId]?.embed_token,
+    descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
+    linksData: state.flowDataReducer.flowData.linksData || [],
+    allBridges: state?.bridgeReducer?.org?.[orgId]?.orgs || [],
+    agentsVersionsData: state?.bridgeReducer?.agentsVersionsData || {},
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(orgId) || false,
+  }));
 
   const getAgentInfo = useCallback(
     (agentId) => {
@@ -299,6 +310,10 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
   }, [tableData, filterParam]);
 
   const handleAddNewTool = useCallback(() => {
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create tools. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     if (typeof window === "undefined" || typeof window.openViasocket !== "function") {
       toast.error("Tool builder is still loading, please try again in a moment.");
       return;
@@ -315,7 +330,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
         ...(folderId ? { folder_id: folderId } : {}),
       },
     });
-  }, [embedToken, activeFolderId]);
+  }, [embedToken, activeFolderId, isOrgBlocked]);
 
   const handleFilterDropdownClick = useCallback(
     (e) => {
@@ -723,7 +738,13 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
                 {activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)}
               </span>
             </button>
-            <button type="button" onClick={handleAddNewTool} className="btn btn-primary btn-sm">
+            <button
+              type="button"
+              onClick={handleAddNewTool}
+              className="btn btn-primary btn-sm"
+              disabled={isOrgBlocked}
+              title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
+            >
               <Plus size={16} strokeWidth={2.5} />
               Create New Tool
             </button>
@@ -743,7 +764,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
 
         <div className="px-4 pb-8 flex-1 overflow-y-auto">
           {allTools.length === 0 ? (
-            <EmptyState onAddTool={handleAddNewTool} />
+            <EmptyState onAddTool={handleAddNewTool} isBlocked={isOrgBlocked} />
           ) : (
             <CustomTable
               data={displayedTools}

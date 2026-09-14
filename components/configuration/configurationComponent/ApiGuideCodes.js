@@ -35,6 +35,35 @@ export const getCurlCode = (bridgeId, modelType, isEmbedUser, prompt = "") => {
   return `curl --location '${url}' \\\n  ${authHeader} \\\n  --data '${body}'`;
 };
 
+export const getCurlBatchCode = (bridgeId, isEmbedUser) => {
+  const url = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/chat/completion`;
+  const authHeader = isEmbedUser
+    ? `--header 'Content-Type: application/json'`
+    : `--header 'pauthkey: YOUR_GENERATED_PAUTHKEY' \\\n  --header 'Content-Type: application/json'`;
+
+  const body = [
+    "{",
+    `  "webhook": {`,
+    `    "url": "YOUR_WEBHOOK_URL",`,
+    `    "headers": {}`,
+    `  },`,
+    `  "batch": [`,
+    `    "YOUR QUESTION 1",`,
+    `    "YOUR QUESTION 2",`,
+    `    "YOUR QUESTION 3"`,
+    `  ],`,
+    `  "agent_id": "${bridgeId}",`,
+    `  "batch_variables": [`,
+    `    { "message": "YOUR MESSAGE" },`,
+    `    { "name": "YOUR NAME" },`,
+    `    { "age": "YOUR AGE" }`,
+    `  ]`,
+    "}",
+  ].join("\n");
+
+  return `curl --location '${url}' \\\n  ${authHeader} \\\n  --data '${body}'`;
+};
+
 export const getPythonCode = (bridgeId, isEmbedUser, prompt = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const apiKeyLine = isEmbedUser
@@ -61,6 +90,38 @@ export const getPythonCode = (bridgeId, isEmbedUser, prompt = "") => {
     ")",
     "",
     "print(response.output_text)",
+  ].join("\n");
+};
+
+export const getPythonBatchCode = (bridgeId, isEmbedUser) => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/openai`;
+  const apiKeyLine = isEmbedUser
+    ? "    # No API key required for embed users"
+    : `    api_key="YOUR_GENERATED_PAUTHKEY",`;
+
+  return [
+    "from openai import OpenAI",
+    "",
+    "client = OpenAI(",
+    apiKeyLine,
+    `    base_url="${baseUrl}",`,
+    ")",
+    "",
+    "batch_job = client.responses.create(",
+    `    model="YOUR_MODEL_NAME",`,
+    "    extra_body={",
+    `        "agent_id": "${bridgeId}",`,
+    '        "batch": ["YOUR QUESTION 1", "YOUR QUESTION 2", "YOUR QUESTION 3"],',
+    '        "batch_variables": [',
+    '            {"message": "YOUR MESSAGE"},',
+    '            {"name": "YOUR NAME"},',
+    '            {"age": "YOUR AGE"},',
+    "        ],",
+    '        "webhook": {"url": "YOUR_WEBHOOK_URL", "headers": {}},',
+    "    },",
+    ")",
+    "",
+    "print(batch_job.id)",
   ].join("\n");
 };
 
@@ -91,6 +152,34 @@ export const getJavaScriptCode = (bridgeId, isEmbedUser, prompt = "") => {
     "});",
     "",
     "console.log(response.output_text);",
+  ].join("\n");
+};
+
+export const getJavaScriptBatchCode = (bridgeId, isEmbedUser) => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/openai`;
+  const apiKeyLine = isEmbedUser ? "  // No API key required for embed users" : `  apiKey: "YOUR_GENERATED_PAUTHKEY",`;
+
+  return [
+    `import OpenAI from "openai";`,
+    "",
+    "const client = new OpenAI({",
+    apiKeyLine,
+    `  baseURL: "${baseUrl}",`,
+    "});",
+    "",
+    "const batchJob = await client.responses.create({",
+    `  model: "YOUR_MODEL_NAME",`,
+    `  agent_id: "${bridgeId}",`,
+    '  batch: ["YOUR QUESTION 1", "YOUR QUESTION 2", "YOUR QUESTION 3"],',
+    "  batch_variables: [",
+    '    { message: "YOUR MESSAGE" },',
+    '    { name: "YOUR NAME" },',
+    '    { age: "YOUR AGE" },',
+    "  ],",
+    '  webhook: { url: "YOUR_WEBHOOK_URL", headers: {} },',
+    "});",
+    "",
+    "console.log(batchJob.id);",
   ].join("\n");
 };
 
@@ -144,6 +233,52 @@ export const getDotNetCode = (bridgeId, isEmbedUser, prompt = "") => {
   ].join("\n");
 };
 
+export const getDotNetBatchCode = (bridgeId, isEmbedUser) => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/openai`;
+  const apiKeyLine = isEmbedUser
+    ? `            apiKey: "",  // No API key required for embed users`
+    : `            apiKey: "YOUR_GENERATED_PAUTHKEY",`;
+
+  return [
+    "using System;",
+    "using System.Threading.Tasks;",
+    "using OpenAI;",
+    "",
+    "class Program",
+    "{",
+    "    static async Task Main()",
+    "    {",
+    "        var client = new OpenAIClient(",
+    apiKeyLine,
+    "            options: new OpenAIClientOptions",
+    "            {",
+    `                Endpoint = new Uri("${baseUrl}")`,
+    "            }",
+    "        );",
+    "",
+    "        var batchJob = await client.Responses.CreateAsync(new ResponseCreateRequest",
+    "        {",
+    `            Model = "YOUR_MODEL_NAME",`,
+    "            AdditionalProperties =",
+    "            {",
+    `                ["agent_id"] = BinaryData.FromString('"${bridgeId}"'),`,
+    '                ["batch"] = BinaryData.FromObjectAsJson(new[] { "YOUR QUESTION 1", "YOUR QUESTION 2", "YOUR QUESTION 3" }),',
+    '                ["batch_variables"] = BinaryData.FromObjectAsJson(new object[]',
+    "                {",
+    '                    new { message = "YOUR MESSAGE" },',
+    '                    new { name = "YOUR NAME" },',
+    '                    new { age = "YOUR AGE" }',
+    "                }),",
+    '                ["webhook"] = BinaryData.FromObjectAsJson(new { url = "YOUR_WEBHOOK_URL", headers = new { } })',
+    "            }",
+    "        });",
+    "",
+    `        Console.WriteLine($"[BATCH JOB ID]: {batchJob.Id}");`,
+    "    }",
+    "}",
+  ].join("\n");
+};
+
 export const getJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const used = extractPromptVariables(prompt);
@@ -177,6 +312,44 @@ export const getJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
     "",
     "        Response response = client.responses().create(params);",
     "        System.out.println(response.outputText());",
+    "    }",
+    "}",
+  ].join("\n");
+};
+
+export const getJavaBatchCode = (bridgeId, isEmbedUser) => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/openai`;
+  const apiKeyLine = isEmbedUser
+    ? "            // No API key required for embed users"
+    : `            .apiKey("YOUR_GENERATED_PAUTHKEY")`;
+
+  return [
+    "import com.openai.client.OpenAIClient;",
+    "import com.openai.client.okhttp.OpenAIOkHttpClient;",
+    "import com.openai.models.responses.Response;",
+    "import com.openai.models.responses.ResponseCreateParams;",
+    "",
+    "public class Main {",
+    "    public static void main(String[] args) {",
+    "        OpenAIClient client = OpenAIOkHttpClient.builder()",
+    apiKeyLine,
+    `            .baseUrl("${baseUrl}")`,
+    "            .build();",
+    "",
+    "        ResponseCreateParams params = ResponseCreateParams.builder()",
+    `            .model("YOUR_MODEL_NAME")`,
+    `            .putAdditionalBodyProperty("agent_id", "${bridgeId}")`,
+    '            .putAdditionalBodyProperty("batch", java.util.List.of("YOUR QUESTION 1", "YOUR QUESTION 2", "YOUR QUESTION 3"))',
+    '            .putAdditionalBodyProperty("batch_variables", java.util.List.of(',
+    '                java.util.Map.of("message", "YOUR MESSAGE"),',
+    '                java.util.Map.of("name", "YOUR NAME"),',
+    '                java.util.Map.of("age", "YOUR AGE")',
+    "            ))",
+    '            .putAdditionalBodyProperty("webhook", java.util.Map.of("url", "YOUR_WEBHOOK_URL", "headers", java.util.Map.of()))',
+    "            .build();",
+    "",
+    "        Response batchJob = client.responses().create(params);",
+    "        System.out.println(batchJob.id());",
     "    }",
     "}",
   ].join("\n");
@@ -225,6 +398,50 @@ export const getGoCode = (bridgeId, isEmbedUser, prompt = "") => {
     "\t}",
     "",
     "\tfmt.Println(resp.OutputText())",
+    "}",
+  ].join("\n");
+};
+
+export const getGoBatchCode = (bridgeId, isEmbedUser) => {
+  const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/batch/openai`;
+  const apiKeyLine = isEmbedUser
+    ? `\toption.WithAPIKey(""), // No API key required for embed users`
+    : `\toption.WithAPIKey("YOUR_GENERATED_PAUTHKEY"),`;
+
+  return [
+    "package main",
+    "",
+    "import (",
+    '\t"context"',
+    '\t"fmt"',
+    "",
+    '\t"github.com/openai/openai-go/v3"',
+    '\t"github.com/openai/openai-go/v3/option"',
+    ")",
+    "",
+    "func main() {",
+    "\tclient := openai.NewClient(",
+    apiKeyLine,
+    `\toption.WithBaseURL("${baseUrl}"),`,
+    "\t)",
+    "",
+    "\tbatchJob, err := client.Responses.New(context.TODO(), openai.ResponseNewParams{",
+    `\t\tModel: "YOUR_MODEL_NAME",`,
+    "\t},",
+    `\t\toption.WithJSONSet("agent_id", "${bridgeId}"),`,
+    '\t\toption.WithJSONSet("batch", []string{"YOUR QUESTION 1", "YOUR QUESTION 2", "YOUR QUESTION 3"}),',
+    '\t\toption.WithJSONSet("batch_variables", []map[string]string{',
+    '\t\t\t{"message": "YOUR MESSAGE"},',
+    '\t\t\t{"name": "YOUR NAME"},',
+    '\t\t\t{"age": "YOUR AGE"},',
+    "\t\t}),",
+    '\t\toption.WithJSONSet("webhook", map[string]interface{}{"url": "YOUR_WEBHOOK_URL", "headers": map[string]string{}}),',
+    "\t)",
+    "\tif err != nil {",
+    "\t\tpanic(err.Error())",
+    "\t}",
+    "",
+    "\tfmt.Println(batchJob.ID)",
     "}",
   ].join("\n");
 };

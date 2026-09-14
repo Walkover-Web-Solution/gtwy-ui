@@ -8,7 +8,7 @@ import Protected from "@/components/Protected";
 import { getIconOfService, openModal, closeModal } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
-import { ChevronDownIcon, CircleAlert } from "lucide-react";
+import { ChevronDownIcon, CircleAlert, Coins } from "lucide-react";
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 
@@ -36,6 +36,7 @@ const ServiceDropdown = ({
     apiKeyObjectIdData,
     configuration,
     serviceModels,
+    planServices,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -64,8 +65,19 @@ const ServiceDropdown = ({
       showDefaultApikeys,
       configuration: activeData?.configuration,
       serviceModels: state?.modelReducer?.serviceModels,
+      planServices: state?.planReducer?.services,
     };
   });
+  const isServiceInPlan = useCallback(
+    (svcValue) => {
+      if (!svcValue || !planServices) return false;
+      if (planServices === "*") return true;
+      if (Array.isArray(planServices)) return planServices.includes(svcValue);
+      if (typeof planServices === "object") return Object.prototype.hasOwnProperty.call(planServices, svcValue);
+      return false;
+    },
+    [planServices]
+  );
 
   const [selectedService, setSelectedService] = useState(service);
   const dispatch = useDispatch();
@@ -136,15 +148,20 @@ const ServiceDropdown = ({
         return {
           value: svc.value,
           label: (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               {getIconOfService(svc.value, 16, 16)}
-              <span>{svc.displayName || svc.value}</span>
+              <span className="flex-1">{svc.displayName || svc.value}</span>
+              {isServiceInPlan(svc.value) && (
+                <InfoTooltip tooltipContent="Included in your plan — can be used through plan credits.">
+                  <Coins size={12} className="text-success shrink-0" />
+                </InfoTooltip>
+              )}
             </div>
           ),
         };
       })
       .filter(Boolean);
-  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData]);
+  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData, isServiceInPlan]);
 
   const [pendingService, setPendingService] = useState(null);
 
@@ -273,6 +290,11 @@ const ServiceDropdown = ({
               <span id="service-dropdown-selected-name" className="text-base-content/70 text-xs">
                 {serviceName}
               </span>
+              {isServiceInPlan(currentValue) && (
+                <InfoTooltip tooltipContent="Included in your plan — usable through plan credits, no API key needed.">
+                  <Coins size={13} className="text-success shrink-0" />
+                </InfoTooltip>
+              )}
             </span>
             <ChevronDownIcon id="service-dropdown-chevron" size={16} className="ml-2 h-4 w-4 opacity-70" />
           </div>

@@ -76,6 +76,7 @@ import {
   Undo,
   User,
   UserPlus,
+  Wallet,
   Webhook,
   X,
   MessageSquareMore,
@@ -476,6 +477,14 @@ export const InfoIcon = (props) => <Info {...props} />;
  * Context: Login screens, access management
  */
 export const KeyIcon = (props) => <Key {...props} />;
+
+/**
+ * Wallet icon
+ * Used for wallet balance / credits / billing features
+ * Style: Blue or gray for neutral indicators, red when balance is negative
+ * Context: Sidebar wallet widget, wallet card, plans & credits page
+ */
+export const WalletIcon = (props) => <Wallet {...props} />;
 
 /**
  * Rounded key icon

@@ -36,9 +36,7 @@ const ApiKeysInput = ({ configuration, onChange, orgId }) => {
                   value={selectedId}
                   onChange={(e) => handleApiKeyChange(serviceKey, e.target.value)}
                 >
-                  <option value="" disabled>
-                    Select API key
-                  </option>
+                  <option value="">Select API key</option>
                   {serviceApiKeys.map((apiKey) => (
                     <option key={apiKey._id} value={apiKey._id}>
                       {apiKey.name}

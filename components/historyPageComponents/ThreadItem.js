@@ -24,14 +24,17 @@ import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
 import {
   getToolName,
   openModal,
-  allowedAttributes,
   extractErrorMessage,
   formatCostValue,
   formatTokensTable,
+  getIconOfService,
+  omitHiddenVariables,
   parseNestedJson,
 } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { PdfIcon } from "@/icons/pdfIcon";
+import GoogleDocIcon from "@/icons/GoogleDocIcon";
+import { isWordFileUrl } from "@/utils/attachmentUtils";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -44,6 +47,7 @@ import {
   SlidersHorizontal,
   Maximize2,
   User,
+  Brain,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
 import { toast } from "react-toastify";
@@ -220,6 +224,72 @@ const normalizeImageUrls = (imageData, source = "assistant") => {
   }, []);
 };
 
+// ---------------------------------------------------------------------------
+// Memory helpers — extract structured memory JSON from an assistant response
+// ---------------------------------------------------------------------------
+
+const extractJsonSubstring = (content) => {
+  if (!content || typeof content !== "string") return null;
+  const firstBrace = content.indexOf("{");
+  const lastBrace = content.lastIndexOf("}");
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null;
+  return content.slice(firstBrace, lastBrace + 1);
+};
+
+const parseMemoryContent = (content) => {
+  const jsonString = extractJsonSubstring(content);
+  if (!jsonString) return null;
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed && (parsed.protected_memory || parsed.latest_state)) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const getAssistantResponseContent = (item) => {
+  if (!item) return "";
+  return item.chatbot_message || item.llm_message || item.updated_llm_message || "";
+};
+
+const isMemoryRelatedQuery = (content) => {
+  if (!content || typeof content !== "string") return false;
+  const lower = content.toLowerCase();
+  return lower.includes("provide the summary of the previous conversation stored in the memory?");
+};
+
+const getAssistantTextFromMessage = (message) => {
+  if (!message) return "";
+  if (typeof message.content === "string") return message.content;
+  if (Array.isArray(message.content)) {
+    return message.content.map((part) => (typeof part === "string" ? part : part?.text || "")).join("");
+  }
+  return "";
+};
+
+const extractMemoryFromAiConfigInput = (aiConfig) => {
+  const messages = aiConfig?.input;
+  if (!Array.isArray(messages)) return null;
+  for (let i = 0; i < messages.length - 1; i++) {
+    const msg = messages[i];
+    if (msg?.role !== "user" || typeof msg?.content !== "string") continue;
+    if (!isMemoryRelatedQuery(msg.content)) continue;
+
+    const nextMsg = messages[i + 1];
+    if (nextMsg?.role !== "assistant") continue;
+
+    const assistantContent = getAssistantTextFromMessage(nextMsg);
+    if (!assistantContent) continue;
+
+    const parsed = parseMemoryContent(assistantContent);
+    return parsed || { response: assistantContent };
+  }
+  return null;
+};
+
 // Enhanced fallback component with better UX
 const ImageFallback = ({ type = "large", url = "", error = "failed_to_load" }) => {
   const isLarge = type === "large";
@@ -338,7 +408,7 @@ const ThreadItem = ({
   const [messageType, setMessageType] = useState(getInitialMessageType());
   const [toolsData, setToolsData] = useState([]);
   const toolsDataModalRef = useRef(null);
-  const { embedToken, knowledgeBaseData, isEmbedUser, orgBridges, allBridgesMap, publishedVersionId } =
+  const { embedToken, knowledgeBaseData, isEmbedUser, orgBridges, allBridgesMap, publishedVersionId, showTestcases } =
     useCustomSelector((state) => ({
       embedToken: state?.bridgeReducer?.org?.[params?.org_id]?.embed_token,
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
@@ -346,7 +416,18 @@ const ThreadItem = ({
       orgBridges: state?.bridgeReducer?.org?.[params?.org_id]?.orgs || [],
       allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
       publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[item?.bridge_id]?.published_version_id,
+      showTestcases: state?.appInfoReducer?.embedUserDetails?.showTestcases !== false,
     }));
+
+  // Embed users only see the test case action when the embed config enables it
+  const canAddTestCase = !isEmbedUser || (isEmbedUser && showTestcases);
+
+  // Versions are surfaced as their position (1, 2, ...) rather than the raw mongo id
+  const versionNumber = useMemo(() => {
+    const versions = allBridgesMap?.[item?.bridge_id]?.versions || [];
+    const versionIndex = versions.indexOf(item?.version_id);
+    return versionIndex >= 0 ? versionIndex + 1 : null;
+  }, [allBridgesMap, item?.bridge_id, item?.version_id]);
   const [isDropupOpen, setIsDropupOpen] = useState(false);
   const [isRerunning, setIsRerunning] = useState(false);
   const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
@@ -382,8 +463,18 @@ const ThreadItem = ({
   // Keep toolbar visible whenever any accordion panel is open
   const isAnyPanelOpen = isVariablesOpen || isMoreDetailsExpanded || isSystemPromptExpanded;
 
+  // Platform-injected variables are hidden from the user-facing variables panel
+  const visibleVariables = useMemo(() => omitHiddenVariables(item?.variables), [item?.variables]);
+
+  // Only offer the Tokens & Cost panel when there is actually usage to show
+  const hasTokenData = useMemo(() => {
+    if (!item?.tokens || typeof item.tokens !== "object") return false;
+    const rows = formatTokensTable(item.tokens);
+    return Array.isArray(rows) && rows.length > 0;
+  }, [item?.tokens]);
+
   const handleCopyAllVariables = () => {
-    const jsonString = JSON.stringify(item?.variables || {}, null, 2);
+    const jsonString = JSON.stringify(visibleVariables, null, 2);
     navigator.clipboard.writeText(jsonString);
     setCopiedAllVariables(true);
     toast.success("Variables copied to clipboard");
@@ -540,6 +631,26 @@ const ThreadItem = ({
     const bridge = orgBridges.find((b) => b?._id === params?.id || b?.id === params?.id);
     return bridge?.name || bridge?.agent_name || bridge?.bridge_name || item?.name || "Agent";
   }, [orgBridges, params?.id, item?.name]);
+
+  const memoryContent = useMemo(() => {
+    const fromAiConfig = extractMemoryFromAiConfigInput(item?.AiConfig);
+    if (fromAiConfig) return fromAiConfig;
+
+    // Fallback: check the next assistant message in the visible thread.
+    const nextItem = thread?.[index + 1];
+    if (!nextItem) return null;
+    const isAssistantResponse = Boolean(
+      nextItem.chatbot_message || nextItem.llm_message || nextItem.updated_llm_message
+    );
+    if (!isAssistantResponse) return null;
+
+    const assistantContent = getAssistantResponseContent(nextItem);
+    const parsedMemory = parseMemoryContent(assistantContent);
+    if (parsedMemory) return parsedMemory;
+
+    return null;
+  }, [thread, index, item]);
+  const hasMemoryContent = Boolean(memoryContent);
 
   useEffect(() => {
     setMessageType(getInitialMessageType());
@@ -885,7 +996,11 @@ const ThreadItem = ({
   );
 
   const handleUserButtonClick = (value) => {
-    threadHandler(item.thread_id, item, value);
+    if (value === "Memory" && memoryContent) {
+      threadHandler(item.thread_id, { ...item, memoryContent }, value);
+    } else {
+      threadHandler(item.thread_id, item, value);
+    }
   };
 
   const handleAskAi = async (item) => {
@@ -935,9 +1050,10 @@ const ThreadItem = ({
             }
 
             const isPdf = url?.toLowerCase?.().endsWith(".pdf");
+            const isWordDoc = isWordFileUrl(url);
 
-            // PDF style chip (same as provided snippet)
-            if (isPdf) {
+            // PDF / Word doc style chip (same as provided snippet)
+            if (isPdf || isWordDoc) {
               return (
                 <div key={`attachment-pdf-${index}`} className="pr-4">
                   <a
@@ -946,9 +1062,9 @@ const ThreadItem = ({
                     rel="noopener noreferrer"
                     className="flex items-center space-x-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 group"
                   >
-                    <PdfIcon height={20} width={20} />
+                    {isWordDoc ? <GoogleDocIcon height={20} width={20} /> : <PdfIcon height={20} width={20} />}
                     <span className="text-sm font-medium max-w-[5rem] truncate text-primary">
-                      {truncate(url.split("/").pop() || "PDF", 20)}
+                      {truncate(url.split("/").pop() || (isWordDoc ? "Document" : "PDF"), 20)}
                     </span>
                     <ExternalLink className="text-primary" size={14} />
                   </a>
@@ -1092,7 +1208,7 @@ const ThreadItem = ({
     </>
   );
 
-  const variableCount = Object.keys(item?.variables || {}).length;
+  const variableCount = Object.keys(visibleVariables).length;
 
   const renderVariablesPanel = (panelClassName = "max-w-[620px] w-full ml-auto") => {
     if (!isVariablesOpen || variableCount === 0) return null;
@@ -1120,7 +1236,7 @@ const ThreadItem = ({
           </button>
         </div>
         <div>
-          {Object.entries(item?.variables || {})
+          {Object.entries(visibleVariables)
             .filter(([key]) => key.toLowerCase().includes(variablesFilter.toLowerCase()))
             .map(([key, value]) => {
               const raw =
@@ -1148,63 +1264,10 @@ const ThreadItem = ({
       <ThreadInlinePanel className={panelClassName}>
         <div className="text-left">
           <div className="px-4 py-2 border-b border-base-content/10 bg-base-200/50">
-            <span className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">Optional Details</span>
+            <span className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">
+              Tokens &amp; Cost
+            </span>
           </div>
-          {allowedAttributes.optional
-            .filter(([key]) => key !== "tokens")
-            .sort((a, b) => a[1].localeCompare(b[1]))
-            .map(([key, displayKey]) => {
-              const value = item[key] !== undefined ? item[key] : key === "createdAt" ? item.created_at : undefined;
-              if (value === undefined || value === null) return null;
-
-              // If the value is an object, render each property as separate rows
-              if (typeof value === "object" && key !== "createdAt") {
-                return Object.entries(value).map(([objKey, objValue]) => (
-                  <div
-                    key={`${key}-${objKey}`}
-                    className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
-                  >
-                    <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold font-mono">
-                      {objKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </span>
-                    <div className="flex-1 min-w-0 text-xs break-all text-base-content whitespace-pre-wrap font-mono">
-                      {typeof objValue === "object" && objValue !== null ? (
-                        <div className="border border-base-content/20 bg-base-200/50 rounded-lg overflow-hidden w-full">
-                          <CodeBlock className="language-json" showCopy={false} plain={true}>
-                            {JSON.stringify(objValue, null, 2)}
-                          </CodeBlock>
-                        </div>
-                      ) : (
-                        objValue?.toString()
-                      )}
-                    </div>
-                  </div>
-                ));
-              }
-
-              // Regular single value display
-              return (
-                <div
-                  key={key}
-                  className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
-                >
-                  <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">{displayKey}</span>
-                  <span className="text-xs break-all text-base-content whitespace-pre-wrap">
-                    {key === "createdAt" || key === "created_at" ? new Date(value).toLocaleString() : value?.toString()}
-                  </span>
-                </div>
-              );
-            })}
-          {(() => {
-            const batchId = item?.batch_data?.batch_id;
-            if (!batchId) return null;
-            return (
-              <div key="batch_id" className="flex items-start gap-4 px-4 py-2.5">
-                <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">Batch ID</span>
-                <span className="text-xs break-all text-base-content whitespace-pre-wrap font-mono">{batchId}</span>
-              </div>
-            );
-          })()}
           {(() => {
             const tokensVal = item.tokens;
             if (tokensVal !== undefined && tokensVal !== null && typeof tokensVal === "object") {
@@ -1212,9 +1275,6 @@ const ThreadItem = ({
               if (rows && rows.length > 0) {
                 return (
                   <div key="tokens" className="flex flex-col gap-2  px-4 py-3">
-                    <span className="text-xs font-semibold text-trace-gold uppercase tracking-wide">
-                      Token and Cost
-                    </span>
                     <div className="overflow-x-auto w-full border border-base-content/10 bg-base-200/10 rounded-lg shadow-sm">
                       <table className="table table-xs w-full border-collapse">
                         <thead>
@@ -1300,7 +1360,7 @@ const ThreadItem = ({
   };
 
   const renderResponseActionButtons = () => {
-    const showEdit = !item?.llm_urls?.length && !item?.fromRTLayer;
+    const showEdit = !isEmbedUser && !item?.llm_urls?.length && !item?.fromRTLayer;
     const isError = Boolean(item?.error);
     return (
       <div className="mt-2 flex flex-wrap items-center justify-start gap-1.5">
@@ -1310,7 +1370,7 @@ const ThreadItem = ({
           icon={RotateCcw}
           onClick={handleRerun}
           disabled={isRerunning || !publishedVersionId}
-          title={!publishedVersionId ? "No published version available" : "Rerun this message"}
+          title={!publishedVersionId ? "No published version available" : "Rerun this message with published version"}
         >
           {isRerunning ? "Running..." : "Rerun"}
         </ThreadActionPill>
@@ -1322,7 +1382,7 @@ const ThreadItem = ({
         >
           Copy
         </ThreadActionPill>
-        {!isError && (
+        {canAddTestCase && !isError && !item?.llm_urls?.length && (
           <ThreadActionPill
             id="thread-item-add-test-case-button"
             testId="thread-item-add-test-case-button"
@@ -1382,16 +1442,31 @@ const ThreadItem = ({
         >
           Copy
         </ThreadActionPill>
-        <ThreadActionPill
-          testId="thread-item-user-aiconfig-button"
-          id="thread-item-user-aiconfig-button"
-          icon={SlidersHorizontal}
-          trailing={Maximize2}
-          onClick={() => handleUserButtonClick("AiConfig")}
-        >
-          AI Config
-        </ThreadActionPill>
-        {item?.latency ? (
+        {!isEmbedUser ? (
+          <ThreadActionPill
+            testId="thread-item-user-aiconfig-button"
+            id="thread-item-user-aiconfig-button"
+            icon={SlidersHorizontal}
+            trailing={Maximize2}
+            onClick={() => handleUserButtonClick("AiConfig")}
+          >
+            AI Config
+          </ThreadActionPill>
+        ) : null}
+        {(() => {
+          return hasMemoryContent ? (
+            <ThreadActionPill
+              testId="thread-item-user-memory-button"
+              id="thread-item-user-memory-button"
+              icon={Brain}
+              trailing={Maximize2}
+              onClick={() => handleUserButtonClick("Memory")}
+            >
+              Memory
+            </ThreadActionPill>
+          ) : null;
+        })()}
+        {!isEmbedUser && item?.latency ? (
           <ThreadActionPill
             testId="thread-item-user-latency-button"
             id="thread-item-user-latency-button"
@@ -1447,25 +1522,44 @@ const ThreadItem = ({
             Variables
           </ThreadActionPill>
         ) : null}
-        <ThreadActionPill
-          testId="thread-item-user-more-button"
-          id="thread-item-user-more-button"
-          trailing={ChevronRight}
-          trailingClassName={`transition-transform duration-200 ${isMoreDetailsExpanded ? "rotate-90" : ""}`}
-          active={isMoreDetailsExpanded}
-          onClick={() => {
-            setIsMoreDetailsExpanded((v) => {
-              const newVal = !v;
-              if (newVal) {
-                setIsSystemPromptExpanded(false);
-                setIsVariablesOpen(false);
-              }
-              return newVal;
-            });
-          }}
-        >
-          More
-        </ThreadActionPill>
+        {!isEmbedUser && hasTokenData ? (
+          <ThreadActionPill
+            testId="thread-item-user-tokens-cost-button"
+            id="thread-item-user-tokens-cost-button"
+            trailing={ChevronRight}
+            trailingClassName={`transition-transform duration-200 ${isMoreDetailsExpanded ? "rotate-90" : ""}`}
+            active={isMoreDetailsExpanded}
+            onClick={() => {
+              setIsMoreDetailsExpanded((v) => {
+                const newVal = !v;
+                if (newVal) {
+                  setIsSystemPromptExpanded(false);
+                  setIsVariablesOpen(false);
+                }
+                return newVal;
+              });
+            }}
+          >
+            Tokens &amp; Cost
+          </ThreadActionPill>
+        ) : null}
+        {item?.model || item?.service || versionNumber ? (
+          <span
+            data-testid="thread-item-model-meta"
+            className="inline-flex items-center gap-1.5 text-xs text-base-content/55"
+            title={[item?.service, item?.model, versionNumber ? `Version ${versionNumber}` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          >
+            {versionNumber ? (
+              <span className="rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-content">
+                V{versionNumber}
+              </span>
+            ) : null}
+            {item?.service ? getIconOfService(item.service, 12, 12) : null}
+            {item?.model ? <span className="max-w-[180px] truncate">{item.model}</span> : null}
+          </span>
+        ) : null}
         {showTimestamp ? (
           <time className="shrink-0 text-xs text-base-content/60">{formatDateAndTime(item.created_at)}</time>
         ) : null}
@@ -1730,6 +1824,7 @@ const ThreadItem = ({
                     content={getMessageToDisplay()}
                     isHtml={isChatbotMessage() && isRawHtml(getMessageToDisplay())}
                     hasToolCalls={hasAgentsOrTools}
+                    annotations={item?.annotations}
                   />
 
                   {/* Action buttons and badges below FinalResponseCard */}

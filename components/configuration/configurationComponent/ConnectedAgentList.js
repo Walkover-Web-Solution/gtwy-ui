@@ -79,7 +79,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           },
         })
       );
-      dispatch(
+      await dispatch(
         updateBridgeAction({
           bridgeId: sb?._id || sb?.bridge_id,
           dataToSend: {
@@ -166,7 +166,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
     });
   };
 
-  const handleSaveAgentVariable = () => {
+  const handleSaveAgentVariable = async () => {
     try {
       const dataToSend = {
         agents: {
@@ -183,14 +183,14 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         dataToSend.agents.connected_agents[selectedBridge?.name].environment = agentTools?.environment;
       }
       // on Save the bridge and thread id in version only
-      dispatch(
+      await dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend,
         })
       );
-      dispatch(
+      await dispatch(
         updateBridgeAction({
           bridgeId: selectedBridge?._id || selectedBridge?.bridge_id,
           dataToSend: {
@@ -206,7 +206,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         })
       );
       if (!isEqual(variablesPath, variables_path[selectedBridge?.bridge_id])) {
-        dispatch(
+        await dispatch(
           updateBridgeVersionAction({
             bridgeId: params.id,
             versionId: searchParams?.version,

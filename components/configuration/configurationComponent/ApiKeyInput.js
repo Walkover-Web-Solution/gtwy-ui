@@ -6,6 +6,8 @@ import { openModal } from "@/utils/utility";
 import React, { useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import Dropdown from "@/components/UI/Dropdown";
+import InfoTooltip from "@/components/InfoTooltip";
+import { KeyRound } from "lucide-react";
 
 const ApiKeyInput = ({
   params,
@@ -16,6 +18,7 @@ const ApiKeyInput = ({
   isPublished,
   isEditor = true,
   hasError = false,
+  compact = false,
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
@@ -111,6 +114,44 @@ const ApiKeyInput = ({
     }
     return opts;
   }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType]);
+
+  if (compact) {
+    return (
+      <div data-testid="apikey-input-compact-container" id="apikey-input-compact-container" className="relative">
+        <Dropdown
+          testId="apikey-input-compact-dropdown"
+          id="apikey-input-compact-dropdown"
+          disabled={isReadOnly}
+          options={dropdownOptions}
+          value={selectedValue || ""}
+          onChange={(val) => handleDropdownChange(val)}
+          placeholder={filteredApiKeys.length === 0 ? "No API keys for this service" : "Select API key"}
+          showSearch
+          searchPlaceholder="Search API keys..."
+          size="sm"
+          fullWidth={false}
+          placement="bottom-end"
+          menuClassName="w-[240px]"
+          hasError={hasError}
+          bottomOption={{ value: "add_new", label: "+  Add new API Key" }}
+          isEmbedUser={isEmbedUser}
+          className={`btn-ghost border rounded border-base-200 px-2 ${selectedValue ? "" : "opacity-70"}`}
+          renderTriggerContent={() => (
+            <InfoTooltip tooltipContent={selectedValue ? "Update API Key" : "Configure API Key"}>
+              <KeyRound size={16} className={selectedValue ? "text-warning" : "text-gray-400"} />
+            </InfoTooltip>
+          )}
+        />
+
+        <ApiKeyModal
+          params={params}
+          searchParams={searchParams}
+          service={currentService}
+          bridgeApikey_object_id={bridgeApikey_object_id}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

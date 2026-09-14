@@ -277,8 +277,6 @@ const FallbackModel = ({
         const optionConfig = options?.[optionKey];
         const modelName = optionConfig?.configuration?.model?.default || optionKey;
 
-        if (currentModel === modelName || currentModel === optionKey) return;
-
         const serviceConfig = embedModelsConfig?.[fallbackService];
         const modelConfig = serviceConfig?.[modelName];
         if (modelConfig?.hide === true) return;
@@ -294,7 +292,7 @@ const FallbackModel = ({
       });
     });
     return opts;
-  }, [computedModelsList, currentModel, embedModelsConfig, fallbackService]);
+  }, [computedModelsList, embedModelsConfig, fallbackService]);
 
   const fallbackServiceOptions = useMemo(() => {
     if (!Array.isArray(SERVICES)) return [];

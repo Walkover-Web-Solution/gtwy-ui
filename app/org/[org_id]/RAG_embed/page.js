@@ -10,6 +10,7 @@ import { formatRelativeTime, formatDate, openModal } from "@/utils/utility";
 import SearchItems from "@/components/UI/SearchItems";
 import IntegrationModal from "@/components/modals/IntegrationModal";
 import Protected from "@/components/Protected";
+import { toast } from "react-toastify";
 
 export const runtime = "edge";
 
@@ -17,10 +18,11 @@ const Page = ({ params }) => {
   const resolvedParams = use(params);
   const router = useRouter();
 
-  const { integrationData, descriptions, linksData } = useCustomSelector((state) => ({
+  const { integrationData, descriptions, linksData, isOrgBlocked } = useCustomSelector((state) => ({
     integrationData: state?.integrationReducer?.integrationData?.[resolvedParams?.org_id] || [],
     descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
     linksData: state.flowDataReducer.flowData.linksData || [],
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams?.org_id) || false,
   }));
 
   const [ragEmbedIntegrations, setRagEmbedIntegrations] = useState([]); // Type-filtered integrations
@@ -89,7 +91,20 @@ const Page = ({ params }) => {
               <SearchItems data={ragEmbedIntegrations} setFilterItems={setFilterIntegration} item="RAG Embed" />
             )}
             <div className={`flex-shrink-0 ${ragEmbedIntegrations?.length > 5 ? "mr-2" : "ml-2"}`}>
-              <button className="btn btn-primary btn-sm mr-2" onClick={() => openModal(MODAL_TYPE.INTEGRATION_MODAL)}>
+              <button
+                className="btn btn-primary btn-sm mr-2"
+                onClick={() => {
+                  if (isOrgBlocked) {
+                    toast.error(
+                      "Your org is blocked. You cannot create embeds. Contact support@gtwy.ai for assistance."
+                    );
+                    return;
+                  }
+                  openModal(MODAL_TYPE.INTEGRATION_MODAL);
+                }}
+                disabled={isOrgBlocked}
+                title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
+              >
                 + Create New RAG Embed
               </button>
             </div>

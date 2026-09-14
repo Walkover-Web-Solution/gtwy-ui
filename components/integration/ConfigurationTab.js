@@ -61,19 +61,19 @@ const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key: "showCreateManuallyButton",
-    type: "toggle",
-    label: "Show Create Agent Manually Button",
-    description: "Display create agent manually button",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
     key: "showAdvancedConfigurations",
     type: "toggle",
     label: "Show Advanced Configurations",
     description: "Display advanced configurations",
     defaultValue: true,
+    section: "Interface Options",
+  },
+  {
+    key: "showFallbackModel",
+    type: "toggle",
+    label: "Show Fallback Model",
+    description: "Display the fallback model section",
+    defaultValue: false,
     section: "Interface Options",
   },
   {
@@ -160,6 +160,7 @@ const CONFIG_SCHEMA = [
     description: "Show the full screen toggle button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showCloseButton",
@@ -168,6 +169,7 @@ const CONFIG_SCHEMA = [
     description: "Show the close button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showHeader",
@@ -183,6 +185,20 @@ const CONFIG_SCHEMA = [
     label: "Add Default ApiKeys",
     description: "Add default api keys",
     defaultValue: false,
+    section: "Display Settings",
+  },
+  {
+    key: "layout",
+    type: "select",
+    label: "Config Panel Layout",
+    description: "Choose how the Prompt/Model/Connectors/Memory/Settings panel is arranged for embed users",
+    defaultValue: "tabs",
+    options: [
+      { value: "tabs", label: "Tabs" },
+      { value: "single", label: "Single Page" },
+      { value: "accordion", label: "Accordion" },
+      { value: "stepper", label: "Guided Steps" },
+    ],
     section: "Display Settings",
   },
   {
@@ -211,6 +227,14 @@ const CONFIG_SCHEMA = [
     type: "toggle",
     label: "Show Review Agent",
     description: "Display review agent settings",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
+    key: "showMcp",
+    type: "toggle",
+    label: "Show MCP Servers",
+    description: "Display MCP server configuration in the Connectors tab",
     defaultValue: false,
     section: "Interface Options",
   },
@@ -323,7 +347,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
   }));
 
   const integrationData = useCustomSelector((state) =>
-    state?.integrationReducer?.integrationData?.[data?.org_id].find((f) => f._id === data?.folder_id)
+    state?.integrationReducer?.integrationData?.[data?.org_id]?.find((f) => f._id === data?.folder_id)
   );
 
   const config = integrationData?.config || {};
@@ -345,18 +369,22 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
     return initial;
   };
 
-  const [configuration, setConfiguration] = useState(() => ({
-    ...generateInitialConfig(),
-    theme_config: config?.theme_config || defaultUserTheme,
-    tools_id: config?.tools_id || [],
-    pre_tool_id: config?.pre_tool_id || null,
-    post_tool_id: config?.post_tool_id || null,
-    variables_path: config?.variables_path || {},
-    models: config?.models || {},
-    apikey_object_id: integrationData?.apikey_object_id || {},
-    prompt: config.prompt || {},
-    response_type: config?.response_type || {},
-  }));
+  const [configuration, setConfiguration] = useState(() => {
+    const initialConfig = generateInitialConfig();
+    return {
+      ...initialConfig,
+      theme_config: config?.theme_config || defaultUserTheme,
+      tools_id: config?.tools_id || [],
+      pre_tool_id: config?.pre_tool_id || null,
+      post_tool: config?.post_tool || null,
+      variables_path: config?.variables_path || {},
+      models: config?.models || {},
+      apikey_object_id: integrationData?.apikey_object_id || {},
+      prompt: config.prompt || {},
+      // If showResponseType is false, response_type should be null
+      response_type: !initialConfig.showResponseType === false ? null : config?.response_type || {},
+    };
+  });
   const [theme, setTheme] = useState(config?.theme_config || defaultUserTheme);
 
   // Cleanup on unmount
@@ -384,6 +412,11 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
           configForSend.hideplayground = !configForSend.showPlayground;
         }
 
+        // When showResponseType is on, folder-level response_type must be null
+        if (configForSend.showResponseType === true) {
+          configForSend.response_type = null;
+        }
+
         const dataToSend = {
           folder_id: data?.folder_id,
           orgId: data?.org_id,
@@ -408,9 +441,75 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
 
   // For toggles/selects — update state + send preview immediately
   const handleConfigChange = (key, value) => {
-    setConfiguration((prev) => ({ ...prev, [key]: value }));
+    setConfiguration((prev) => {
+      const updated = { ...prev, [key]: value };
+
+      // When showResponseType is turned off, set response_type to null
+      if (key === "showResponseType" && value === false) {
+        updated.response_type = null;
+      }
+
+      return updated;
+    });
     setHasUnsavedChanges(true);
-    window.GtwyEmbed?.sendDataToGtwy({ [key]: value });
+
+    // Send the appropriate data to preview
+    const dataToSend = { [key]: value };
+    if (key === "showResponseType" && value === false) {
+      dataToSend.response_type = null;
+    }
+
+    window.GtwyEmbed?.sendDataToGtwy(dataToSend);
+  };
+
+  // Special handler for post_tool changes (nested object format)
+  const handlePostToolChange = (toolId) => {
+    if (!toolId) {
+      const postToolValue = null;
+      setConfiguration((prev) => ({ ...prev, post_tool: postToolValue }));
+      setHasUnsavedChanges(true);
+      window.GtwyEmbed?.sendDataToGtwy({ post_tool: postToolValue });
+    } else {
+      const fn = functionData?.[toolId];
+      const postToolValue = {
+        id: toolId,
+        script_id: fn?.script_id || toolId,
+        args: {},
+      };
+      setConfiguration((prev) => ({ ...prev, post_tool: postToolValue }));
+      setHasUnsavedChanges(true);
+      window.GtwyEmbed?.sendDataToGtwy({ post_tool: postToolValue });
+    }
+  };
+
+  // Special handler for post_tool config/args changes
+  const handlePostToolConfigChange = (key, value) => {
+    if (key === "variables_path") {
+      const scriptId = configuration.post_tool?.script_id;
+
+      // If post_tool doesn't exist, this means it was already removed by handlePostToolChange
+      if (!configuration.post_tool?.id) {
+        return;
+      }
+
+      // If scriptId exists, extract the args from the wrapped structure
+      // ToolsConfiguration wraps it as { [script_id]: args }
+      // We need to unwrap it and store args directly as flat key-value pairs
+      if (scriptId && value?.[scriptId]) {
+        const actualArgs = value[scriptId];
+
+        const updatedPostTool = {
+          id: configuration.post_tool.id,
+          script_id: scriptId,
+          args: actualArgs, // Store args as flat key-value pairs
+        };
+        setConfiguration((prev) => ({ ...prev, post_tool: updatedPostTool }));
+        setHasUnsavedChanges(true);
+        window.GtwyEmbed?.sendDataToGtwy({ post_tool: updatedPostTool });
+      }
+    } else {
+      handleConfigChange(key, value);
+    }
   };
 
   // For text inputs (models, prompt) — only update state on change
@@ -599,7 +698,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
         createPortal(
           <div className="space-y-3">
             {/* Save Button */}
-            <div className="flex sticky top-0 bg-base-100 items-center justify-between pb-2 border-b border-base-300">
+            <div className="flex sticky top-0 z-20 bg-base-100 items-center justify-between pb-2 border-b border-base-300">
               <span className="text-xs text-base-content/60">
                 {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
               </span>
@@ -619,242 +718,248 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                   {sectionName}
                 </h5>
                 <div className="space-y-2">
-                  {configs.map((config) => (
-                    <React.Fragment key={config.key}>
-                      <div className="bg-base-200 rounded-lg p-2">
-                        <label
-                          className={`flex items-center justify-between ${config.type === "toggle" ? "cursor-pointer" : ""}`}
-                        >
-                          <span className="text-xs font-medium flex-1">{config.label}</span>
-                          {config.type === "toggle" && (
-                            <input
-                              autoComplete="off"
-                              data-testid={`embed-config-toggle-${config.key}`}
-                              type="checkbox"
-                              className="toggle toggle-xs"
-                              checked={configuration[config.key] || false}
-                              onChange={(e) => handleConfigChange(config.key, e.target.checked)}
-                            />
-                          )}
-                        </label>
-                        {config.type === "select" && (
-                          <select
-                            data-testid={
-                              config.key === "themeMode"
-                                ? "embed-config-theme-mode-select"
-                                : config.key === "slide"
-                                  ? "embed-config-slide-position-select"
-                                  : `embed-config-select-${config.key}`
-                            }
-                            className="select select-bordered select-xs w-full mt-1"
-                            value={configuration[config.key] ?? config.defaultValue}
-                            onChange={(e) => handleConfigChange(config.key, e.target.value)}
+                  {configs.map((config) => {
+                    if (config.dependsOn && !configuration[config.dependsOn]) {
+                      return null;
+                    }
+                    return (
+                      <React.Fragment key={config.key}>
+                        <div className="bg-base-200 rounded-lg p-2">
+                          <label
+                            className={`flex items-center justify-between ${config.type === "toggle" ? "cursor-pointer" : ""}`}
                           >
-                            {config.options?.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                      {/* JSON Schema textarea when showResponseType is toggled off */}
-                      {config.key === "showResponseType" && !configuration.showResponseType && (
-                        <div className="p-2 bg-base-200 rounded-lg border border-base-300">
-                          <label className="text-xs font-medium block mb-2">JSON Schema</label>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                                onClick={() => openModal(MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER)}
-                              >
-                                Build Visually
-                              </span>
-                              <span className="text-xs text-base-content/50">|</span>
-                              <span
-                                className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
-                                onClick={() => {
-                                  if (!aiThreadId) {
-                                    const newThreadId = generateRandomID();
-                                    setAiThreadId(newThreadId);
-                                    setThreadIdForVersionReducer &&
-                                      dispatch(
-                                        setThreadIdForVersionReducer({
-                                          bridgeId: data?.folder_id,
-                                          threadId: newThreadId,
-                                        })
-                                      );
+                            <span className="text-xs font-medium flex-1">{config.label}</span>
+                            {config.type === "toggle" && (
+                              <input
+                                autoComplete="off"
+                                data-testid={`embed-config-toggle-${config.key}`}
+                                type="checkbox"
+                                className="toggle toggle-xs"
+                                checked={configuration[config.key] || false}
+                                onChange={(e) => handleConfigChange(config.key, e.target.checked)}
+                              />
+                            )}
+                          </label>
+                          {config.type === "select" && (
+                            <select
+                              data-testid={
+                                config.key === "themeMode"
+                                  ? "embed-config-theme-mode-select"
+                                  : config.key === "slide"
+                                    ? "embed-config-slide-position-select"
+                                    : `embed-config-select-${config.key}`
+                              }
+                              className="select select-bordered select-xs w-full mt-1"
+                              value={configuration[config.key] ?? config.defaultValue}
+                              onChange={(e) => handleConfigChange(config.key, e.target.value)}
+                            >
+                              {config.options?.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                        {/* JSON Schema textarea when showResponseType is toggled off */}
+                        {config.key === "showResponseType" && !configuration.showResponseType && (
+                          <div className="p-2 bg-base-200 rounded-lg border border-base-300">
+                            <label className="text-xs font-medium block mb-2">JSON Schema</label>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                                  onClick={() => openModal(MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER)}
+                                >
+                                  Build Visually
+                                </span>
+                                <span className="text-xs text-base-content/50">|</span>
+                                <span
+                                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                                  onClick={() => {
+                                    if (!aiThreadId) {
+                                      const newThreadId = generateRandomID();
+                                      setAiThreadId(newThreadId);
+                                      setThreadIdForVersionReducer &&
+                                        dispatch(
+                                          setThreadIdForVersionReducer({
+                                            bridgeId: data?.folder_id,
+                                            threadId: newThreadId,
+                                          })
+                                        );
+                                    }
+                                    openModal(MODAL_TYPE.JSON_SCHEMA);
+                                  }}
+                                >
+                                  Build with AI
+                                </span>
+                                <span className="text-xs text-base-content/50">|</span>
+                                <FullscreenEditorButton
+                                  tooltip="Open JSON schema in fullscreen"
+                                  className=""
+                                  onClick={() => setIsJsonSchemaFullscreen(true)}
+                                  isjson={true}
+                                />
+                              </div>
+                            </div>
+                            <div
+                              data-testid="embed-config-json-schema-codemirror"
+                              className="relative z-0 border border-base-300 rounded-md overflow-hidden"
+                            >
+                              <CodeMirror
+                                value={(() => {
+                                  // When showResponseType is false, show empty if response_type is null
+                                  if (configuration?.response_type === null) return "";
+                                  const schemaValue = configuration?.response_type?.json_schema;
+                                  if (schemaValue === undefined || schemaValue === null) return "";
+                                  return typeof schemaValue === "object"
+                                    ? JSON.stringify(schemaValue, null, 2)
+                                    : schemaValue;
+                                })()}
+                                height="160px"
+                                extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
+                                theme={actualTheme}
+                                placeholder=""
+                                className="text-xs"
+                                onChange={(val) => {
+                                  const raw = val ?? "";
+                                  if (raw.trim() === "") {
+                                    // Set response_type to null when empty (not removing the key)
+                                    setConfiguration((prev) => ({ ...prev, response_type: null }));
+                                    setHasUnsavedChanges(true);
+                                    window.GtwyEmbed?.sendDataToGtwy({ response_type: null });
+                                    return;
                                   }
-                                  openModal(MODAL_TYPE.JSON_SCHEMA);
+                                  let schemaToStore = raw;
+                                  try {
+                                    schemaToStore = JSON.parse(raw);
+                                  } catch {
+                                    // keep raw string while user is typing invalid JSON
+                                  }
+                                  handleConfigChange("response_type", {
+                                    type: "json_schema",
+                                    json_schema: schemaToStore,
+                                  });
                                 }}
-                              >
-                                Build with AI
-                              </span>
-                              <span className="text-xs text-base-content/50">|</span>
-                              <FullscreenEditorButton
-                                tooltip="Open JSON schema in fullscreen"
-                                className=""
-                                onClick={() => setIsJsonSchemaFullscreen(true)}
-                                isjson={true}
                               />
                             </div>
                           </div>
-                          <div
-                            data-testid="embed-config-json-schema-codemirror"
-                            className="border border-base-300 rounded-md overflow-hidden"
-                          >
-                            <CodeMirror
-                              value={(() => {
-                                const schemaValue = configuration?.response_type?.json_schema;
-                                if (schemaValue === undefined || schemaValue === null) return "";
-                                return typeof schemaValue === "object"
-                                  ? JSON.stringify(schemaValue, null, 2)
-                                  : schemaValue;
-                              })()}
-                              height="160px"
-                              extensions={[json(), linter(jsonParseLinter()), lintGutter()]}
-                              theme={actualTheme}
-                              placeholder=""
-                              className="text-xs"
-                              onChange={(val) => {
-                                const raw = val ?? "";
-                                if (raw.trim() === "") {
-                                  // Remove response_type key entirely when empty
-                                  setConfiguration((prev) => {
-                                    const { response_type, ...rest } = prev;
-                                    return rest;
-                                  });
-                                  setHasUnsavedChanges(true);
-                                  window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
-                                  return;
-                                }
-                                let schemaToStore = raw;
-                                try {
-                                  schemaToStore = JSON.parse(raw);
-                                } catch {
-                                  // keep raw string while user is typing invalid JSON
-                                }
-                                handleConfigChange("response_type", {
-                                  type: "json_schema",
-                                  json_schema: schemaToStore,
-                                });
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {/* Visual Builder Modal */}
-                      <JsonSchemaBuilderModal
-                        params={{ id: data?.folder_id }}
-                        searchParams={{ version: "latest" }}
-                        isReadOnly={false}
-                        schemaKey="json_schema"
-                        modalId={MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER}
-                        title="Build JSON Schema Visually"
-                        hideName={false}
-                        schema={configuration?.response_type?.json_schema}
-                        responseType={configuration?.response_type}
-                        onSave={(schema) => {
-                          handleConfigChange("response_type", {
-                            type: "json_schema",
-                            json_schema: schema,
-                          });
-                          setHasUnsavedChanges(true);
-                        }}
-                      />
-                      {/* AI Builder Modal - Using JsonSchemaModal */}
-                      <JsonSchemaModal
-                        messages={aiMessages}
-                        setMessages={setAiMessages}
-                        thread_id={aiThreadId}
-                        onResetThreadId={() => setAiThreadId("")}
-                        schema={configuration?.response_type?.json_schema}
-                        onSaveSchema={(schema) => {
-                          handleConfigChange("response_type", {
-                            type: "json_schema",
-                            json_schema: schema,
-                          });
-                          setHasUnsavedChanges(true);
-                        }}
-                      />
-                      {/* Fullscreen JSON Schema Editor Modal */}
-                      {isJsonSchemaFullscreen && (
-                        <FullscreenEditorModal
-                          modalId={MODAL_TYPE.JSON_SCHEMA_FULLSCREEN}
-                          isOpen={isJsonSchemaFullscreen}
-                          onClose={() => setIsJsonSchemaFullscreen(false)}
-                          title="JSON Schema Editor"
-                          value={(() => {
-                            const schemaValue = configuration?.response_type?.json_schema;
-                            if (schemaValue === undefined || schemaValue === null) return "";
-                            return typeof schemaValue === "object" ? JSON.stringify(schemaValue, null, 2) : schemaValue;
-                          })()}
-                          onChange={(val) => {
-                            const raw = val ?? "";
-                            if (raw.trim() === "") {
-                              setConfiguration((prev) => {
-                                const { response_type, ...rest } = prev;
-                                return rest;
-                              });
-                              setHasUnsavedChanges(true);
-                              window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
-                              return;
-                            }
-                            let schemaToStore = raw;
-                            try {
-                              schemaToStore = JSON.parse(raw);
-                            } catch {
-                              // keep raw string while user is typing invalid JSON
-                            }
+                        )}
+                        {/* Visual Builder Modal */}
+                        <JsonSchemaBuilderModal
+                          params={{ id: data?.folder_id }}
+                          searchParams={{ version: "latest" }}
+                          isReadOnly={false}
+                          schemaKey="json_schema"
+                          modalId={MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER}
+                          title="Build JSON Schema Visually"
+                          hideName={false}
+                          schema={configuration?.response_type?.json_schema}
+                          responseType={configuration?.response_type}
+                          onSave={(schema) => {
                             handleConfigChange("response_type", {
                               type: "json_schema",
-                              json_schema: schemaToStore,
-                            });
-                          }}
-                          onSave={(val) => {
-                            const raw = val ?? "";
-                            if (raw.trim() === "") {
-                              setConfiguration((prev) => {
-                                const { response_type, ...rest } = prev;
-                                return rest;
-                              });
-                              setHasUnsavedChanges(true);
-                              window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
-                              return;
-                            }
-                            let schemaToStore = raw;
-                            try {
-                              schemaToStore = JSON.parse(raw);
-                            } catch {
-                              // keep raw string while user is typing invalid JSON
-                            }
-                            handleConfigChange("response_type", {
-                              type: "json_schema",
-                              json_schema: schemaToStore,
+                              json_schema: schema,
                             });
                             setHasUnsavedChanges(true);
                           }}
-                          isJson={true}
                         />
-                      )}
-                      {/* Pre-Tool config inline after showPreTool toggle */}
-                      {config.key === "showPreTool" && !configuration.showPreTool && (
-                        <div className="p-2 bg-base-200 rounded-lg border border-base-300">
-                          <ToolsConfiguration
-                            singleToolMode={true}
-                            selectedToolId={configuration.pre_tool_id}
-                            onToolChange={(toolId) => handleConfigChange("pre_tool_id", toolId)}
-                            orgId={data?.org_id}
-                            params={{ org_id: data?.org_id }}
-                            configuration={configuration}
-                            onConfigChange={handleConfigChange}
-                            title="Pre-Tool Configuration"
-                            modalType={MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL}
+                        {/* AI Builder Modal - Using JsonSchemaModal */}
+                        <JsonSchemaModal
+                          messages={aiMessages}
+                          setMessages={setAiMessages}
+                          thread_id={aiThreadId}
+                          onResetThreadId={() => setAiThreadId("")}
+                          schema={configuration?.response_type?.json_schema}
+                          onSaveSchema={(schema) => {
+                            handleConfigChange("response_type", {
+                              type: "json_schema",
+                              json_schema: schema,
+                            });
+                            setHasUnsavedChanges(true);
+                          }}
+                        />
+                        {/* Fullscreen JSON Schema Editor Modal */}
+                        {isJsonSchemaFullscreen && (
+                          <FullscreenEditorModal
+                            modalId={MODAL_TYPE.JSON_SCHEMA_FULLSCREEN}
+                            isOpen={isJsonSchemaFullscreen}
+                            onClose={() => setIsJsonSchemaFullscreen(false)}
+                            title="JSON Schema Editor"
+                            value={(() => {
+                              const schemaValue = configuration?.response_type?.json_schema;
+                              if (schemaValue === undefined || schemaValue === null) return "";
+                              return typeof schemaValue === "object"
+                                ? JSON.stringify(schemaValue, null, 2)
+                                : schemaValue;
+                            })()}
+                            onChange={(val) => {
+                              const raw = val ?? "";
+                              if (raw.trim() === "") {
+                                setConfiguration((prev) => {
+                                  const { response_type, ...rest } = prev;
+                                  return rest;
+                                });
+                                setHasUnsavedChanges(true);
+                                window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
+                                return;
+                              }
+                              let schemaToStore = raw;
+                              try {
+                                schemaToStore = JSON.parse(raw);
+                              } catch {
+                                // keep raw string while user is typing invalid JSON
+                              }
+                              handleConfigChange("response_type", {
+                                type: "json_schema",
+                                json_schema: schemaToStore,
+                              });
+                            }}
+                            onSave={(val) => {
+                              const raw = val ?? "";
+                              if (raw.trim() === "") {
+                                setConfiguration((prev) => {
+                                  const { response_type, ...rest } = prev;
+                                  return rest;
+                                });
+                                setHasUnsavedChanges(true);
+                                window.GtwyEmbed?.sendDataToGtwy({ response_type: undefined });
+                                return;
+                              }
+                              let schemaToStore = raw;
+                              try {
+                                schemaToStore = JSON.parse(raw);
+                              } catch {
+                                // keep raw string while user is typing invalid JSON
+                              }
+                              handleConfigChange("response_type", {
+                                type: "json_schema",
+                                json_schema: schemaToStore,
+                              });
+                              setHasUnsavedChanges(true);
+                            }}
+                            isJson={true}
                           />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))}
+                        )}
+                        {/* Pre-Tool config inline after showPreTool toggle */}
+                        {config.key === "showPreTool" && !configuration.showPreTool && (
+                          <div className="p-2 bg-base-200 rounded-lg border border-base-300">
+                            <ToolsConfiguration
+                              singleToolMode={true}
+                              selectedToolId={configuration.pre_tool_id}
+                              onToolChange={(toolId) => handleConfigChange("pre_tool_id", toolId)}
+                              orgId={data?.org_id}
+                              params={{ org_id: data?.org_id }}
+                              configuration={configuration}
+                              onConfigChange={handleConfigChange}
+                              title="Pre-Tool Configuration"
+                              modalType={MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL}
+                            />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
 
                 {/* Show API Keys input when addDefaultApiKeys is enabled in Display Settings */}
@@ -909,12 +1014,18 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
             <div className="divider my-2"></div>
             <ToolsConfiguration
               singleToolMode={true}
-              selectedToolId={configuration.post_tool_id}
-              onToolChange={(toolId) => handleConfigChange("post_tool_id", toolId)}
+              selectedToolId={configuration.post_tool?.id || null}
+              onToolChange={handlePostToolChange}
               orgId={data?.org_id}
               params={{ org_id: data?.org_id }}
-              configuration={configuration}
-              onConfigChange={handleConfigChange}
+              configuration={{
+                ...configuration,
+                // Wrap args with script_id for ToolsConfiguration to consume
+                variables_path: configuration.post_tool?.script_id
+                  ? { [configuration.post_tool.script_id]: configuration.post_tool.args || {} }
+                  : {},
+              }}
+              onConfigChange={handlePostToolConfigChange}
               title="Post-Tool Configuration"
               modalType={MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL}
             />

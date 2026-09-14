@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Settings, BookOpen, Play, ChevronLeft } from "lucide-react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
@@ -83,120 +84,128 @@ const ChatbotConfigDetailView = ({ params, embedToken }) => {
   return (
     <>
       <div className="w-full h-full flex flex-col" data-testid="chatbot-config-detail-view">
-        <div className="flex-1 flex overflow-hidden px-2 mt-2">
-          {/* Sidebar */}
-          <div className="w-80 flex-shrink-0 h-full" data-testid="chatbot-config-sidebar">
-            <div className="bg-base-100 pt-6 border border-base-300 rounded-lg p-2 h-full flex flex-col overflow-hidden">
-              {!isConfigMode && !isTestingMode ? (
-                // Main Navigation Tabs with Back Button
-                <div
-                  key="main-nav"
-                  className="flex flex-col space-y-1"
-                  style={{ animation: "slideInLeft 0.3s ease-out both" }}
-                >
-                  <div className="mb-4 flex-shrink-0">
-                    <button
-                      data-testid="chatbot-config-main-back-button"
-                      onClick={typeof onClose === "function" ? onClose : () => router.back()}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+        <div className="flex-1 overflow-hidden px-2 mt-2">
+          <PanelGroup direction="horizontal">
+            {/* Sidebar */}
+            <Panel defaultSize={20} minSize={15} maxSize={40}>
+              <div className="h-full" data-testid="chatbot-config-sidebar">
+                <div className="bg-base-100 pt-6 border border-base-300 rounded-lg p-2 h-full flex flex-col overflow-hidden">
+                  {!isConfigMode && !isTestingMode ? (
+                    // Main Navigation Tabs with Back Button
+                    <div
+                      key="main-nav"
+                      className="flex flex-col space-y-1"
+                      style={{ animation: "slideInLeft 0.3s ease-out both" }}
                     >
-                      <ChevronLeft size={16} />
-                      <span className="text-sm truncate">Back</span>
-                    </button>
-                  </div>
-                  <nav className="space-y-1" data-testid="chatbot-config-main-nav">
-                    {tabs.map((tab) => {
-                      const isActive = activeTab === tab.id;
-                      return (
+                      <div className="mb-4 flex-shrink-0">
                         <button
-                          key={tab.id}
-                          data-testid={`chatbot-config-tab-${tab.id}`}
-                          onClick={() => handleTabChange(tab.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          data-testid="chatbot-config-main-back-button"
+                          onClick={typeof onClose === "function" ? onClose : () => router.back()}
+                          className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                        >
+                          <ChevronLeft size={16} />
+                          <span className="text-sm truncate">Back</span>
+                        </button>
+                      </div>
+                      <nav className="space-y-1" data-testid="chatbot-config-main-nav">
+                        {tabs.map((tab) => {
+                          const isActive = activeTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              data-testid={`chatbot-config-tab-${tab.id}`}
+                              onClick={() => handleTabChange(tab.id)}
+                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
                             ${
                               isActive
                                 ? "bg-primary text-primary-content"
                                 : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
                             }`}
+                            >
+                              {tab.icon}
+                              <span>{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </nav>
+                    </div>
+                  ) : isConfigMode ? (
+                    // Configuration Settings with slide from right animation
+                    <div
+                      key="config-nav"
+                      className="flex flex-col flex-1 min-h-0"
+                      style={{ animation: "slideInRight 0.3s ease-out both" }}
+                    >
+                      {/* Back Button */}
+                      <div className="mb-4 flex-shrink-0">
+                        <button
+                          data-testid="chatbot-config-back-button"
+                          onClick={handleBackFromConfig}
+                          className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
                         >
-                          {tab.icon}
-                          <span>{tab.label}</span>
+                          <ChevronLeft size={16} />
+                          <span className="text-sm truncate">Back</span>
                         </button>
-                      );
-                    })}
-                  </nav>
-                </div>
-              ) : isConfigMode ? (
-                // Configuration Settings with slide from right animation
-                <div
-                  key="config-nav"
-                  className="flex flex-col flex-1 min-h-0"
-                  style={{ animation: "slideInRight 0.3s ease-out both" }}
-                >
-                  {/* Back Button */}
-                  <div className="mb-4 flex-shrink-0">
-                    <button
-                      data-testid="chatbot-config-back-button"
-                      onClick={handleBackFromConfig}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                      </div>
+                      <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
+                        Configuration
+                      </div>
+                      <div
+                        id="config-sidebar-content"
+                        data-testid="chatbot-config-sidebar-content"
+                        className="space-y-1 overflow-y-auto flex-1 min-h-0"
+                      >
+                        <ChatbotConfigurationTab params={params} isInSidebar={true} />
+                      </div>
+                    </div>
+                  ) : (
+                    // Testing sidebar panel
+                    <div
+                      key="testing-nav"
+                      className="flex flex-col flex-1 min-h-0"
+                      style={{ animation: "slideInRight 0.3s ease-out both" }}
                     >
-                      <ChevronLeft size={16} />
-                      <span className="text-sm truncate">Back</span>
-                    </button>
-                  </div>
-                  <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
-                    Configuration
-                  </div>
-                  <div
-                    id="config-sidebar-content"
-                    data-testid="chatbot-config-sidebar-content"
-                    className="space-y-1 overflow-y-auto flex-1 min-h-0"
-                  >
-                    <ChatbotConfigurationTab params={params} isInSidebar={true} />
-                  </div>
+                      <div className="mb-4 flex-shrink-0">
+                        <button
+                          data-testid="chatbot-testing-back-button"
+                          onClick={handleBackFromTesting}
+                          className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
+                        >
+                          <ChevronLeft size={16} />
+                          <span className="text-sm truncate">Back</span>
+                        </button>
+                      </div>
+                      <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
+                        Testing
+                      </div>
+                      <div
+                        id="chatbot-testing-sidebar-content"
+                        data-testid="chatbot-testing-sidebar-content"
+                        className="overflow-y-auto flex-1 min-h-0"
+                      ></div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                // Testing sidebar panel
-                <div
-                  key="testing-nav"
-                  className="flex flex-col flex-1 min-h-0"
-                  style={{ animation: "slideInRight 0.3s ease-out both" }}
-                >
-                  <div className="mb-4 flex-shrink-0">
-                    <button
-                      data-testid="chatbot-testing-back-button"
-                      onClick={handleBackFromTesting}
-                      className="w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-200 hover:bg-base-200 text-base-content"
-                    >
-                      <ChevronLeft size={16} />
-                      <span className="text-sm truncate">Back</span>
-                    </button>
-                  </div>
-                  <div className="text-xs text-base-content/50 uppercase tracking-wider px-2 mb-2 flex-shrink-0">
-                    Testing
-                  </div>
-                  <div
-                    id="chatbot-testing-sidebar-content"
-                    data-testid="chatbot-testing-sidebar-content"
-                    className="overflow-y-auto flex-1 min-h-0"
-                  ></div>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </Panel>
 
-          {/* Content Area */}
-          <div className="flex-1 ml-3 overflow-hidden" data-testid="chatbot-config-content-area">
-            <div
-              className={`h-full border border-base-300 rounded-lg bg-base-100 ${activeTab !== "configuration" ? "overflow-y-auto" : ""}`}
-            >
-              {activeTab === "integration" && <ChatbotIntegrationGuideTab params={params} chatBotId={chatBotId} />}
-              {activeTab === "configuration" && <ChatbotPreview embedToken={embedToken} params={params} />}
-              {activeTab === "testing" && (
-                <ChatbotTestingTab params={params} chatBotId={chatBotId} embedToken={embedToken} />
-              )}
-            </div>
-          </div>
+            <PanelResizeHandle className="w-2 mx-1 rounded hover:bg-base-content/20 transition-colors cursor-col-resize" />
+
+            {/* Content Area */}
+            <Panel minSize={30}>
+              <div className="h-full overflow-hidden" data-testid="chatbot-config-content-area">
+                <div
+                  className={`h-full border border-base-300 rounded-lg bg-base-100 ${activeTab !== "configuration" ? "overflow-y-auto" : ""}`}
+                >
+                  {activeTab === "integration" && <ChatbotIntegrationGuideTab params={params} chatBotId={chatBotId} />}
+                  {activeTab === "configuration" && <ChatbotPreview embedToken={embedToken} params={params} />}
+                  {activeTab === "testing" && (
+                    <ChatbotTestingTab params={params} chatBotId={chatBotId} embedToken={embedToken} />
+                  )}
+                </div>
+              </div>
+            </Panel>
+          </PanelGroup>
         </div>
       </div>
     </>
