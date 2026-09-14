@@ -81,6 +81,7 @@ function JsonSchemaModal({
         return;
       }
       toast.success("Schema applied successfully");
+      handleCloseModal();
     } catch (error) {
       toast.error("Invalid JSON Schema");
       console.error("JSON parse error:", error);
