@@ -1,22 +1,29 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { createTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal } from "@/utils/utility";
-import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical } from "lucide-react";
+import { closeModal, omitHiddenVariables } from "@/utils/utility";
+import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical, ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
 import { clearChatTestCaseIdAction } from "@/store/action/chatAction";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import { PdfIcon } from "@/icons/pdfIcon";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
+import { flattenToolsCallData } from "@/utils/executionTraceTransform";
 
 function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, channelIdentifier }) {
   const params = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
-  const { mongoIdsOfTools } = useCustomSelector((state) => {
+  const mockToolResponsesRef = useRef(null);
+  const { mongoIdsOfTools, functionData, bridgeVersionMapping, publishedFunctionIds } = useCustomSelector((state) => {
     const functionData = state.bridgeReducer.org?.[params.org_id]?.functionData;
     const mongoIds = functionData
       ? Object.values(functionData).reduce((acc, item) => {
@@ -27,8 +34,42 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         }, {})
       : {};
 
-    return { mongoIdsOfTools: mongoIds };
+    return {
+      mongoIdsOfTools: mongoIds,
+      functionData: functionData || {},
+      bridgeVersionMapping: state.bridgeReducer?.bridgeVersionMapping?.[params?.id] || {},
+      publishedFunctionIds: state.bridgeReducer?.allBridgesMap?.[params?.id]?.function_ids || [],
+    };
   });
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Pre-fill mock recordings from the tool calls that actually happened in this
+  // conversation — the same args/response already shown in the history UI —
+  // instead of starting the mock editor blank.
+  const initialToolsResponseFromHistory = useMemo(() => {
+    if (!Array.isArray(testCaseConversation)) return undefined;
+    const grouped = {};
+    testCaseConversation.forEach((message) => {
+      flattenToolsCallData(message?.tools_call_data).forEach((tool) => {
+        const toolName = tool?.name;
+        if (!toolName) return;
+        const isRAGTool = tool?.data?.metadata?.type === "RAG";
+        const isAgentTool = tool?.type?.toUpperCase?.() === "AGENT" || !!tool?.bridge_id;
+        if (isRAGTool || isAgentTool) return;
+        if (!grouped[toolName]) grouped[toolName] = { recordings: [] };
+        grouped[toolName].recordings.push({ args: tool?.args || {}, response: tool?.data?.response ?? null });
+      });
+    });
+    return Object.keys(grouped).length > 0 ? grouped : undefined;
+  }, [testCaseConversation]);
   // Process testCaseConversation - extract from outside AiConfig (from item data)
   const processTestCaseData = () => {
     if (!testCaseConversation || testCaseConversation.length === 0) return [];
@@ -87,14 +128,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
 
   // Filter out unwanted variables
   const filterVariables = (vars) => {
-    const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
-    const filtered = {};
-    Object.entries(vars || {}).forEach(([key, value]) => {
-      if (!excludeKeys.includes(key)) {
-        filtered[key] = value;
-      }
-    });
-    return filtered;
+    return omitHiddenVariables(vars);
   };
 
   const [finalTestCases, setFinalTestCases] = useState([]);
@@ -148,10 +182,19 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const isToolsCall = lastTestCase.role === "tools_call";
 
     const conversationData = finalTestCases.slice(0, -1);
+    const { toolsResponse, errors: toolsResponseErrors } = mockToolResponsesRef.current?.getPayload() || {
+      toolsResponse: {},
+      errors: [],
+    };
+    if (toolsResponseErrors.length > 0) {
+      toast.error(toolsResponseErrors[0]);
+      setIsLoading(false);
+      return;
+    }
     const payload = {
       name: testCaseName,
       ...(conversationData.length > 0 && { conversation: conversationData }),
-      type: isAssistant ? "response" : "function",
+      type: "response",
       expected: {
         ...(isAssistant && { response: lastTestCase.content }),
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
@@ -161,6 +204,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       matching_type: "ai",
       variables: editableVariables,
       ...(userUrlsList.length > 0 && { user_urls: userUrlsList }),
+      ...(Object.keys(toolsResponse).length > 0 && { tools_response: toolsResponse }),
       // Backend resolves ai_config server-side using message_id (see
       // historyService.findHistoryByMessageId). We stop sending ai_config
       // from the client and instead forward the source message_id.
@@ -309,49 +353,55 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
           )}
 
+          {/* Mock Tool Responses Section */}
+          <MockToolResponsesSection
+            ref={mockToolResponsesRef}
+            tools={bridgeToolOptions}
+            initialValue={initialToolsResponseFromHistory}
+            resetKey={testCaseConversation}
+          />
+
           {/* User URLs Section */}
           {userUrlsList.length > 0 && (
             <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
-              <div className="text-sm font-semibold text-base-content mb-4">User URLs</div>
-              <div className="space-y-2">
+              <div className="text-sm font-semibold text-base-content mb-4">Attachments</div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {userUrlsList.map((urlObj, idx) => {
                   const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
-                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
-
-                  return (
-                    <div key={idx} className="bg-base-100 rounded-lg p-3 border border-base-200">
-                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
-                      {isImageUrl ? (
-                        <div className="flex flex-col gap-2">
-                          <img
-                            src={urlString}
-                            alt={`User URL ${idx + 1}`}
-                            className="max-w-full max-h-64 rounded border border-base-300"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={urlString}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm break-all text-blue-600 hover:underline"
-                          >
-                            {urlString}
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={urlString}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm break-all text-blue-600 hover:underline block"
-                        >
-                          {urlString || JSON.stringify(urlObj)}
-                        </a>
-                      )}
-                    </div>
-                  );
+                  if (!urlString) return null;
+                  const isImageUrl = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+                  const isPdfUrl = /\.pdf($|\?)/i.test(urlString);
+                  if (isImageUrl) {
+                    return (
+                      <img
+                        key={`user-${idx}`}
+                        src={urlString}
+                        alt={`User Image ${idx + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover rounded-lg cursor-pointer flex-shrink-0"
+                        onClick={() => window.open(urlString, "_blank")}
+                      />
+                    );
+                  }
+                  if (isPdfUrl) {
+                    return (
+                      <a
+                        key={`user-${idx}`}
+                        href={urlString}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 flex-shrink-0"
+                      >
+                        <PdfIcon height={20} width={20} />
+                        <span className="text-sm font-medium max-w-[6rem] truncate text-primary">
+                          {urlString.split("/").pop() || "PDF"}
+                        </span>
+                        <ExternalLink className="text-primary" size={14} />
+                      </a>
+                    );
+                  }
+                  return null;
                 })}
               </div>
             </div>

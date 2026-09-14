@@ -11,12 +11,15 @@ import {
   GripVertical,
   ArrowUpToLine,
   Info,
+  ExternalLink,
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
+import { useParams } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, getIconOfService } from "@/utils/utility";
 import { updateTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import TestCaseVariablesModal from "./TestCaseVariablesModal";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ReactMarkdown from "react-markdown";
@@ -24,8 +27,12 @@ import CodeBlock from "@/components/codeBlock/CodeBlock";
 import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
 import { FileClockIcon } from "@/components/Icons";
 import InfoTooltip from "@/components/InfoTooltip";
+import { PdfIcon } from "@/icons/pdfIcon";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -42,6 +49,8 @@ const TestCaseDetailsPanel = ({
   bridgeId,
 }) => {
   const dispatch = useDispatch();
+  const params = useParams();
+  const mockToolResponsesRef = useRef(null);
 
   // Comparison versions follow the single source of truth: `selectedVersions` from header.
   // Fall back to first 2 versions if nothing selected (defensive only).
@@ -183,29 +192,6 @@ const TestCaseDetailsPanel = ({
   );
   const [copiedVersion, setCopiedVersion] = useState(null);
   const [movedVersion, setMovedVersion] = useState(null);
-  const [isHistorySliderOpen, setIsHistorySliderOpen] = useState(false);
-
-  const handleOpenHistory = (messageId) => {
-    if (!bridgeId) return;
-    if (typeof window === "undefined" || typeof window.openGtwy !== "function") {
-      console.error("GTWY embed script not loaded yet");
-      return;
-    }
-    setIsHistorySliderOpen(true);
-    // Wait a tick to ensure slider DOM (parentId) is mounted before opening embed.
-    setTimeout(() => {
-      window.GtwyEmbed?.sendDataToGtwy?.({ parentId: "gtwyHistoryParentId" });
-      window.openGtwy({
-        agent_id: bridgeId,
-        historyEmbed: true,
-        message_id: messageId || null,
-      });
-    }, 50);
-  };
-
-  const handleCloseHistory = () => {
-    setIsHistorySliderOpen(false);
-  };
 
   const handleCopyResponse = useCallback((versionId, output) => {
     const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
@@ -254,6 +240,13 @@ const TestCaseDetailsPanel = ({
       state?.bridgeReducer?.org?.[bridgeId]?.embed_token,
   }));
 
+  // Source of truth for the bridge's configured tools — same slices the
+  // bridge/agent tool configuration screen (EmbedList) reads from.
+  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
+  }));
+
   const handleToolPrimaryClick = useCallback(
     async (tool) => {
       // Check if this is a RAG tool - don't call openViasocket for RAG tools
@@ -276,9 +269,9 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      // Call openViasocket for other tools
-      if (typeof window !== "undefined" && window.openViasocket) {
-        window.openViasocket(tool?.id, {
+      // First arg is tool.id (viasocket script_id) so the embed opens that tool's log.
+      if (typeof window !== "undefined" && window.openViasocket && tool?.id) {
+        window.openViasocket(tool.id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
@@ -401,6 +394,34 @@ const TestCaseDetailsPanel = ({
   const bridgeVersionMapping = useCustomSelector(
     (state) => state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {}
   );
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Autosave hook for MockToolResponsesSection — fired on JSON field blur and on
+  // add/remove-recording clicks, so there's no separate "Save mocks" button.
+  const handleMockToolResponsesChange = (toolsResponse) => {
+    if (!selectedTestCase?._id) return;
+    dispatch(
+      updateTestCaseAction({
+        testCaseId: selectedTestCase._id,
+        dataToUpdate: {
+          conversation: selectedTestCase?.conversation,
+          type: selectedTestCase?.type,
+          expected: selectedTestCase?.expected,
+          matching_type: selectedTestCase?.matching_type,
+          variables: selectedTestCase?.variables,
+          tools_response: toolsResponse,
+        },
+      })
+    );
+  };
 
   // Reset test case variables and alert state when selectedTestCase changes
   useEffect(() => {
@@ -716,45 +737,44 @@ const TestCaseDetailsPanel = ({
           {/* User URLs Section */}
           {Array.isArray(selectedTestCase?.user_urls) && selectedTestCase.user_urls.length > 0 && (
             <div className="mb-6">
-              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">User URLs</div>
-              <div className="space-y-2">
+              <div className="text-xs font-semibold text-base-content/70 mb-2 uppercase tracking-wide">Attachments</div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {selectedTestCase.user_urls.map((urlObj, idx) => {
                   const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
-                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
-                  return (
-                    <div key={idx} className="bg-base-50 rounded-lg p-3 border border-base-200">
-                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
-                      {isImageUrl ? (
-                        <div className="flex flex-col gap-2">
-                          <img
-                            src={urlString}
-                            alt={`User URL ${idx + 1}`}
-                            className="max-w-full max-h-64 rounded border border-base-300"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={urlString}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm break-all text-blue-600 hover:underline"
-                          >
-                            {urlString}
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={urlString}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm break-all text-blue-600 hover:underline block"
-                        >
-                          {urlString || JSON.stringify(urlObj)}
-                        </a>
-                      )}
-                    </div>
-                  );
+                  if (!urlString) return null;
+                  const isImageUrl = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+                  const isPdfUrl = /\.pdf($|\?)/i.test(urlString);
+                  if (isImageUrl) {
+                    return (
+                      <img
+                        key={`user-${idx}`}
+                        src={urlString}
+                        alt={`User Image ${idx + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover rounded-lg cursor-pointer flex-shrink-0"
+                        onClick={() => window.open(urlString, "_blank")}
+                      />
+                    );
+                  }
+                  if (isPdfUrl) {
+                    return (
+                      <a
+                        key={`user-${idx}`}
+                        href={urlString}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 flex-shrink-0"
+                      >
+                        <PdfIcon height={20} width={20} />
+                        <span className="text-sm font-medium max-w-[6rem] truncate text-primary">
+                          {urlString.split("/").pop() || "PDF"}
+                        </span>
+                        <ExternalLink className="text-primary" size={14} />
+                      </a>
+                    );
+                  }
+                  return null;
                 })}
               </div>
             </div>
@@ -814,6 +834,17 @@ const TestCaseDetailsPanel = ({
               </ExpandCollapse>
             </div>
           </div>
+          {/* Mock Tool Responses */}
+          <div className="mb-6">
+            <MockToolResponsesSection
+              ref={mockToolResponsesRef}
+              tools={bridgeToolOptions}
+              initialValue={selectedTestCase?.tools_response}
+              resetKey={selectedTestCase?._id}
+              onBlurSave={handleMockToolResponsesChange}
+            />
+          </div>
+
           {/* Version Comparison — driven by header "Versions" selector (single source of truth) */}
           <div data-testid="testcase-comparison-section">
             <div className="mb-5 flex items-center gap-2 flex-wrap" data-testid="testcase-comparison-controls">
@@ -847,7 +878,7 @@ const TestCaseDetailsPanel = ({
             {/* Version Outputs Grid */}
             {comparisonVersions.length > 0 ? (
               <div
-                className={`grid gap-4 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"}`}
+                className={`grid gap-4 min-w-0 ${comparisonVersions.length === 1 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"}`}
                 data-testid="testcase-version-output-grid"
               >
                 {comparisonVersions.map((version, idx) => {
@@ -960,7 +991,7 @@ const TestCaseDetailsPanel = ({
                       onDragOver={handleVersionDragOver}
                       onDrop={(e) => handleVersionDrop(e, version)}
                       onDragEnd={handleVersionDragEnd}
-                      className={`bg-base-50 border rounded-lg p-4 h-fit relative transition-all cursor-grab active:cursor-grabbing ${
+                      className={`bg-base-50 border rounded-lg p-4 h-fit relative transition-all cursor-grab active:cursor-grabbing min-w-0 overflow-hidden ${
                         draggedVersion === version ? "opacity-50" : ""
                       } ${draggedVersion && draggedVersion !== version ? "ring-2 ring-primary/30" : ""} ${
                         isVersionPending ? "border-primary/40" : runErrorMessage ? "border-error/40" : "border-base-200"
@@ -1172,16 +1203,6 @@ const TestCaseDetailsPanel = ({
                                       )}
                                     </button>
                                     <button
-                                      onClick={() => handleOpenHistory(currentRun?.message_id)}
-                                      className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-xs text-base-content/70 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="View details"
-                                      data-testid={`testcase-version-details-${versions.indexOf(version) + 1}`}
-                                      disabled={!bridgeId || !currentRun?.message_id}
-                                    >
-                                      <Info size={12} />
-                                      <span>More Info</span>
-                                    </button>
-                                    <button
                                       onClick={() => handleCopyResponse(version, modelOutput)}
                                       className="w-6 h-6 flex items-center justify-center rounded border border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200"
                                       title="Copy response"
@@ -1273,12 +1294,12 @@ const TestCaseDetailsPanel = ({
                               {runErrorMessage}
                             </div>
                           ) : (
-                            <div className="text-sm text-base-content leading-relaxed mb-3">
+                            <div className="text-sm text-base-content leading-relaxed mb-3 min-w-0 max-w-full overflow-x-auto break-words [overflow-wrap:anywhere] [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:whitespace-pre-wrap [&_code]:break-all [&_a]:break-all [&_img]:max-w-full [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto">
                               {/* Render images if llm_urls exists */}
                               {llmUrls && llmUrls.length > 0 && (
                                 <div className="mb-3 flex flex-wrap gap-2">
                                   {llmUrls.map((urlObj, idx) => (
-                                    <div key={idx} className="relative">
+                                    <div key={idx} className="relative max-w-full">
                                       {urlObj.type === "image" && urlObj.permanent_url && (
                                         <img
                                           src={urlObj.permanent_url}
@@ -1571,25 +1592,6 @@ const TestCaseDetailsPanel = ({
         toolsDataModalRef={toolsDataModalRef}
         integrationData={{}}
       />
-
-      <>
-        {isHistorySliderOpen && (
-          <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={handleCloseHistory} />
-        )}
-        <div
-          className={`fixed top-8 right-0 h-full w-full max-w-4xl bg-base-100 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-            isHistorySliderOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
-          <div className="flex items-center justify-between p-3 border-b border-base-300">
-            <h3 className="text-base font-semibold">More details</h3>
-            <button onClick={handleCloseHistory} className="btn btn-ghost btn-sm btn-circle" title="Close">
-              ✕
-            </button>
-          </div>
-          <div id="gtwyHistoryParentId" className="w-full h-[calc(100%-3rem)]" />
-        </div>
-      </>
     </div>
   );
 };

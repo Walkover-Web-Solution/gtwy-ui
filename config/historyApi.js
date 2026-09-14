@@ -1,4 +1,5 @@
 import axios from "@/utils/interceptor";
+import { toUtcIso } from "@/utils/utility";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -86,11 +87,11 @@ export const getThreads = async (
     }
 
     if (startDate) {
-      params.start_date = startDate;
+      params.start_date = toUtcIso(startDate);
     }
 
     if (endDate) {
-      params.end_date = endDate;
+      params.end_date = toUtcIso(endDate);
     }
 
     const getSingleThreadData = await axios.get(`${URL}/api/history/${bridgeId}`, {
@@ -104,7 +105,8 @@ export const getThreads = async (
 
 export const getSubThreadIds = async ({ thread_id, error, bridge_id, version_id }) => {
   try {
-    const response = await axios.get(`${URL}/api/v1/config/history/sub-thread/${thread_id}`, {
+    const encodedThreadId = encodeURIComponent(thread_id);
+    const response = await axios.get(`${URL}/api/v1/config/history/sub-thread/${encodedThreadId}`, {
       params: {
         error,
         bridge_id,

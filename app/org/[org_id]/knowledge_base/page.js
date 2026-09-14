@@ -18,20 +18,20 @@ import SearchItems from "@/components/UI/SearchItems";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { FileSearch, Folder } from "lucide-react";
 import ResourcePage from "@/components/folders/ResourcePage";
-import FolderTabs from "@/components/folders/FolderTabs";
-import MoveToFolderMenu from "@/components/folders/MoveToFolderMenu";
 import useFolders from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
+import { toast } from "react-toastify";
 
 export const runtime = "edge";
 
 const Page = ({ params }) => {
   const resolvedParams = use(params);
   const dispatch = useDispatch();
-  const { knowledgeBaseData, descriptions, linksData } = useCustomSelector((state) => ({
+  const { knowledgeBaseData, descriptions, linksData, isOrgBlocked } = useCustomSelector((state) => ({
     knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
     descriptions: state.flowDataReducer.flowData.descriptionsData?.descriptions || {},
     linksData: state.flowDataReducer.flowData.linksData || [],
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams?.org_id) || false,
   }));
   const { folders, createFolder, renameFolder, deleteFolder, moveResource } = useFolders(
     "knowledgebase",
@@ -205,28 +205,26 @@ const Page = ({ params }) => {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => {
+                  if (isOrgBlocked) {
+                    toast.error(
+                      "Your org is blocked. You cannot create knowledge bases. Contact support@gtwy.ai for assistance."
+                    );
+                    return;
+                  }
                   if (window.openRag) {
                     window.openRag();
                   } else {
                     openModal(MODAL_TYPE?.KNOWLEDGE_BASE_MODAL);
                   }
                 }}
+                disabled={isOrgBlocked}
+                title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
               >
                 + Create Knowledge Base
               </button>
             </div>
           </div>
         </div>
-        {/* {!isEmbedUser && (
-          <FolderTabs
-            folders={folders}
-            resourceType="knowledgebase"
-            onCreateFolder={createFolder}
-            onRenameFolder={renameFolder}
-            onDeleteFolder={deleteFolder}
-            onMoveResource={moveResource}
-          />
-        )} */}
 
         {filterKnowledgeBase.length > 0 ? (
           <CustomTable

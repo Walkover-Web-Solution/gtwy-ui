@@ -1,11 +1,13 @@
-import { createRichUiTemplateApi, getRichUiTemplates } from "@/config/index";
+import { createRichUiTemplateApi, deleteRichUiTemplate, getRichUiTemplates } from "@/config/index";
 import {
   getRichUiTemplatesPending,
   getRichUiTemplatesSuccess,
   getRichUiTemplatesError,
   createRichUiTemplateApiSuccess,
+  deleteRichUiTemplateSuccess,
 } from "../reducer/richUiTemplateReducer";
-import { handleApiError, isNetworkError } from "@/utils/errorHandler";
+import { getErrorMessage, handleApiError, isNetworkError } from "@/utils/errorHandler";
+import { toast } from "react-toastify";
 
 export const getRichUiTemplatesAction = (orgId) => async (dispatch) => {
   try {
@@ -33,5 +35,24 @@ export const createRichUiTemplateAction = (data) => async (dispatch) => {
     }
   } catch (error) {
     console.error("Error creating Rich UI Template:", error);
+  }
+};
+
+export const deleteRichUiTemplateAction = (templateId) => async (dispatch) => {
+  try {
+    const response = await deleteRichUiTemplate(templateId);
+
+    if (response?.success) {
+      dispatch(deleteRichUiTemplateSuccess(templateId));
+      toast.success(response?.message || "Widget deleted successfully");
+      return response;
+    }
+
+    throw new Error(response?.message || "Failed to delete widget");
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+    dispatch(getRichUiTemplatesError(errorMessage));
+    toast.error(errorMessage);
+    throw error;
   }
 };

@@ -5,6 +5,7 @@ import { sendDataToParent } from "@/utils/utility";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 function BridgeNameInput({ params, searchParams, isEmbedUser }) {
   const dispatch = useDispatch();
@@ -70,7 +71,9 @@ function BridgeNameInput({ params, searchParams, isEmbedUser }) {
           bridgeId: params.id,
           dataToSend: { name: trimmed },
         })
-      );
+      ).catch((error) => {
+        toast.error(getErrorMessage(error) || "Failed to update agent name");
+      });
     }
     isEmbedUser && sendDataToParent("updated", { name: trimmed, agent_id: params?.id }, "Agent Name Updated");
     setDisplayValue(trimmed.length > 40 ? trimmed.slice(0, 40) + "..." : trimmed);

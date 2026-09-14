@@ -4,7 +4,7 @@ import { CopyIcon } from "@/components/Icons";
 import React, { useMemo, useState } from "react";
 import Modal from "../UI/Modal";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Brain } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers (used by the generic fallback modal path)
@@ -141,6 +141,8 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
 
   const isLatencyView = modalTitle === "Latency Details" || modalTitle === "Latency";
 
+  const isMemoryView = modalTitle === "Memory";
+
   const isAiConfigView =
     modalTitle === "AI Configuration" ||
     (modalContent &&
@@ -172,6 +174,21 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
         widthClass="w-[min(720px,92vw)]"
       >
         <JsonSection label="Latency" data={modalContent} fullHeight={true} />
+      </Modal>
+    );
+  }
+
+  // ── Memory view ─────────────────────────────────────────────────────────
+  if (isMemoryView) {
+    return (
+      <Modal
+        MODAL_ID={MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL}
+        onClose={() => closeModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL)}
+        title={modalTitle || "Memory"}
+        icon={<Brain size={16} className="text-trace-gold" />}
+        widthClass="w-[min(720px,92vw)]"
+      >
+        <AiConfigPanel config={modalContent} />
       </Modal>
     );
   }

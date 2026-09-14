@@ -3,6 +3,8 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   userDetails: {},
   organizations: [],
+  blockedOrgIds: [],
+  blockedOrgReasons: {},
   loading: false,
   success: false,
 };
@@ -54,9 +56,23 @@ export const userDetailsReducer = createSlice({
         },
       };
     },
+    setBlockedOrgs: (state, action) => {
+      const blockedOrgs = action.payload || [];
+      state.blockedOrgIds = blockedOrgs.map((blockedOrg) => blockedOrg.org_id);
+      state.blockedOrgReasons = blockedOrgs.reduce((reasons, blockedOrg) => {
+        reasons[blockedOrg.org_id] = blockedOrg.reason;
+        return reasons;
+      }, {});
+    },
   },
 });
 
-export const { fetchUserDetails, updateUserDetails, updateToken, updateGtwyAccessToken, updateUserMeta } =
-  userDetailsReducer.actions;
+export const {
+  fetchUserDetails,
+  updateUserDetails,
+  updateToken,
+  updateGtwyAccessToken,
+  updateUserMeta,
+  setBlockedOrgs,
+} = userDetailsReducer.actions;
 export default userDetailsReducer.reducer;

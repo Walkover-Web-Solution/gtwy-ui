@@ -497,7 +497,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
                       </span>{" "}
                       {
                         testCase?.version_history?.[resolvedParams.version]?.[
-                          testCase?.version_history?.[resolvedParams.version].length - 1
+                          (testCase?.version_history?.[resolvedParams.version]?.length ?? 0) - 1
                         ]?.model_output
                       }
                     </p>

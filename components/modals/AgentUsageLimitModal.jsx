@@ -176,6 +176,7 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
         <div className="flex justify-end gap-3 border-t border-base-content/10 pt-4 mt-2">
           <button
             type="button"
+            data-testid="agent-usage-limit-cancel-button"
             className="btn btn-sm text-xs h-8 px-4 font-normal"
             onClick={handleClose}
             disabled={isSaving}
@@ -184,6 +185,7 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
           </button>
           <button
             type="button"
+            data-testid="agent-usage-limit-save-button"
             className="btn btn-primary btn-sm text-xs h-8 px-4 font-normal"
             onClick={handleSave}
             disabled={isSaving || !isChanged}

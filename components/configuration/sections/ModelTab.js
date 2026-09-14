@@ -8,6 +8,7 @@ import { useConfigurationContext } from "../ConfigurationContext";
 import RecommendedModal from "../configurationComponent/RecommendedModal";
 import AdvancedParameters from "../configurationComponent/AdvancedParamenter";
 import FallbackModel from "../configurationComponent/FallbackModel";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 const ModelTab = () => {
   const {
@@ -22,6 +23,7 @@ const ModelTab = () => {
     isEmbedUser,
     showAdvancedParameters,
     showAdvancedConfigurations,
+    showFallbackModel,
     bridgeType,
     isPublished,
     isEditor,
@@ -32,6 +34,44 @@ const ModelTab = () => {
     () => (!showDefaultApikeys && isEmbedUser) || !isEmbedUser,
     [isEmbedUser, showDefaultApikeys]
   );
+
+  const planServices = useCustomSelector((state) => state?.planReducer?.services);
+
+  const isServiceInPlan = useMemo(() => {
+    if (!service || !planServices) return false;
+    if (planServices === "*") return true;
+    if (Array.isArray(planServices)) return planServices.includes(service);
+    if (typeof planServices === "object") return Object.prototype.hasOwnProperty.call(planServices, service);
+    return false;
+  }, [planServices, service]);
+
+  const apiKeyConfigButton = useMemo(() => {
+    if (!shouldRenderApiKey || !isServiceInPlan) return null;
+    return (
+      <ApiKeyInput
+        apiKeySectionRef={apiKeySectionRef}
+        params={params}
+        searchParams={searchParams}
+        isEmbedUser={isEmbedUser}
+        showAdvancedParameters={showAdvancedParameters}
+        isPublished={isPublished}
+        isEditor={isEditor}
+        hasError={apiKeyError}
+        compact
+      />
+    );
+  }, [
+    shouldRenderApiKey,
+    isServiceInPlan,
+    apiKeySectionRef,
+    params,
+    searchParams,
+    isEmbedUser,
+    showAdvancedParameters,
+    isPublished,
+    isEditor,
+    apiKeyError,
+  ]);
   return (
     <div data-testid="model-tab-container" id="model-tab-container" className="flex flex-col mt-4 w-full">
       {/* LLM Configuration Header */}
@@ -78,12 +118,12 @@ const ModelTab = () => {
               isEditor={isEditor}
               isEmbedUser={isEmbedUser}
               showAdvancedConfigurations={showAdvancedConfigurations}
+              apiKeyActionButton={apiKeyConfigButton}
             />
           </div>
         </div>
 
-        {/* API Key Section */}
-        {shouldRenderApiKey && (
+        {shouldRenderApiKey && !isServiceInPlan && (
           <div className="space-y-2">
             <label className="block text-base-content/70 text-sm font-medium">API Key</label>
             <ApiKeyInput
@@ -128,7 +168,7 @@ const ModelTab = () => {
           </div>
         )}
         {/* Fallback Model Section */}
-        {((isEmbedUser && showAdvancedConfigurations) || !isEmbedUser) && modelType !== "image" && (
+        {((isEmbedUser && showFallbackModel) || !isEmbedUser) && modelType !== "image" && (
           <div className="space-y-2">
             <FallbackModel
               params={params}

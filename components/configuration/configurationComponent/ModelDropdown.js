@@ -6,7 +6,7 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
 import Dropdown from "@/components/UI/Dropdown";
-import { CircleQuestionMark, Sparkles, CircleAlert, Plus } from "lucide-react";
+import { CircleQuestionMark, Sparkles, CircleAlert, Plus, Lock } from "lucide-react";
 import InfoTooltip from "@/components/InfoTooltip";
 import AddNewModelModal from "@/components/modals/AddNewModal";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
@@ -140,6 +140,7 @@ const ModelDropdown = ({
   isEditor = true,
   isEmbedUser = false,
   showAdvancedConfigurations = false,
+  apiKeyActionButton = null,
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
@@ -158,6 +159,8 @@ const ModelDropdown = ({
     fallbackModel,
     configuration,
     serviceModels,
+    planServices,
+    bridgeApikeyObjectId,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -183,8 +186,20 @@ const ModelDropdown = ({
       fallbackModel: activeData?.settings?.fall_back,
       configuration: activeData?.configuration,
       serviceModels: state?.modelReducer?.serviceModels,
+      planServices: state?.planReducer?.services,
+      bridgeApikeyObjectId: activeData?.apikey_object_id || {},
     };
   });
+
+  const planEntryForService = useMemo(() => {
+    if (planServices === "*") return "*";
+    if (planServices && typeof planServices === "object") return planServices[service];
+    return undefined;
+  }, [planServices, service]);
+
+  const isServiceFullyInPlan = planEntryForService === "*";
+  const planAllowedModels = Array.isArray(planEntryForService) ? planEntryForService : null;
+  const hasOwnApiKey = !!bridgeApikeyObjectId?.[service];
 
   const isFallbackEnabled = !!fallbackModel?.is_enable;
   const fallbackServiceName = fallbackModel?.service || service || "Not set";
@@ -262,11 +277,21 @@ const ModelDropdown = ({
 
         const displayName = modelConfig?.value || modelName;
 
+        const isAllowedByPlan = isServiceFullyInPlan || !!planAllowedModels?.includes(modelName);
+        const needsByok = !hasOwnApiKey && !isAllowedByPlan;
+
         const displayLabel =
           modelName === "gpt-5-nano" && bridgeType === "chatbot" ? (
             <div className="flex items-center gap-2">
               <span>{displayName}</span>
               <span className="badge badge-success badge-sm text-xs">FREE</span>
+            </div>
+          ) : needsByok ? (
+            <div className="flex items-center gap-2 w-full text-base-content/50">
+              <span className="flex-1">{displayName}</span>
+              <InfoTooltip tooltipContent="Add your own API key to use this model, or upgrade your plan to unlock it.">
+                <Lock size={11} className="shrink-0" />
+              </InfoTooltip>
             </div>
           ) : (
             displayName
@@ -275,13 +300,14 @@ const ModelDropdown = ({
         opts.push({
           value: modelName,
           label: displayLabel,
+          disabled: needsByok,
           // pass meta to use in onChange and onOptionHover
           meta: { group, modelName, specs },
         });
       });
     });
     return opts;
-  }, [modelsList, bridgeType, modelsConfig, service]);
+  }, [modelsList, bridgeType, modelsConfig, service, isServiceFullyInPlan, planAllowedModels, hasOwnApiKey]);
   const [pendingSelection, setPendingSelection] = useState(null);
 
   const confirmModelChange = useCallback(() => {
@@ -444,6 +470,7 @@ const ModelDropdown = ({
               />
             )}
           </div>
+          {apiKeyActionButton}
           {showFallbackModelHint && (
             <InfoTooltip
               tooltipContent={

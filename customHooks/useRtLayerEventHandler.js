@@ -1,7 +1,7 @@
 // hooks/useRtLayerEventHandler.js
 "use client";
 import { addThreadNMessageUsingRtLayer, addThreadUsingRtLayer } from "@/store/reducer/historyReducer";
-import { setFallbackData } from "@/store/reducer/chatReducer";
+import { setFallbackData, setMessageSuggestions } from "@/store/reducer/chatReducer";
 import {
   handleRtLayerMessage,
   handleRtLayerStreamChunk,
@@ -64,7 +64,7 @@ function handleAgentCreateRtMessage(parsedData) {
   }
 }
 
-function useRtLayerEventHandler(channelIdentifier = "") {
+function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverride = null) {
   const [client, setClient] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
@@ -74,9 +74,8 @@ function useRtLayerEventHandler(channelIdentifier = "") {
   const reconnectTimeoutRef = useRef(null);
   const SERVICES = useSelector((state) => state.serviceReducer.services);
   const isEmbedUser = useSelector((state) => state.appInfoReducer.embedUserDetails?.isEmbedUser);
-  const currentUserId =
-    useSelector((state) => state.userDetailsReducer?.userDetails?.id) || sessionStorage.getItem("gtwy_user_id");
-
+  const loggedInUserId = useSelector((state) => state.userDetailsReducer?.userDetails?.id);
+  const currentUserId = isEmbedUser ? sessionStorage.getItem("gtwy_user_id") : loggedInUserId;
   // Extract path parameters with error handling
   const { bridgeId, orgId } = useMemo(() => {
     try {
@@ -169,8 +168,9 @@ function useRtLayerEventHandler(channelIdentifier = "") {
         }
 
         // ---------- Testcase run events (RTLayer-driven) ----------
-        // Channel name from backend is `${org_id}_${bridge_id}`. We trust the
-        // bridge_id present in the payload, falling back to the parsed path.
+        // Channel from backend is `${org_id}_${bridge_id}_${user_id}` (pages must
+        // subscribe with that id). We trust bridge_id in the payload, falling back
+        // to the parsed path.
         if (
           event === "run_started" ||
           event === "testcase_result" ||
@@ -363,6 +363,22 @@ function useRtLayerEventHandler(channelIdentifier = "") {
                 thread_id: threadData.thread_id,
                 sub_thread_id: threadData.sub_thread_id,
                 Messages,
+              })
+            );
+          }
+          return;
+        }
+
+        // Chatbot follow-up suggestions arrive as their own async RTLayer message on the
+        // same channel, carrying only a suggestions list and no content/id/role, so it
+        // must be intercepted before the generic chat message branch below (which would
+        // otherwise push a bogus empty assistant bubble).
+        if (response.data && Array.isArray(response.data.suggestions)) {
+          if (channelIdentifier) {
+            dispatch(
+              setMessageSuggestions({
+                channelId: channelIdentifier,
+                suggestions: response.data.suggestions,
               })
             );
           }
@@ -662,15 +678,18 @@ function useRtLayerEventHandler(channelIdentifier = "") {
     };
   }, [client, pathName, orgId, isEmbedUser, dispatch]);
 
-  // Agent create with purpose (org_{org_id}_{user_id}) — user id from getUserDetails
   useEffect(() => {
-    if (!client || !currentUserId) return;
+    if (!client) return;
 
-    const path = pathName.split("?")[0].split("/");
-    const rtOrgId = path[1] === "org" ? path[2] : sessionStorage.getItem("gtwy_org_id");
-    if (!rtOrgId) return;
+    let agentCreateChannel = agentCreateChannelOverride;
+    if (!agentCreateChannel) {
+      if (!currentUserId) return;
+      const path = pathName.split("?")[0].split("/");
+      const rtOrgId = path[1] === "org" ? path[2] : sessionStorage.getItem("gtwy_org_id");
+      if (!rtOrgId) return;
+      agentCreateChannel = `org_${rtOrgId}_${currentUserId}`.replace(/ /g, "_");
+    }
 
-    const agentCreateChannel = `org_${rtOrgId}_${currentUserId}`.replace(/ /g, "_");
     const listener = client.on(agentCreateChannel, (message) => {
       try {
         handleAgentCreateRtMessage(parseRtMessage(message));
@@ -684,7 +703,7 @@ function useRtLayerEventHandler(channelIdentifier = "") {
         listener.remove();
       }
     };
-  }, [client, pathName, orgId, isEmbedUser, currentUserId, dispatch]);
+  }, [client, pathName, orgId, isEmbedUser, currentUserId, agentCreateChannelOverride, dispatch]);
 
   // Cleanup on unmount
   useEffect(() => {

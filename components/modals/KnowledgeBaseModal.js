@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { FolderContext } from "@/components/folders/FolderContext";
 import { Database } from "lucide-react";
+import { useCustomSelector } from "@/customHooks/customSelector";
 const KnowledgeBaseModal = ({
   params,
   selectedResource,
@@ -21,6 +22,10 @@ const KnowledgeBaseModal = ({
   const dispatch = useDispatch();
   const folderContext = useContext(FolderContext);
   const activeFolderId = folderContext?.activeFolderId;
+
+  const { isOrgBlocked } = useCustomSelector((state) => ({
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(params?.org_id) || false,
+  }));
 
   const [isCreatingResource, setIsCreatingResource] = useState(false);
   const [inputType, setInputType] = useState("url"); // 'url', 'file', 'content'
@@ -73,6 +78,12 @@ const KnowledgeBaseModal = ({
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot upload files. Contact support@gtwy.ai for assistance.");
+      event.target.value = "";
+      return;
+    }
 
     // ✅ Only PDF + TXT allowed
     if (!isAllowedFile(file)) {
@@ -131,6 +142,10 @@ const KnowledgeBaseModal = ({
 
   const handleCreateResource = async (event) => {
     event.preventDefault();
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create knowledge bases. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     setIsCreatingResource(true);
     const formData = new FormData(event.target);
 
@@ -225,6 +240,10 @@ const KnowledgeBaseModal = ({
   const handleUpdateResource = async (event) => {
     event.preventDefault();
     if (!selectedResource?._id) return;
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot update knowledge bases. Contact support@gtwy.ai for assistance.");
+      return;
+    }
 
     setIsCreatingResource(true);
     const formData = new FormData(event.target);
@@ -281,7 +300,8 @@ const KnowledgeBaseModal = ({
         type="submit"
         form="knowledge-base-modal-form"
         className="btn btn-primary btn-sm"
-        disabled={isCreatingResource}
+        disabled={isCreatingResource || isOrgBlocked}
+        title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
       >
         {isCreatingResource
           ? selectedResource
@@ -408,7 +428,7 @@ const KnowledgeBaseModal = ({
                   type="file"
                   onChange={handleFileUpload}
                   className="file-input file-input-bordered file-input-sm w-full"
-                  disabled={isCreatingResource || isUploading}
+                  disabled={isCreatingResource || isUploading || isOrgBlocked}
                   accept=".pdf,.txt,.md"
                 />
                 {isUploading && (

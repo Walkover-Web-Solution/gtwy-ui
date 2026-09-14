@@ -44,19 +44,19 @@ export const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key: "showCreateManuallyButton",
-    type: "toggle",
-    label: "Show Create Agent Manually Button",
-    description: "Display create agent manually button",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
     key: "showAdvancedConfigurations",
     type: "toggle",
     label: "Show Advanced Configurations",
     description: "Display advanced configurations",
     defaultValue: true,
+    section: "Interface Options",
+  },
+  {
+    key: "showFallbackModel",
+    type: "toggle",
+    label: "Show Fallback Model",
+    description: "Display the fallback model section",
+    defaultValue: false,
     section: "Interface Options",
   },
   {
@@ -96,6 +96,7 @@ export const CONFIG_SCHEMA = [
     description: "Show the full screen toggle button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showCloseButton",
@@ -104,6 +105,7 @@ export const CONFIG_SCHEMA = [
     description: "Show the close button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showHeader",
@@ -195,6 +197,14 @@ export const CONFIG_SCHEMA = [
     type: "toggle",
     label: "Show Review Agent",
     description: "Display review agent settings",
+    defaultValue: false,
+    section: "Interface Options",
+  },
+  {
+    key: "showMcp",
+    type: "toggle",
+    label: "Show MCP Servers",
+    description: "Display MCP server configuration in the Connectors tab",
     defaultValue: false,
     section: "Interface Options",
   },
