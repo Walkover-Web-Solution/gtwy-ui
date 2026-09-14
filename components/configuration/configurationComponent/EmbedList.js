@@ -5,8 +5,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
-import { GetPreBuiltToolTypeIcon, openModal } from "@/utils/utility";
+import dynamic from "next/dynamic";
+import { GetPreBuiltToolTypeIcon, openModal, toggleSidebar } from "@/utils/utility";
 import {
+  CONFIG_HISTORY_SLIDER_IDS,
   MODAL_TYPE,
   WEB_SEARCH_PREBUILT_TOOL_VALUES,
   WEB_SEARCH_WARNING_CLASS,
@@ -21,6 +23,8 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import PrebuiltToolsConfigModal from "@/components/modals/PrebuiltToolsConfigModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { CircleAlert, CircleQuestionMark } from "lucide-react";
+
+const ConfigHistorySlider = dynamic(() => import("@/components/sliders/ConfigHistorySlider"), { ssr: false });
 
 function getStatusClass(status) {
   switch (status?.toString().trim().toLowerCase()) {
@@ -111,6 +115,17 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
   };
   const [selectedPrebuiltTool, setSelectedPrebuiltTool] = useState(null);
   const [prebuiltToolName, setPrebuiltToolName] = useState(null);
+  const [historyTool, setHistoryTool] = useState(null);
+
+  const handleOpenToolHistory = (toolId, toolName) => {
+    setHistoryTool({ id: toolId, name: toolName });
+    // Already open means the user is switching tools — the slider refetches on its
+    // own when config_id changes, and toggling here would just close it.
+    const slider = document.getElementById(CONFIG_HISTORY_SLIDER_IDS.TOOL);
+    if (slider?.classList.contains("translate-x-full")) {
+      toggleSidebar(CONFIG_HISTORY_SLIDER_IDS.TOOL, "right");
+    }
+  };
 
   // Delete operation hooks
   const { isDeleting: isDeletingTool, executeDelete: executeToolDelete } = useDeleteOperation(
@@ -491,6 +506,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                         halfLength={1}
                         isPublished={isPublished}
                         isEditor={isEditor}
+                        onOpenHistory={handleOpenToolHistory}
                       />
                     )}
 
@@ -546,6 +562,14 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
 
         {/* Prebuilt Tools Configuration Modal */}
         <PrebuiltToolsConfigModal initialDomains={currentPrebuiltToolFilters} onSave={handleSavePrebuiltConfig} />
+
+        {/* A tool is its own config, so it is read with no version and no agent scope. */}
+        <ConfigHistorySlider
+          sliderId={CONFIG_HISTORY_SLIDER_IDS.TOOL}
+          variant="tool"
+          configId={historyTool?.id}
+          subtitle={historyTool?.name}
+        />
       </div>
     )
   );

@@ -7,9 +7,14 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { getChatBotDetailsAction, updateChatBotConfigAction } from "@/store/action/chatBotAction";
 import { getServiceAction } from "@/store/action/serviceAction";
 import { getModelAction } from "@/store/action/modelAction";
-import { getServiceDisplayName } from "@/utils/utility";
+import { getServiceDisplayName, toggleSidebar } from "@/utils/utility";
 import ChatbotPreview from "./ChatbotPreview";
 import { ExternalLink, Trash2, Save, Plus, Server } from "lucide-react";
+import dynamic from "next/dynamic";
+import { HistoryIcon } from "@/components/Icons";
+import { CONFIG_HISTORY_SLIDER_IDS } from "@/utils/enums";
+
+const ConfigHistorySlider = dynamic(() => import("@/components/sliders/ConfigHistorySlider"), { ssr: false });
 
 function ModelCustomization({ value = {}, onChange, onBlur }) {
   const dispatch = useDispatch();
@@ -255,6 +260,24 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     [dispatch, chatBotId]
   );
 
+  // Revert one history entry. The whole config is replaced on every save, so this is
+  // an ordinary save of the current form with a single field put back — sending only
+  // that field would wipe the rest.
+  const handleRevertHistory = useCallback(
+    async (item) => {
+      const type = item?.type;
+      if (!type) return false;
+      const reverted = { ...formData, [type]: item?.previous_value ?? null };
+      setFormData(reverted);
+      return dispatch(
+        updateChatBotConfigAction(chatBotId, reverted, { ...(item?.id != null && { reverted_from_id: item.id }) })
+      );
+    },
+    [dispatch, chatBotId, formData]
+  );
+
+  const openHistory = () => toggleSidebar(CONFIG_HISTORY_SLIDER_IDS.CHATBOT, "right");
+
   const handleMcpConfigChange = useCallback((index, field, value) => {
     setFormData((prevFormData) => {
       const updatedMcpConfig = [...prevFormData.mcpConfig];
@@ -374,7 +397,18 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
   if (isInSidebar) {
     return (
       <>
-        <h3 className="text-lg font-semibold border-b border-base-300 pb-2 mb-4">Display Settings</h3>
+        <div className="flex items-center justify-between border-b border-base-300 pb-2 mb-4">
+          <h3 className="text-lg font-semibold">Display Settings</h3>
+          {/* History is read-only, so it needs no unsaved change to be reachable. */}
+          <button
+            data-testid="chatbot-config-history-button"
+            className="btn btn-ghost btn-xs p-1"
+            onClick={openHistory}
+            title="Updates History"
+          >
+            <HistoryIcon size={14} />
+          </button>
+        </div>
 
         {/* Basic Information */}
         <div className="space-y-3">
@@ -754,6 +788,14 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
             <option value="system">System</option>
           </select>
         </label>
+
+        {/* A chatbot is its own config, so it is read with no version and no agent scope. */}
+        <ConfigHistorySlider
+          sliderId={CONFIG_HISTORY_SLIDER_IDS.CHATBOT}
+          variant="chatbot"
+          configId={chatBotId}
+          onRevert={handleRevertHistory}
+        />
       </>
     );
   }

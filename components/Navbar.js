@@ -1028,7 +1028,7 @@ const Navbar = ({ isEmbedUser, params }) => {
       {!isEmbedUser && (
         <>
           <ChatBotSlider />
-          <ConfigHistorySlider versionId={versionId} />
+          <ConfigHistorySlider versionId={versionId} bridgeId={bridgeId} />
         </>
       )}
 

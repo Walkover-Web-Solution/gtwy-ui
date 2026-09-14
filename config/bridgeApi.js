@@ -203,41 +203,10 @@ export const getConnectedAgentFlowApi = async ({ versionId }) => {
   }
 };
 
-// Bridge Configuration History
-export const getBridgeConfigHistory = async (versionId, page = 1, pageSize = 30, filters = {}) => {
-  try {
-    // Build query string with filters
-    const queryParams = new URLSearchParams({
-      page: page.toString(),
-      limit: pageSize.toString(),
-    });
-
-    // Add filter parameters if they exist
-    if (filters.user_ids && filters.user_ids.length > 0) {
-      queryParams.append("user_ids", filters.user_ids.join(","));
-    }
-
-    if (filters.types && filters.types.length > 0) {
-      queryParams.append("types", filters.types.join(","));
-    }
-
-    if (filters.date_from) {
-      queryParams.append("date_from", filters.date_from);
-    }
-
-    if (filters.date_to) {
-      queryParams.append("date_to", filters.date_to);
-    }
-
-    const response = await axios.get(`${URL}/api/v1/config/getuserupdates/${versionId}?${queryParams.toString()}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching bridge config history:", error);
-    throw new Error(error);
-  }
-};
-
-export const getBridgeLevelConfigHistory = async (bridgeId, page = 1, pageSize = 30, filters = {}) => {
+// Config update history. One backend route serves both scopes: passing a version
+// narrows the history to that version, and omitting it returns the whole config's
+// history — which is also the only way to read a tool, since a tool has no version.
+export const getConfigHistory = async (configId, versionId = null, page = 1, pageSize = 30, filters = {}) => {
   try {
     const queryParams = new URLSearchParams({
       page: page.toString(),
@@ -260,10 +229,11 @@ export const getBridgeLevelConfigHistory = async (bridgeId, page = 1, pageSize =
       queryParams.append("date_to", filters.date_to);
     }
 
-    const response = await axios.get(`${URL}/api/v1/config/getbridgeuserupdates/${bridgeId}?${queryParams.toString()}`);
+    const scopePath = versionId ? `${configId}/${versionId}` : `${configId}`;
+    const response = await axios.get(`${URL}/api/v1/config/getuserupdates/${scopePath}?${queryParams.toString()}`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching bridge-level config history:", error);
+    console.error("Error fetching config history:", error);
     throw new Error(error);
   }
 };

@@ -2,11 +2,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { CloseIcon, FileTextIcon } from "@/components/Icons";
 import { toggleSidebar } from "@/utils/utility";
-import { getBridgeConfigHistory, getBridgeLevelConfigHistory } from "@/config/index";
+import { getConfigHistory } from "@/config/index";
 import {
   CONFIG_HISTORY_FILTER_KEYS,
   CONFIG_HISTORY_FEATURE_OPTIONS,
   CONFIG_HISTORY_BRIDGE_FEATURE_OPTIONS,
+  CONFIG_HISTORY_TOOL_FEATURE_OPTIONS,
+  CONFIG_HISTORY_EMBED_FEATURE_OPTIONS,
+  CONFIG_HISTORY_CHATBOT_FEATURE_OPTIONS,
   CONFIG_HISTORY_HIDDEN_TYPES,
   CONFIG_HISTORY_SCOPE,
 } from "@/utils/enums";
@@ -19,9 +22,43 @@ import { toast } from "react-toastify";
 import InfiniteScroll from "react-infinite-scroll-component";
 
 const PAGE_SIZE = 25;
-const SLIDER_ID = "default-config-history-slider";
+const DEFAULT_SLIDER_ID = "default-config-history-slider";
 
-function ConfigHistorySlider({ versionId }) {
+const VARIANT_TITLE = {
+  agent: "Updates History",
+  tool: "Tool Updates History",
+  embed: "Embed Updates History",
+  chatbot: "Chatbot Updates History",
+};
+
+// Every variant but the agent is versionless and picks its options by name alone.
+const VERSIONLESS_FEATURE_OPTIONS = {
+  tool: CONFIG_HISTORY_TOOL_FEATURE_OPTIONS,
+  embed: CONFIG_HISTORY_EMBED_FEATURE_OPTIONS,
+  chatbot: CONFIG_HISTORY_CHATBOT_FEATURE_OPTIONS,
+};
+
+/**
+ * Shows the update history of one config.
+ *
+ * `configId` is the subject whose history is read — an agent by default, a tool or
+ * an embed when `variant` says so. Only an agent has versions: the others are read
+ * whole, with no scope to switch between. `bridgeId` stays the agent's own id.
+ *
+ * Revert acts on the subject, so only the agent's is built in. A caller that owns
+ * another subject passes `onRevert(item) => Promise<boolean>` to enable its own.
+ */
+function ConfigHistorySlider({
+  versionId,
+  bridgeId,
+  configId: configIdProp,
+  sliderId = DEFAULT_SLIDER_ID,
+  variant = "agent",
+  subtitle = "",
+  onRevert,
+}) {
+  const hasVersion = variant === "agent";
+  const configId = configIdProp ?? bridgeId;
   const dispatch = useDispatch();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,15 +75,15 @@ function ConfigHistorySlider({ versionId }) {
   });
 
   const isBridgeScope = scope === CONFIG_HISTORY_SCOPE.BRIDGE;
-  const featureOptions = isBridgeScope ? CONFIG_HISTORY_BRIDGE_FEATURE_OPTIONS : CONFIG_HISTORY_FEATURE_OPTIONS;
+  // A versionless subject is always read at config level — the same shape the bridge
+  // scope already has, minus anything that assumes an agent.
+  const isConfigScope = !hasVersion || isBridgeScope;
+  const featureOptions = !hasVersion
+    ? VERSIONLESS_FEATURE_OPTIONS[variant] || CONFIG_HISTORY_TOOL_FEATURE_OPTIONS
+    : isBridgeScope
+      ? CONFIG_HISTORY_BRIDGE_FEATURE_OPTIONS
+      : CONFIG_HISTORY_FEATURE_OPTIONS;
   const labels = useMemo(() => Object.fromEntries(featureOptions.map((o) => [o.value, o.label])), [featureOptions]);
-
-  const bridgeId = useCustomSelector((state) => {
-    for (const [id, versions] of Object.entries(state?.bridgeReducer?.bridgeVersionMapping || {})) {
-      if (versionId && versions?.[versionId]) return id;
-    }
-    return null;
-  });
 
   const currentVersion = useCustomSelector((state) =>
     bridgeId && versionId ? state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId]?.[versionId] : null
@@ -54,16 +91,15 @@ function ConfigHistorySlider({ versionId }) {
 
   const fetchHistory = useCallback(
     async (p = 1, f = filters, nextScope = scope) => {
-      const el = document.getElementById(SLIDER_ID);
+      const el = document.getElementById(sliderId);
       if (!el || el.classList.contains("translate-x-full")) return;
-      if (nextScope === CONFIG_HISTORY_SCOPE.BRIDGE ? !bridgeId : !versionId) return;
+      // config_id is required for both scopes; only the version scope also needs a version.
+      const withVersion = hasVersion && nextScope !== CONFIG_HISTORY_SCOPE.BRIDGE;
+      if (!configId || (withVersion && !versionId)) return;
 
       setLoading(true);
       try {
-        const res =
-          nextScope === CONFIG_HISTORY_SCOPE.BRIDGE
-            ? await getBridgeLevelConfigHistory(bridgeId, p, PAGE_SIZE, f)
-            : await getBridgeConfigHistory(versionId, p, PAGE_SIZE, f);
+        const res = await getConfigHistory(configId, withVersion ? versionId : null, p, PAGE_SIZE, f);
 
         if (res?.userData?.users?.length) setUsers(res.userData.users);
 
@@ -90,7 +126,7 @@ function ConfigHistorySlider({ versionId }) {
         setLoading(false);
       }
     },
-    [versionId, bridgeId, filters, scope]
+    [versionId, configId, filters, scope, hasVersion, sliderId]
   );
 
   const reset = useCallback(() => {
@@ -100,17 +136,20 @@ function ConfigHistorySlider({ versionId }) {
     setScope(CONFIG_HISTORY_SCOPE.VERSION);
   }, []);
 
-  // Close slider when versionId changes (agent navigation)
+  // Close slider when versionId changes (agent navigation).
+  // Not for a versionless subject: it changes because the user just picked another
+  // one to look at, so closing here would immediately undo the open they asked for.
   useEffect(() => {
-    const sliderElement = document.getElementById(SLIDER_ID);
+    if (!hasVersion) return;
+    const sliderElement = document.getElementById(sliderId);
     if (!sliderElement) return;
 
     const isOpen = !sliderElement.classList.contains("translate-x-full");
     if (isOpen) {
-      toggleSidebar(SLIDER_ID, "right");
+      toggleSidebar(sliderId, "right");
       reset();
     }
-  }, [versionId, reset]);
+  }, [versionId, reset, hasVersion, sliderId]);
 
   const switchScope = (nextScope) => {
     if (nextScope === scope) return;
@@ -124,12 +163,12 @@ function ConfigHistorySlider({ versionId }) {
   };
 
   useEffect(() => {
-    const el = document.getElementById(SLIDER_ID);
+    const el = document.getElementById(sliderId);
     if (!el) return;
 
     const obs = new MutationObserver(() => {
       const open = !el.classList.contains("translate-x-full");
-      if (open && versionId) {
+      if (open && configId) {
         setPage(1);
         setHistory([]);
         setExpanded(new Set());
@@ -139,7 +178,7 @@ function ConfigHistorySlider({ versionId }) {
 
     obs.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => obs.disconnect();
-  }, [versionId, fetchHistory, reset]);
+  }, [configId, fetchHistory, reset, sliderId]);
 
   useEffect(() => {
     if (page > 1) fetchHistory(page, filters, scope);
@@ -151,16 +190,17 @@ function ConfigHistorySlider({ versionId }) {
     setHistory([]);
     setExpanded(new Set());
     fetchHistory(1, filters, scope);
+    // configId is here so picking another tool while the slider stays open refetches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, scope, versionId, bridgeId]);
+  }, [filters, scope, versionId, configId]);
 
   const visible = useMemo(
     () => history.filter((i) => !(CONFIG_HISTORY_HIDDEN_TYPES || []).includes(i?.type)),
     [history]
   );
   const { draftItems, historyItems } = useMemo(
-    () => (isBridgeScope ? { draftItems: [], historyItems: visible } : splitDraftAndHistory(visible, lastPublishedAt)),
-    [visible, lastPublishedAt, isBridgeScope]
+    () => (isConfigScope ? { draftItems: [], historyItems: visible } : splitDraftAndHistory(visible, lastPublishedAt)),
+    [visible, lastPublishedAt, isConfigScope]
   );
   const grouped = useMemo(() => groupByDate(historyItems), [historyItems]);
 
@@ -171,7 +211,30 @@ function ConfigHistorySlider({ versionId }) {
       return n;
     });
 
+  const refetchFirstPage = () => {
+    setPage(1);
+    setHistory([]);
+    fetchHistory(1, filters, scope);
+  };
+
   const handleRevert = async (item) => {
+    // The caller owns this subject's save, so it owns the revert too.
+    if (onRevert) {
+      setRevertingId(item.id);
+      try {
+        if (await onRevert(item)) {
+          toast.success("Change reverted");
+          refetchFirstPage();
+        }
+      } catch {
+        toast.error("Revert failed");
+      } finally {
+        setRevertingId(null);
+      }
+      return;
+    }
+    // A versionless subject with no handler has nothing to revert to.
+    if (!hasVersion) return;
     if (isBridgeScope) {
       return toast.info("Switch to This version to revert a change");
     }
@@ -189,9 +252,7 @@ function ConfigHistorySlider({ versionId }) {
       );
       if (result?.success) {
         toast.success("Change reverted");
-        setPage(1);
-        setHistory([]);
-        fetchHistory(1, filters, scope);
+        refetchFirstPage();
       } else {
         toast.error(result?.error || "Revert failed");
       }
@@ -210,7 +271,7 @@ function ConfigHistorySlider({ versionId }) {
       expanded={expanded.has(id)}
       onToggle={() => toggle(id)}
       showRevert={
-        !isBridgeScope &&
+        (onRevert ? true : !isConfigScope) &&
         item?.type !== "Version published" &&
         item?.type !== "bridge_status" &&
         !isSystemHistoryType(item?.type)
@@ -220,7 +281,7 @@ function ConfigHistorySlider({ versionId }) {
       revertingId={revertingId}
       isDraft={isDraft}
       allHistory={visible}
-      showVersionMeta={isBridgeScope}
+      showVersionMeta={isConfigScope}
     />
   );
 
@@ -228,7 +289,7 @@ function ConfigHistorySlider({ versionId }) {
 
   return (
     <aside
-      id={SLIDER_ID}
+      id={sliderId}
       data-testid="config-history-sidebar"
       className="sidebar-container fixed z-very-high flex flex-col top-0 right-0 p-4 w-full md:w-[32rem] h-screen bg-base-200 border-l border-base-300 translate-x-full"
     >
@@ -238,11 +299,14 @@ function ConfigHistorySlider({ versionId }) {
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <FileTextIcon className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-base font-semibold">Updates History</p>
+            <div className="min-w-0">
+              <p className="text-base font-semibold">{VARIANT_TITLE[variant] || VARIANT_TITLE.agent}</p>
+              {subtitle && <p className="text-xs text-base-content/50 truncate">{subtitle}</p>}
+            </div>
           </div>
           <button
             onClick={() => {
-              toggleSidebar(SLIDER_ID, "right");
+              toggleSidebar(sliderId, "right");
               reset();
             }}
             className="p-1.5 rounded-lg hover:bg-base-300"
@@ -252,31 +316,34 @@ function ConfigHistorySlider({ versionId }) {
         </div>
 
         <div className="bg-base-100 rounded-lg p-4 border border-base-300 shrink-0 space-y-3">
-          <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-base-200">
-            <button
-              type="button"
-              onClick={() => switchScope(CONFIG_HISTORY_SCOPE.VERSION)}
-              className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
-                !isBridgeScope
-                  ? "bg-base-100 text-base-content shadow-sm"
-                  : "text-base-content/55 hover:text-base-content"
-              }`}
-            >
-              This version
-            </button>
-            <button
-              type="button"
-              onClick={() => switchScope(CONFIG_HISTORY_SCOPE.BRIDGE)}
-              disabled={!bridgeId}
-              className={`py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-40 ${
-                isBridgeScope
-                  ? "bg-base-100 text-base-content shadow-sm"
-                  : "text-base-content/55 hover:text-base-content"
-              }`}
-            >
-              Bridge
-            </button>
-          </div>
+          {/* A tool has no version, so there are no two scopes to switch between. */}
+          {hasVersion && (
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-base-200">
+              <button
+                type="button"
+                onClick={() => switchScope(CONFIG_HISTORY_SCOPE.VERSION)}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  !isBridgeScope
+                    ? "bg-base-100 text-base-content shadow-sm"
+                    : "text-base-content/55 hover:text-base-content"
+                }`}
+              >
+                This version
+              </button>
+              <button
+                type="button"
+                onClick={() => switchScope(CONFIG_HISTORY_SCOPE.BRIDGE)}
+                disabled={!bridgeId}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-40 ${
+                  isBridgeScope
+                    ? "bg-base-100 text-base-content shadow-sm"
+                    : "text-base-content/55 hover:text-base-content"
+                }`}
+              >
+                Bridge
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
