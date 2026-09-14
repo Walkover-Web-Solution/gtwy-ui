@@ -153,6 +153,10 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const { bridgeType, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
     useConfigurationSelector(resolvedParams, resolvedSearchParams);
 
+  // Set by BridgeVersionDropdown, which lives in the layout and survives the remount
+  // this page goes through on a version change.
+  const isVersionSwitching = useCustomSelector((state) => state?.bridgeReducer?.versionSwitching);
+
   const currentVariablesState = useCustomSelector(
     (state) =>
       state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id]?.[resolvedSearchParams?.version]?.agent_info
@@ -614,8 +618,9 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [bridgeType]);
 
-  // Show skeleton loading state only for initial load (when no data exists)
-  if (isLoading && !hasData && !hasError) {
+  // Skeleton covers the initial load and every version switch. It stays up past
+  // VERSION_SWITCH_MIN_MS while the newly selected version is still being fetched.
+  if ((isVersionSwitching || (isLoading && !hasData)) && !hasError) {
     return (
       <div className="w-full h-full">
         <ConfigurationSkeleton />

@@ -121,10 +121,10 @@ export const getBridgeVersionAction =
   ({ versionId }) =>
   async (dispatch) => {
     try {
-      dispatch(isPending());
       if (!versionId || versionId === "null") {
         return;
       }
+      dispatch(isPending());
       const data = await getBridgeVersionApi({ bridgeVersionId: versionId });
       dispatch(fetchSingleBridgeVersionReducer({ bridge: data?.agent }));
       return data?.agent;
