@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
-import { CreditCard } from "lucide-react";
+import { Check, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
 import {
   getBillingSubscription,
   startBillingCheckout,
@@ -14,22 +14,30 @@ import {
 } from "@/config/billingApi";
 import { consumeCheckoutReturn, rememberCheckoutReturn } from "@/utils/billingReturn";
 
-const PAID_PRICE_USD = 20;
+export const PAID_PRICE_USD = 20;
+
+const PRO_FEATURES = ["Monthly credit top-up", "Access to every model", "Invoices & usage in the billing portal"];
 
 const STATUS_COPY = {
-  none: null,
   awaiting_card: { tone: "info", text: "Your card is saved. Complete the subscription to activate Pro." },
   pending_first_payment: {
     tone: "info",
     text: "Your first payment is being processed. This usually takes under a minute.",
   },
-  active: null,
   past_due: { tone: "warning", text: "Your last renewal payment failed. Update your card and retry to keep Pro." },
   canceled: { tone: "neutral", text: "Your Pro subscription has ended. This workspace is on the Free plan." },
   card_failed: {
     tone: "error",
     text: "Your first payment failed and the workspace stayed on Free. Update your card and try again.",
   },
+};
+
+const STATUS_PILL = {
+  active: { label: "Active", cls: "badge-success" },
+  pending_first_payment: { label: "Payment pending", cls: "badge-info" },
+  awaiting_card: { label: "Card saved", cls: "badge-info" },
+  past_due: { label: "Past due", cls: "badge-warning" },
+  card_failed: { label: "Payment failed", cls: "badge-error" },
 };
 
 const TONE_CLASS = {
@@ -39,11 +47,23 @@ const TONE_CLASS = {
   neutral: "bg-base-200 text-base-content/70",
 };
 
-const errorMessage = (err, fallback) => err?.response?.data?.message || fallback;
+// Polling schedule for the first charge, which settles via webhook: 5s → 30s
+// backoff, about 5 minutes total so a lost webhook can't poll forever.
+const POLL_MAX_ATTEMPTS = 20;
 
+const errorMessage = (err, fallback) => err?.response?.data?.message || fallback;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { dateStyle: "medium" }) : null);
 
-export default function SubscriptionCard({ onChanged }) {
+// Hoisted so React keeps the same element type between renders (an inline
+// component would remount every button on each state change).
+const ActionButton = ({ id, busy, onClick, children, className = "btn-outline" }) => (
+  <button type="button" className={`btn btn-sm ${className}`} onClick={onClick} disabled={busy !== null}>
+    {busy === id ? <span className="loading loading-spinner loading-xs" /> : null}
+    {children}
+  </button>
+);
+
+export default function SubscriptionCard({ onChanged, onAvailabilityChange }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState(null);
@@ -51,8 +71,11 @@ export default function SubscriptionCard({ onChanged }) {
   const [unavailable, setUnavailable] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [busy, setBusy] = useState(null);
+  const [pollGaveUp, setPollGaveUp] = useState(false);
   const cancelDialogRef = useRef(null);
   const pollRef = useRef(null);
+  const prevStatusRef = useRef(null);
+  const handledReturnRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -62,6 +85,7 @@ export default function SubscriptionCard({ onChanged }) {
       setView(data);
       setLoadError(null);
       setUnavailable(false);
+      return data;
     } catch (err) {
       const code = err?.response?.status;
       if (code === 503 || code === 403 || code === 404) {
@@ -69,6 +93,7 @@ export default function SubscriptionCard({ onChanged }) {
       } else {
         setLoadError(errorMessage(err, "Could not load subscription details"));
       }
+      return null;
     } finally {
       setLoading(false);
     }
@@ -78,16 +103,22 @@ export default function SubscriptionCard({ onChanged }) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    onAvailabilityChange?.(!unavailable);
+  }, [unavailable, onAvailabilityChange]);
+
   const refresh = useCallback(async () => {
     await load();
     onChanged?.();
   }, [load, onChanged]);
 
-  // Stripe sends the user back here with ?checkout=success once a card is saved.
+  // Stripe sends the user back with ?checkout=success once a card is saved.
   // If they left via "Upgrade to Pro", finish the subscription for them now.
   const checkoutResult = searchParams.get("checkout");
   useEffect(() => {
-    if (!checkoutResult) return;
+    if (!checkoutResult || handledReturnRef.current) return;
+    handledReturnRef.current = true;
+
     const params = new URLSearchParams(searchParams.toString());
     params.delete("checkout");
     const qs = params.toString();
@@ -102,7 +133,7 @@ export default function SubscriptionCard({ onChanged }) {
     }
     if (intent !== "subscribe") {
       toast.success("Card saved.");
-      load();
+      refresh();
       return;
     }
     (async () => {
@@ -111,8 +142,10 @@ export default function SubscriptionCard({ onChanged }) {
         await subscribeBilling();
         toast.success("Card saved and subscription started. Pro activates as soon as the payment clears.");
       } catch (err) {
-        if (err?.response?.status !== 409)
+        // 409 = already subscribed / already pending; the refresh below shows the real state.
+        if (err?.response?.status !== 409) {
           toast.error(errorMessage(err, "Card saved, but the subscription could not be started."));
+        }
       } finally {
         setBusy(null);
         refresh();
@@ -120,44 +153,64 @@ export default function SubscriptionCard({ onChanged }) {
     })();
   }, [checkoutResult, load, refresh, router, searchParams]);
 
-  // The first charge settles via webhook, so poll until the status moves —
-  // 5s → 30s backoff, give up after ~5 minutes so a missing webhook can't poll forever.
+  // Poll while the first charge settles. When the status moves on, tell the
+  // parent so plan and wallet balance refresh too.
   const status = view?.billing?.status;
   useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status ?? null;
+    if (prev === "pending_first_payment" && status && status !== "pending_first_payment") {
+      onChanged?.();
+    }
+  }, [status, onChanged]);
+
+  useEffect(() => {
     clearTimeout(pollRef.current);
+    setPollGaveUp(false);
     if (status !== "pending_first_payment") return;
     let attempt = 0;
+    let cancelled = false;
     const tick = async () => {
       attempt += 1;
-      if (attempt > 20) return;
+      if (attempt > POLL_MAX_ATTEMPTS) {
+        setPollGaveUp(true);
+        return;
+      }
       await load();
+      if (cancelled) return;
       pollRef.current = setTimeout(tick, Math.min(5000 * attempt, 30000));
     };
     pollRef.current = setTimeout(tick, 5000);
-    return () => clearTimeout(pollRef.current);
+    return () => {
+      cancelled = true;
+      clearTimeout(pollRef.current);
+    };
   }, [status, load]);
 
   const run = async (key, fn, { successMsg, failMsg, redirect, intent } = {}) => {
     setBusy(key);
     try {
       const res = await fn();
-      if (redirect && res?.data?.url) {
+      if (redirect) {
+        if (!res?.data?.url) throw new Error("no redirect url");
         if (intent) rememberCheckoutReturn(intent);
+        // Keep the button in its busy state while the browser navigates away.
         window.location.assign(res.data.url);
         return;
       }
       if (successMsg) toast.success(typeof successMsg === "function" ? successMsg(res?.data) : successMsg);
       await refresh();
+      setBusy(null);
     } catch (err) {
       toast.error(errorMessage(err, failMsg));
-    } finally {
       setBusy(null);
     }
   };
 
-  const onCheckout = (intent = "card") =>
-    run("checkout", startBillingCheckout, { redirect: true, intent, failMsg: "Could not start checkout" });
-  const onUpgrade = () => onCheckout("subscribe");
+  const onUpgrade = () =>
+    run("upgrade", startBillingCheckout, { redirect: true, intent: "subscribe", failMsg: "Could not start checkout" });
+  const onCard = () =>
+    run("card", startBillingCheckout, { redirect: true, intent: "card", failMsg: "Could not start checkout" });
   const onSubscribe = () =>
     run("subscribe", subscribeBilling, {
       successMsg: "Subscription started. We'll activate Pro as soon as the payment clears.",
@@ -188,33 +241,32 @@ export default function SubscriptionCard({ onChanged }) {
   const onPaid = view?.plan === "paid";
   const cancelling = Boolean(billing.cancel_at_period_end);
   const banner = STATUS_COPY[billing.status] ?? null;
+  const pill = onPaid && cancelling ? { label: "Cancelling", cls: "badge-warning" } : STATUS_PILL[billing.status];
   const periodEnd = fmtDate(billing.current_period_end);
   const graceUntil = fmtDate(billing.grace_until);
-  const monthlyCredits = billing.monthly_credits;
-
-  const Btn = ({ k, onClick, children, className = "btn-outline" }) => (
-    <button className={`btn btn-sm ${className}`} onClick={onClick} disabled={busy !== null}>
-      {busy === k && <span className="loading loading-spinner loading-xs" />}
-      {children}
-    </button>
-  );
+  const monthlyCredits = Number(billing.monthly_credits) || null;
+  const showPaymentError =
+    billing.last_payment_error?.message && (billing.status === "past_due" || billing.status === "card_failed");
+  const showCardButton = view?.can_checkout && (billing.has_payment_method || onPaid || view?.can_subscribe);
+  const showUpgrade = !onPaid && view?.can_checkout && !view?.can_subscribe;
+  const polling = billing.status === "pending_first_payment";
 
   return (
-    <div className="rounded-2xl border border-base-200 bg-base-100 p-6 shadow-sm">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+    <section className="rounded-2xl border border-base-200 bg-base-100 p-6 shadow-sm">
+      <header className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <CreditCard className="h-4 w-4" />
           </span>
           <h2 className="text-base font-semibold text-base-content">Subscription</h2>
         </div>
-        {!loading && (
-          <span className={`badge ${onPaid ? "badge-primary" : "badge-ghost"}`}>
-            {onPaid ? "Pro" : "Free"}
-            {cancelling && " · cancelling"}
-          </span>
+        {!loading && !loadError && (
+          <div className="flex items-center gap-2">
+            {pill && <span className={`badge badge-sm badge-outline ${pill.cls}`}>{pill.label}</span>}
+            <span className={`badge ${onPaid ? "badge-primary" : "badge-ghost"}`}>{onPaid ? "Pro" : "Free"}</span>
+          </div>
         )}
-      </div>
+      </header>
 
       {loading ? (
         <div className="mt-6 flex items-center gap-3 text-sm text-base-content/50">
@@ -223,90 +275,119 @@ export default function SubscriptionCard({ onChanged }) {
       ) : loadError ? (
         <div className="mt-6 flex items-center gap-2 text-sm text-error">
           {loadError}
-          <button className="btn btn-xs btn-ghost" onClick={load}>
+          <button type="button" className="btn btn-xs btn-ghost" onClick={load}>
             Retry
           </button>
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-5">
           {banner && (
-            <p className={`rounded-lg px-3 py-2 text-sm font-medium ${TONE_CLASS[banner.tone]}`}>
-              {banner.text}
-              {billing.status === "past_due" && graceUntil && ` Access continues until ${graceUntil}.`}
-            </p>
-          )}
-
-          {billing.last_payment_error?.message &&
-            (billing.status === "past_due" || billing.status === "card_failed") && (
-              <p className="text-xs text-base-content/50">Stripe said: {billing.last_payment_error.message}</p>
-            )}
-
-          {billing.requires_action_url && (
-            <a className="btn btn-sm btn-warning w-fit" href={billing.requires_action_url}>
-              Complete card verification
-            </a>
-          )}
-
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-base-content/50">Pro plan</p>
-              <p className="mt-1 text-2xl font-semibold leading-none tracking-tight">
-                ${PAID_PRICE_USD}
-                <span className="text-sm font-normal text-base-content/50"> / month</span>
+            <div className={`rounded-lg px-3 py-2.5 text-sm font-medium ${TONE_CLASS[banner.tone]}`}>
+              <p>
+                {banner.text}
+                {billing.status === "past_due" && graceUntil && ` Access continues until ${graceUntil}.`}
               </p>
-              {monthlyCredits && (
-                <p className="mt-1.5 text-sm text-base-content/50">
-                  {Number(monthlyCredits).toLocaleString()} credits topped up every month, plus access to all models.
+              {showPaymentError && (
+                <p className="mt-1 text-xs font-normal opacity-80">Stripe said: {billing.last_payment_error.message}</p>
+              )}
+              {polling && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs font-normal opacity-80">
+                  {pollGaveUp ? (
+                    <>
+                      Still waiting on the payment provider.
+                      <button type="button" className="link inline-flex items-center gap-1" onClick={load}>
+                        <RefreshCw className="h-3 w-3" /> Check again
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="loading loading-spinner loading-xs" /> Checking for the payment automatically…
+                    </>
+                  )}
                 </p>
               )}
             </div>
-            {onPaid && periodEnd && (
-              <p className="text-xs text-base-content/50">
-                {cancelling ? "Ends" : "Renews"} {periodEnd}
+          )}
+
+          {billing.requires_action_url && (
+            <a className="btn btn-sm btn-warning w-fit" href={billing.requires_action_url}>
+              Complete card verification <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+
+          <div className="grid gap-5 md:grid-cols-[1fr_auto] md:items-start">
+            <div>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p className="text-sm font-medium text-base-content/70">Pro plan</p>
+                {onPaid && periodEnd && (
+                  <p className="text-xs text-base-content/50">
+                    {cancelling ? "Ends" : "Renews"} {periodEnd}
+                  </p>
+                )}
+              </div>
+              <p className="mt-1 text-3xl font-semibold leading-none tracking-tight">
+                ${PAID_PRICE_USD}
+                <span className="text-sm font-normal text-base-content/50"> / month</span>
               </p>
-            )}
+              <ul className="mt-4 space-y-1.5 text-sm text-base-content/70">
+                {[
+                  monthlyCredits ? `${monthlyCredits.toLocaleString()} credits topped up every month` : PRO_FEATURES[0],
+                  ...PRO_FEATURES.slice(1),
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-col gap-2 md:min-w-[200px]">
+              {showUpgrade && (
+                <ActionButton id="upgrade" busy={busy} onClick={onUpgrade} className="btn-primary">
+                  Upgrade to Pro
+                </ActionButton>
+              )}
+              {view?.can_subscribe && (
+                <ActionButton id="subscribe" busy={busy} onClick={onSubscribe} className="btn-primary">
+                  Complete subscription
+                </ActionButton>
+              )}
+              {view?.can_retry && (
+                <ActionButton id="retry" busy={busy} onClick={onRetry} className="btn-primary">
+                  Retry payment
+                </ActionButton>
+              )}
+              {view?.can_resume && (
+                <ActionButton id="resume" busy={busy} onClick={onResume} className="btn-primary">
+                  Resume subscription
+                </ActionButton>
+              )}
+              {showCardButton && (
+                <ActionButton id="card" busy={busy} onClick={onCard}>
+                  {billing.has_payment_method ? "Update card" : "Add card"}
+                </ActionButton>
+              )}
+              {view?.can_manage && (
+                <ActionButton id="portal" busy={busy} onClick={onPortal}>
+                  Invoices & usage <ExternalLink className="h-3.5 w-3.5" />
+                </ActionButton>
+              )}
+              {view?.can_cancel && (
+                <ActionButton
+                  id="cancel"
+                  busy={busy}
+                  onClick={() => cancelDialogRef.current?.showModal()}
+                  className="btn-ghost text-error hover:bg-error/10"
+                >
+                  Cancel subscription
+                </ActionButton>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {!onPaid && view?.can_checkout && !view?.can_subscribe && (
-              <Btn k="checkout" onClick={onUpgrade} className="btn-primary">
-                Upgrade to Pro
-              </Btn>
-            )}
-            {view?.can_subscribe && (
-              <Btn k="subscribe" onClick={onSubscribe} className="btn-primary">
-                Complete subscription
-              </Btn>
-            )}
-            {view?.can_retry && (
-              <Btn k="retry" onClick={onRetry} className="btn-primary">
-                Retry payment
-              </Btn>
-            )}
-            {view?.can_resume && (
-              <Btn k="resume" onClick={onResume} className="btn-primary">
-                Resume subscription
-              </Btn>
-            )}
-            {view?.can_checkout && (billing.has_payment_method || onPaid || view?.can_subscribe) && (
-              <Btn k="checkout" onClick={() => onCheckout("card")}>
-                {billing.has_payment_method ? "Update card" : "Add card"}
-              </Btn>
-            )}
-            {view?.can_manage && (
-              <Btn k="portal" onClick={onPortal}>
-                Invoices & usage
-              </Btn>
-            )}
-            {view?.can_cancel && (
-              <Btn k="cancel" onClick={() => cancelDialogRef.current?.showModal()} className="btn-ghost text-error">
-                Cancel subscription
-              </Btn>
-            )}
-          </div>
-
-          {!onPaid && !view?.can_subscribe && (
-            <p className="text-xs text-base-content/40">
+          {showUpgrade && (
+            <p className="text-xs text-base-content/50">
               You'll be taken to Stripe to add your card. Once it's saved you'll come back here and the first $
               {PAID_PRICE_USD} is charged automatically.
             </p>
@@ -323,10 +404,10 @@ export default function SubscriptionCard({ onChanged }) {
             kept. You can resume any time before then.
           </p>
           <div className="modal-action">
-            <button className="btn btn-sm btn-ghost" onClick={() => cancelDialogRef.current?.close()}>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => cancelDialogRef.current?.close()}>
               Keep Pro
             </button>
-            <button className="btn btn-sm btn-error" onClick={onCancel}>
+            <button type="button" className="btn btn-sm btn-error" onClick={onCancel}>
               Cancel subscription
             </button>
           </div>
@@ -335,6 +416,6 @@ export default function SubscriptionCard({ onChanged }) {
           <button>close</button>
         </form>
       </dialog>
-    </div>
+    </section>
   );
 }
