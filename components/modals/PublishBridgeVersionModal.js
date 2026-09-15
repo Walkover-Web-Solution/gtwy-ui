@@ -12,11 +12,42 @@ import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
+import Dropdown from "../UI/Dropdown";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import Protected from "../Protected";
 import PublishVersionDataComparisonView from "../comparison/PublishVersionDataComparisonView";
 import { DIFFERNCE_DATA_DISPLAY_NAME, KEYS_TO_COMPARE } from "@/jsonFiles/bridgeParameter";
 import PostPublishFeedbackModal from "./PostPublishFeedbackModal";
+
+const TEMPLATE_CATEGORIES = [
+  "Customer Support",
+  "Sales & Lead Generation",
+  "Marketing",
+  "Human Resources",
+  "Finance & Accounting",
+  "IT & Technical Support",
+  "Software Development",
+  "Data & Analytics",
+  "Operations & Workflow Automation",
+  "Research & Knowledge Management",
+  "Education & Training",
+  "Legal & Compliance",
+  "Healthcare",
+  "E-commerce",
+  "Productivity & Personal Assistant",
+  "Content Creation",
+  "Communication",
+  "Project Management",
+  "Security",
+  "Other",
+];
+
+const OTHER_CATEGORY = "Other";
+
+const TEMPLATE_CATEGORY_OPTIONS = TEMPLATE_CATEGORIES.map((category) => ({
+  value: category,
+  label: category,
+}));
 
 function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_description, isEmbedUser }) {
   const dispatch = useDispatch();
@@ -26,6 +57,10 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [allConnectedAgents, setAllConnectedAgents] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [convertToTemplate, setConvertToTemplate] = useState(false);
+  const [templateCategory, setTemplateCategory] = useState("");
+  const [templateCategoryError, setTemplateCategoryError] = useState(false);
+  const [customCategory, setCustomCategory] = useState("");
+  const [customCategoryError, setCustomCategoryError] = useState(false);
 
   const {
     versionData,
@@ -447,7 +482,43 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     e?.preventDefault();
     closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
     setConvertToTemplate(false);
+    setTemplateCategory("");
+    setTemplateCategoryError(false);
+    setCustomCategory("");
+    setCustomCategoryError(false);
   }, []);
+
+  const handleConvertToTemplateToggle = useCallback((e) => {
+    const checked = e.target.checked;
+    setConvertToTemplate(checked);
+    if (!checked) {
+      setTemplateCategory("");
+      setTemplateCategoryError(false);
+      setCustomCategory("");
+      setCustomCategoryError(false);
+    }
+  }, []);
+
+  const handleTemplateCategoryChange = useCallback((value) => {
+    setTemplateCategory(value);
+    setTemplateCategoryError(false);
+    if (value !== OTHER_CATEGORY) {
+      setCustomCategory("");
+      setCustomCategoryError(false);
+    }
+  }, []);
+
+  const handleCustomCategoryChange = useCallback((e) => {
+    setCustomCategory(e.target.value);
+    setCustomCategoryError(false);
+  }, []);
+
+  const resolvedTemplateCategory = useMemo(() => {
+    if (templateCategory === OTHER_CATEGORY) {
+      return customCategory.trim() || templateCategory;
+    }
+    return templateCategory;
+  }, [templateCategory, customCategory]);
 
   // Helper function to get all agents recursively (flattened for operations)
   const getAllAgentsFlat = useCallback((agents) => {
@@ -700,7 +771,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         }, 100);
 
         if (shouldConvertToTemplate) {
-          const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim());
+          const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim(), resolvedTemplateCategory);
           toast.promise(templatePromise, {
             pending: "Evaluating and publishing template...",
             success: "Agent converted to template successfully!",
@@ -727,26 +798,29 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       selectedAgentsToPublish,
       filteredBridgeData,
       filteredVersionData,
+      resolvedTemplateCategory,
     ]
   );
 
+  const handlePublishClick = useCallback(() => {
+    if (convertToTemplate) {
+      if (!templateCategory) {
+        setTemplateCategoryError(true);
+        toast.error("Please select an agent category to save this agent as a template.");
+        return;
+      }
+      if (templateCategory === OTHER_CATEGORY && !customCategory.trim()) {
+        setCustomCategoryError(true);
+        toast.error("Please enter a custom category name.");
+        return;
+      }
+    }
+    handlePublishBridge(convertToTemplate);
+  }, [convertToTemplate, templateCategory, customCategory, handlePublishBridge]);
+
   const footerContent = (
     <>
-      {!isEmbedUser && (
-        <label className="flex items-center gap-2 cursor-pointer select-none mr-auto">
-          <input
-            autoComplete="off"
-            type="checkbox"
-            className="checkbox checkbox-xs checkbox-primary"
-            checked={convertToTemplate}
-            onChange={(e) => setConvertToTemplate(e.target.checked)}
-            disabled={isLoading || isReadOnly}
-          />
-          <span className="text-sm">Save as Template</span>
-        </label>
-      )}
-
-      <div className="flex gap-3 ml-auto">
+      <div className="flex gap-3">
         <button id="publish-cancel-button" className="btn btn-sm" onClick={handleCloseModal} disabled={isLoading}>
           Cancel
         </button>
@@ -754,7 +828,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
           id="publish-confirm-button"
           data-testid="publish-version-publish-button"
           className="btn btn-primary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => handlePublishBridge(convertToTemplate)}
+          onClick={handlePublishClick}
           disabled={isLoading || isReadOnly}
           title={isReadOnly ? "You don't have permission to publish" : ""}
         >
@@ -912,6 +986,89 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                 <div className="space-y-3">{renderAgentHierarchy(allConnectedAgents)}</div>
               </div>
             ) : null}
+          </div>
+        )}
+
+        {/* Save as Template */}
+        {!isEmbedUser && !showComparison && (
+          <div className="mt-2">
+            <div
+              data-testid="save-as-template-section"
+              id="save-as-template-section"
+              className="border border-base-200 p-3 flex items-center justify-between gap-4"
+            >
+              <div>
+                <p className="text-sm font-medium text-base-content">Save as Template</p>
+                <p className="text-xs text-base-content/60">Save this agent as a reusable template for other users.</p>
+              </div>
+              <label className="label cursor-pointer gap-2">
+                <span className="text-xs font-semibold">{convertToTemplate ? "On" : "Off"}</span>
+                <input
+                  autoComplete="off"
+                  data-testid="save-as-template-toggle"
+                  id="save-as-template-toggle"
+                  type="checkbox"
+                  className="toggle toggle-sm"
+                  checked={convertToTemplate}
+                  onChange={handleConvertToTemplateToggle}
+                  disabled={isLoading || isReadOnly}
+                />
+              </label>
+            </div>
+
+            {convertToTemplate && (
+              <div
+                data-testid="template-category-section"
+                id="template-category-section"
+                className="border border-t-0 border-base-200 p-3 transition-opacity duration-200 ease-in-out"
+              >
+                <label className="label-text font-medium text-sm" htmlFor="template-category-select-trigger-button">
+                  Agent Category<span className="text-error"> *</span>
+                </label>
+                <div className="mt-2">
+                  <Dropdown
+                    testId="template-category-select"
+                    options={TEMPLATE_CATEGORY_OPTIONS}
+                    value={templateCategory}
+                    onChange={handleTemplateCategoryChange}
+                    placeholder="Select a category"
+                    searchable
+                    searchPlaceholder="Search categories..."
+                    size="sm"
+                    disabled={isLoading || isReadOnly}
+                    hasError={templateCategoryError}
+                  />
+                </div>
+                {templateCategoryError && (
+                  <p className="text-xs text-error mt-1">Please select a category to save this agent as a template.</p>
+                )}
+
+                {templateCategory === OTHER_CATEGORY && (
+                  <div className="mt-3">
+                    <label className="label-text font-medium text-sm" htmlFor="custom-template-category-input">
+                      Custom Category<span className="text-error"> *</span>
+                    </label>
+                    <input
+                      autoComplete="off"
+                      type="text"
+                      id="custom-template-category-input"
+                      data-testid="custom-template-category-input"
+                      className={`input input-sm input-bordered w-full mt-2 ${
+                        customCategoryError ? "input-error" : ""
+                      }`}
+                      placeholder="Enter your own category name"
+                      value={customCategory}
+                      onChange={handleCustomCategoryChange}
+                      disabled={isLoading || isReadOnly}
+                      maxLength={50}
+                    />
+                    {customCategoryError && (
+                      <p className="text-xs text-error mt-1">Please enter a custom category name.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

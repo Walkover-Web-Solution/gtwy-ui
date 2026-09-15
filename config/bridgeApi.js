@@ -258,9 +258,9 @@ export const createAgentFromTemplateApi = async (templateId) => {
   }
 };
 
-export const convertAgentToTemplate = async (agentId, templateName) => {
+export const convertAgentToTemplate = async (agentId, templateName, category) => {
   try {
-    const response = await axios.post(`${URL}/api/template/${agentId}`, { templateName });
+    const response = await axios.post(`${URL}/api/template/${agentId}`, { templateName, category });
     return response?.data;
   } catch (error) {
     console.error("Error converting agent to template:", error);
