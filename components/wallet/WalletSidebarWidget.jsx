@@ -22,8 +22,9 @@ export default function WalletSidebarWidget({ orgId, showLabel = true }) {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     load();
-  }, [load]);
+  }, [load, orgId]);
 
   // Same rule as WalletCard: credits_ongoing_balance is the live number.
   const credits = wallet ? Number(wallet.credits_ongoing_balance ?? 0) : null;
