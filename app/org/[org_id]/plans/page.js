@@ -1,14 +1,18 @@
 "use client";
 import { useParams } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { WalletIcon } from "@/components/Icons";
 import { getWalletBalance, getMyPlan, getPlans } from "@/config/walletApi";
+import { getPlanAction } from "@/store/action/planAction";
+import SubscriptionCard from "@/components/wallet/SubscriptionCard";
 
 export const runtime = "edge";
 const CREDIT_RATE_USD = 0.0025;
 
 export default function PlansPage() {
   useParams(); // org_id comes from the route only for display context; the API resolves org from the auth token.
+  const dispatch = useDispatch();
   const [wallet, setWallet] = useState(null);
   const [plan, setPlan] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -58,6 +62,12 @@ export default function PlansPage() {
     loadPlans();
   }, [loadWallet, loadPlan, loadPlans]);
 
+  const onBillingChanged = useCallback(() => {
+    loadWallet();
+    loadPlan();
+    dispatch(getPlanAction());
+  }, [loadWallet, loadPlan, dispatch]);
+
   const currentCredits = Number(wallet?.credits_ongoing_balance ?? 0);
   const grantedCredits = Number(wallet?.credits_balance ?? 0);
   const rate = Number(wallet?.rate_amount ?? CREDIT_RATE_USD);
@@ -72,9 +82,15 @@ export default function PlansPage() {
         <h1 className="text-2xl font-semibold">Plans & Credits</h1>
       </div>
       <p className="text-sm text-gray-500 mb-8">
-        Usage is billed per call at the actual provider cost, drawn from this workspace's credit balance — there's no
-        recurring subscription to manage.
+        Usage is billed per call at the actual provider cost, drawn from this workspace's credit balance. Upgrade to Pro
+        for a monthly credit top-up and access to every model.
       </p>
+
+      <div className="mb-6">
+        <Suspense fallback={null}>
+          <SubscriptionCard onChanged={onBillingChanged} />
+        </Suspense>
+      </div>
 
       <div className="bg-base-100 rounded-lg shadow p-6 mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -134,8 +150,7 @@ export default function PlansPage() {
       )}
 
       <p className="text-sm text-gray-500">
-        Need more credits or want to change your plan? Reach out to your account contact — self-serve top-up isn't
-        available in the app yet.
+        Need more credits than Pro provides, or a custom plan? Reach out to your account contact.
       </p>
     </main>
   );
