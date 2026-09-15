@@ -6,7 +6,7 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
-import { getThread } from "@/store/action/historyAction";
+import { getSubThreadsAction } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
 import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
@@ -562,33 +562,43 @@ function Page({ params, searchParams }) {
   const threadHandler = useCallback(
     async (thread_id, item, options = {}) => {
       const opts = options && typeof options === "object" ? options : {};
-      const firstSubThreadId =
-        opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id || thread_id;
+      let firstSubThreadId = opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id;
 
       setSelectedThreadId(thread_id);
-      setSelectedSubThreadId(firstSubThreadId);
       setSidebarExpandedThreadId(thread_id);
-      setSidebarExpandedSubThreadId(firstSubThreadId);
       setIsSliderOpen(true);
       setSelectedBatchMessageId(null);
 
-      dispatch(
-        getThread({
-          threadId: thread_id,
-          bridgeId: resolvedParams.id,
-          nextPage: 1,
-          user_feedback: "all",
-          subThreadId: firstSubThreadId,
-          versionId: "",
-          error: false,
-        })
-      );
+      // The thread listing does not always carry its sub threads — a batch run started at
+      // runtime with its own sub_thread_id is the common case. Falling back to thread_id then
+      // loads a sub thread that holds no messages and the panel renders empty, so resolve the
+      // real sub thread ids first and only use thread_id when there genuinely are none.
+      if (!firstSubThreadId) {
+        // Drop the previous thread's selection while resolving, so nothing stale stays highlighted.
+        setSelectedSubThreadId(null);
+        setSidebarExpandedSubThreadId(null);
+        const subThreads = await dispatch(
+          getSubThreadsAction({
+            thread_id,
+            error: false,
+            bridge_id: resolvedParams.id,
+            version_id: selectedVersion,
+          })
+        );
+        firstSubThreadId = subThreads?.[0]?.sub_thread_id || thread_id;
+      }
 
+      setSelectedSubThreadId(firstSubThreadId);
+      setSidebarExpandedSubThreadId(firstSubThreadId);
+
+      // The messages are loaded by NewThreadContainer, which watches these params — fetching here
+      // too would run the same request twice and render the thread twice.
+      // Raw ids only: buildUrl writes through URLSearchParams, which encodes them itself.
       router.push(
         buildUrl(
           {
-            thread_id: encodeURIComponent(String(thread_id).replace(/&/g, "%26")),
-            subThread_id: encodeURIComponent(String(firstSubThreadId).replace(/&/g, "%26")),
+            thread_id: String(thread_id),
+            subThread_id: String(firstSubThreadId),
             message_id: null,
             batch_id: null,
           },
@@ -596,7 +606,7 @@ function Page({ params, searchParams }) {
         )
       );
     },
-    [pathName, router, buildUrl, resolvedParams.id, dispatch]
+    [pathName, router, buildUrl, resolvedParams.id, dispatch, selectedVersion]
   );
 
   const handleAnalyticsMessageNavigate = useCallback(
@@ -619,23 +629,14 @@ function Page({ params, searchParams }) {
       setSidebarExpandedSubThreadId(subThreadId);
       setIsSliderOpen(true);
 
-      dispatch(
-        getThread({
-          threadId,
-          bridgeId: resolvedParams.id,
-          nextPage: 1,
-          user_feedback: "all",
-          subThreadId,
-          versionId: "",
-          error: false,
-        })
-      );
-
+      // As in threadHandler: NewThreadContainer loads the messages off these params, so this must
+      // not fetch as well.
+      // Raw ids only: buildUrl writes through URLSearchParams, which encodes them itself.
       router.push(
         buildUrl(
           {
-            thread_id: encodeURIComponent(String(threadId).replace(/&/g, "%26")),
-            subThread_id: encodeURIComponent(String(subThreadId).replace(/&/g, "%26")),
+            thread_id: String(threadId),
+            subThread_id: String(subThreadId),
             message_id: null,
             batch_id: null,
           },
@@ -643,7 +644,7 @@ function Page({ params, searchParams }) {
         )
       );
     },
-    [pathName, selectedThreadId, sidebarExpandedThreadId, resolvedParams.id, dispatch, router, buildUrl]
+    [pathName, selectedThreadId, sidebarExpandedThreadId, router, buildUrl]
   );
 
   const handleCloseAside = useCallback(() => {
@@ -659,6 +660,50 @@ function Page({ params, searchParams }) {
     setSearchMessageId(null);
     setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId));
   }, []);
+
+  // Sub thread whose first batch value has already been auto-selected, so a manual deselect
+  // (clicking the active batch again to see every value) is not undone on the next render.
+  const autoSelectedBatchForRef = useRef(null);
+
+  // A batch sub thread holds one message per batch value. Without this, opening one dumps every
+  // value onto a single page — the history page selects the first value, so match it here.
+  useEffect(() => {
+    if (!selectedThreadId || !selectedSubThreadId) {
+      autoSelectedBatchForRef.current = null;
+      return;
+    }
+    if (!Array.isArray(thread) || thread.length === 0) return;
+    // Only act once the loaded messages belong to the sub thread on screen — until then `thread`
+    // still holds the previously opened one, and picking a batch out of it selects a message that
+    // is about to disappear, leaving the panel blank.
+    if (thread[0]?.sub_thread_id && thread[0].sub_thread_id !== selectedSubThreadId) return;
+    if (thread[0]?.thread_id && thread[0].thread_id !== selectedThreadId) return;
+
+    const key = `${selectedThreadId}::${selectedSubThreadId}`;
+    if (autoSelectedBatchForRef.current === key) return;
+
+    const firstBatch = thread.find((msg) => msg?.batch_data?.batch_id);
+    autoSelectedBatchForRef.current = key;
+    if (firstBatch && !searchMessageId) setSelectedBatchMessageId(firstBatch.message_id);
+  }, [thread, selectedThreadId, selectedSubThreadId, searchMessageId]);
+
+  // Messages shown in the thread panel: one batch value when it is selected, the whole sub thread
+  // otherwise. A selection that matches nothing (left over from another sub thread) falls back to
+  // the whole sub thread rather than rendering an empty panel.
+  const displayThread = useMemo(() => {
+    if (!selectedBatchMessageId || searchMessageId) return thread;
+    const selectedOnly = thread.filter((msg) => msg?.message_id === selectedBatchMessageId);
+    return selectedOnly.length > 0 ? selectedOnly : thread;
+  }, [thread, selectedBatchMessageId, searchMessageId]);
+
+  // Messages the batch/sub thread panel derives its batch values from. Opening another thread
+  // switches this page's selection immediately while the previous thread's messages are still in
+  // the store, so without this the panel briefly lists the batch values of the thread just left.
+  const panelThread = useMemo(() => {
+    if (!selectedThreadId) return [];
+    if (thread?.[0]?.thread_id && thread[0].thread_id !== selectedThreadId) return [];
+    return thread;
+  }, [thread, selectedThreadId]);
 
   const handleThreadItemClick = useCallback((thread_id, item, value) => {
     if (value === "AiConfig" || value === "Latency" || value === "Memory") {
@@ -1570,11 +1615,7 @@ function Page({ params, searchParams }) {
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <NewThreadContainer
               onClose={handleCloseAside}
-              thread={
-                selectedBatchMessageId && !searchMessageId
-                  ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
-                  : thread
-              }
+              thread={displayThread}
               searchParamsHook={search}
               isFetchingMore={false}
               setIsFetchingMore={() => {}}
@@ -1601,12 +1642,17 @@ function Page({ params, searchParams }) {
 
       {/* Batch Subthread Panel - between main content and sidebar */}
       <BatchSubthreadPanel
-        thread={thread}
+        thread={panelThread}
         subThreadIdFromURL={selectedSubThreadId}
         parentThreadId={selectedThreadId}
         selectedBatchMessageId={selectedBatchMessageId}
         onSelectBatch={handleSelectBatch}
         onSelectSubThread={handleSelectSubThread}
+        // The sidebar hides its sub thread list once a thread is open, so this panel is the only
+        // place left to see and select the sub thread — it must list a lone one too.
+        showSingleSubThread
+        // This page's thread list sits to the right of the panel, so the columns run right-to-left.
+        threadListOnRight
       />
 
       {/* Right Sidebar */}

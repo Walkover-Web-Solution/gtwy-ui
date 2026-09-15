@@ -18,6 +18,8 @@ const BatchSubthreadPanel = ({
   selectedBatchMessageId,
   onSelectBatch,
   onSelectSubThread,
+  showSingleSubThread = false,
+  threadListOnRight = false,
 }) => {
   const { subThreads, subThreadsParentId } = useCustomSelector((state) => ({
     subThreads: Array.isArray(state?.historyReducer?.subThreads) ? state.historyReducer.subThreads : [],
@@ -26,9 +28,13 @@ const BatchSubthreadPanel = ({
 
   const activeSubThreads = subThreadsParentId === parentThreadId ? subThreads : [];
 
-  const batchMessages = Array.isArray(thread) ? thread.filter((msg) => msg?.batch_data?.batch_id) : [];
+  // Both columns are controls for the thread that is open. Loaded messages outlive a closed
+  // thread (analytics keeps them while its drawer is shut), so gate on the open thread the same
+  // way the sub threads above are — otherwise batch values linger over a closed thread.
+  const batchMessages =
+    parentThreadId && Array.isArray(thread) ? thread.filter((msg) => msg?.batch_data?.batch_id) : [];
   const showBatches = batchMessages.length > 0;
-  const showSubThreads = activeSubThreads.length > 1;
+  const showSubThreads = activeSubThreads.length > (showSingleSubThread ? 0 : 1);
   const isVisible = showBatches || showSubThreads;
   const showBoth = showBatches && showSubThreads;
   const panelWidth = showBoth ? 384 : 192;
@@ -74,7 +80,7 @@ const BatchSubthreadPanel = ({
   );
 
   const subThreadsColumn = showSubThreads && (
-    <div className="w-48 shrink-0">
+    <div className="w-48 shrink-0 border-r border-base-300 last:border-r-0">
       <div className="px-3 py-2 border-b border-base-300 text-xs font-semibold text-base-content/60 uppercase tracking-wider sticky top-0 bg-base-200 z-10 whitespace-nowrap">
         Sub Threads
       </div>
@@ -117,8 +123,19 @@ const BatchSubthreadPanel = ({
         overflow: "hidden",
       }}
     >
-      {batchesColumn}
-      {subThreadsColumn}
+      {/* A sub thread is picked before its batch values are read, so sub threads sit closest to
+          the caller's thread list and batch values sit closest to the messages. */}
+      {threadListOnRight ? (
+        <>
+          {batchesColumn}
+          {subThreadsColumn}
+        </>
+      ) : (
+        <>
+          {subThreadsColumn}
+          {batchesColumn}
+        </>
+      )}
     </div>
   );
 };
