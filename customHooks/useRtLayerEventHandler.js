@@ -25,7 +25,7 @@ import WebSocketClient from "rtlayer-client";
 import { toast } from "react-toastify";
 import { didCurrentTabInitiateUpdate } from "@/utils/utility";
 import { RefreshIcon } from "@/components/Icons";
-import { buildLlmUrls } from "@/utils/attachmentUtils";
+import { buildLlmUrls, buildLlmUrlsFromBackend } from "@/utils/attachmentUtils";
 import { getModelAction } from "@/store/action/modelAction";
 import { getServiceAction } from "@/store/action/serviceAction";
 import { useDispatch, useSelector } from "react-redux";
@@ -307,7 +307,10 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
             updated_at: new Date().toISOString(),
           };
 
-          const llmUrls = buildLlmUrls(response.image_urls || [], []);
+          const llmUrls = [
+            ...buildLlmUrls(response.image_urls || [], []),
+            ...buildLlmUrlsFromBackend(response.llm_urls || []),
+          ];
 
           // Create message data from response
           const messageData = {
@@ -413,7 +416,7 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
               });
             }
 
-            const llmUrls = buildLlmUrls(rawImages, []);
+            const llmUrls = [...buildLlmUrls(rawImages, []), ...buildLlmUrlsFromBackend(response.data.llm_urls || [])];
             const messageData = {
               id: response.data.id || response.data.message_id || parsedData.message_id,
               // Preserve the backend message_id (UUID) separately from the
