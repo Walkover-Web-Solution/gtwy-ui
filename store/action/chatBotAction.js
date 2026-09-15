@@ -58,14 +58,20 @@ export const updateChatBotAction = (botId, dataToSend) => async (dispatch, getSt
   }
 };
 
-export const updateChatBotConfigAction = (botId, dataToSend) => async (dispatch, getState) => {
-  try {
-    const response = await updateChatBotConfig(botId, { config: dataToSend });
-    dispatch(updateChatBotConfigReducer({ botId, data: response.data }));
-  } catch (error) {
-    console.error(error);
-  }
-};
+// `extra` rides alongside the config — a reverted_from_id, so the history row it
+// creates can point at the entry it undid.
+export const updateChatBotConfigAction =
+  (botId, dataToSend, extra = {}) =>
+  async (dispatch, getState) => {
+    try {
+      const response = await updateChatBotConfig(botId, { config: dataToSend, ...extra });
+      dispatch(updateChatBotConfigReducer({ botId, data: response.data }));
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  };
 
 export const createOrRemoveActionBridge = (dataToSend) => async (dispatch) => {
   try {

@@ -2,318 +2,448 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { CloseIcon, FileTextIcon } from "@/components/Icons";
 import { toggleSidebar } from "@/utils/utility";
-import { getBridgeConfigHistory } from "@/config/index";
-import { CONFIG_HISTORY_FILTER_KEYS, CONFIG_HISTORY_FEATURE_OPTIONS, CONFIG_HISTORY_HIDDEN_TYPES } from "@/utils/enums";
+import { getConfigHistory } from "@/config/index";
+import {
+  CONFIG_HISTORY_FILTER_KEYS,
+  CONFIG_HISTORY_FEATURE_OPTIONS,
+  CONFIG_HISTORY_BRIDGE_FEATURE_OPTIONS,
+  CONFIG_HISTORY_TOOL_FEATURE_OPTIONS,
+  CONFIG_HISTORY_EMBED_FEATURE_OPTIONS,
+  CONFIG_HISTORY_CHATBOT_FEATURE_OPTIONS,
+  CONFIG_HISTORY_HIDDEN_TYPES,
+  CONFIG_HISTORY_SCOPE,
+} from "@/utils/enums";
+import { splitDraftAndHistory, groupByDate, buildRevertPayload, isSystemHistoryType } from "@/utils/configHistoryUtils";
+import { HistoryRow } from "./ConfigHistoryItem";
+import { useCustomSelector } from "@/customHooks/customSelector";
+import { useDispatch } from "react-redux";
+import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
+import { toast } from "react-toastify";
 import InfiniteScroll from "react-infinite-scroll-component";
 
-function ConfigHistorySlider({ versionId }) {
-  const [historyData, setHistoryData] = useState([]);
+const PAGE_SIZE = 25;
+const DEFAULT_SLIDER_ID = "default-config-history-slider";
+
+const VARIANT_TITLE = {
+  agent: "Updates History",
+  tool: "Tool Updates History",
+  embed: "Embed Updates History",
+  chatbot: "Chatbot Updates History",
+};
+
+// Every variant but the agent is versionless and picks its options by name alone.
+const VERSIONLESS_FEATURE_OPTIONS = {
+  tool: CONFIG_HISTORY_TOOL_FEATURE_OPTIONS,
+  embed: CONFIG_HISTORY_EMBED_FEATURE_OPTIONS,
+  chatbot: CONFIG_HISTORY_CHATBOT_FEATURE_OPTIONS,
+};
+
+/**
+ * Shows the update history of one config.
+ *
+ * `configId` is the subject whose history is read — an agent by default, a tool or
+ * an embed when `variant` says so. Only an agent has versions: the others are read
+ * whole, with no scope to switch between. `bridgeId` stays the agent's own id.
+ *
+ * Revert acts on the subject, so only the agent's is built in. A caller that owns
+ * another subject passes `onRevert(item) => Promise<boolean>` to enable its own.
+ */
+function ConfigHistorySlider({
+  versionId,
+  bridgeId,
+  configId: configIdProp,
+  sliderId = DEFAULT_SLIDER_ID,
+  variant = "agent",
+  subtitle = "",
+  onRevert,
+}) {
+  const hasVersion = variant === "agent";
+  const configId = configIdProp ?? bridgeId;
+  const dispatch = useDispatch();
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
+  const [expanded, setExpanded] = useState(new Set());
+  const [revertingId, setRevertingId] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [lastPublishedAt, setLastPublishedAt] = useState(null);
+  const [scope, setScope] = useState(CONFIG_HISTORY_SCOPE.VERSION);
   const [filters, setFilters] = useState({
     [CONFIG_HISTORY_FILTER_KEYS.USER_IDS]: [],
     [CONFIG_HISTORY_FILTER_KEYS.TYPES]: [],
   });
-  const [availableUsers, setAvailableUsers] = useState([]);
-  const pageSize = 25;
-  const resetFilters = useCallback(() => {
-    setFilters({
-      [CONFIG_HISTORY_FILTER_KEYS.USER_IDS]: [],
-      [CONFIG_HISTORY_FILTER_KEYS.TYPES]: [],
-    });
-  }, []);
 
-  const featureLabelMap = useMemo(
-    () =>
-      CONFIG_HISTORY_FEATURE_OPTIONS.reduce((acc, option) => {
-        acc[option.value] = option.label;
-        return acc;
-      }, {}),
-    []
+  const isBridgeScope = scope === CONFIG_HISTORY_SCOPE.BRIDGE;
+  // A versionless subject is always read at config level — the same shape the bridge
+  // scope already has, minus anything that assumes an agent.
+  const isConfigScope = !hasVersion || isBridgeScope;
+  const featureOptions = !hasVersion
+    ? VERSIONLESS_FEATURE_OPTIONS[variant] || CONFIG_HISTORY_TOOL_FEATURE_OPTIONS
+    : isBridgeScope
+      ? CONFIG_HISTORY_BRIDGE_FEATURE_OPTIONS
+      : CONFIG_HISTORY_FEATURE_OPTIONS;
+  const labels = useMemo(() => Object.fromEntries(featureOptions.map((o) => [o.value, o.label])), [featureOptions]);
+
+  const currentVersion = useCustomSelector((state) =>
+    bridgeId && versionId ? state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId]?.[versionId] : null
   );
 
   const fetchHistory = useCallback(
-    async (targetPage = page, currentFilters = filters) => {
-      // Check if slider is actually open before making API call
-      const sliderElement = document.getElementById("default-config-history-slider");
-      const isSliderOpen = sliderElement && !sliderElement.classList.contains("translate-x-full");
-
-      if (!versionId || !isSliderOpen) return;
+    async (p = 1, f = filters, nextScope = scope) => {
+      const el = document.getElementById(sliderId);
+      if (!el || el.classList.contains("translate-x-full")) return;
+      // config_id is required for both scopes; only the version scope also needs a version.
+      const withVersion = hasVersion && nextScope !== CONFIG_HISTORY_SCOPE.BRIDGE;
+      if (!configId || (withVersion && !versionId)) return;
 
       setLoading(true);
       try {
-        const response = await getBridgeConfigHistory(versionId, targetPage, pageSize, currentFilters);
-        const usersFromResponse = response?.userData?.users;
+        const res = await getConfigHistory(configId, withVersion ? versionId : null, p, PAGE_SIZE, f);
 
-        if (Array.isArray(usersFromResponse) && usersFromResponse.length > 0) {
-          setAvailableUsers(usersFromResponse);
-        }
+        if (res?.userData?.users?.length) setUsers(res.userData.users);
 
-        if (!response?.success) {
-          if (targetPage === 1) {
-            setHistoryData([]);
+        if (!res?.success) {
+          if (p === 1) {
+            setHistory([]);
+            if (res?.userData?.lastPublishedAt !== undefined) {
+              setLastPublishedAt(res.userData.lastPublishedAt);
+            }
           }
           setHasMore(false);
           return;
         }
 
-        const newData = response?.userData?.updates ?? [];
-        setHistoryData((prev) => (targetPage === 1 ? newData : [...prev, ...newData]));
-        setHasMore(newData.length === pageSize);
-      } catch (error) {
-        console.error("Error fetching agent history:", error);
+        const rows = res?.userData?.updates ?? [];
+        if (p === 1 && res?.userData?.lastPublishedAt !== undefined) {
+          setLastPublishedAt(res.userData.lastPublishedAt);
+        }
+        setHistory((prev) => (p === 1 ? rows : [...prev, ...rows]));
+        setHasMore(rows.length >= PAGE_SIZE);
+      } catch (e) {
+        console.error("History fetch failed:", e);
       } finally {
         setLoading(false);
       }
     },
-    [versionId, pageSize]
+    [versionId, configId, filters, scope, hasVersion, sliderId]
   );
 
-  // Close slider when versionId changes (agent navigation)
+  const reset = useCallback(() => {
+    setFilters({ [CONFIG_HISTORY_FILTER_KEYS.USER_IDS]: [], [CONFIG_HISTORY_FILTER_KEYS.TYPES]: [] });
+    setLastPublishedAt(null);
+    setExpanded(new Set());
+    setScope(CONFIG_HISTORY_SCOPE.VERSION);
+  }, []);
+
+  // Close slider when versionId changes (agent navigation).
+  // Not for a versionless subject: it changes because the user just picked another
+  // one to look at, so closing here would immediately undo the open they asked for.
   useEffect(() => {
-    const sliderElement = document.getElementById("default-config-history-slider");
+    if (!hasVersion) return;
+    const sliderElement = document.getElementById(sliderId);
     if (!sliderElement) return;
 
     const isOpen = !sliderElement.classList.contains("translate-x-full");
     if (isOpen) {
-      // Close the slider when agent changes
-      toggleSidebar("default-config-history-slider", "right");
-      resetFilters();
+      toggleSidebar(sliderId, "right");
+      reset();
     }
-  }, [versionId, resetFilters]);
+  }, [versionId, reset, hasVersion, sliderId]);
 
-  // Listen for slider open/close events using MutationObserver
-  useEffect(() => {
-    const sliderElement = document.getElementById("default-config-history-slider");
-    if (!sliderElement) return;
-
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === "attributes" && mutation.attributeName === "class") {
-          const isOpen = !sliderElement.classList.contains("translate-x-full");
-          if (isOpen && versionId) {
-            // Slider just opened, fetch history
-            setPage(1);
-            setHistoryData([]);
-            fetchHistory(1);
-          } else if (!isOpen) {
-            resetFilters();
-          }
-        }
-      });
-    });
-
-    observer.observe(sliderElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    return () => observer.disconnect();
-  }, [versionId, fetchHistory, resetFilters]);
+  const switchScope = (nextScope) => {
+    if (nextScope === scope) return;
+    setScope(nextScope);
+    setFilters({ [CONFIG_HISTORY_FILTER_KEYS.USER_IDS]: [], [CONFIG_HISTORY_FILTER_KEYS.TYPES]: [] });
+    setLastPublishedAt(null);
+    setPage(1);
+    setHistory([]);
+    setExpanded(new Set());
+    setHasMore(true);
+  };
 
   useEffect(() => {
-    if (page > 1) {
-      fetchHistory(page, filters);
-    }
+    const el = document.getElementById(sliderId);
+    if (!el) return;
+
+    const obs = new MutationObserver(() => {
+      const open = !el.classList.contains("translate-x-full");
+      if (open && configId) {
+        setPage(1);
+        setHistory([]);
+        setExpanded(new Set());
+        fetchHistory(1);
+      } else if (!open) reset();
+    });
+
+    obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, [configId, fetchHistory, reset, sliderId]);
+
+  useEffect(() => {
+    if (page > 1) fetchHistory(page, filters, scope);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // Refetch history immediately when filters change
   useEffect(() => {
     setPage(1);
-    setHistoryData([]);
-    fetchHistory(1, filters);
+    setHistory([]);
+    setExpanded(new Set());
+    fetchHistory(1, filters, scope);
+    // configId is here so picking another tool while the slider stays open refetches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, scope, versionId, configId]);
 
-  const loadMore = () => {
-    setPage((prev) => prev + 1);
-  };
+  const visible = useMemo(
+    () => history.filter((i) => !(CONFIG_HISTORY_HIDDEN_TYPES || []).includes(i?.type)),
+    [history]
+  );
+  const { draftItems, historyItems } = useMemo(
+    () => (isConfigScope ? { draftItems: [], historyItems: visible } : splitDraftAndHistory(visible, lastPublishedAt)),
+    [visible, lastPublishedAt, isConfigScope]
+  );
+  const grouped = useMemo(() => groupByDate(historyItems), [historyItems]);
 
-  const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }));
-  };
-
-  const handleDropdownFilterChange = (filterType, value) => {
-    handleFilterChange(filterType, value ? [value] : []);
-  };
-
-  const getDateLabel = (timestamp) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
+  const toggle = (id) =>
+    setExpanded((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
     });
+
+  const refetchFirstPage = () => {
+    setPage(1);
+    setHistory([]);
+    fetchHistory(1, filters, scope);
   };
 
-  // Group historyData by date label, preserving chronological order
-  // Filter out internal-only types here so hasMore uses the real raw API count
-  const groupedHistory = useMemo(() => {
-    const groups = [];
-    const seen = new Map();
-    historyData
-      .filter((item) => !CONFIG_HISTORY_HIDDEN_TYPES.includes(item?.type))
-      .forEach((item) => {
-        const label = getDateLabel(item?.time);
-        if (!seen.has(label)) {
-          seen.set(label, groups.length);
-          groups.push({ label, items: [] });
+  const handleRevert = async (item) => {
+    // The caller owns this subject's save, so it owns the revert too.
+    if (onRevert) {
+      setRevertingId(item.id);
+      try {
+        if (await onRevert(item)) {
+          toast.success("Change reverted");
+          refetchFirstPage();
         }
-        groups[seen.get(label)].items.push(item);
-      });
-    return groups;
-  }, [historyData]);
+      } catch {
+        toast.error("Revert failed");
+      } finally {
+        setRevertingId(null);
+      }
+      return;
+    }
+    // A versionless subject with no handler has nothing to revert to.
+    if (!hasVersion) return;
+    if (isBridgeScope) {
+      return toast.info("Switch to This version to revert a change");
+    }
+    const payload = buildRevertPayload(item, currentVersion);
+    if (!payload) return toast.error("Nothing to revert");
 
-  const handleCloseConfigHistorySlider = useCallback(() => {
-    toggleSidebar("default-config-history-slider", "right");
-    resetFilters();
-  }, [resetFilters]);
+    setRevertingId(item.id);
+    try {
+      const result = await dispatch(
+        updateBridgeVersionAction({
+          versionId,
+          bridgeId,
+          dataToSend: { ...payload, ...(item.id != null && { reverted_from_id: item.id }) },
+        })
+      );
+      if (result?.success) {
+        toast.success("Change reverted");
+        refetchFirstPage();
+      } else {
+        toast.error(result?.error || "Revert failed");
+      }
+    } catch {
+      toast.error("Revert failed");
+    } finally {
+      setRevertingId(null);
+    }
+  };
+
+  const renderHistoryRow = (item, id, isDraft = false) => (
+    <HistoryRow
+      key={id}
+      item={item}
+      labels={labels}
+      expanded={expanded.has(id)}
+      onToggle={() => toggle(id)}
+      showRevert={
+        (onRevert ? true : !isConfigScope) &&
+        item?.type !== "Version published" &&
+        item?.type !== "bridge_status" &&
+        !isSystemHistoryType(item?.type)
+      }
+      onRevert={handleRevert}
+      isReverting={revertingId === item.id}
+      revertingId={revertingId}
+      isDraft={isDraft}
+      allHistory={visible}
+      showVersionMeta={isConfigScope}
+    />
+  );
+
+  const setFilter = (key, val) => setFilters((f) => ({ ...f, [key]: val ? [val] : [] }));
 
   return (
     <aside
-      id="default-config-history-slider"
+      id={sliderId}
       data-testid="config-history-sidebar"
-      className="sidebar-container fixed z-very-high flex flex-col top-0 right-0 p-4 w-full md:w-1/3 lg:w-1/4 opacity-100 h-screen bg-base-200 transition-all duration-300 border-l border-base-300 overflow-hidden translate-x-full "
-      aria-label="Config History Slider"
+      className="sidebar-container fixed z-very-high flex flex-col top-0 right-0 p-4 w-full md:w-[32rem] h-screen bg-base-200 border-l border-base-300 translate-x-full"
     >
-      <div className="flex flex-col w-full gap-4 h-full min-h-0">
+      <div className="flex flex-col gap-4 h-full min-h-0">
         <div className="flex justify-between items-center border-b border-base-300 pb-4 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <FileTextIcon className="w-4 h-4 text-primary" />
             </div>
-            <div>
-              <p className="text-base font-semibold text-base-content leading-tight">Updates History</p>
+            <div className="min-w-0">
+              <p className="text-base font-semibold">{VARIANT_TITLE[variant] || VARIANT_TITLE.agent}</p>
+              {subtitle && <p className="text-xs text-base-content/50 truncate">{subtitle}</p>}
             </div>
           </div>
           <button
-            id="config-history-slider-close-icon"
-            onClick={handleCloseConfigHistorySlider}
-            className="p-1.5 rounded-lg text-base-content/40 hover:text-base-content hover:bg-base-300 transition-all"
+            onClick={() => {
+              toggleSidebar(sliderId, "right");
+              reset();
+            }}
+            className="p-1.5 rounded-lg hover:bg-base-300"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Filters Section */}
-        <div className="bg-base-100 rounded-lg p-4 border border-base-300 shrink-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div className="bg-base-100 rounded-lg p-4 border border-base-300 shrink-0 space-y-3">
+          {/* A tool has no version, so there are no two scopes to switch between. */}
+          {hasVersion && (
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-base-200">
+              <button
+                type="button"
+                onClick={() => switchScope(CONFIG_HISTORY_SCOPE.VERSION)}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  !isBridgeScope
+                    ? "bg-base-100 text-base-content shadow-sm"
+                    : "text-base-content/55 hover:text-base-content"
+                }`}
+              >
+                This version
+              </button>
+              <button
+                type="button"
+                onClick={() => switchScope(CONFIG_HISTORY_SCOPE.BRIDGE)}
+                disabled={!bridgeId}
+                className={`py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-40 ${
+                  isBridgeScope
+                    ? "bg-base-100 text-base-content shadow-sm"
+                    : "text-base-content/55 hover:text-base-content"
+                }`}
+              >
+                Bridge
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Filter by User</label>
+              <label className="text-xs font-medium mb-1 block">Filter by User</label>
               <select
                 className="select select-sm select-bordered w-full"
                 value={filters[CONFIG_HISTORY_FILTER_KEYS.USER_IDS][0] || ""}
-                onChange={(e) => handleDropdownFilterChange(CONFIG_HISTORY_FILTER_KEYS.USER_IDS, e.target.value)}
+                onChange={(e) => setFilter(CONFIG_HISTORY_FILTER_KEYS.USER_IDS, e.target.value)}
               >
                 <option value="">All Users</option>
-                {availableUsers?.map((user) => (
-                  <option key={user?.id} value={user?.id}>
-                    {user?.name}
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-xs font-medium mb-1">Filter by Feature</label>
+              <label className="text-xs font-medium mb-1 block">Filter by Feature</label>
               <select
                 className="select select-sm select-bordered w-full"
                 value={filters[CONFIG_HISTORY_FILTER_KEYS.TYPES][0] || ""}
-                onChange={(e) => handleDropdownFilterChange(CONFIG_HISTORY_FILTER_KEYS.TYPES, e.target.value)}
+                onChange={(e) => setFilter(CONFIG_HISTORY_FILTER_KEYS.TYPES, e.target.value)}
               >
                 <option value="">All Features</option>
-                {CONFIG_HISTORY_FEATURE_OPTIONS.map((feature) => (
-                  <option key={feature.value} value={feature.value}>
-                    {feature.label}
+                {featureOptions.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
                   </option>
                 ))}
               </select>
             </div>
           </div>
-
-          {/* Filter Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={resetFilters}
-              className="w-full px-3 py-1.5 text-xs bg-base-300 text-base-content rounded hover:bg-base-200 transition-colors"
-            >
-              Clear
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setFilters({ [CONFIG_HISTORY_FILTER_KEYS.USER_IDS]: [], [CONFIG_HISTORY_FILTER_KEYS.TYPES]: [] });
+              setExpanded(new Set());
+            }}
+            className="w-full py-1.5 text-xs bg-base-300 rounded hover:bg-base-200"
+          >
+            Clear
+          </button>
         </div>
 
-        <div id="config-history-scroll-container" className="mt-2 flex-1 overflow-y-auto">
+        <div id="config-history-scroll" className="flex-1 overflow-y-auto min-h-0">
           {loading && page === 1 ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="loading loading-spinner loading-md"></div>
+            <div className="flex justify-center h-40 items-center">
+              <span className="loading loading-spinner loading-md" />
             </div>
           ) : (
             <InfiniteScroll
-              dataLength={historyData.length}
-              next={loadMore}
+              dataLength={history.length}
+              next={() => setPage((p) => p + 1)}
               hasMore={hasMore}
               loader={
                 <div className="flex justify-center py-4">
-                  <div className="loading loading-spinner loading-md"></div>
+                  <span className="loading loading-spinner loading-md" />
                 </div>
               }
               endMessage={
-                historyData.length > 0 && (
-                  <p className="text-center text-xs text-base-content/30 py-5">— All caught up —</p>
-                )
+                history.length > 0 && <p className="text-center text-xs text-base-content/30 py-5">— All caught up —</p>
               }
-              scrollableTarget="config-history-scroll-container"
+              scrollableTarget="config-history-scroll"
             >
-              <div className="space-y-4 text-base-content">
-                {groupedHistory.length > 0 ? (
-                  groupedHistory.map(({ label, items }) => (
-                    <div key={label}>
-                      {/* Date group divider */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                        <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider whitespace-nowrap">
-                          {label}
-                        </span>
-                        <div className="flex-1 h-px bg-base-300" />
-                      </div>
-
-                      <ul className="space-y-2">
-                        {items.map((item, index) => (
-                          <li
-                            id={`config-history-item-${item?.id ?? index}`}
-                            key={item?.id ?? index}
-                            className="px-3 py-2.5 rounded-lg bg-base-100 border border-base-300 border-l-2 border-l-primary/30 hover:border-l-primary hover:bg-primary/5 hover:border-base-content/10 transition-all duration-150"
-                          >
-                            {/* Top row: feature name + time */}
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-sm font-semibold truncate text-base-content">
-                                {featureLabelMap[item?.type] || item?.type}
-                              </span>
-                              <span className="text-xs text-base-content/40 shrink-0 tabular-nums">
-                                {new Date(item?.time).toLocaleString("en-US", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                })}
-                              </span>
-                            </div>
-                            {/* Bottom row: user */}
-                            <span className="text-xs text-base-content/50 truncate block">
-                              {item?.user_name || "Unknown User"}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+              <div className="space-y-4 pb-2">
+                {draftItems.length > 0 && (
+                  <div className="rounded-xl border border-warning/35 bg-warning/5 p-3 space-y-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-semibold flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-warning" /> Draft
+                      </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning/20 text-warning border border-warning/30">
+                        {draftItems.length} unpublished
+                      </span>
                     </div>
-                  ))
-                ) : (
+                    {draftItems.map((item, i) => renderHistoryRow(item, `draft-${item.id ?? i}`, true))}
+                  </div>
+                )}
+
+                {grouped.map(({ label, items }) => (
+                  <div key={label}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[11px] font-semibold text-base-content/50 tracking-wider">{label}</span>
+                      <div className="flex-1 h-px bg-base-300" />
+                    </div>
+                    <div className="space-y-2">
+                      {items.map((item, i) => renderHistoryRow(item, `history-${item.id ?? `${label}-${i}`}`))}
+                    </div>
+                  </div>
+                ))}
+
+                {!draftItems.length && !grouped.length && (
                   <div className="text-center py-12 text-base-content/30">
                     <FileTextIcon className="w-10 h-10 mx-auto mb-3 opacity-20" />
                     <p className="text-sm">No history found</p>
+                    {isBridgeScope && (
+                      <p className="text-xs mt-1.5 text-base-content/25">
+                        Bridge tab shows agent-level changes and version create/delete events
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

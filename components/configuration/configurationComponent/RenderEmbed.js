@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { SettingsIcon, TrashIcon, RefreshIcon, SquareFunctionIcon } from "@/components/Icons";
+import { SettingsIcon, TrashIcon, RefreshIcon, SquareFunctionIcon, HistoryIcon } from "@/components/Icons";
 import useExpandableList from "@/customHooks/useExpandableList";
 import InfoTooltip from "@/components/InfoTooltip";
 import { AlertTriangle, Info } from "lucide-react";
@@ -33,6 +33,7 @@ const RenderEmbed = ({
   isPublished,
   isEditor = true,
   maxTitleLength,
+  onOpenHistory,
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
@@ -167,8 +168,23 @@ const RenderEmbed = ({
           {/* Action buttons that appear on hover */}
           {!isToolToggleable && (
             <div
-              className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
+              className={`opacity-0 ${!isReadOnly || onOpenHistory ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
             >
+              {/* History is read-only, so it stays reachable on a published agent too. */}
+              {onOpenHistory && (
+                <button
+                  data-testid={`render-embed-history-button-${value?._id}`}
+                  id={`render-embed-history-button-${value?._id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenHistory(value?._id, rawTitle);
+                  }}
+                  className="btn btn-ghost btn-sm p-1 hover:bg-base-300"
+                  title="Updates History"
+                >
+                  <HistoryIcon size={16} />
+                </button>
+              )}
               <button
                 data-testid={`render-embed-config-button-${value?._id}`}
                 id={`render-embed-config-button-${value?._id}`}
@@ -280,6 +296,7 @@ const RenderEmbed = ({
     hiddenItemsCount,
     isReadOnly,
     maxTitleLength,
+    onOpenHistory,
   ]);
 
   return renderEmbed;
