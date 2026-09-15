@@ -188,6 +188,8 @@ const ParameterCard = ({
                   })()}
                   disabled={(() => {
                     if (isPublished) return true;
+                    // Fill with AI is on (currentPath not tracked in variablesPath) -> Required is forced on and locked
+                    if (!(currentPath in variablesPath)) return true;
                     const keyParts = currentPath.split(".");
                     if (keyParts.length === 1) {
                       // Top-level parameters are always enabled
@@ -316,12 +318,20 @@ const ParameterCard = ({
                   disabled={isPublished || !isEditor}
                   onChange={() => {
                     const updatedVariablesPath = { ...variablesPath };
-                    if (currentPath in updatedVariablesPath) {
+                    const isEnablingFillWithAI = currentPath in updatedVariablesPath;
+                    if (isEnablingFillWithAI) {
                       delete updatedVariablesPath[currentPath];
                     } else {
                       updatedVariablesPath[currentPath] = "";
                     }
                     onVariablePathChange(updatedVariablesPath);
+                    if (isEnablingFillWithAI) {
+                      // Fill with AI enabled -> Required must also be enabled (and gets locked via `disabled` above)
+                      onRequiredChange(currentPath, true);
+                    } else {
+                      // Value Path enabled (Fill with AI off) -> Required must be unchecked
+                      onRequiredChange(currentPath, false);
+                    }
                   }}
                 />
                 <span className="text-xs">Fill with AI</span>
@@ -832,15 +842,20 @@ function FunctionParameterModal({
   }, []);
 
   const handleRequiredChange = useCallback(
-    (key) => {
+    // Pass `forceValue` (true/false) to explicitly set the required state instead of toggling it
+    // (used e.g. when Fill with AI / Value Path toggles need to force Required on/off).
+    (key, forceValue) => {
       const keyParts = key.split(".");
       if (keyParts.length === 1) {
         setToolData((prevToolData) => {
           const data = prevToolData || {};
           const updatedRequiredParams = data.required || [];
-          const newRequiredParams = updatedRequiredParams.includes(keyParts[0])
-            ? updatedRequiredParams.filter((item) => item !== keyParts[0])
-            : [...updatedRequiredParams, keyParts[0]];
+          const isRequired = updatedRequiredParams.includes(keyParts[0]);
+          const shouldBeRequired = forceValue !== undefined ? forceValue : !isRequired;
+          if (shouldBeRequired === isRequired) return data;
+          const newRequiredParams = shouldBeRequired
+            ? [...updatedRequiredParams, keyParts[0]]
+            : updatedRequiredParams.filter((item) => item !== keyParts[0]);
 
           return {
             ...data,
@@ -858,9 +873,12 @@ function FunctionParameterModal({
 
             const fieldKey = keyParts[keyParts.length - 1];
             const updatedRequiredParams = field.required || [];
-            const newRequiredParams = updatedRequiredParams.includes(fieldKey)
-              ? updatedRequiredParams.filter((item) => item !== fieldKey)
-              : [...updatedRequiredParams, fieldKey];
+            const isRequired = updatedRequiredParams.includes(fieldKey);
+            const shouldBeRequired = forceValue !== undefined ? forceValue : !isRequired;
+            if (shouldBeRequired === isRequired) return field;
+            const newRequiredParams = shouldBeRequired
+              ? [...updatedRequiredParams, fieldKey]
+              : updatedRequiredParams.filter((item) => item !== fieldKey);
 
             return {
               ...field,
