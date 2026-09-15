@@ -22,6 +22,7 @@ import {
   addToolCallToMessage,
   appendToolCallDelta,
   updateToolCallResult,
+  setToolCallHandoff,
   appendReasoningChunk,
   setReviewData,
   appendReviewDelta,
@@ -587,6 +588,17 @@ export const sendMessageWithApiStreaming =
                   callId: parsed.call_id,
                   name: parsed.name,
                   result: parsed.content,
+                })
+              );
+            } else if (parsed.event === "browser_handoff") {
+              dispatch(
+                setToolCallHandoff({
+                  channelId,
+                  messageId: streamingState.messageId,
+                  callId: parsed.call_id,
+                  name: parsed.name,
+                  liveUrl: parsed.live_url,
+                  message: parsed.message,
                 })
               );
             } else if (parsed.event === "template_response") {

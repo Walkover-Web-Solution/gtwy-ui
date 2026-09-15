@@ -52,6 +52,7 @@ import {
 import RenderNode from "../richUI/RenderNode";
 import ReasoningAccordion from "./ReasoningAccordion";
 import ReviewPhaseAccordion from "./ReviewPhaseAccordion";
+import BrowserToolPreview, { isBrowserTool } from "./BrowserToolPreview";
 import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 
 const mdComponents = mdComponentsDark;
@@ -114,7 +115,16 @@ function StreamingMessage({ content, isStreaming }) {
   );
 }
 
-function ToolCallItem({ toolCall, isMessageComplete }) {
+// Browser tool calls render as a page-preview card; everything else as the raw accordion.
+function ToolCallItem({ toolCall, isMessageComplete, isActiveHandoff }) {
+  return isBrowserTool(toolCall.name) ? (
+    <BrowserToolPreview toolCall={toolCall} isActiveHandoff={isActiveHandoff} />
+  ) : (
+    <GenericToolCallItem toolCall={toolCall} isMessageComplete={isMessageComplete} />
+  );
+}
+
+function GenericToolCallItem({ toolCall, isMessageComplete }) {
   const [open, setOpen] = useState(false);
 
   // Auto-open when streaming content starts arriving during tool call
@@ -282,6 +292,17 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
       modelType: isPublished ? bridgeData?.configuration?.type : versionData?.configuration?.type,
     };
   });
+
+  const activeHandoffCallId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const toolCalls = messages[i].toolCalls || [];
+      const firstHandoffCall = toolCalls.find(
+        (tc) => !!tc.handoff?.liveUrl || (typeof tc.result === "string" && tc.result.includes("live_url"))
+      );
+      if (firstHandoffCall) return firstHandoffCall.call_id;
+    }
+    return null;
+  }, [messages]);
 
   // Starter questions: use bridge-level configured ones, fall back to defaults
   const displayStarterQuestions = useMemo(() => {
@@ -1384,6 +1405,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                               key={tc.call_id}
                                               toolCall={tc}
                                               isMessageComplete={!message.isStreaming && !message.isLoading}
+                                              isActiveHandoff={tc.call_id === activeHandoffCallId}
                                             />
                                           ))}
                                         </div>
