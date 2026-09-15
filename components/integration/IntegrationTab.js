@@ -57,6 +57,17 @@ window.addEventListener('message', (event) => {
   const getDataUsingUserId = `curl --location ${process.env.NEXT_PUBLIC_SERVER_URL}/api/embed/getAgents \\
 -H 'Authorization: your_embed_token'`;
 
+  // Served from the GTWY portal's `public/`, so the panel and the site hand out the same skill file.
+  const skillHref = "https://gtwy.ai/gtwy-embed-skill.md";
+
+  const skillInstallSnippet = `mkdir -p .claude/skills/gtwy-embed-integration
+
+curl -o .claude/skills/gtwy-embed-integration/SKILL.md \\
+  ${skillHref}`;
+
+  const skillPromptSnippet = `"Add the GTWY embed to my app \u2014 sign the token
+ on my backend and open it from the Agents button."`;
+
   const tableData = [
     ["parentId", "To open GTWY in a specific container"],
     ["agent_id", "To open agent in a specific agent"],
@@ -214,6 +225,48 @@ window.addEventListener('message', (event) => {
               <span className="label-text">Add this script to receive GTWY events</span>
             </label>
             <CodeBlock className="language-jsx">{eventListenerScript}</CodeBlock>
+          </div>
+        </div>
+      </div>
+
+      {/* Set up with a coding agent */}
+      <div className="card bg-base-100 border border-base-300" data-testid="integration-tab-skill">
+        <div className="card-body">
+          <h4 className="card-title text-base">Or hand it to your coding agent</h4>
+          <p className="text-sm text-base-content/70 leading-relaxed">
+            Every step above — the token signing, both script variants, the{" "}
+            <CodeBlock inline>window.GtwyEmbed</CodeBlock> calls, the event payloads and the configuration options — is
+            written up as an agent skill. Drop it into your repo and your coding agent does the integration with the
+            real API shapes in front of it, instead of guessing.
+          </p>
+
+          <ul className="text-sm text-base-content/70 list-disc list-inside space-y-1 mt-2">
+            <li>Knows which script variant to use — and asks rather than guessing</li>
+            <li>Keeps the signing key server-side by default</li>
+            <li>Wires the drafted/published events back to your database</li>
+          </ul>
+
+          <div className="form-control mt-4">
+            <label className="label">
+              <span className="label-text">
+                Run this at the root of the project you want GTWY embedded in. It works with Claude Code and any agent
+                that reads skill files from the repo.
+              </span>
+            </label>
+            <CodeBlock className="language-bash">{skillInstallSnippet}</CodeBlock>
+          </div>
+
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Then just ask</span>
+            </label>
+            <CodeBlock className="language-text">{skillPromptSnippet}</CodeBlock>
+          </div>
+
+          <div className="card-actions">
+            <a className="btn btn-sm btn-outline" href={skillHref} target="_blank" rel="noopener noreferrer" download>
+              Download SKILL.md
+            </a>
           </div>
         </div>
       </div>
