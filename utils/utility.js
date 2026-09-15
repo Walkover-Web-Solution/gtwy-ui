@@ -28,6 +28,7 @@ import { WebSearchIcon } from "@/icons/webSearchIcon";
 import FavIconSVG from "@/public/favicon";
 import { cloneDeep } from "lodash";
 import { Image } from "lucide-react";
+import { toast } from "react-toastify";
 
 export const updatedData = (obj1, obj2 = {}, type) => {
   // Deep clone obj1 to avoid mutating the original object
@@ -1410,4 +1411,11 @@ export const parseNestedJson = (val) => {
     return res;
   }
   return val;
+};
+
+export const copyToClipboard = (content, successMessage = "Content copied to clipboard") => {
+  return navigator.clipboard
+    .writeText(content || "")
+    .then(() => toast.success(successMessage))
+    .catch(() => toast.error("Failed to copy"));
 };

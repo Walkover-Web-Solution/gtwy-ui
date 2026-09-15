@@ -20,12 +20,14 @@ import {
   Sparkles,
   Wrench,
   Key,
+  Rocket,
 } from "lucide-react";
 import { AddIcon, KeyIcon } from "@/components/Icons";
 import GiftIcon from "@/icons/GiftIcon";
 import React from "react";
 
 export const ITEM_ICONS = {
+  getting_started: <Rocket size={15} />,
   org: <Building2 size={15} />,
   agents: <Bot size={15} />,
   api: <Code2 size={15} />,
@@ -59,6 +61,8 @@ export const ITEM_ICONS = {
 
 export const DISPLAY_NAMES = (key) => {
   switch (key) {
+    case "getting_started":
+      return "Getting Started";
     case "api":
       return "API";
     case "chatbot":
@@ -103,6 +107,7 @@ export const DISPLAY_NAMES = (key) => {
 };
 
 export const NAV_SECTIONS = [
+  { title: "", items: ["getting_started"] },
   { title: "AGENT TYPES", items: ["api", "chatbot"] },
   { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets", "model-garden", "tools"] },
   { title: "SECURITY & ACCESS", items: ["pauthkey", "apikeys"] },
