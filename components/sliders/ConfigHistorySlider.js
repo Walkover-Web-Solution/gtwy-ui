@@ -303,7 +303,7 @@ function ConfigHistorySlider({ versionId }) {
                             </div>
                             {/* Bottom row: user */}
                             <span className="text-xs text-base-content/50 truncate block">
-                              {item?.user_name || "Unknown User"}
+                              {item?.user_name || "Former User"}
                             </span>
                           </li>
                         ))}
