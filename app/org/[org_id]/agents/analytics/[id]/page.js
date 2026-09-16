@@ -6,9 +6,9 @@ import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
-import { getThread } from "@/store/action/historyAction";
+import { getSubThreadsAction } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
-import { setSelectedVersion } from "@/store/reducer/historyReducer";
+import { setSelectedVersion, buildThreadKey } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
 import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen } from "lucide-react";
@@ -33,6 +33,9 @@ import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
 import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
+
+// Stable reference so a stale render does not hand children a fresh array each time.
+const EMPTY_THREAD = [];
 
 // URL params that must never be forwarded to the analytics API.
 const UI_ONLY_QUERY_PARAMS = new Set([
@@ -121,18 +124,27 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const dispatch = useDispatch();
 
-  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading, isEmbedUser, reduxUserId } =
-    useCustomSelector((state) => {
-      return {
-        thread: state?.historyReducer?.thread || [],
-        analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
-        selectedVersion: state?.historyReducer?.selectedVersion || "all",
-        knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
-        analyticsLoading: state?.analyticsReducer?.loading || false,
-        isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
-        reduxUserId: state?.userDetailsReducer?.userDetails?.id,
-      };
-    });
+  const {
+    thread,
+    loadedThreadKey,
+    analyticsData,
+    selectedVersion,
+    knowledgeBaseData,
+    analyticsLoading,
+    isEmbedUser,
+    reduxUserId,
+  } = useCustomSelector((state) => {
+    return {
+      thread: state?.historyReducer?.thread || [],
+      loadedThreadKey: state?.historyReducer?.loadedThreadKey || null,
+      analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
+      selectedVersion: state?.historyReducer?.selectedVersion || "all",
+      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
+      analyticsLoading: state?.analyticsReducer?.loading || false,
+      isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
+      reduxUserId: state?.userDetailsReducer?.userDetails?.id,
+    };
+  });
 
   // Backend analytics pushes charts to `${org_id}_${bridge_id}_${user_id}` (same as ConfigurationPage).
   const currentUserId =
@@ -562,33 +574,38 @@ function Page({ params, searchParams }) {
   const threadHandler = useCallback(
     async (thread_id, item, options = {}) => {
       const opts = options && typeof options === "object" ? options : {};
-      const firstSubThreadId =
-        opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id || thread_id;
+      let firstSubThreadId = opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id;
 
       setSelectedThreadId(thread_id);
-      setSelectedSubThreadId(firstSubThreadId);
       setSidebarExpandedThreadId(thread_id);
-      setSidebarExpandedSubThreadId(firstSubThreadId);
       setIsSliderOpen(true);
       setSelectedBatchMessageId(null);
 
-      dispatch(
-        getThread({
-          threadId: thread_id,
-          bridgeId: resolvedParams.id,
-          nextPage: 1,
-          user_feedback: "all",
-          subThreadId: firstSubThreadId,
-          versionId: "",
-          error: false,
-        })
-      );
+      // The listing does not always carry sub threads; falling back to thread_id loads an empty one.
+      if (!firstSubThreadId) {
+        setSelectedSubThreadId(null);
+        setSidebarExpandedSubThreadId(null);
+        const subThreads = await dispatch(
+          getSubThreadsAction({
+            thread_id,
+            error: false,
+            bridge_id: resolvedParams.id,
+            version_id: selectedVersion,
+          })
+        );
+        firstSubThreadId = subThreads?.[0]?.sub_thread_id || thread_id;
+      }
 
+      setSelectedSubThreadId(firstSubThreadId);
+      setSidebarExpandedSubThreadId(firstSubThreadId);
+
+      // NewThreadContainer loads the messages off these params, so do not fetch here as well.
+      // Raw ids only: buildUrl writes through URLSearchParams, which encodes them itself.
       router.push(
         buildUrl(
           {
-            thread_id: encodeURIComponent(String(thread_id).replace(/&/g, "%26")),
-            subThread_id: encodeURIComponent(String(firstSubThreadId).replace(/&/g, "%26")),
+            thread_id: String(thread_id),
+            subThread_id: String(firstSubThreadId),
             message_id: null,
             batch_id: null,
           },
@@ -596,7 +613,7 @@ function Page({ params, searchParams }) {
         )
       );
     },
-    [pathName, router, buildUrl, resolvedParams.id, dispatch]
+    [pathName, router, buildUrl, resolvedParams.id, dispatch, selectedVersion]
   );
 
   const handleAnalyticsMessageNavigate = useCallback(
@@ -619,23 +636,12 @@ function Page({ params, searchParams }) {
       setSidebarExpandedSubThreadId(subThreadId);
       setIsSliderOpen(true);
 
-      dispatch(
-        getThread({
-          threadId,
-          bridgeId: resolvedParams.id,
-          nextPage: 1,
-          user_feedback: "all",
-          subThreadId,
-          versionId: "",
-          error: false,
-        })
-      );
-
+      // As in threadHandler: NewThreadContainer loads the messages, and buildUrl encodes the ids.
       router.push(
         buildUrl(
           {
-            thread_id: encodeURIComponent(String(threadId).replace(/&/g, "%26")),
-            subThread_id: encodeURIComponent(String(subThreadId).replace(/&/g, "%26")),
+            thread_id: String(threadId),
+            subThread_id: String(subThreadId),
             message_id: null,
             batch_id: null,
           },
@@ -643,7 +649,7 @@ function Page({ params, searchParams }) {
         )
       );
     },
-    [pathName, selectedThreadId, sidebarExpandedThreadId, resolvedParams.id, dispatch, router, buildUrl]
+    [pathName, selectedThreadId, sidebarExpandedThreadId, router, buildUrl]
   );
 
   const handleCloseAside = useCallback(() => {
@@ -659,6 +665,43 @@ function Page({ params, searchParams }) {
     setSearchMessageId(null);
     setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId));
   }, []);
+
+  // Selection switches before the new messages arrive, so the store still holds the thread just left.
+  const currentThreadKey = buildThreadKey(selectedThreadId, selectedSubThreadId);
+  const isThreadStale = !currentThreadKey || loadedThreadKey !== currentThreadKey;
+
+  // Sub thread already auto-selected, so a manual deselect is not undone on the next render.
+  const autoSelectedBatchForRef = useRef(null);
+
+  // A batch sub thread holds one message per batch value; select the first, as the history page does.
+  useEffect(() => {
+    if (!selectedThreadId || !selectedSubThreadId) {
+      autoSelectedBatchForRef.current = null;
+      return;
+    }
+    if (!Array.isArray(thread) || thread.length === 0) return;
+    if (isThreadStale) return;
+
+    if (autoSelectedBatchForRef.current === currentThreadKey) return;
+
+    const firstBatch = thread.find((msg) => msg?.batch_data?.batch_id);
+    autoSelectedBatchForRef.current = currentThreadKey;
+    if (firstBatch && !searchMessageId) setSelectedBatchMessageId(firstBatch.message_id);
+  }, [thread, selectedThreadId, selectedSubThreadId, searchMessageId, isThreadStale, currentThreadKey]);
+
+  // One batch value when selected, the whole sub thread otherwise (also when it matches nothing).
+  const displayThread = useMemo(() => {
+    if (isThreadStale) return EMPTY_THREAD;
+    if (!selectedBatchMessageId || searchMessageId) return thread;
+    const selectedOnly = thread.filter((msg) => msg?.message_id === selectedBatchMessageId);
+    return selectedOnly.length > 0 ? selectedOnly : thread;
+  }, [thread, selectedBatchMessageId, searchMessageId, isThreadStale]);
+
+  // Messages the batch/sub thread panel derives its batch values from.
+  const panelThread = useMemo(() => {
+    if (isThreadStale) return EMPTY_THREAD;
+    return thread;
+  }, [thread, isThreadStale]);
 
   const handleThreadItemClick = useCallback((thread_id, item, value) => {
     if (value === "AiConfig" || value === "Latency" || value === "Memory") {
@@ -1570,11 +1613,7 @@ function Page({ params, searchParams }) {
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <NewThreadContainer
               onClose={handleCloseAside}
-              thread={
-                selectedBatchMessageId && !searchMessageId
-                  ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
-                  : thread
-              }
+              thread={displayThread}
               searchParamsHook={search}
               isFetchingMore={false}
               setIsFetchingMore={() => {}}
@@ -1601,12 +1640,16 @@ function Page({ params, searchParams }) {
 
       {/* Batch Subthread Panel - between main content and sidebar */}
       <BatchSubthreadPanel
-        thread={thread}
+        thread={panelThread}
         subThreadIdFromURL={selectedSubThreadId}
         parentThreadId={selectedThreadId}
         selectedBatchMessageId={selectedBatchMessageId}
         onSelectBatch={handleSelectBatch}
         onSelectSubThread={handleSelectSubThread}
+        // The sidebar hides its sub thread list once a thread is open, so a lone one must show here.
+        showSingleSubThread
+        // This page's thread list sits to the right of the panel.
+        threadListOnRight
       />
 
       {/* Right Sidebar */}

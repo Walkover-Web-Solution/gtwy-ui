@@ -5,7 +5,17 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
-import { Brain, ChevronRight, Clock3, ExternalLink, Maximize2, RotateCcw, SlidersHorizontal } from "lucide-react";
+import {
+  AlertTriangle,
+  Brain,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  ExternalLink,
+  Maximize2,
+  RotateCcw,
+  SlidersHorizontal,
+} from "lucide-react";
 import { AddIcon, BotMessageIcon, CheckCircleIcon, CopyIcon, PencilIcon } from "@/components/Icons";
 import { ExpandCollapse } from "@/components/UI/ExpandCollapse";
 import { ThreadActionPill, ThreadInlinePanel, ThreadSystemPromptPanel } from "../historyUi/ThreadActionPill";
@@ -22,7 +32,7 @@ import {
   openModal,
   parseNestedJson,
 } from "@/utils/utility";
-import { MODAL_TYPE } from "@/utils/enums";
+import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { flattenToolsCallData } from "@/utils/executionTraceTransform";
 import { rerunApi } from "@/config/modelApi";
 import { getHistoryAction } from "@/store/action/historyAction";
@@ -41,6 +51,18 @@ export const formatMoney = (value) => {
 };
 
 export const getAssistantText = (item) => item?.updated_llm_message || item?.chatbot_message || item?.llm_message || "";
+
+// Batch status badge, mirroring the history page (ThreadItem) so both UIs read the same.
+const getBatchStatusMeta = (status) => {
+  const statusLower = (status || "").toLowerCase();
+  if (statusLower === "completed") {
+    return { icon: CheckCircle2, className: "badge-success", label: "Completed" };
+  }
+  if (BATCH_PROCESSING_STATUSES.includes(statusLower)) {
+    return { icon: Clock3, className: "badge-warning", label: status || "Unknown" };
+  }
+  return { icon: AlertTriangle, className: "badge-error", label: status || "Unknown" };
+};
 
 const toolCostOf = (tool) => {
   const child = tool?.data?.response || tool?.response;
@@ -310,6 +332,10 @@ const NewThreadItem = ({
   const systemPrompt = item?.prompt || (item?.user ? thread?.[index + 1]?.prompt : "") || "";
   const variables = omitHiddenVariables(item?.variables && typeof item.variables === "object" ? item.variables : {});
   const variableCount = Object.keys(variables).length;
+
+  const isBatchResponse = Boolean(item?.batch_data?.batch_id);
+  const batchStatusMeta = isBatchResponse ? getBatchStatusMeta(item?.batch_data?.status) : null;
+  const BatchStatusIcon = batchStatusMeta?.icon;
 
   const memoryContent = useMemo(() => extractMemoryFromAiConfigInput(item?.AiConfig), [item?.AiConfig]);
 
@@ -763,6 +789,16 @@ const NewThreadItem = ({
   const aiFooter = (
     <>
       <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] text-base-content/45">
+        {isBatchResponse ? (
+          <span
+            data-testid={`batch-status-badge-${messageId}`}
+            id={`batch-status-badge-${messageId}`}
+            className={`badge badge-sm gap-1 text-white ${batchStatusMeta.className}`}
+          >
+            <BatchStatusIcon size={10} />
+            {batchStatusMeta.label}
+          </span>
+        ) : null}
         {latency !== null ? (
           <span className="inline-flex items-center gap-1">
             <Clock3 size={11} />
