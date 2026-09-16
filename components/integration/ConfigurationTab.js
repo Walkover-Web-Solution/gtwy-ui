@@ -837,7 +837,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                                     // keep raw string while user is typing invalid JSON
                                   }
                                   handleConfigChange("response_type", {
-                                    type: "json_schema",
+                                    type: "json_object",
                                     json_schema: schemaToStore,
                                   });
                                 }}
@@ -858,7 +858,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                           responseType={configuration?.response_type}
                           onSave={(schema) => {
                             handleConfigChange("response_type", {
-                              type: "json_schema",
+                              type: "json_object",
                               json_schema: schema,
                             });
                             setHasUnsavedChanges(true);
@@ -873,7 +873,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                           schema={configuration?.response_type?.json_schema}
                           onSaveSchema={(schema) => {
                             handleConfigChange("response_type", {
-                              type: "json_schema",
+                              type: "json_object",
                               json_schema: schema,
                             });
                             setHasUnsavedChanges(true);
@@ -911,7 +911,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                                 // keep raw string while user is typing invalid JSON
                               }
                               handleConfigChange("response_type", {
-                                type: "json_schema",
+                                type: "json_object",
                                 json_schema: schemaToStore,
                               });
                             }}
@@ -933,7 +933,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                                 // keep raw string while user is typing invalid JSON
                               }
                               handleConfigChange("response_type", {
-                                type: "json_schema",
+                                type: "json_object",
                                 json_schema: schemaToStore,
                               });
                               setHasUnsavedChanges(true);

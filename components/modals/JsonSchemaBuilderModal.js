@@ -292,12 +292,19 @@ function JsonSchemaBuilderModal({
 }) {
   const dispatch = useDispatch();
 
-  const { json_schema, response_type } = useCustomSelector((state) => {
-    const rt =
-      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version]?.configuration?.response_type;
+  const { json_schema, response_type, modelInfoData } = useCustomSelector((state) => {
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+    const rt = versionData?.configuration?.response_type;
+    const service = versionData?.service;
+    const configuration = versionData?.configuration;
+    const type = configuration?.type;
+    const model = configuration?.model;
+    const modelInfoData =
+      state?.modelReducer?.serviceModels?.[service]?.[type]?.[model]?.configuration?.additional_parameters;
     return {
       json_schema: rt?.[schemaKey],
       response_type: rt,
+      modelInfoData,
     };
   });
 
@@ -865,19 +872,21 @@ function JsonSchemaBuilderModal({
           onClickNode.enum = [selectedType];
         }
       });
+      const resolvedType = finalResponseType?.type === "widget" ? "widget" : "json_schema";
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
             configuration: {
-              response_type: { ...finalResponseType, json_schema: mergedSchema },
+              response_type: { ...finalResponseType, type: resolvedType, json_schema: mergedSchema },
             },
           },
         })
       );
     } else {
       // Normal mode: replace the whole schema at schemaKey
+      const resolvedType = finalResponseType?.type === "widget" ? "widget" : "json_schema";
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
@@ -890,7 +899,7 @@ function JsonSchemaBuilderModal({
                   schema: { ...schemaData, properties: trimmedProperties },
                   strict: true,
                 },
-                is_template: finalResponseType?.is_template ?? false,
+                type: resolvedType,
                 template_id: finalResponseType?.template_id,
               }),
             },
@@ -913,6 +922,7 @@ function JsonSchemaBuilderModal({
     widgetButtons,
     finalJsonSchema,
     finalResponseType,
+    modelInfoData,
     getActionDataNode,
     getOnClickTypeNode,
     buttonOnClickTypes,
