@@ -150,161 +150,164 @@ const ParameterCard = ({
           />
           {name !== "Pre Tool" && name !== "Post Tool" && (
             <div className="flex items-center mr-4 gap-2">
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  autoComplete="off"
-                  data-testid={`param-required-checkbox-${currentPath}`}
-                  id={`param-required-checkbox-${currentPath}`}
-                  type="checkbox"
-                  className="checkbox checkbox-xs"
-                  checked={(() => {
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length === 1) {
-                      // For top-level parameters, check in toolData.required
-                      return (toolData?.required || []).includes(paramKey);
-                    } else {
-                      // For nested parameters, navigate to the direct parent field
-                      const parentKeyParts = keyParts.slice(0, -1);
-                      let currentField = toolData?.fields;
+              {/* A non-empty Value Path is set for this parameter -> required is not applicable, hide it */}
+              {!variablesPath[currentPath] && (
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    autoComplete="off"
+                    data-testid={`param-required-checkbox-${currentPath}`}
+                    id={`param-required-checkbox-${currentPath}`}
+                    type="checkbox"
+                    className="checkbox checkbox-xs"
+                    checked={(() => {
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length === 1) {
+                        // For top-level parameters, check in toolData.required
+                        return (toolData?.required || []).includes(paramKey);
+                      } else {
+                        // For nested parameters, navigate to the direct parent field
+                        const parentKeyParts = keyParts.slice(0, -1);
+                        let currentField = toolData?.fields;
 
-                      // Navigate to the parent field that contains this parameter
-                      for (let i = 0; i < parentKeyParts.length; i++) {
-                        const key = parentKeyParts[i];
-                        if (currentField?.[key]?.type === "array") {
-                          currentField = currentField[key]?.items;
-                        } else {
-                          if (i === parentKeyParts.length - 1) {
-                            // This is the direct parent - check its required
-                            currentField = currentField?.[key];
+                        // Navigate to the parent field that contains this parameter
+                        for (let i = 0; i < parentKeyParts.length; i++) {
+                          const key = parentKeyParts[i];
+                          if (currentField?.[key]?.type === "array") {
+                            currentField = currentField[key]?.items;
                           } else {
-                            // Navigate deeper into nested structure
-                            currentField = currentField?.[key]?.properties || currentField?.[key]?.parameter;
-                          }
-                        }
-                      }
-
-                      return (currentField?.required || []).includes(paramKey);
-                    }
-                  })()}
-                  disabled={(() => {
-                    if (isPublished) return true;
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length === 1) {
-                      // Top-level parameters are always enabled
-                      return false;
-                    } else {
-                      // For nested parameters, check if all parent parameters are required
-                      let isParentRequired = true;
-
-                      // Check each level of parent to ensure they are all required
-                      for (let i = 0; i < keyParts.length - 1; i++) {
-                        const key = keyParts[i];
-
-                        if (i === 0) {
-                          // Check if top-level parent is required
-                          isParentRequired = (toolData?.required || []).includes(key);
-                        } else {
-                          // Check if nested parent is required
-                          const parentPath = keyParts.slice(0, i);
-                          let parentField = toolData?.fields;
-
-                          // Navigate to the field that should contain the required
-                          for (let j = 0; j < parentPath.length; j++) {
-                            const parentKey = parentPath[j];
-                            if (parentField?.[parentKey]?.type === "array") {
-                              parentField = parentField[parentKey]?.items;
+                            if (i === parentKeyParts.length - 1) {
+                              // This is the direct parent - check its required
+                              currentField = currentField?.[key];
                             } else {
-                              if (j === parentPath.length - 1) {
-                                parentField = parentField?.[parentKey];
-                              } else {
-                                parentField =
-                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
-                              }
+                              // Navigate deeper into nested structure
+                              currentField = currentField?.[key]?.properties || currentField?.[key]?.parameter;
                             }
                           }
-
-                          isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
                         }
 
-                        if (!isParentRequired) break;
+                        return (currentField?.required || []).includes(paramKey);
                       }
+                    })()}
+                    disabled={(() => {
+                      if (isPublished) return true;
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length === 1) {
+                        // Top-level parameters are always enabled
+                        return false;
+                      } else {
+                        // For nested parameters, check if all parent parameters are required
+                        let isParentRequired = true;
 
-                      return !isParentRequired;
-                    }
-                  })()}
-                  onChange={() => onRequiredChange(currentPath)}
-                />
-                <span
-                  className={`text-base-content ${(() => {
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length > 1) {
-                      // Check if parent is required to determine text opacity
-                      let isParentRequired = true;
-                      for (let i = 0; i < keyParts.length - 1; i++) {
-                        const key = keyParts[i];
-                        if (i === 0) {
-                          isParentRequired = (toolData?.required || []).includes(key);
-                        } else {
-                          const parentPath = keyParts.slice(0, i);
-                          let parentField = toolData?.fields;
-                          for (let j = 0; j < parentPath.length; j++) {
-                            const parentKey = parentPath[j];
-                            if (parentField?.[parentKey]?.type === "array") {
-                              parentField = parentField[parentKey]?.items;
-                            } else {
-                              if (j === parentPath.length - 1) {
-                                parentField = parentField?.[parentKey];
+                        // Check each level of parent to ensure they are all required
+                        for (let i = 0; i < keyParts.length - 1; i++) {
+                          const key = keyParts[i];
+
+                          if (i === 0) {
+                            // Check if top-level parent is required
+                            isParentRequired = (toolData?.required || []).includes(key);
+                          } else {
+                            // Check if nested parent is required
+                            const parentPath = keyParts.slice(0, i);
+                            let parentField = toolData?.fields;
+
+                            // Navigate to the field that should contain the required
+                            for (let j = 0; j < parentPath.length; j++) {
+                              const parentKey = parentPath[j];
+                              if (parentField?.[parentKey]?.type === "array") {
+                                parentField = parentField[parentKey]?.items;
                               } else {
-                                parentField =
-                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                if (j === parentPath.length - 1) {
+                                  parentField = parentField?.[parentKey];
+                                } else {
+                                  parentField =
+                                    parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                }
                               }
                             }
+
+                            isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
                           }
-                          isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
+
+                          if (!isParentRequired) break;
                         }
-                        if (!isParentRequired) break;
+
+                        return !isParentRequired;
                       }
-                      return !isParentRequired ? "opacity-50" : "";
-                    }
-                    return "";
-                  })()}`}
-                >
-                  Required{" "}
-                  {(() => {
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length > 1) {
-                      // Check if parent is required
-                      let isParentRequired = true;
-                      for (let i = 0; i < keyParts.length - 1; i++) {
-                        const key = keyParts[i];
-                        if (i === 0) {
-                          isParentRequired = (toolData?.required || []).includes(key);
-                        } else {
-                          const parentPath = keyParts.slice(0, i);
-                          let parentField = toolData?.fields;
-                          for (let j = 0; j < parentPath.length; j++) {
-                            const parentKey = parentPath[j];
-                            if (parentField?.[parentKey]?.type === "array") {
-                              parentField = parentField[parentKey]?.items;
-                            } else {
-                              if (j === parentPath.length - 1) {
-                                parentField = parentField?.[parentKey];
+                    })()}
+                    onChange={() => onRequiredChange(currentPath)}
+                  />
+                  <span
+                    className={`text-base-content ${(() => {
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length > 1) {
+                        // Check if parent is required to determine text opacity
+                        let isParentRequired = true;
+                        for (let i = 0; i < keyParts.length - 1; i++) {
+                          const key = keyParts[i];
+                          if (i === 0) {
+                            isParentRequired = (toolData?.required || []).includes(key);
+                          } else {
+                            const parentPath = keyParts.slice(0, i);
+                            let parentField = toolData?.fields;
+                            for (let j = 0; j < parentPath.length; j++) {
+                              const parentKey = parentPath[j];
+                              if (parentField?.[parentKey]?.type === "array") {
+                                parentField = parentField[parentKey]?.items;
                               } else {
-                                parentField =
-                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                if (j === parentPath.length - 1) {
+                                  parentField = parentField?.[parentKey];
+                                } else {
+                                  parentField =
+                                    parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                }
                               }
                             }
+                            isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
                           }
-                          isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
+                          if (!isParentRequired) break;
                         }
-                        if (!isParentRequired) break;
+                        return !isParentRequired ? "opacity-50" : "";
                       }
-                      return !isParentRequired ? "(parent must be required first)" : "";
-                    }
-                    return "";
-                  })()}
-                </span>
-              </label>
+                      return "";
+                    })()}`}
+                  >
+                    Required{" "}
+                    {(() => {
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length > 1) {
+                        // Check if parent is required
+                        let isParentRequired = true;
+                        for (let i = 0; i < keyParts.length - 1; i++) {
+                          const key = keyParts[i];
+                          if (i === 0) {
+                            isParentRequired = (toolData?.required || []).includes(key);
+                          } else {
+                            const parentPath = keyParts.slice(0, i);
+                            let parentField = toolData?.fields;
+                            for (let j = 0; j < parentPath.length; j++) {
+                              const parentKey = parentPath[j];
+                              if (parentField?.[parentKey]?.type === "array") {
+                                parentField = parentField[parentKey]?.items;
+                              } else {
+                                if (j === parentPath.length - 1) {
+                                  parentField = parentField?.[parentKey];
+                                } else {
+                                  parentField =
+                                    parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                }
+                              }
+                            }
+                            isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
+                          }
+                          if (!isParentRequired) break;
+                        }
+                        return !isParentRequired ? "(parent must be required first)" : "";
+                      }
+                      return "";
+                    })()}
+                  </span>
+                </label>
+              )}
               <label className="flex items-center gap-2">
                 <input
                   autoComplete="off"
