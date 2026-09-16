@@ -15,7 +15,7 @@ const OrganizationHeader = ({ organizationsArray, setDisplayedOrganizations }) =
 
   const currentOrgId = useCustomSelector((state) => state.orgReducer?.currentOrgId);
 
-  const orgId = currentOrgId || orgIdFromUrl; // ✅ MOVE UP
+  const orgId = orgIdFromUrl || currentOrgId;
 
   const { userdetails, organizations } = useCustomSelector((state) => ({
     userdetails: state.userDetailsReducer.userDetails,

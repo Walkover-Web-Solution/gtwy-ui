@@ -898,8 +898,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             {/* Footer Actions Section */}
             <div className="border-t border-base-content/20 p-1">
               <div className="space-y-1">
-                {/* Wallet balance -> plans page */}
-                <WalletSidebarWidget orgId={orgId} showLabel={showSidebarContent} />
+                {/* Wallet balance -> plans page (only when we have an unambiguous org from the URL) */}
+                {pathParts[2] && <WalletSidebarWidget orgId={pathParts[2]} showLabel={showSidebarContent} />}
 
                 {/* Primary action: Admin */}
                 <button
