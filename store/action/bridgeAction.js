@@ -808,16 +808,13 @@ export const deleteBridgeAction =
         });
         return response;
       }
-      const errorMessage =
-        response?.data?.error || response?.data?.message || `Failed to ${restore ? "restore" : "delete"} agent`;
+      const errorMessage = response?.data?.error;
       toast.error(errorMessage);
       throw new Error(errorMessage);
     } catch (error) {
       // Avoid double-toast when we already toasted for success:false above
       if (error?.response) {
-        toast.error(
-          error?.response?.data?.error || error?.response?.data?.message || error?.message || "Failed to delete agent"
-        );
+        toast.error(error?.response?.data?.error);
       }
       console.error("Failed to delete bridge:", error);
       throw error;
