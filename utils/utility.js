@@ -1411,3 +1411,15 @@ export const parseNestedJson = (val) => {
   }
   return val;
 };
+
+// Host serving the embed page, matching gtwy.js — not the dashboard's, since the interceptor only reads the session token on an embed/localhost host.
+const getEmbedBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_ENV === "LOCAL") return `${process.env.NEXT_PUBLIC_FRONTEND_URL}/embed`;
+  return process.env.NEXT_PUBLIC_ENV === "PROD" ? "https://embed.gtwy.ai/embed" : "https://dev-embed.gtwy.ai/embed";
+};
+
+// Same URL gtwy.js gives its iframe after /api/embed/login succeeds.
+export const buildEmbedLoginUrl = (interfaceDetails) => {
+  if (!interfaceDetails) return null;
+  return `${getEmbedBaseUrl()}?interfaceDetails=${encodeURIComponent(JSON.stringify(interfaceDetails))}`;
+};
