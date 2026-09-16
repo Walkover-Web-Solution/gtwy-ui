@@ -92,6 +92,7 @@ export const getSubThreadsAction =
     try {
       const data = await getSubThreadIds({ thread_id, error, bridge_id, version_id });
       dispatch(fetchSubThreadReducer({ data: data.threads, thread_id }));
+      return data.threads;
     } catch (error) {
       console.error(error);
     }

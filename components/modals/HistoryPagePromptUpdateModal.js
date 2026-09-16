@@ -3,8 +3,9 @@ import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import React from "react";
 import { useDispatch } from "react-redux";
+import { toast } from "react-toastify";
 import Modal from "../UI/Modal";
-import { History, RotateCcw } from "lucide-react";
+import { AlertTriangle, History, RotateCcw } from "lucide-react";
 import { promptObjectToString, parsePromptObject } from "@/utils/promptUtils";
 
 const HistoryPagePromptUpdateModal = ({
@@ -15,6 +16,7 @@ const HistoryPagePromptUpdateModal = ({
   handleRegenerate,
   isRegenerating,
   onPromptSaved,
+  notice,
 }) => {
   const dispatch = useDispatch();
 
@@ -23,7 +25,7 @@ const HistoryPagePromptUpdateModal = ({
     closeModal(MODAL_TYPE.EDIT_MESSAGE_MODAL);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
 
     let newValue;
@@ -41,12 +43,26 @@ const HistoryPagePromptUpdateModal = ({
         : JSON.stringify(newValue) !== JSON.stringify(previousPrompt);
 
     if (hasChanged) {
-      dispatch(
+      const versionId = searchParams?.version;
+      if (!versionId) {
+        toast.error("Could not update the prompt: no agent version to save it to.");
+        return;
+      }
+
+      // The update can fail without throwing (deleted version, no parent agent in the store), so
+      // report the outcome instead of closing on a silent no-op.
+      const result = await dispatch(
         updateBridgeVersionAction({
-          versionId: searchParams?.version,
+          versionId,
           dataToSend: { configuration: { prompt: newValue } },
         })
       );
+
+      if (!result?.success) {
+        toast.error(result?.error || "Could not update the prompt. Please try again.");
+        return;
+      }
+      toast.success("Prompt updated successfully");
     }
 
     if (onPromptSaved) {
@@ -66,6 +82,16 @@ const HistoryPagePromptUpdateModal = ({
       widthClass="w-[min(1400px,96vw)]"
     >
       <div id="history-prompt-update-modal-container" className="flex flex-col gap-4">
+        {notice ? (
+          <div
+            data-testid="history-prompt-update-notice"
+            id="history-prompt-update-notice"
+            className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-base-content"
+          >
+            <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning" />
+            <span>{notice}</span>
+          </div>
+        ) : null}
         {handleRegenerate && (
           <div className="flex justify-end">
             <button

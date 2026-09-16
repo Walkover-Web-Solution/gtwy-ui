@@ -104,6 +104,10 @@ const NewThreadContainer = ({
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [generatedPrompts, setGeneratedPrompts] = useState({}); // Store generated prompts by message ID
   const [editPreviousPrompt, setEditPreviousPrompt] = useState("");
+  // Version the prompt update will actually be saved to, plus the id of a version that the
+  // message references but the agent no longer has (deleted version).
+  const [resolvedEditVersionId, setResolvedEditVersionId] = useState("");
+  const [missingEditVersionId, setMissingEditVersionId] = useState("");
 
   // UI-only state for the redesigned header
   const [viewFilter, setViewFilter] = useState("all");
@@ -299,32 +303,84 @@ const NewThreadContainer = ({
   // "Previous Prompt" side of the update modal is filled and the save targets a real version.
   useEffect(() => {
     if (!modalInput?.Id) return;
-    const versionId = modalInput?.versionId || versionFromURL || thread?.[0]?.version_id || "";
-    if (!versionId) {
+    const messageVersionId = modalInput?.versionId || versionFromURL || thread?.[0]?.version_id || "";
+
+    setMissingEditVersionId("");
+
+    if (!messageVersionId) {
       setEditPreviousPrompt(modalInput?.prompt || "");
+      setResolvedEditVersionId(publishedVersionId || "");
       return;
     }
 
-    const cachedPrompt = bridgeVersionMapping?.[versionId]?.configuration?.prompt;
+    const cachedPrompt = bridgeVersionMapping?.[messageVersionId]?.configuration?.prompt;
     if (cachedPrompt) {
       setEditPreviousPrompt(cachedPrompt);
+      setResolvedEditVersionId(messageVersionId);
       return;
     }
+
+    // Already known to be gone from the agent — skip the request that would only 400.
+    const knownDeleted = bridgeVersionsArray.length > 0 && !bridgeVersionsArray.includes(messageVersionId);
 
     let cancelled = false;
     (async () => {
-      const agent = await dispatch(getBridgeVersionAction({ versionId }));
+      const agent = knownDeleted ? null : await dispatch(getBridgeVersionAction({ versionId: messageVersionId }));
       if (cancelled) return;
-      setEditPreviousPrompt(agent?.configuration?.prompt || modalInput?.prompt || "");
+
+      if (agent) {
+        setEditPreviousPrompt(agent?.configuration?.prompt || modalInput?.prompt || "");
+        setResolvedEditVersionId(messageVersionId);
+        return;
+      }
+
+      // The message was produced by a version the agent no longer has (it was deleted), so the
+      // API answers "Agent version not found". Saving to that id would fail without telling the
+      // user, so target the published version instead and say so in the modal.
+      const fallbackVersionId = publishedVersionId || "";
+      setMissingEditVersionId(messageVersionId);
+      setResolvedEditVersionId(fallbackVersionId);
+
+      if (!fallbackVersionId) {
+        setEditPreviousPrompt(modalInput?.prompt || "");
+        return;
+      }
+      const fallbackCachedPrompt = bridgeVersionMapping?.[fallbackVersionId]?.configuration?.prompt;
+      if (fallbackCachedPrompt) {
+        setEditPreviousPrompt(fallbackCachedPrompt);
+        return;
+      }
+      const fallbackAgent = await dispatch(getBridgeVersionAction({ versionId: fallbackVersionId }));
+      if (cancelled) return;
+      setEditPreviousPrompt(fallbackAgent?.configuration?.prompt || modalInput?.prompt || "");
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modalInput?.Id, modalInput?.versionId, versionFromURL, thread?.[0]?.version_id, dispatch]);
+  }, [
+    modalInput?.Id,
+    modalInput?.versionId,
+    versionFromURL,
+    thread?.[0]?.version_id,
+    publishedVersionId,
+    bridgeVersionsArray,
+    dispatch,
+  ]);
 
-  const editVersionId = modalInput?.versionId || versionFromURL || thread?.[0]?.version_id || "";
+  // Once the message's version is known to be gone, take the resolved target verbatim — an empty
+  // one means the agent has no published version either, and falling back down the chain would
+  // aim the save right back at the deleted version.
+  const editVersionId = missingEditVersionId
+    ? resolvedEditVersionId
+    : resolvedEditVersionId || modalInput?.versionId || versionFromURL || thread?.[0]?.version_id || "";
   const resolvedPreviousPrompt = previousPrompt || editPreviousPrompt || modalInput?.prompt || "";
+
+  const editVersionNotice = !missingEditVersionId
+    ? ""
+    : editVersionId
+      ? "This message belongs to an agent version that no longer exists, so the prompt will be saved to the current published version."
+      : "This message belongs to an agent version that no longer exists, and this agent has no published version to save the prompt to. Publish a version first.";
 
   useEffect(() => {
     calcFlexDirection();
@@ -767,14 +823,17 @@ const NewThreadContainer = ({
       <HistoryPagePromptUpdateModal
         searchParams={{
           ...Object.fromEntries(searchParamsHook.entries()),
-          // The analytics route has no ?version param; save must still target the message's version.
-          version: editVersionId || searchParamsHook.get("version") || "",
+          // The analytics route has no ?version param; save must still target the message's
+          // version. editVersionId already falls back to ?version, and is deliberately empty when
+          // there is no version left to save to — so pass it as-is and let the modal refuse.
+          version: editVersionId,
         }}
         promotToUpdate={promotToUpdate}
         previousPrompt={resolvedPreviousPrompt}
         handleRegenerate={modalInput?.Id && generatedPrompts[modalInput?.Id] ? handleRegenerateFromModal : null}
         isRegenerating={isImprovingPrompt}
         onPromptSaved={handlePromptSaved}
+        notice={editVersionNotice}
       />
 
       <EditMessageModal
