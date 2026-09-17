@@ -30,23 +30,3 @@ export const getPlans = async () => {
     throw error;
   }
 };
-
-export const getCreditPacks = async () => {
-  try {
-    const { data } = await axios.get(`${URL}/api/billing/credit-packs`);
-    return data;
-  } catch (error) {
-    console.error("getCreditPacks failed:", error);
-    throw error;
-  }
-};
-
-export const buyCredits = async (usd) => {
-  try {
-    const { data } = await axios.post(`${URL}/api/billing/credits`, { usd });
-    return data;
-  } catch (error) {
-    console.error("buyCredits failed:", error);
-    throw error;
-  }
-};

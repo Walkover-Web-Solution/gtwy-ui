@@ -115,11 +115,6 @@ const ApiKeyInput = ({
     return opts;
   }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType]);
 
-  // Nothing to pick from (no keys saved for this service, no default-key
-  // fallback) — showing an always-empty selector just invites a dead click,
-  // so hide it entirely instead of a disabled/placeholder state.
-  if (dropdownOptions.length === 0) return null;
-
   if (compact) {
     return (
       <div data-testid="apikey-input-compact-container" id="apikey-input-compact-container" className="relative">

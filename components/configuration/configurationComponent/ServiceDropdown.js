@@ -8,7 +8,7 @@ import Protected from "@/components/Protected";
 import { getIconOfService, closeModal } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
-import { ChevronDownIcon, CircleAlert } from "lucide-react";
+import { ChevronDownIcon, CircleAlert, Coins } from "lucide-react";
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 
@@ -139,39 +139,29 @@ const ServiceDropdown = ({
     if (!Array.isArray(availableServices)) {
       availableServices = [];
     }
-    // Free-plan services (or ones this bridge already has its own key for) are
-    // usable without upgrading — surface them first and leave the rest locked,
-    // same rule ModelDropdown applies to models within a service.
-    const isUnlocked = (svcValue) => isServiceInPlan(svcValue) || !!bridgeApikeyObjectId?.[svcValue];
-
     return availableServices
-      .map((svc, index) => (svc && typeof svc === "object" && svc.value ? { svc, index } : null))
-      .filter(Boolean)
-      .sort((a, b) => {
-        const diff = Number(isUnlocked(b.svc.value)) - Number(isUnlocked(a.svc.value));
-        return diff !== 0 ? diff : a.index - b.index;
-      })
-      .map(({ svc }) => {
-        const needsByok = !isUnlocked(svc.value);
-
-        const content = (
-          <div className={`flex items-center gap-2 w-full ${needsByok ? "text-base-content/50" : ""}`}>
-            {getIconOfService(svc.value, 16, 16)}
-            <span className="flex-1">{svc.displayName || svc.value}</span>
-          </div>
-        );
+      .map((svc) => {
+        // Sanity checks
+        if (!svc || typeof svc !== "object") return null;
+        if (!svc.value) return null;
 
         return {
           value: svc.value,
-          disabled: needsByok,
-          label: needsByok ? (
-            <InfoTooltip tooltipContent="Upgrade to Pro to use this service.">{content}</InfoTooltip>
-          ) : (
-            content
+          label: (
+            <div className="flex items-center gap-2 w-full">
+              {getIconOfService(svc.value, 16, 16)}
+              <span className="flex-1">{svc.displayName || svc.value}</span>
+              {isServiceInPlan(svc.value) && (
+                <InfoTooltip tooltipContent="Included in your plan — can be used through plan credits.">
+                  <Coins size={12} className="text-success shrink-0" />
+                </InfoTooltip>
+              )}
+            </div>
           ),
         };
-      });
-  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData, isServiceInPlan, bridgeApikeyObjectId]);
+      })
+      .filter(Boolean);
+  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData, isServiceInPlan]);
 
   const [pendingService, setPendingService] = useState(null);
 
@@ -272,6 +262,11 @@ const ServiceDropdown = ({
               <span id="service-dropdown-selected-name" className="text-base-content/70 text-xs">
                 {serviceName}
               </span>
+              {isServiceInPlan(currentValue) && (
+                <InfoTooltip tooltipContent="Included in your plan — usable through plan credits, no API key needed.">
+                  <Coins size={13} className="text-success shrink-0" />
+                </InfoTooltip>
+              )}
             </span>
             <ChevronDownIcon id="service-dropdown-chevron" size={16} className="ml-2 h-4 w-4 opacity-70" />
           </div>
