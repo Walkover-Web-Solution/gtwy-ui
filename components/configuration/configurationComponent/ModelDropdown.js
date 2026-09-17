@@ -289,7 +289,7 @@ const ModelDropdown = ({
           ) : needsByok ? (
             <div className="flex items-center gap-2 w-full text-base-content/50">
               <span className="flex-1">{displayName}</span>
-              <InfoTooltip tooltipContent="Add your own API key to use this model, or upgrade your plan to unlock it.">
+              <InfoTooltip tooltipContent="Upgrade your plan to unlock it.">
                 <Lock size={11} className="shrink-0" />
               </InfoTooltip>
             </div>
