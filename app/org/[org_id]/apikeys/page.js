@@ -15,6 +15,7 @@ import {
   openModal,
   toggleSidebar,
   getApiKeyStatusClass,
+  getUsageWindow,
 } from "@/utils/utility";
 import { BookIcon, RefreshIcon, SquarePenIcon, TrashIcon } from "@/components/Icons";
 import ResourcePage from "@/components/folders/ResourcePage";
@@ -34,6 +35,24 @@ import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import Protected from "@/components/Protected";
 
 export const runtime = "edge";
+
+// Usage is a rolling counter, so the number is meaningless without the window it covers.
+const renderUsageCell = (item) => {
+  const usage = item?.apikey_usage ? parseFloat(item.apikey_usage).toFixed(4) : 0;
+  const { label, nextReset } = getUsageWindow(item?.apikey_limit_reset_period, item?.apikey_limit_start_date);
+
+  return (
+    <div className="group cursor-help">
+      <div>{usage}</div>
+      <div className="text-xs text-base-content/60">
+        <span className="group-hover:hidden">{label}</span>
+        <span className="hidden whitespace-nowrap group-hover:inline">
+          resets {formatDate(nextReset.toISOString())}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const Page = ({ isEmbedUser = false }) => {
   const pathName = usePathname();
@@ -120,7 +139,8 @@ const Page = ({ isEmbedUser = false }) => {
     ...item,
     actualName: item.name,
     serviceKey: item.service,
-    apikey_usage: item?.apikey_usage ? parseFloat(item.apikey_usage).toFixed(4) : 0,
+    apikey_usage: renderUsageCell(item),
+    apikey_usage_original: item?.apikey_usage ? parseFloat(item.apikey_usage) : 0,
     service: (
       <div className="flex items-center gap-2">
         {getIconOfService(item.service, 18, 18)}
@@ -169,7 +189,7 @@ const Page = ({ isEmbedUser = false }) => {
         name: item.name,
         apikey_object_id: item._id,
         service: apikeyData?.find((api) => api._id === item._id)?.service,
-        apikey_limit: item?.apikey_limit || 1,
+        apikey_limit: item?.apikey_limit ?? 0,
         apikey_usage: 0,
         org_id: item.org_id,
       };

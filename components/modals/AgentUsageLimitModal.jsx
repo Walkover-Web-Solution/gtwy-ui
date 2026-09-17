@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
-import { Settings2 } from "lucide-react";
+import { Settings2, Infinity } from "lucide-react";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
@@ -40,6 +40,8 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
   const usageValue = Number(agent?.bridge_usage !== undefined ? agent.bridge_usage : (agent?.agent_usage ?? 0));
   const limitNum = Number(limit || 0);
   const hasLimit = Number.isFinite(limitNum) && limitNum > 0;
+  const hasSavedLimit =
+    Number((agent?.bridge_limit !== undefined ? agent.bridge_limit : agent?.agent_limit_original) || 0) > 0;
   const usagePercent = hasLimit ? Math.min(100, Math.max(0, (usageValue / limitNum) * 100)) : 0;
   const remaining = hasLimit ? Math.max(limitNum - usageValue, 0) : null;
 
@@ -52,16 +54,16 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
     closeModal(MODAL_TYPE.AGENT_USAGE_LIMIT_MODAL);
   };
 
-  const handleSave = async () => {
+  const submitLimit = async (limitValue, successMessage) => {
     setIsSaving(true);
     try {
       const dataToSend = {
-        bridge_limit: limit ? parseFloat(limit) : 0,
+        bridge_limit: limitValue,
         bridge_limit_reset_period: resetPeriod,
       };
       const res = await dispatch(updateBridgeAction({ bridgeId: agent._id, dataToSend }));
       if (res?.success) {
-        toast.success("Agent Usage Limit Updated Successfully");
+        toast.success(successMessage);
         handleClose();
       } else {
         toast.error("Failed to update agent usage limit");
@@ -72,6 +74,10 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
       setIsSaving(false);
     }
   };
+
+  const handleSave = () => submitLimit(limit ? parseFloat(limit) : 0, "Agent Usage Limit Updated Successfully");
+
+  const handleRemoveLimit = () => submitLimit(0, "Agent Usage Limit Removed Successfully");
 
   const handleResetUsage = async () => {
     setIsResetting(true);
@@ -102,7 +108,7 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
         <div className="flex items-center gap-6 p-4 bg-base-200/40 rounded-xl border border-base-content/5">
           <UsageProgressDonut
             percent={hasLimit ? usagePercent : 0}
-            label={hasLimit ? `${Math.round(usagePercent)}%` : "—"}
+            label={hasLimit ? `${Math.round(usagePercent)}%` : <Infinity size={18} />}
           />
           <div className="flex-1 flex flex-col gap-2 text-sm">
             <div className="flex justify-between items-center py-0.5">
@@ -119,7 +125,7 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
               <span className="font-semibold text-base-content">
                 {hasLimit
                   ? `$${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(remaining)}`
-                  : "—"}
+                  : "Unlimited"}
               </span>
             </div>
           </div>
@@ -174,6 +180,17 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
         )}
 
         <div className="flex justify-end gap-3 border-t border-base-content/10 pt-4 mt-2">
+          {hasSavedLimit && (
+            <button
+              type="button"
+              data-testid="agent-usage-limit-remove-button"
+              className="btn btn-sm btn-ghost text-xs h-8 px-4 font-normal text-error mr-auto"
+              onClick={handleRemoveLimit}
+              disabled={isSaving}
+            >
+              Remove Limit
+            </button>
+          )}
           <button
             type="button"
             data-testid="agent-usage-limit-cancel-button"

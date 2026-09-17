@@ -9,7 +9,7 @@ import { useDispatch } from "react-redux";
 import Modal from "../UI/Modal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { FolderContext } from "@/components/folders/FolderContext";
-import { Key } from "lucide-react";
+import { Key, Infinity } from "lucide-react";
 import { toast } from "react-toastify";
 
 const ApiKeyModal = ({
@@ -39,6 +39,7 @@ const ApiKeyModal = ({
     isAdd: false,
     isUpdate: false,
   });
+  const [apikeyLimit, setApikeyLimit] = useState("");
   const path = pathName?.split("?")[0].split("/");
   const orgId = path[2] || "";
   const dispatch = useDispatch();
@@ -54,6 +55,7 @@ const ApiKeyModal = ({
       isAdd: false,
       isUpdate: false,
     });
+    setApikeyLimit(selectedApiKey?.apikey_limit ?? "");
   }, [selectedApiKey, isEditing]);
 
   // Handle form input changes
@@ -81,8 +83,7 @@ const ApiKeyModal = ({
           currentData.name !== (selectedApiKey.name || "") ||
           currentData.apikey !== (selectedApiKey.apikey || "") ||
           currentData.service !== lockedService ||
-          (currentData.apikey_limit !== "" &&
-            Number(currentData.apikey_limit) !== Number(selectedApiKey.apikey_limit || 0)) ||
+          Number(currentData.apikey_limit || 0) !== Number(selectedApiKey.apikey_limit || 0) ||
           currentData.apikey_limit_reset_period !== (selectedApiKey.apikey_limit_reset_period || "");
 
         setischanged((prev) => ({
@@ -99,6 +100,11 @@ const ApiKeyModal = ({
     },
     [isEditing, selectedApiKey, lockedService]
   );
+
+  const handleRemoveLimit = useCallback(() => {
+    setApikeyLimit("");
+    setischanged((prev) => ({ ...prev, isUpdate: true }));
+  }, []);
 
   const handleClose = useCallback(() => {
     setSelectedApiKey(null);
@@ -188,6 +194,7 @@ const ApiKeyModal = ({
         }
 
         event.target.reset();
+        setApikeyLimit("");
         closeModal(MODAL_TYPE.API_KEY_MODAL);
       });
     },
@@ -298,9 +305,21 @@ const ApiKeyModal = ({
             : field.charAt(0).toUpperCase() + field.slice(1);
           return (
             <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
-              <label className="label-text">
-                {displayLabel} <span className="opacity-55">in $</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="label-text">
+                  {displayLabel} <span className="opacity-55">in $</span>
+                </label>
+                {isEditing && Number(selectedApiKey?.apikey_limit || 0) > 0 && (
+                  <button
+                    type="button"
+                    data-testid="apikey-modal-remove-limit-button"
+                    className="btn btn-ghost btn-xs text-error"
+                    onClick={handleRemoveLimit}
+                  >
+                    Remove Limit
+                  </button>
+                )}
+              </div>
               <input
                 autoComplete="off"
                 data-testid={`apikey-modal-field-${field}-input`}
@@ -309,12 +328,20 @@ const ApiKeyModal = ({
                 className="input input-bordered input-sm"
                 name={field}
                 placeholder={`Enter ${displayLabel}`}
-                defaultValue={selectedApiKey ? selectedApiKey.apikey_limit : ""}
-                onChange={handleFormChange}
+                value={apikeyLimit}
+                onChange={(e) => {
+                  setApikeyLimit(e.target.value);
+                  handleFormChange(e);
+                }}
                 step="0.00001"
                 inputMode="decimal"
                 min="0"
               />
+              {!(Number(apikeyLimit || 0) > 0) && (
+                <p className="text-xs text-base-content/60 flex items-center gap-1">
+                  <Infinity size={14} /> Unlimited — usage will not be capped
+                </p>
+              )}
             </div>
           );
         })}
