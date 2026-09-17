@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { getWalletBalance } from "@/config/walletApi";
+import { getWalletBalance, getCreditPacks, buyCredits } from "@/config/walletApi";
 import { WalletIcon } from "lucide-react";
+import { toast } from "react-toastify";
 
 const CREDIT_RATE_USD = 0.0025;
 const WalletMeter = ({ percentRemaining, credits, total }) => (
@@ -22,6 +23,9 @@ export default function WalletCard({ orgId }) {
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [creditPacks, setCreditPacks] = useState(null);
+  const [packsLoading, setPacksLoading] = useState(true);
+  const [buyingUsd, setBuyingUsd] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -36,9 +40,35 @@ export default function WalletCard({ orgId }) {
     }
   }, []);
 
+  const loadPacks = useCallback(async () => {
+    setPacksLoading(true);
+    try {
+      const res = await getCreditPacks();
+      setCreditPacks(res?.data ?? null);
+    } catch {
+      setCreditPacks(null);
+    } finally {
+      setPacksLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadPacks();
+  }, [load, loadPacks]);
+
+  const handleBuy = async (usd) => {
+    setBuyingUsd(usd);
+    try {
+      const res = await buyCredits(usd);
+      toast.success(res?.message || "Card is being charged; credits arrive once it clears.");
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Could not start the purchase, please try again.");
+    } finally {
+      setBuyingUsd(null);
+    }
+  };
 
   const credits = Number(wallet?.credits_ongoing_balance ?? 0);
   const grantedCredits = Number(wallet?.credits_balance ?? 0);
@@ -123,9 +153,41 @@ export default function WalletCard({ orgId }) {
             </div>
           </dl>
 
-          <p className="border-t border-base-200 pt-4 text-xs text-base-content/40">
-            Adding credits isn't available yet — reach out to your account contact to top up this workspace.
-          </p>
+          <div className="border-t border-base-200 pt-4">
+            <p className="text-xs font-medium text-base-content/70">Buy more credits</p>
+
+            {packsLoading ? (
+              <div className="mt-3 flex items-center gap-2 text-xs text-base-content/50">
+                <span className="loading loading-spinner loading-xs" /> Loading credit packs…
+              </div>
+            ) : !creditPacks?.packs?.length ? (
+              <p className="mt-2 text-xs text-base-content/40">
+                {creditPacks?.can_buy === false
+                  ? "Save a card to your workspace before buying extra credits."
+                  : "No credit packs are available on your current plan."}
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {creditPacks.packs.map((pack) => (
+                  <button
+                    key={pack.usd}
+                    className="btn btn-sm btn-outline"
+                    disabled={!creditPacks.can_buy || buyingUsd !== null}
+                    onClick={() => handleBuy(pack.usd)}
+                  >
+                    {buyingUsd === pack.usd ? (
+                      <span className="loading loading-spinner loading-xs" />
+                    ) : (
+                      <>
+                        ${pack.usd}{" "}
+                        <span className="text-base-content/50">· {pack.credits.toLocaleString()} credits</span>
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

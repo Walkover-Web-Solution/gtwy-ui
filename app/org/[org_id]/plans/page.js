@@ -2,13 +2,18 @@
 import { useParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { Check, CreditCard, ExternalLink, RefreshCw, AlertTriangle, X } from "lucide-react";
-import { getMyPlan, getPlans } from "@/config/walletApi";
+import { Check, CreditCard, ExternalLink, RefreshCw, AlertTriangle, X, Zap } from "lucide-react";
+import { getMyPlan, getPlans, getCreditPacks, buyCredits } from "@/config/walletApi";
 import { getPlanAction } from "@/store/action/planAction";
 import { getWalletAction } from "@/store/action/walletAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import useSubscription from "@/customHooks/useSubscription";
 import { formatPlanAmount, planIntervalLabel } from "@/utils/billingPrice";
+import { rememberCheckoutReturn } from "@/utils/billingReturn";
+import { toast } from "react-toastify";
+import ConfirmationModal from "@/components/UI/ConfirmationModal";
+import { MODAL_TYPE } from "@/utils/enums";
+import { openModal, closeModal } from "@/utils/utility";
 
 export const runtime = "edge";
 
@@ -122,8 +127,55 @@ function PlansPageInner() {
   const [plans, setPlans] = useState([]);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [loadingPlans, setLoadingPlans] = useState(true);
+  const [creditPacks, setCreditPacks] = useState(null);
+  const [loadingPacks, setLoadingPacks] = useState(true);
+  const [buyingUsd, setBuyingUsd] = useState(null);
+  const [pendingPack, setPendingPack] = useState(null);
 
   const loadWallet = useCallback(() => dispatch(getWalletAction()), [dispatch]);
+
+  const loadCreditPacks = useCallback(async () => {
+    setLoadingPacks(true);
+    try {
+      const res = await getCreditPacks();
+      setCreditPacks(res?.data ?? null);
+    } catch {
+      setCreditPacks(null);
+    } finally {
+      setLoadingPacks(false);
+    }
+  }, []);
+
+  const confirmBuyCredits = useCallback((pack) => {
+    setPendingPack(pack);
+    openModal(MODAL_TYPE.BUY_CREDITS_MODAL);
+  }, []);
+
+  const handleBuyCredits = useCallback(
+    async (usd) => {
+      closeModal(MODAL_TYPE.BUY_CREDITS_MODAL);
+      setBuyingUsd(usd);
+      try {
+        const res = await buyCredits(usd);
+        // A card not yet on file gets a Stripe checkout link instead of an
+        // immediate charge — same redirect dance as subscribe/upgrade: stash
+        // where we left from (billing/page.js sends the user back here) then
+        // hand the tab to Stripe.
+        if (res?.data?.status === "payment_required" && res?.data?.url) {
+          rememberCheckoutReturn("credits");
+          window.location.assign(res.data.url);
+          return;
+        }
+        toast.success(res?.message || "Card is being charged; credits arrive once it clears.");
+        loadWallet();
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Could not start the purchase, please try again.");
+      } finally {
+        setBuyingUsd(null);
+      }
+    },
+    [loadWallet]
+  );
 
   const loadPlan = useCallback(async () => {
     try {
@@ -151,7 +203,8 @@ function PlansPageInner() {
     loadWallet();
     loadPlan();
     loadPlans();
-  }, [loadWallet, loadPlan, loadPlans]);
+    loadCreditPacks();
+  }, [loadWallet, loadPlan, loadPlans, loadCreditPacks]);
 
   const onBillingChanged = useCallback(() => {
     loadWallet();
@@ -313,7 +366,10 @@ function PlansPageInner() {
                     onClick: sub.onResume,
                     variant: "primary",
                   };
-                } else if (sub.view?.can_subscribe) {
+                } else if (sub.status === "awaiting_card" && sub.view?.can_subscribe) {
+                  // can_subscribe alone only means "a payment method is on file" — that also
+                  // becomes true after buying a credit pack, which attaches a card without the
+                  // customer ever starting a Pro checkout. Only "awaiting_card" means they did.
                   cta = {
                     label: sub.busy === "subscribe" ? "Completing…" : "Complete subscription",
                     onClick: sub.onSubscribe,
@@ -448,6 +504,58 @@ function PlansPageInner() {
         </section>
       )}
 
+      <section className="rounded-2xl border border-base-200 bg-base-100 p-6 shadow-sm">
+        <div className="mb-1.5 flex items-center gap-2 text-sm font-semibold">
+          <Zap className="h-4 w-4 text-base-content/50" />
+          Buy more credits
+        </div>
+        <div className="mb-4 text-[12.5px] leading-[1.55] text-base-content/50">
+          A one-time top-up on top of your plan, charged to your saved card.
+        </div>
+
+        {loadingPacks ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-[74px] rounded-xl" />
+            ))}
+          </div>
+        ) : !creditPacks?.packs?.length ? (
+          <p className="text-[12.5px] text-base-content/50">
+            {creditPacks?.can_buy === false
+              ? "Save a card to your workspace before buying extra credits."
+              : "No credit packs are available on your current plan."}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {creditPacks.packs.map((pack) => (
+              <div
+                key={pack.usd}
+                className="flex flex-col items-center gap-2.5 rounded-xl border border-base-200 bg-base-100 px-3 py-3.5"
+              >
+                <div className="text-center">
+                  <div className="font-mono text-[20px] font-semibold leading-none tracking-[-.02em]">
+                    {pack.credits.toLocaleString()}
+                  </div>
+                  <div className="mt-1 text-[11.5px] text-base-content/50">credits · ${pack.usd}</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={!creditPacks.can_buy || buyingUsd !== null}
+                  onClick={() => confirmBuyCredits(pack)}
+                  className="btn btn-outline btn-xs h-auto w-full rounded-lg py-2 text-[12px] font-semibold"
+                >
+                  {buyingUsd === pack.usd ? <span className="loading loading-spinner loading-xs" /> : "Buy"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {creditPacks?.can_buy === false && creditPacks?.packs?.length > 0 && (
+          <p className="mt-3 text-[12px] text-base-content/40">Save a card to your workspace to enable purchases.</p>
+        )}
+      </section>
+
       {billingAvailable && sub.view?.plan === "paid" && sub.status !== "canceled" && (
         <section className="grid grid-cols-1 gap-4 rounded-2xl border border-base-200 bg-base-100 p-6 sm:grid-cols-[1fr_auto]">
           <div>
@@ -476,6 +584,22 @@ function PlansPageInner() {
           ? "Need more credits than Pro provides, or a custom plan? Reach out to your account contact."
           : "Need more credits or want to change your plan? Reach out to your account contact."}
       </p>
+
+      <ConfirmationModal
+        modalType={MODAL_TYPE.BUY_CREDITS_MODAL}
+        title="Buy credits"
+        message={
+          pendingPack
+            ? `Add ${pendingPack.credits.toLocaleString()} credits to this workspace for $${pendingPack.usd}, charged to your saved card?`
+            : ""
+        }
+        confirmText="Yes, buy credits"
+        cancelText="Cancel"
+        confirmButtonClass="btn-primary"
+        onConfirm={() => pendingPack && handleBuyCredits(pendingPack.usd)}
+        onCancel={() => closeModal(MODAL_TYPE.BUY_CREDITS_MODAL)}
+        onClose={() => closeModal(MODAL_TYPE.BUY_CREDITS_MODAL)}
+      />
     </main>
   );
 }
