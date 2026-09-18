@@ -15,6 +15,9 @@ import {
   deleteSkillReducer,
 } from "@/store/reducer/bridgeReducer";
 
+// gtwy-node returns { message } on failure; surface it instead of failing silently.
+const errorMessage = (error, fallback) => error?.response?.data?.message || fallback;
+
 /**
  * Fetch all skills for an organization
  */
@@ -57,7 +60,7 @@ export const createSkillAction = (dataToSend) => async (dispatch) => {
   } catch (error) {
     dispatch(isError());
     console.error("Error creating skill:", error);
-    // Toast already shown in API
+    toast.error(errorMessage(error, "Failed to create skill"));
     return { success: false, error };
   }
 };
@@ -84,7 +87,7 @@ export const updateSkillAction =
     } catch (error) {
       dispatch(isError());
       console.error("Error updating skill:", error);
-      // Toast already shown in API
+      toast.error(errorMessage(error, "Failed to update skill"));
       return { success: false, error };
     }
   };
@@ -110,7 +113,7 @@ export const deleteSkillAction =
     } catch (error) {
       dispatch(isError());
       console.error("Error deleting skill:", error);
-      // Toast already shown in API
+      toast.error(errorMessage(error, "Failed to delete skill"));
       return { success: false, error };
     }
   };

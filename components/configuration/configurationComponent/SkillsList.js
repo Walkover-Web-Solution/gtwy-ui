@@ -11,7 +11,7 @@ import { truncate } from "@/components/historyPageComponents/AssistFile";
 import InfoTooltip from "@/components/InfoTooltip";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
-import { CircleQuestionMark, BookOpen } from "lucide-react";
+import { CircleQuestionMark, ScrollText } from "lucide-react";
 
 const SkillsList = ({ params, searchParams, isPublished, isEditor = true }) => {
   const isReadOnly = isPublished || !isEditor;
@@ -67,11 +67,11 @@ const SkillsList = ({ params, searchParams, isPublished, isEditor = true }) => {
         bridgeId: params.id,
         versionId: searchParams?.version,
         dataToSend: {
-          connected_tools: {
+          connected_tool: {
             type: "skills",
             id: skillId,
           },
-          connected_tools_operation: 1,
+          operation: 1,
         },
       })
     );
@@ -97,11 +97,11 @@ const SkillsList = ({ params, searchParams, isPublished, isEditor = true }) => {
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            connected_tools: {
+            connected_tool: {
               type: "skills",
               id: skillToDelete,
             },
-            connected_tools_operation: 0,
+            operation: 0,
           },
         })
       );
@@ -133,11 +133,11 @@ const SkillsList = ({ params, searchParams, isPublished, isEditor = true }) => {
               bridgeId: params.id,
               versionId: searchParams?.version,
               dataToSend: {
-                connected_tools: {
+                connected_tool: {
                   type: "skills",
                   id: newSkill._id,
                 },
-                connected_tools_operation: 1,
+                operation: 1,
               },
             })
           );
@@ -192,7 +192,7 @@ const SkillsList = ({ params, searchParams, isPublished, isEditor = true }) => {
             >
               <div className="flex justify-between items-center w-full">
                 <div className="flex items-center gap-2">
-                  <BookOpen size={16} className="text-primary" />
+                  <ScrollText size={16} className="text-primary" />
                   {item?.name?.length > 20 ? (
                     <div className="tooltip" data-tip={item?.name}>
                       {truncate(item?.name, 20)}
@@ -236,7 +236,7 @@ const SkillsList = ({ params, searchParams, isPublished, isEditor = true }) => {
             className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : ""}`}
           >
             <div className="flex items-center gap-2 w-full ml-2">
-              <BookOpen size={16} className="text-primary" />
+              <ScrollText size={16} className="text-primary" />
               <div className="flex items-center gap-2 w-full">
                 {item?.name?.length > 24 ? (
                   <div className="tooltip tooltip-top min-w-0" data-tip={item?.name}>
