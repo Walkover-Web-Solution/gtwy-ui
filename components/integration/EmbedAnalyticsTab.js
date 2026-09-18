@@ -44,11 +44,6 @@ function emailLocalPart(value) {
   return at > 0 ? value.slice(0, at) : value;
 }
 
-// The label rendered in the User column.
-function rowUserLabel(user) {
-  return emailLocalPart(user?.external_user_id) || emailLocalPart(user?.email) || user?.name || null;
-}
-
 // Id for the embed token: the part after the folder id in `${org_id}_${folder_id}_${embedUserId}@gtwy.ai`. Null for pre-2026-09-07 accounts, which have none.
 function embedUserIdOf(user, folderId) {
   const source = user?.external_user_id;
@@ -101,34 +96,27 @@ const EmbedAnalyticsTab = ({ data }) => {
   // Same steps gtwy.js takes: get a token, log in with it, open the embed as that user.
   const handleLoginAs = useCallback(
     async (user) => {
-      if (!folderId || !user?.user_id) return;
-      setLoginAsUserId(user.user_id);
       // Open the tab inside the click — after the awaits below it would be blocked as a popup.
       const tab = window.open("about:blank", "_blank");
-      if (tab) tab.opener = null;
+      if (!tab) return toast.error("Allow pop-ups for this site to open the embed");
+      tab.opener = null;
+      setLoginAsUserId(user.user_id);
       try {
         const embedUserId = embedUserIdOf(user, folderId);
         if (!embedUserId) throw new Error("UserId Not Available");
 
         const tokenRes = await generateEmbedTokenApi({ folder_id: folderId, user_id: embedUserId });
-        const embedToken = tokenRes?.data?.embedToken;
-        if (!embedToken) {
-          throw new Error(tokenRes?.response?.data?.message || "Could not create an embed token for this user");
-        }
+        if (!tokenRes?.data?.embedToken) throw new Error("Could not create an embed token for this user");
 
-        const loginRes = await embedLoginApi(embedToken);
+        const loginRes = await embedLoginApi(tokenRes.data.embedToken);
         // `standalone` tells the embed page it is a plain tab, not a gtwy.js iframe.
         const url = buildEmbedLoginUrl(loginRes?.data && { ...loginRes.data, standalone: true });
-        if (!url) throw new Error(loginRes?.message || "Embed login did not return a session");
-
-        if (tab) tab.location.href = url;
-        else if (!window.open(url, "_blank", "noopener,noreferrer")) {
-          toast.error("Allow pop-ups for this site to open the embed");
-        }
+        if (!url) throw new Error("Embed login did not return a session");
+        tab.location.href = url;
       } catch (err) {
         console.error(err);
-        tab?.close();
-        toast.error(err?.response?.data?.message || err?.message || "Failed to create login-as session");
+        tab.close();
+        toast.error(err?.response?.data?.message || err?.message || "Failed to open the embed");
       } finally {
         setLoginAsUserId(null);
       }
@@ -438,7 +426,9 @@ const EmbedAnalyticsTab = ({ data }) => {
                         >
                           <td>{isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</td>
                           <td>
-                            <span className="font-medium text-sm">{rowUserLabel(user)}</span>
+                            <span className="font-medium text-sm">
+                              {emailLocalPart(user.external_user_id) || emailLocalPart(user.email) || user.name}
+                            </span>
                           </td>
                           <td>{user.agent_count}</td>
                           <td>{user.total_requests}</td>

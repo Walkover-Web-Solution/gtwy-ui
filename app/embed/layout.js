@@ -29,13 +29,6 @@ const Layout = ({ children, isEmbedUser }) => {
     return interfaceDetailsParam ? JSON.parse(interfaceDetailsParam) : {};
   }, [searchParams]);
 
-  // A plain tab ("login as") has no parent script to send openGtwy, so send it ourselves or the loader never clears.
-  const isStandaloneEmbed = useMemo(() => toBoolean(urlParamsObj.standalone), [urlParamsObj.standalone]);
-
-  useEffect(() => {
-    if (isStandaloneEmbed) setOpenGtwyReceived(true);
-  }, [isStandaloneEmbed]);
-
   const { allBridges, embedThemeConfig, themeMode } = useCustomSelector((state) => ({
     allBridges: state.bridgeReducer?.orgs?.[urlParamsObj.org_id]?.orgs || [],
     embedThemeConfig: state.appInfoReducer?.embedUserDetails?.theme_config || null,
@@ -141,6 +134,9 @@ const Layout = ({ children, isEmbedUser }) => {
       if (urlParamsObj.folder_id) {
         sessionStorage.setItem("embedUser", true);
       }
+
+      // A plain tab ("login as") has no parent script to send openGtwy, so send it ourselves or the loader never clears.
+      if (toBoolean(urlParamsObj.standalone)) setOpenGtwyReceived(true);
 
       if (urlParamsObj.config) {
         const configUpdates = {};
