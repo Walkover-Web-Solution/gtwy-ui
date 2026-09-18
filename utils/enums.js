@@ -123,6 +123,36 @@ export const MODAL_TYPE = {
   JSON_SCHEMA_FULLSCREEN: "json-schema-fullscreen",
 };
 
+export const TEMPLATE_CATEGORIES = [
+  "Customer Support",
+  "Sales & Lead Generation",
+  "Marketing",
+  "Human Resources",
+  "Finance & Accounting",
+  "IT & Technical Support",
+  "Software Development",
+  "Data & Analytics",
+  "Operations & Workflow Automation",
+  "Research & Knowledge Management",
+  "Education & Training",
+  "Legal & Compliance",
+  "Healthcare",
+  "E-commerce",
+  "Productivity & Personal Assistant",
+  "Content Creation",
+  "Communication",
+  "Project Management",
+  "Security",
+  "Other",
+];
+
+export const OTHER_CATEGORY = "Other";
+
+export const TEMPLATE_CATEGORY_OPTIONS = TEMPLATE_CATEGORIES.map((category) => ({
+  value: category,
+  label: category,
+}));
+
 export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];
 
 export const USER_FEEDBACK_FILTER_OPTIONS = ["all", "1", "2"];

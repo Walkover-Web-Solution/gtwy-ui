@@ -7,7 +7,7 @@ import {
   publishBulkVersionAction,
 } from "@/store/action/bridgeAction";
 import { convertAgentToTemplate } from "@/config/bridgeApi";
-import { MODAL_TYPE } from "@/utils/enums";
+import { MODAL_TYPE, OTHER_CATEGORY, TEMPLATE_CATEGORY_OPTIONS } from "@/utils/enums";
 import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
@@ -19,36 +19,6 @@ import PublishVersionDataComparisonView from "../comparison/PublishVersionDataCo
 import { DIFFERNCE_DATA_DISPLAY_NAME, KEYS_TO_COMPARE } from "@/jsonFiles/bridgeParameter";
 import PostPublishFeedbackModal from "./PostPublishFeedbackModal";
 
-const TEMPLATE_CATEGORIES = [
-  "Customer Support",
-  "Sales & Lead Generation",
-  "Marketing",
-  "Human Resources",
-  "Finance & Accounting",
-  "IT & Technical Support",
-  "Software Development",
-  "Data & Analytics",
-  "Operations & Workflow Automation",
-  "Research & Knowledge Management",
-  "Education & Training",
-  "Legal & Compliance",
-  "Healthcare",
-  "E-commerce",
-  "Productivity & Personal Assistant",
-  "Content Creation",
-  "Communication",
-  "Project Management",
-  "Security",
-  "Other",
-];
-
-const OTHER_CATEGORY = "Other";
-
-const TEMPLATE_CATEGORY_OPTIONS = TEMPLATE_CATEGORIES.map((category) => ({
-  value: category,
-  label: category,
-}));
-
 function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_description, isEmbedUser }) {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
@@ -58,9 +28,8 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [convertToTemplate, setConvertToTemplate] = useState(false);
   const [templateCategory, setTemplateCategory] = useState("");
-  const [templateCategoryError, setTemplateCategoryError] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
-  const [customCategoryError, setCustomCategoryError] = useState(false);
+  const [showCategoryErrors, setShowCategoryErrors] = useState(false);
 
   const {
     versionData,
@@ -478,47 +447,46 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     };
   }, [differences, extractedConfigChanges, hasAdditionalConfigurationChanges]);
 
-  const handleCloseModal = useCallback((e) => {
-    e?.preventDefault();
-    closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
-    setConvertToTemplate(false);
+  const resetTemplateCategory = useCallback(() => {
     setTemplateCategory("");
-    setTemplateCategoryError(false);
     setCustomCategory("");
-    setCustomCategoryError(false);
+    setShowCategoryErrors(false);
   }, []);
 
-  const handleConvertToTemplateToggle = useCallback((e) => {
-    const checked = e.target.checked;
-    setConvertToTemplate(checked);
-    if (!checked) {
-      setTemplateCategory("");
-      setTemplateCategoryError(false);
-      setCustomCategory("");
-      setCustomCategoryError(false);
-    }
-  }, []);
+  const handleCloseModal = useCallback(
+    (e) => {
+      e?.preventDefault();
+      closeModal(MODAL_TYPE.PUBLISH_BRIDGE_VERSION);
+      setConvertToTemplate(false);
+      resetTemplateCategory();
+    },
+    [resetTemplateCategory]
+  );
+
+  const handleConvertToTemplateToggle = useCallback(
+    (e) => {
+      const checked = e.target.checked;
+      setConvertToTemplate(checked);
+      if (!checked) resetTemplateCategory();
+    },
+    [resetTemplateCategory]
+  );
 
   const handleTemplateCategoryChange = useCallback((value) => {
     setTemplateCategory(value);
-    setTemplateCategoryError(false);
-    if (value !== OTHER_CATEGORY) {
-      setCustomCategory("");
-      setCustomCategoryError(false);
-    }
+    setShowCategoryErrors(false);
+    if (value !== OTHER_CATEGORY) setCustomCategory("");
   }, []);
 
   const handleCustomCategoryChange = useCallback((e) => {
     setCustomCategory(e.target.value);
-    setCustomCategoryError(false);
+    setShowCategoryErrors(false);
   }, []);
 
-  const resolvedTemplateCategory = useMemo(() => {
-    if (templateCategory === OTHER_CATEGORY) {
-      return customCategory.trim() || templateCategory;
-    }
-    return templateCategory;
-  }, [templateCategory, customCategory]);
+  const isCustomCategory = templateCategory === OTHER_CATEGORY;
+  const templateCategoryError = showCategoryErrors && !templateCategory;
+  const customCategoryError = showCategoryErrors && isCustomCategory && !customCategory.trim();
+  const resolvedTemplateCategory = isCustomCategory ? customCategory.trim() || templateCategory : templateCategory;
 
   // Helper function to get all agents recursively (flattened for operations)
   const getAllAgentsFlat = useCallback((agents) => {
@@ -805,18 +773,18 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   const handlePublishClick = useCallback(() => {
     if (convertToTemplate) {
       if (!templateCategory) {
-        setTemplateCategoryError(true);
+        setShowCategoryErrors(true);
         toast.error("Please select an agent category to save this agent as a template.");
         return;
       }
-      if (templateCategory === OTHER_CATEGORY && !customCategory.trim()) {
-        setCustomCategoryError(true);
+      if (isCustomCategory && !customCategory.trim()) {
+        setShowCategoryErrors(true);
         toast.error("Please enter a custom category name.");
         return;
       }
     }
     handlePublishBridge(convertToTemplate);
-  }, [convertToTemplate, templateCategory, customCategory, handlePublishBridge]);
+  }, [convertToTemplate, templateCategory, isCustomCategory, customCategory, handlePublishBridge]);
 
   const footerContent = (
     <>
@@ -1043,7 +1011,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                   <p className="text-xs text-error mt-1">Please select a category to save this agent as a template.</p>
                 )}
 
-                {templateCategory === OTHER_CATEGORY && (
+                {isCustomCategory && (
                   <div className="mt-3">
                     <label className="label-text font-medium text-sm" htmlFor="custom-template-category-input">
                       Custom Category<span className="text-error"> *</span>
