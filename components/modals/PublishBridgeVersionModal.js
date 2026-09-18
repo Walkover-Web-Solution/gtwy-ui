@@ -1003,6 +1003,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                     searchable
                     searchPlaceholder="Search categories..."
                     size="sm"
+                    placement="top-start"
                     disabled={isLoading || isReadOnly}
                     hasError={templateCategoryError}
                   />

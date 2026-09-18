@@ -236,210 +236,212 @@ const Dropdown = ({
     >
       {TriggerWrapper}
 
-      <div
-        ref={menuRef}
-        className={cx("dropdown-content z-[60] hover:bg-base-200", fullWidth ? "w-full" : "", menuClassName)}
-        role="listbox"
-      >
-        <div className="bg-base-100 rounded-box shadow-xl border border-base-content/20 w-full overflow-hidden">
-          {enableSearch && (
-            <div className="p-2 border-b border-base-content/10">
-              <input
-                autoComplete="off"
-                data-testid={`${testId}-search-input`}
-                id="dropdown-search-input"
-                autoFocus
-                type="text"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  onSearchChange && onSearchChange(e.target.value);
-                }}
-                placeholder={searchPlaceholder}
-                className="input input-sm w-full bg-base-200/50"
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-            </div>
-          )}
+      {open && (
+        <div
+          ref={menuRef}
+          className={cx("dropdown-content z-[60] hover:bg-base-200", fullWidth ? "w-full" : "", menuClassName)}
+          role="listbox"
+        >
+          <div className="bg-base-100 rounded-box shadow-xl border border-base-content/20 w-full overflow-hidden">
+            {enableSearch && (
+              <div className="p-2 border-b border-base-content/10">
+                <input
+                  autoComplete="off"
+                  data-testid={`${testId}-search-input`}
+                  id="dropdown-search-input"
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    onSearchChange && onSearchChange(e.target.value);
+                  }}
+                  placeholder={searchPlaceholder}
+                  className="input input-sm w-full bg-base-200/50"
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
 
-          <div className="max-h-64 overflow-y-auto" onMouseLeave={() => onOptionHover && onOptionHover(null)}>
-            <ul className="menu menu-sm w-full p-1 columns-1">
-              {filteredOptions.length === 0 && <li className="px-3 py-2 text-sm text-base-content/10">No options</li>}
-              {(() => {
-                if (!showGroupHeaders) {
-                  return filteredOptions.map((opt) => {
-                    const Icon = opt.icon;
-                    const isActive = String(opt.value) === String(value);
-                    return (
-                      <li
-                        key={String(opt.value)}
-                        className={cx(
-                          "whitespace-nowrap group",
-                          opt.disabled ? "disabled opacity-50 cursor-not-allowed" : ""
-                        )}
-                      >
-                        <a
-                          data-testid={`${testId}-option-${opt.value}`}
-                          id={`dropdown-option-${opt.value}`}
+            <div className="max-h-64 overflow-y-auto" onMouseLeave={() => onOptionHover && onOptionHover(null)}>
+              <ul className="menu menu-sm w-full p-1 columns-1">
+                {filteredOptions.length === 0 && <li className="px-3 py-2 text-sm text-base-content/10">No options</li>}
+                {(() => {
+                  if (!showGroupHeaders) {
+                    return filteredOptions.map((opt) => {
+                      const Icon = opt.icon;
+                      const isActive = String(opt.value) === String(value);
+                      return (
+                        <li
+                          key={String(opt.value)}
                           className={cx(
-                            "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
-                            isActive ? "active text-primary" : ""
+                            "whitespace-nowrap group",
+                            opt.disabled ? "disabled opacity-50 cursor-not-allowed" : ""
                           )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (opt.disabled) return;
-                            handleSelect(opt.value, opt);
-                          }}
-                          onMouseEnter={() => onOptionHover && onOptionHover(opt)}
-                          role="option"
-                          aria-selected={isActive}
                         >
-                          {Icon && <Icon className="h-4 w-4 mt-0.5 opacity-80" />}
-                          <div className="flex flex-col min-w-0 w-full">
-                            {(() => {
-                              let titleText = "";
-                              let content = opt.label;
-                              if (typeof opt.label === "string") {
-                                titleText = opt.label;
-                                content =
-                                  opt.label.length > maxItemLabelLength
-                                    ? opt.label.slice(0, maxItemLabelLength) + "..."
-                                    : opt.label;
-                              }
-                              const StatusIcon = opt.status ? getApiKeyStatusClass(opt?.status, "icon") : null;
-                              return (
-                                <span
-                                  className="flex flex-row justify-between items-center w-full"
-                                  title={titleText + `${opt.status ? `\nStatus: ${opt.status.toUpperCase()}` : ""}`}
-                                >
-                                  <div className="flex items-center gap-1">
+                          <a
+                            data-testid={`${testId}-option-${opt.value}`}
+                            id={`dropdown-option-${opt.value}`}
+                            className={cx(
+                              "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
+                              isActive ? "active text-primary" : ""
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (opt.disabled) return;
+                              handleSelect(opt.value, opt);
+                            }}
+                            onMouseEnter={() => onOptionHover && onOptionHover(opt)}
+                            role="option"
+                            aria-selected={isActive}
+                          >
+                            {Icon && <Icon className="h-4 w-4 mt-0.5 opacity-80" />}
+                            <div className="flex flex-col min-w-0 w-full">
+                              {(() => {
+                                let titleText = "";
+                                let content = opt.label;
+                                if (typeof opt.label === "string") {
+                                  titleText = opt.label;
+                                  content =
+                                    opt.label.length > maxItemLabelLength
+                                      ? opt.label.slice(0, maxItemLabelLength) + "..."
+                                      : opt.label;
+                                }
+                                const StatusIcon = opt.status ? getApiKeyStatusClass(opt?.status, "icon") : null;
+                                return (
+                                  <span
+                                    className="flex flex-row justify-between items-center w-full"
+                                    title={titleText + `${opt.status ? `\nStatus: ${opt.status.toUpperCase()}` : ""}`}
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      {opt.status && opt.status !== "working" && (
+                                        <span
+                                          className={`group-hover:hidden w-1.5 h-1.5 rounded-full shrink-0 mr-1.5 ${getApiKeyStatusClass(opt?.status, "dot")}`}
+                                        />
+                                      )}
+                                      {StatusIcon && opt.status && opt.status !== "working" && (
+                                        <span className="hidden group-hover:inline-flex items-center gap-1">
+                                          <StatusIcon
+                                            size={12}
+                                            className={getApiKeyStatusClass(opt?.status, "iconClass")}
+                                          />
+                                        </span>
+                                      )}
+                                      <span>{content}</span>
+                                    </div>
                                     {opt.status && opt.status !== "working" && (
                                       <span
-                                        className={`group-hover:hidden w-1.5 h-1.5 rounded-full shrink-0 mr-1.5 ${getApiKeyStatusClass(opt?.status, "dot")}`}
-                                      />
-                                    )}
-                                    {StatusIcon && opt.status && opt.status !== "working" && (
-                                      <span className="hidden group-hover:inline-flex items-center gap-1">
-                                        <StatusIcon
-                                          size={12}
-                                          className={getApiKeyStatusClass(opt?.status, "iconClass")}
-                                        />
+                                        className={`hidden group-hover:inline-block text-xs shrink-0 ${getApiKeyStatusClass(opt?.status, "text")}`}
+                                      >
+                                        {opt.status}
                                       </span>
                                     )}
-                                    <span>{content}</span>
-                                  </div>
-                                  {opt.status && opt.status !== "working" && (
-                                    <span
-                                      className={`hidden group-hover:inline-block text-xs shrink-0 ${getApiKeyStatusClass(opt?.status, "text")}`}
-                                    >
-                                      {opt.status}
-                                    </span>
-                                  )}
-                                </span>
-                              );
-                            })()}
-                            {opt.description && (
-                              <span className="truncate text-xs text-base-content/60">{opt.description}</span>
-                            )}
-                          </div>
-                        </a>
-                      </li>
-                    );
-                  });
-                }
-
-                // Grouped rendering
-                const groups = new Map();
-                filteredOptions.forEach((opt) => {
-                  const g = opt?.meta?.group || "Other";
-                  if (!groups.has(g)) groups.set(g, []);
-                  groups.get(g).push(opt);
-                });
-                return Array.from(groups.entries()).map(([groupLabel, opts]) => (
-                  <li key={`group-${groupLabel}`} className="px-2 py-1 cursor-default">
-                    <div className="text-xs text-base-content/70 mb-1 cursor-default pointer-events-none select-none">
-                      {groupLabel}
-                    </div>
-                    <ul>
-                      {opts.map((opt) => {
-                        const Icon = opt.icon;
-                        const isActive = String(opt.value) === String(value);
-                        return (
-                          <li
-                            key={String(opt.value)}
-                            className={cx("whitespace-nowrap", opt.disabled ? "opacity-50 cursor-not-allowed" : "")}
-                          >
-                            <a
-                              data-testid={`${testId}-grouped-option-${opt.value}`}
-                              id={`dropdown-grouped-option-${opt.value}`}
-                              className={cx(
-                                "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
-                                isActive ? "active text-primary" : ""
+                                  </span>
+                                );
+                              })()}
+                              {opt.description && (
+                                <span className="truncate text-xs text-base-content/60">{opt.description}</span>
                               )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (opt.disabled) return;
-                                handleSelect(opt.value, opt);
-                              }}
-                              onMouseEnter={() => onOptionHover && onOptionHover(opt)}
-                              role="option"
-                              aria-selected={isActive}
-                              aria-disabled={opt.disabled || undefined}
-                            >
-                              {Icon && <Icon className="h-4 w-4 mt-0.5 opacity-80" />}
-                              <div className="flex flex-col min-w-0">
-                                {(() => {
-                                  let titleText = "";
-                                  let content = opt.label;
-                                  if (typeof opt.label === "string") {
-                                    titleText = opt.label;
-                                    content =
-                                      opt.label.length > maxItemLabelLength
-                                        ? opt.label.slice(0, maxItemLabelLength) + "..."
-                                        : opt.label;
-                                  }
-                                  return (
-                                    <span className="" title={titleText}>
-                                      {content}
-                                    </span>
-                                  );
-                                })()}
-                                {opt.description && (
-                                  <span className="truncate text-xs text-base-content/60">{opt.description}</span>
-                                )}
-                              </div>
-                            </a>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
-                ));
-              })()}
-            </ul>
-          </div>
+                            </div>
+                          </a>
+                        </li>
+                      );
+                    });
+                  }
 
-          {bottomOption && (
-            <div className="border-t border-base-content/10 p-1">
-              <button
-                data-testid={bottomOption.testId || `${testId}-bottom-option`}
-                id={bottomOption.id || "dropdown-bottom-option"}
-                type="button"
-                disabled={bottomOption.disabled}
-                onClick={handleBottomOptionClick}
-                className={cx(
-                  "flex items-center gap-2 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-base-200",
-                  bottomOption.disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
-                  bottomOption.className || ""
-                )}
-              >
-                {bottomOption.icon && <bottomOption.icon className="h-4 w-4" />}
-                <span>{bottomOption.label}</span>
-              </button>
+                  // Grouped rendering
+                  const groups = new Map();
+                  filteredOptions.forEach((opt) => {
+                    const g = opt?.meta?.group || "Other";
+                    if (!groups.has(g)) groups.set(g, []);
+                    groups.get(g).push(opt);
+                  });
+                  return Array.from(groups.entries()).map(([groupLabel, opts]) => (
+                    <li key={`group-${groupLabel}`} className="px-2 py-1 cursor-default">
+                      <div className="text-xs text-base-content/70 mb-1 cursor-default pointer-events-none select-none">
+                        {groupLabel}
+                      </div>
+                      <ul>
+                        {opts.map((opt) => {
+                          const Icon = opt.icon;
+                          const isActive = String(opt.value) === String(value);
+                          return (
+                            <li
+                              key={String(opt.value)}
+                              className={cx("whitespace-nowrap", opt.disabled ? "opacity-50 cursor-not-allowed" : "")}
+                            >
+                              <a
+                                data-testid={`${testId}-grouped-option-${opt.value}`}
+                                id={`dropdown-grouped-option-${opt.value}`}
+                                className={cx(
+                                  "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
+                                  isActive ? "active text-primary" : ""
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (opt.disabled) return;
+                                  handleSelect(opt.value, opt);
+                                }}
+                                onMouseEnter={() => onOptionHover && onOptionHover(opt)}
+                                role="option"
+                                aria-selected={isActive}
+                                aria-disabled={opt.disabled || undefined}
+                              >
+                                {Icon && <Icon className="h-4 w-4 mt-0.5 opacity-80" />}
+                                <div className="flex flex-col min-w-0">
+                                  {(() => {
+                                    let titleText = "";
+                                    let content = opt.label;
+                                    if (typeof opt.label === "string") {
+                                      titleText = opt.label;
+                                      content =
+                                        opt.label.length > maxItemLabelLength
+                                          ? opt.label.slice(0, maxItemLabelLength) + "..."
+                                          : opt.label;
+                                    }
+                                    return (
+                                      <span className="" title={titleText}>
+                                        {content}
+                                      </span>
+                                    );
+                                  })()}
+                                  {opt.description && (
+                                    <span className="truncate text-xs text-base-content/60">{opt.description}</span>
+                                  )}
+                                </div>
+                              </a>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </li>
+                  ));
+                })()}
+              </ul>
             </div>
-          )}
+
+            {bottomOption && (
+              <div className="border-t border-base-content/10 p-1">
+                <button
+                  data-testid={bottomOption.testId || `${testId}-bottom-option`}
+                  id={bottomOption.id || "dropdown-bottom-option"}
+                  type="button"
+                  disabled={bottomOption.disabled}
+                  onClick={handleBottomOptionClick}
+                  className={cx(
+                    "flex items-center gap-2 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-base-200",
+                    bottomOption.disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                    bottomOption.className || ""
+                  )}
+                >
+                  {bottomOption.icon && <bottomOption.icon className="h-4 w-4" />}
+                  <span>{bottomOption.label}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

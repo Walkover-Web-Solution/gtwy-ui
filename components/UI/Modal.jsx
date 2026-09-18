@@ -80,7 +80,7 @@ const Modal = ({
         >
           <div
             id={`${MODAL_ID}-container`}
-            className={`relative flex ${widthClass} max-h-[88vh] flex-col overflow-hidden rounded-xl border border-base-content/10 shadow-2xl animate-scaleIn`}
+            className={`relative flex ${widthClass} h-fit max-h-[88vh] flex-col overflow-hidden rounded-xl border border-base-content/10 shadow-2xl animate-scaleIn`}
             style={{ background: "var(--ai-config-container-bg)" }}
             onClick={(e) => e.stopPropagation()}
           >
