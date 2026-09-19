@@ -11,7 +11,7 @@ import Protected from "./Protected";
 import { BotIcon, Info, Plus, AlertCircle } from "lucide-react";
 import { CloseIcon } from "./Icons";
 import { FolderContext } from "@/components/folders/FolderContext";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const buildInitialState = () => ({
   selectedService: "openai",
@@ -445,7 +445,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
                         autoFocus
                         onChange={handlePurposeInput}
                         disabled={state.isAiLoading || state.isLoading}
-                        className={`textarea textarea-bordered w-full min-h-[150px] max-h-[150px] bg-base-100 transition-all duration-300 text-base resize-none placeholder:text-base-content/40 ${
+                        className={`textarea w-full min-h-[150px] max-h-[150px] bg-base-100 transition-all duration-300 text-base resize-none placeholder:text-base-content/40 ${
                           state.validationErrors.purpose
                             ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                             : "border-base-300 focus:border-primary focus:ring-2 focus:ring-primary/20"

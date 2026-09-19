@@ -201,7 +201,7 @@ function EmbedListSuggestionDropdownMenu({
               placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
               value={searchQuery}
               onChange={handleInputChange} // Update search query on input change
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
             />
             {name === "preFunction" && (
               <>

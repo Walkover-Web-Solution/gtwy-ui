@@ -25,7 +25,7 @@ import { updateBridgeAction, dicardBridgeVersionAction, deleteBridgeAction } fro
 import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 const ChatBotSlider = dynamic(() => import("./sliders/ChatBotSlider"), { ssr: false });
 const ConfigHistorySlider = dynamic(() => import("./sliders/ConfigHistorySlider"), { ssr: false });
@@ -326,7 +326,7 @@ const Navbar = ({ isEmbedUser, params }) => {
 
   const handlePublish = useCallback(async () => {
     if (!isDrafted) {
-      toast.info("Nothing to publish");
+      toast("Nothing to publish");
       return;
     }
     try {

@@ -81,12 +81,12 @@ const EditMessageModal = ({
 
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Describe your ideal response:</span>
+            <span className="">Describe your ideal response:</span>
           </label>
           <textarea
             data-testid="edit-message-textarea"
             id="edit-message-textarea"
-            className="input input-bordered textarea min-h-[200px]"
+            className="input textarea min-h-[200px]"
             defaultValue={modalInput?.content}
             key={modalInput?.Id}
             onBlur={(e) =>

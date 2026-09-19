@@ -161,7 +161,7 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
                     autoComplete="off"
                     type="text"
                     placeholder="MCP name (e.g. my-mcp)"
-                    className={`input input-bordered w-full input-sm ${!config.name ? "input-error" : ""}`}
+                    className={`input w-full input-sm ${!config.name ? "input-error" : ""}`}
                     value={config.name || ""}
                     onChange={(e) => handleChange(index, "name", e.target.value)}
                     disabled={isReadOnly}
@@ -171,7 +171,7 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
                     autoComplete="off"
                     type="url"
                     placeholder="https://mcp.example.com/..."
-                    className={`input input-bordered w-full input-sm ${!config.url ? "input-error" : ""}`}
+                    className={`input w-full input-sm ${!config.url ? "input-error" : ""}`}
                     value={config.url || ""}
                     onChange={(e) => handleChange(index, "url", e.target.value)}
                     disabled={isReadOnly}

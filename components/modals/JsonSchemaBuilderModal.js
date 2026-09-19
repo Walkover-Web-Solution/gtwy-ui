@@ -5,7 +5,7 @@ import { MODAL_TYPE, ON_CLICK_ACTION_TYPES, PARAMETER_TYPES } from "@/utils/enum
 import { TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "@/components/UI/Modal";
 import { PlusCircleIcon, Braces } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -37,7 +37,7 @@ const SchemaPropertyCard = ({
   const bgColor = depth % 2 === 0 ? "bg-base-100" : "bg-base-200";
 
   return (
-    <div className={`${bgColor} border border-base-300 rounded-lg p-2`}>
+    <div className={`${bgColor} border border-base-300 p-2`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 justify-between w-full">
           <input
@@ -118,7 +118,7 @@ const SchemaPropertyCard = ({
             data-testid={`schema-prop-type-select-${currentPath}`}
             id={`schema-prop-type-select-${currentPath}`}
             disabled={isReadOnly}
-            className="select select-xs select-bordered text-xs"
+            className="select select-xs text-xs"
             value={property.type || "string"}
             onChange={(e) => onTypeChange(currentPath, e.target.value)}
           >
@@ -134,7 +134,7 @@ const SchemaPropertyCard = ({
               <select
                 id={`schema-prop-array-item-type-select-${currentPath}`}
                 disabled={isReadOnly}
-                className="select select-xs select-bordered text-xs"
+                className="select select-xs text-xs"
                 value={property.items?.type || "string"}
                 onChange={(e) => onArrayItemTypeChange(currentPath, e.target.value)}
                 title="Array item type"
@@ -993,7 +993,7 @@ function JsonSchemaBuilderModal({
                         <div className="flex-1">
                           <label className="block text-xs font-semibold mb-1">Button</label>
                           <select
-                            className="select select-sm select-bordered w-full"
+                            className="select select-sm w-full"
                             value={activeKey}
                             onChange={(e) => {
                               schemaCacheRef.current[activeKey] = schemaData;
@@ -1015,7 +1015,7 @@ function JsonSchemaBuilderModal({
                           {!isMulti ? `${activeBtn?.label} — ` : ""}Action Type
                         </label>
                         <select
-                          className="select select-sm select-bordered w-full"
+                          className="select select-sm w-full"
                           value={currentType}
                           disabled={isReadOnly}
                           onChange={(e) =>
@@ -1060,7 +1060,7 @@ function JsonSchemaBuilderModal({
                   type="text"
                   value={schemaName}
                   onChange={(e) => setSchemaName(e.target.value)}
-                  className="input input-sm input-bordered w-full"
+                  className="input input-sm w-full"
                   placeholder="Enter schema name..."
                   disabled={isReadOnly}
                   required

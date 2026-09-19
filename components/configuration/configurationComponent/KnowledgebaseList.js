@@ -17,7 +17,7 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { CircleQuestionMark, FileSearch, SquarePenIcon } from "lucide-react";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -161,7 +161,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
           placeholder="Search Knowledge Base"
           value={searchQuery}
           onChange={handleInputChange}
-          className="input input-bordered w-full input-sm"
+          className="input w-full input-sm"
         />
         {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
           .filter((item) => {

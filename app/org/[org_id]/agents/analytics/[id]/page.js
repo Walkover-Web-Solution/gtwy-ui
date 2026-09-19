@@ -904,7 +904,7 @@ function Page({ params, searchParams }) {
                               <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
                               <input
                                 type="datetime-local"
-                                className="input input-sm input-bordered w-full text-xs"
+                                className="input input-sm w-full text-xs"
                                 value={filterStart}
                                 max={filterEnd}
                                 onChange={(e) => {
@@ -918,7 +918,7 @@ function Page({ params, searchParams }) {
                               <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
                               <input
                                 type="datetime-local"
-                                className="input input-sm input-bordered w-full text-xs"
+                                className="input input-sm w-full text-xs"
                                 value={filterEnd}
                                 min={filterStart}
                                 onChange={(e) => {
@@ -1249,7 +1249,7 @@ function Page({ params, searchParams }) {
                         <label className="block text-xs font-medium text-base-content/70 mb-0.5">{f.label}</label>
                         <input
                           type="text"
-                          className="input input-sm input-bordered w-full rounded-lg text-xs"
+                          className="input input-sm w-full rounded-lg text-xs"
                           placeholder={`Search ${f.label.toLowerCase()}...`}
                           value={filterByFields[f.key] || ""}
                           onChange={(e) => setFilterByFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
@@ -1263,7 +1263,7 @@ function Page({ params, searchParams }) {
                           <div key={idx} className="flex gap-2 items-center">
                             <input
                               type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                              className="input input-sm rounded-lg flex-1 text-xs"
                               placeholder="key"
                               value={row.key}
                               onChange={(e) => {
@@ -1274,7 +1274,7 @@ function Page({ params, searchParams }) {
                             />
                             <input
                               type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                              className="input input-sm rounded-lg flex-1 text-xs"
                               placeholder="value"
                               value={row.value}
                               onChange={(e) => {

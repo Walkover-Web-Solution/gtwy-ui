@@ -244,7 +244,7 @@ const ServiceDropdown = ({
       onChange={handleServiceChange}
       placeholder="Select service"
       size="sm"
-      className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px] ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      className={`flex w-full items-center justify-between gap-2 rounded-none border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-300 text-base-content h-8 min-w-[150px] ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
       style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
       menuClassName="w-full min-w-[200px]"
       fullWidth={false}
@@ -309,7 +309,7 @@ const ServiceDropdown = ({
               The default model for the newly selected service does not support <strong>JSON Schema</strong> response
               format.
             </p>
-            <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg text-xs text-warning flex items-start gap-2.5">
+            <div className="p-3 bg-warning/10 border border-warning/40 text-xs text-warning flex items-start gap-2.5">
               <CircleAlert className="shrink-0 w-4 h-4 mt-0.5 text-warning" />
               <span className="leading-normal">
                 The JSON schema will be automatically removed from the configuration if you proceed.

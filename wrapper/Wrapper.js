@@ -2,8 +2,7 @@
 import { persistor, store } from "@/store/store";
 import React, { useEffect } from "react";
 import { Provider } from "react-redux";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { Toaster } from "react-hot-toast";
 import { PersistGate } from "redux-persist/integration/react";
 import CommandPalette from "@/components/command/CommandPalette";
 import { usePathname } from "next/navigation";
@@ -13,7 +12,7 @@ import PostHogProvider from "@/components/PostHogProvider";
 /**
  * The Wrapper component is the top level component of our application
  * It provides the Redux store to all the child components
- * It also has a ToastContainer for the react-toastify notifications
+ * It also has a Toaster for the react-hot-toast notifications
  */
 const Wrapper = ({ children }) => {
   const pathname = usePathname();
@@ -39,7 +38,7 @@ const Wrapper = ({ children }) => {
   // Return a Provider component that wraps all the child components
   // with the Redux store
   // It also has a div that wraps all the child components
-  // And adds a ToastContainer for the notifications
+  // And adds a Toaster for the notifications
   return (
     <>
       <Provider store={store}>
@@ -51,7 +50,12 @@ const Wrapper = ({ children }) => {
               {/* Global Command Palette */}
               <CommandPalette />
               {/* Notification toast container */}
-              <ToastContainer position="bottom-left" theme={actualTheme === "dark" ? "dark" : "light"} />
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  style: actualTheme === "dark" ? { background: "#333", color: "#fff" } : {},
+                }}
+              />
             </div>
           </PostHogProvider>
         </PersistGate>

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import {
   getBillingSubscription,
   startBillingCheckout,
@@ -79,7 +79,7 @@ export default function useSubscription({ onChanged } = {}) {
     const intent = consumeCheckoutReturn()?.intent ?? null;
 
     if (checkoutResult !== "success") {
-      toast.info("Checkout was cancelled. No changes were made.");
+      toast("Checkout was cancelled. No changes were made.");
       load();
       return;
     }

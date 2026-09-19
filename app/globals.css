@@ -1,9 +1,230 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@plugin "daisyui" {
+  themes:
+    light --default,
+    dark --prefersdark;
+  logs: false;
+}
+
+/* ---------------------------------------------------------------------
+   daisyUI v5 custom themes ("light" / "dark")
+   Values sourced from public/themes/default-user-theme.json (kept in
+   sync manually — that JSON is also consumed at runtime by the embed
+   theme editor, see components/gtwy_embed/ThemePaletteEditor.js and
+   utils/integrationSliderUtils.js).
+   Shape token mapping from daisyUI v4 -> v5:
+     --rounded-box   -> --radius-box
+     --rounded-btn   -> --radius-field
+     --rounded-badge -> --radius-selector
+     --border-btn    -> --border
+     --tab-radius    -> (removed, tabs use --radius-field)
+     --btn-text-case -> (removed in v5)
+--------------------------------------------------------------------- */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: oklch(1 0 0);
+  --color-base-200: oklch(0.93 0 0);
+  --color-base-300: oklch(0.985 0 0);
+  --color-base-400: oklch(100% 0 0);
+  --color-base-50: oklch(0.985 0.002 247.84);
+  --color-base-content: oklch(26% 0 0);
+  --color-primary: oklch(22% 0 0);
+  --color-primary-content: oklch(98% 0 0);
+  --color-secondary: oklch(40% 0 0);
+  --color-secondary-content: oklch(98% 0 0);
+  --color-accent: oklch(34% 0 0);
+  --color-accent-content: oklch(98% 0 0);
+  --color-neutral: oklch(22% 0 0);
+  --color-neutral-content: oklch(96% 0 0);
+  --color-info: oklch(58% 0.05 235);
+  --color-info-content: oklch(16% 0 235);
+  --color-success: oklch(56% 0.07 150);
+  --color-success-content: oklch(16% 0 150);
+  --color-warning: oklch(64% 0.08 80);
+  --color-warning-content: oklch(18% 0.05 80);
+  --color-error: oklch(55% 0.12 30);
+  --color-error-content: oklch(16% 0.06 30);
+
+  --radius-box: 0;
+  --radius-field: 0;
+  --radius-selector: 0;
+  --border: 0.3px;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+
+  /* Neutral "modern dark UI" palette (Linear/Vercel/GitHub-style near-black
+     grays with ~0 chroma). The brand carries no hue at all — primary is
+     near-white, so highlights read as bright-on-dark and colour is reserved
+     for semantic states (warning/error/success) and the cyan accent.
+     base-200 is the page canvas; base-100 sits ABOVE it (cards/nav/sidebar
+     use bg-base-100 throughout the app), so base-100 must read lighter than
+     base-200 or elevated surfaces disappear into the page. base-300/-400
+     step up further for borders and hover/highlight states. */
+  --color-base-200: oklch(15% 0 0);
+  --color-base-100: oklch(20% 0 0);
+  --color-base-300: oklch(27% 0 0);
+  --color-base-400: oklch(33% 0 0);
+  --color-base-50: oklch(12% 0 0);
+  --color-base-content: oklch(94% 0 0);
+  --color-primary: oklch(95% 0 0);
+  --color-primary-content: oklch(15% 0 0);
+  --color-secondary: oklch(62% 0 0);
+  --color-secondary-content: oklch(97% 0 0);
+  --color-accent: oklch(72% 0.12 220);
+  --color-accent-content: oklch(15% 0.03 220);
+  --color-neutral: oklch(20% 0 0);
+  --color-neutral-content: oklch(92% 0 0);
+  --color-info: oklch(68% 0.1 235);
+  --color-info-content: oklch(14% 0.02 235);
+  --color-success: oklch(66% 0.13 150);
+  --color-success-content: oklch(14% 0.02 150);
+  --color-warning: oklch(74% 0.15 55);
+  --color-warning-content: oklch(15% 0.03 55);
+  --color-error: oklch(64% 0.19 25);
+  --color-error-content: oklch(14% 0.03 25);
+
+  --radius-box: 0;
+  --radius-field: 0;
+  --radius-selector: 0;
+  --border: 0.5px;
+}
+
+/* ---------------------------------------------------------------------
+   Tailwind v4 CSS-first theme config (formerly tailwind.config.js
+   theme.extend). Custom color/animation/font tokens used across the app.
+--------------------------------------------------------------------- */
+@theme {
+  --font-sans: "DM Sans", sans-serif;
+
+  --color-base-50: var(--base-50);
+  --color-trace-gold: oklch(var(--trace-gold));
+  --color-trace-gold-bg: oklch(var(--trace-gold-bg));
+  --color-trace-gold-border: oklch(var(--trace-gold-border));
+  --color-trace-blue: oklch(var(--trace-blue));
+  --color-trace-green: oklch(var(--trace-green));
+  --color-history-page: var(--history-page-bg);
+
+  --animate-fade-in-scale: fade-in-scale 300ms ease-out;
+  --animate-fadeIn: fadeIn 300ms ease-out;
+  --animate-scaleIn: scaleIn 300ms ease-out;
+  --animate-scroll: scroll 20s linear infinite;
+  --animate-slideIn: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes fade-in-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInLeft {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRightSmooth {
+  0% {
+    transform: translateX(30%);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Dynamically-built utility classes (status colors, trace accent colors)
+   that Tailwind's static source scanner cannot see because they're
+   assembled via string concatenation at runtime. This is the v4
+   replacement for the old tailwind.config.js `safelist` option.
+--------------------------------------------------------------------- */
+@source inline("bg-{red,green,yellow,orange,gray}-500/{20,30}");
+@source inline("border-{red,green,yellow,orange,gray}-500");
+@source inline("text-{red,green,yellow,orange,gray}-{400,500,600}");
+@source inline("border-trace-{gold,blue,green,gold-border}");
+@source inline("bg-trace-{gold,blue,green,gold-bg}");
+@source inline("text-trace-{gold,blue,green,gold-bg}");
+@source inline("from-trace-{gold,blue,green}");
 
 /* Restore pointer cursor on all interactive elements globally.
-   Tailwind v3 preflight removed the default cursor:pointer on buttons,
+   Tailwind's preflight removes the default cursor:pointer on buttons,
    so we re-apply it here for buttons, links, role=button, summary,
    labels tied to inputs, and any element marked with [onclick]. */
 @layer base {
@@ -37,23 +258,11 @@
   }
 }
 
-@layer utilities {
-  .group:hover .group-hover\:opacity-0 {
-    opacity: 0;
-  }
-  .group:hover .group-hover\:opacity-100 {
-    opacity: 1;
-  }
-}
-
-@layer utilities {
-  .group:hover .group-hover\:opacity-0 {
-    opacity: 0;
-  }
-  .group:hover .group-hover\:opacity-100 {
-    opacity: 1;
-  }
-}
+/* Note: `group-hover:opacity-0` / `group-hover:opacity-100` are natively
+   supported Tailwind variant utilities (given a `.group` ancestor) and
+   need no custom definition here — the old explicit `.group:hover
+   .group-hover\:opacity-*` rules in tailwind.config.js's @layer
+   utilities block were redundant and have been dropped. */
 
 /* Global Input and Textarea Styles - Theme Aware */
 @layer components {
@@ -82,16 +291,215 @@ body {
   @apply font-sans;
 }
 
+/* Custom themed tokens (kept alongside the daisyUI theme blocks above
+   because the embed theme editor and other components read these
+   directly as raw oklch channel values, not full oklch() colors). */
+:root,
+[data-theme="light"] {
+  --base-50: oklch(0.985 0.002 247.84);
+  --trace-gold: 0.52 0.11 62;
+  --trace-gold-bg: 0.98 0.012 75;
+  --trace-gold-border: 0.93 0.025 75;
+  --trace-blue: 0.55 0.14 250;
+  --trace-green: 0.52 0.12 165;
+  --history-page-bg: #f6f6f4;
+  --pill-bg: #f3f3f0;
+  --pill-bg-hover: #e8e8e4;
+  --ai-config-header-bg: #f3f3f1;
+  --ai-config-container-bg: #ffffff;
+  --ai-config-section-header: #f3f3f1;
+  --ai-config-section-bg: #f6f7f9;
+  --final-response-bg: #f3f0eb;
+}
+
+[data-theme="dark"] {
+  /* Mirrors the base-* hierarchy above: page canvas is darkest, the panel
+     that sits on top of it is lighter, and pills/section headers step up
+     again so nothing visually flattens into the layer behind it. */
+  --base-50: oklch(12% 0 0);
+  --trace-gold: 0.72 0.13 70;
+  --trace-gold-bg: 0.26 0.025 70;
+  --trace-gold-border: 0.36 0.035 70;
+  --trace-blue: 0.7 0.12 250;
+  --trace-green: 0.68 0.11 155;
+  --history-page-bg: #171717;
+  --pill-bg: #232323;
+  --pill-bg-hover: #2e2e2e;
+  --ai-config-header-bg: #1e1e1e;
+  --ai-config-container-bg: #1e1e1e;
+  --ai-config-section-header: #232323;
+  --ai-config-section-bg: #191919;
+  --final-response-bg: #1c1c1c;
+}
+
+/* Light Theme Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar {
+  width: 8px;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(200, 200, 200, 0.7);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.3s ease-in-out;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(180, 180, 180, 0.9);
+}
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: rgba(240, 240, 240, 0.6);
+  border-radius: 4px;
+}
+
+/* Dark Theme Scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(80, 80, 80, 0.7);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.3s ease-in-out;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.9);
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: rgba(34, 34, 34, 0.6);
+  border-radius: 4px;
+}
+
+/* Firefox support */
+[data-theme="light"] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 200, 200, 0.4) rgba(240, 240, 240, 0.3);
+}
+[data-theme="dark"] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(80, 80, 80, 0.6) rgba(34, 34, 34, 0.3);
+}
+
+@utility info {
+  font-weight: 500;
+  color: #6b7280;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: #9ca3af;
+
+  &:hover {
+    text-decoration-color: #4b5563;
+  }
+}
+
+@utility promptSummary-info {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: #9ca3af;
+
+  &:hover {
+    text-decoration-color: #4b5563;
+  }
+}
+
+@utility bg-zoom {
+  background: linear-gradient(to left, #002eae, #3c30b9, #942ed4);
+}
+
+@utility hero-bg {
+  background-color: hsl(0, 0%, 0%);
+  background-image: radial-gradient(circle farthest-side at center top, hsl(276, 100%, 50%) 0%, hsl(0, 0%, 0%) 70%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+}
+
+@utility hero-bg-center {
+  background-color: hsl(0, 0%, 0%);
+  background-image: radial-gradient(circle farthest-corner at center, hsl(263, 100%, 70%) 0%, hsl(0, 0%, 0%) 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+@utility animate-scroll {
+  animation: scroll 20s linear infinite;
+  animation-fill-mode: forwards;
+  white-space: nowrap;
+  display: flex;
+}
+
+@utility animate-slideIn {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@utility line-clamp-5 {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@utility hover-row {
+  &:hover {
+    visibility: visible;
+  }
+}
+
+@utility show-on-hover {
+  &:hover .see-on-hover {
+    opacity: 1 !important;
+  }
+}
+
+@utility see-on-hover {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+/* z-index scale (formerly tailwind.config.js theme.extend.zIndex) */
+@utility z-very-low {
+  z-index: 0;
+}
+@utility z-low {
+  z-index: 1;
+}
+@utility z-low-medium {
+  z-index: 50;
+}
+@utility z-medium {
+  z-index: 999;
+}
+@utility z-high {
+  z-index: 9999;
+}
+@utility z-very-high {
+  z-index: 999999;
+}
+
+/* background-image utilities (formerly tailwind.config.js theme.extend.backgroundImage) */
+@utility bg-gradient-radial {
+  background-image: radial-gradient(var(--tw-gradient-stops));
+}
+@utility bg-gradient-conic {
+  background-image: conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops));
+}
+
 /* CodeMirror editor contrast in light theme */
 [data-theme="light"] .cm-editor {
-  border: 1px solid oklch(var(--b3));
+  border: 1px solid var(--color-base-300);
   border-radius: 0.375rem;
   overflow: hidden;
-  background: oklch(var(--b2));
+  background: var(--color-base-200);
 }
 
 [data-theme="light"] .cm-editor .cm-gutters {
-  background: oklch(var(--b2));
+  background: var(--color-base-200);
 }
 
 /* Batch/subthread panel slide-in */
@@ -253,4 +661,141 @@ html {
     font-size: 81.25%;
     /* Reduces to 13px if base is 16px */
   }
+}
+
+/* ---------------------------------------------------------------------
+   Custom range slider — overrides daisyUI's default .range styling
+   project-wide so every <input type="range"> gets the same look: a thin
+   pill track with a solid filled progress and a small round thumb that
+   sits proud of the track.
+
+   The input itself is transparent and taller than the track so the thumb
+   is never clipped; the visible track lives on the track pseudo-element.
+   Firefox fills natively via ::-moz-range-progress. WebKit has no such
+   pseudo-element, so there the fill is a gradient hard-stopped at
+   --slider-progress, which the component keeps in sync with the value.
+--------------------------------------------------------------------- */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Colours come from the active daisyUI theme rather than fixed hex values,
+   so the slider follows the brand in both light and dark. */
+input[type="range"] {
+  --slider-fill: var(--color-primary);
+  --slider-ring: color-mix(in oklab, var(--color-primary) 18%, transparent);
+  --slider-empty: color-mix(in oklab, var(--color-base-content) 14%, transparent);
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--slider-fill) var(--slider-progress, 0%),
+    var(--slider-empty) var(--slider-progress, 0%)
+  );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  /* centers the 15px thumb on the 6px track */
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--slider-fill);
+  box-shadow: 0 0 0 3px var(--slider-ring);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--slider-empty);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--slider-fill);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: none;
+  border-radius: 50%;
+  background: var(--slider-fill);
+  box-shadow: 0 0 0 3px var(--slider-ring);
+  cursor: pointer;
+}
+
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Muted variant — used while a parameter still sits at its untouched
+   default, so it reads as "unset" rather than a value the user chose. */
+input[type="range"].slider-default {
+  --slider-fill: color-mix(in oklab, var(--color-base-content) 30%, transparent);
+  --slider-ring: color-mix(in oklab, var(--color-base-content) 12%, transparent);
+}
+
+/* ---------------------------------------------------------------------
+   daisyUI v4 -> v5 form compatibility shim.
+
+   v5 DELETED the .form-control component (in v4 it was
+   `display:flex; flex-direction:column`, which stacked a label above its
+   control) and redefined .label as an inline-flex element meant to sit
+   INSIDE an input as a prefix/suffix.
+
+   The app still builds forms the v4 way in ~115 places, and without this
+   they collapse: the label renders inline, the control no longer
+   stretches, so every field starts at a different x position and ends at
+   a different width. This restores the v4 behaviour app-wide rather than
+   rewriting each call site.
+
+   Scoped to `.form-control > .label` so genuine v5-style inline labels
+   (used inside inputs) keep their new behaviour.
+--------------------------------------------------------------------- */
+.form-control {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-control > .label {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0 0.375rem 0;
+  white-space: normal;
+}
+
+/* Controls fill the field so their left and right edges line up. */
+.form-control > .input,
+.form-control > .select,
+.form-control > .textarea,
+.form-control > .join,
+.form-control > .input-group {
+  width: 100%;
+}
+
+/* Same problem inside modals, which mostly lay fields out with plain
+   `flex flex-col` rather than .form-control: v5 caps every control at
+   `clamp(3rem, 20rem, 100%)`, so fields stop ~320px short of the modal
+   edge instead of filling the body. Elements that deliberately size
+   themselves (flex-1, max-w-*, join items) are unaffected — those set
+   flex or max-width, which still win over this. */
+.modal :is(.input, .select, .textarea):not(.join-item) {
+  width: 100%;
 }

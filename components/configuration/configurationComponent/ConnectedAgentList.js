@@ -7,7 +7,7 @@ import { updateBridgeAction, updateBridgeVersionAction } from "@/store/action/br
 import { AddIcon, SettingsIcon, TrashIcon, BotIcon } from "@/components/Icons";
 import { closeModal, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import AgentDescriptionModal from "@/components/modals/AgentDescriptionModal";
 import FunctionParameterModal from "./FunctionParameterModal";
 import { useRouter } from "next/navigation";

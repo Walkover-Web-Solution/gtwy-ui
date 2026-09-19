@@ -16,13 +16,13 @@ function InputWithCopyButton({ label, placeholder, value, disabled }) {
       className="join form-control w-full max-w-xs"
     >
       <div className="label">
-        <span className="label-text">{label}</span>
+        <span className="">{label}</span>
       </div>
       <div className="flex items-center justify-start">
         <input
           data-testid="input-with-copy-input"
           id="input-with-copy-input"
-          className="input input-bordered join-item input-sm w-[25rem]"
+          className="input join-item input-sm w-[25rem]"
           placeholder={placeholder}
           value={value}
           disabled={disabled}

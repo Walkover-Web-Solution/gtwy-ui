@@ -219,7 +219,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
           <div className="space-y-2">
             <div className="form-control">
               <label className="label !px-0">
-                <span className="label-text font-medium text-md">Allowed Domains</span>
+                <span className="font-medium text-md">Allowed Domains</span>
               </label>
               <p className="text-xs text-base-content/60 mb-3">
                 Add domains to filter Web Search. Leave empty to allow all domains.
@@ -229,7 +229,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
             {/* Add New Domain Input */}
             <div className="form-control mb-4">
               <label className="label !px-0">
-                <span className="label-text text-sm font-medium">Add New Domain</span>
+                <span className="text-sm font-medium">Add New Domain</span>
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -242,7 +242,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Enter domain"
-                  className={`input input-bordered input-sm flex-1 focus:ring-1 ring-primary/40 ${
+                  className={`input input-sm flex-1 focus:ring-1 ring-primary/40 ${
                     !isEditing && validationError ? "input-error border-error" : ""
                   }`}
                   disabled={isLoading}
@@ -262,7 +262,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
               </div>
               {!isEditing && validationError && (
                 <div className="label">
-                  <span className="label-text-alt text-error">{validationError}</span>
+                  <span className="text-error">{validationError}</span>
                 </div>
               )}
             </div>
@@ -275,7 +275,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                 className="space-y-2 mb-4"
               >
                 <label className="label !px-0">
-                  <span className="label-text text-sm font-medium">Current Domains ({domains.length})</span>
+                  <span className="text-sm font-medium">Current Domains ({domains.length})</span>
                 </label>
                 {domains.map((domain, index) => (
                   <div
@@ -284,7 +284,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                     key={index}
                     className="space-y-1"
                   >
-                    <div className="group flex items-center gap-2 bg-base-200 rounded-lg p-3 border border-base-300 hover:bg-base-300 transition-colors duration-200">
+                    <div className="group flex items-center gap-2 bg-base-200 p-3 border border-base-300 hover:bg-base-300 transition-colors duration-200">
                       <div className="flex-1">
                         {isEditing && editingIndex === index ? (
                           <input
@@ -295,7 +295,7 @@ const PrebuiltToolsConfigModal = ({ initialDomains = [], onSave }) => {
                             defaultValue={editingValueRef.current}
                             onChange={handleEditInputChange}
                             onKeyPress={handleEditKeyPress}
-                            className={`input input-bordered input-sm w-full focus:ring-1 ring-primary/40 ${
+                            className={`input input-sm w-full focus:ring-1 ring-primary/40 ${
                               isEditing && validationError ? "input-error border-error" : ""
                             }`}
                             placeholder="Enter domain"

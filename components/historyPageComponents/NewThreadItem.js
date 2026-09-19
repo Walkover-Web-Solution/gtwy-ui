@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { Brain, ChevronRight, Clock3, ExternalLink, Maximize2, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { AddIcon, BotMessageIcon, CheckCircleIcon, CopyIcon, PencilIcon } from "@/components/Icons";
 import { ExpandCollapse } from "@/components/UI/ExpandCollapse";

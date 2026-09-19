@@ -182,7 +182,7 @@ const TestCaseVariablesModal = ({
                       onChange={(e) => handleVariableChange(key, e.target.value)}
                       onBlur={() => handleVariableBlur(key)}
                       placeholder="Enter value"
-                      className="textarea textarea-bordered textarea-sm bg-base-100 text-xs w-full leading-relaxed resize-y min-h-[38px]"
+                      className="textarea textarea-sm bg-base-100 text-xs w-full leading-relaxed resize-y min-h-[38px]"
                     />
                   </div>
                 </div>

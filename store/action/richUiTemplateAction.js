@@ -7,7 +7,7 @@ import {
   deleteRichUiTemplateSuccess,
 } from "../reducer/richUiTemplateReducer";
 import { getErrorMessage, handleApiError, isNetworkError } from "@/utils/errorHandler";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 export const getRichUiTemplatesAction = (orgId) => async (dispatch) => {
   try {

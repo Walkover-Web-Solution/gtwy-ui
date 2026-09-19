@@ -87,39 +87,37 @@ const RecommendedModal = ({
     }
   }, [bridgeApiKey, params?.version, promptTextAreaRef, apiKeySectionRef]);
   return (
-    <div>
-      <div className="flex flex-col gap-3">
-        {shouldPromptShow && (
-          <div className="flex flex-col items-start gap-2">
-            <button
-              data-testid="get-recommended-model-button"
-              id="get-recommended-model-button"
-              className="flex items-center gap-2  rounded-md bg-gradient-to-r from-blue-800 to-orange-600 text-sm text-transparent bg-clip-text hover:opacity-80 transition-opacity"
-              onClick={handleGetRecommendations}
-              disabled={isLoadingRecommendations || isPublished || !isEditor}
-            >
-              {isLoadingRecommendations ? "Loading..." : "Get Recommended Model"}
-            </button>
+    <div className="relative">
+      {shouldPromptShow && (
+        <>
+          <button
+            data-testid="get-recommended-model-button"
+            id="get-recommended-model-button"
+            className="flex items-center gap-2 text-sm font-medium text-primary hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleGetRecommendations}
+            disabled={isLoadingRecommendations || isPublished || !isEditor}
+          >
+            {isLoadingRecommendations ? "Loading..." : "Get Recommended Model"}
+          </button>
 
-            {modelRecommendations && (
-              <div className="p-4 bg-base-100 rounded-lg border border-base-300 w-full mb-2">
-                {modelRecommendations.error ? (
-                  <p className="text-red-500 text-sm">{modelRecommendations.error}</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-base-content">
-                      <span className="font-medium">Recommended Provider:</span> {modelRecommendations?.service}
-                    </p>
-                    <p className="text-base-content">
-                      <span className="font-medium">Recommended Model:</span> {modelRecommendations?.model}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          {modelRecommendations && (
+            <div className="absolute right-0 top-full z-high mt-2 w-72 p-4 bg-base-100 border border-base-300 shadow-lg">
+              {modelRecommendations.error ? (
+                <p className="text-error text-sm">{modelRecommendations.error}</p>
+              ) : (
+                <div className="space-y-2 text-sm">
+                  <p className="text-base-content">
+                    <span className="font-medium">Recommended Provider:</span> {modelRecommendations?.service}
+                  </p>
+                  <p className="text-base-content">
+                    <span className="font-medium">Recommended Model:</span> {modelRecommendations?.model}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

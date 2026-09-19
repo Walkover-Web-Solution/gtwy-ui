@@ -202,7 +202,7 @@ function OptimiseBaseModal({
             <div className="w-full h-full pt-3 overflow-auto">
               <div className="flex justify-between">
                 <div className="label">
-                  <span className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text">
+                  <span className="capitalize font-medium text-primary">
                     AI generated {contentLabel.toLowerCase()}
                     {isStreaming && (
                       <span className="ml-2 text-sm text-base-content animate-pulse">✨ Generating...</span>
@@ -239,14 +239,14 @@ function OptimiseBaseModal({
                 <textarea
                   id="optimise-content-textarea"
                   data-testid="optimise-content-textarea"
-                  className="textarea bg-base-100 textarea-bordered border focus:border-primary caret-base-content p-2 w-full resize-none flex-grow min-h-[60vh]"
+                  className="textarea bg-base-100 border focus:border-primary caret-base-content p-2 w-full resize-none flex-grow min-h-[60vh]"
                   value={textareaContent}
                   onChange={(e) => handleContentChange(e.target.value)}
                   readOnly={isStreaming}
                   {...textareaProps}
                 />
                 {isStreaming && (
-                  <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-base-100 px-2 py-1 rounded-md shadow-sm border border-base-300">
+                  <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-base-100 px-2 py-1 shadow-sm border border-base-300">
                     <div className="flex space-x-1">
                       <div className="w-1 h-1 bg-blue-500 rounded-full animate-bounce"></div>
                       <div

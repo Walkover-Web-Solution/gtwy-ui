@@ -19,7 +19,7 @@ import {
   testRunStartedReducer,
   testRunFailedReducer,
 } from "../reducer/testCasesReducer";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 export const createTestCaseAction =
   ({ bridgeId, data }) =>

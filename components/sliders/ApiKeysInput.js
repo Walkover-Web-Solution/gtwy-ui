@@ -32,7 +32,7 @@ const ApiKeysInput = ({ configuration, onChange, orgId }) => {
 
                 <select
                   id={`api-key-select-${serviceKey}`}
-                  className="select select-bordered select-primary w-full select-sm"
+                  className="select select-primary w-full select-sm"
                   value={selectedId}
                   onChange={(e) => handleApiKeyChange(serviceKey, e.target.value)}
                 >

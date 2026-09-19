@@ -9,7 +9,7 @@ import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
 import React, { useEffect, useState, useCallback, useRef, useSyncExternalStore } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import OnBoarding from "@/components/OnBoarding";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
@@ -25,6 +25,11 @@ import { useThemeManager } from "@/customHooks/useThemeManager";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import { linter, lintGutter } from "@codemirror/lint";
+
+const humanizeParameterKey = (key) =>
+  String(key)
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const AdvancedParameters = ({
   params,
@@ -573,8 +578,10 @@ const AdvancedParameters = ({
       return null;
     }
 
-    // Use name and description from modelInfoData instead of static file
-    const displayName = name || modelInfoData?.[key]?.name || key;
+    // Use name and description from modelInfoData instead of static file.
+    // Fall back to the raw key humanised ("max_tokens" -> "Max Tokens") so a
+    // parameter missing a label doesn't surface as snake_case.
+    const displayName = name || modelInfoData?.[key]?.name || humanizeParameterKey(key);
     const displayDescription = description || modelInfoData?.[key]?.description || "";
     const isDefaultValue = configuration?.[key] === "default" || configuration?.[key] === undefined;
     // Check if this parameter has a default value defined in model info
@@ -582,7 +589,6 @@ const AdvancedParameters = ({
     const inputSizeClass = "input-sm h-8";
     const selectSizeClass = "select-sm h-8";
     const buttonSizeClass = "btn-sm h-8";
-    const rangeSizeClass = "range-xs";
     const labelTextClass = "text-sm font-medium text-base-content/70";
     const sliderValueId = `sliderValue-${key} h-2`;
 
@@ -599,9 +605,22 @@ const AdvancedParameters = ({
           : configuration?.[key]
         : null;
 
+    const sliderMin = min || 0;
+    const sliderMax = max || 100;
+    // An untouched parameter has no real position on the track, so park the
+    // thumb mid-track to read as "unset" rather than as a deliberate value.
+    const sliderCurrentValue = isDefaultValue ? (sliderMin + sliderMax) / 2 : (sliderDisplayValue ?? sliderMin);
+    const toSliderPercent = (value) =>
+      Math.min(100, Math.max(0, ((Number(value) - sliderMin) / (sliderMax - sliderMin)) * 100));
+
     const sliderValueNode =
       !isDefaultValue && sliderDisplayValue !== null ? (
-        <span className={`text-xs ${error ? "text-error" : "text-base-content/70"}`} id={sliderValueId}>
+        <span
+          className={`inline-flex items-center justify-center min-w-9 px-1.5 py-0.5 text-xs font-medium tabular-nums ${
+            error ? "bg-error/10 text-error" : "bg-base-100 text-base-content/80"
+          }`}
+          id={sliderValueId}
+        >
           {sliderDisplayValue}
         </span>
       ) : null;
@@ -613,7 +632,7 @@ const AdvancedParameters = ({
       <div
         key={key}
         id={`advanced-param-field-${key}`}
-        className={`group w-full max-w-md ${isLevel2 ? "space-y-1" : "space-y-2"}`}
+        className={`group w-full ${isLevel2 ? "space-y-1" : "space-y-2"}`}
       >
         <div className="flex items-center justify-between gap-2 mb-1 min-h-[32px]">
           <div className="flex items-center gap-2">
@@ -623,30 +642,6 @@ const AdvancedParameters = ({
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>
             )}
-            {field === "boolean" &&
-              (() => {
-                const modelDefault = modelInfoData?.[key]?.default;
-                const checkedValue = isDefaultValue ? !!modelDefault : inputConfiguration?.[key] || false;
-                return (
-                  <input
-                    autoComplete="off"
-                    data-testid={`advanced-param-checkbox-${key}`}
-                    id={`advanced-param-checkbox-${key}`}
-                    name={key}
-                    type="checkbox"
-                    className="checkbox checkbox-xs"
-                    checked={checkedValue}
-                    onChange={(e) => {
-                      if (isDefaultValue) {
-                        setSliderValue(e.target.checked, key, isDeafaultObject);
-                      } else {
-                        handleInputChange(e, key);
-                      }
-                    }}
-                    disabled={isReadOnly}
-                  />
-                );
-              })()}
           </div>
           {/* response_type: dropdown to add/change/remove the response type inline with the label */}
           {key === "response_type" &&
@@ -712,33 +707,27 @@ const AdvancedParameters = ({
               };
               const triggerLabel = hasType ? (
                 <>
-                  {typeLabels[currentType] || currentType}
-                  <ChevronDownIcon size={12} />
+                  <span className="truncate">{typeLabels[currentType] || currentType}</span>
+                  <ChevronDownIcon size={14} className="shrink-0 opacity-60" />
                 </>
               ) : (
                 <>
-                  <span className="text-base leading-none">+</span> Add
+                  <span className="text-base-content/70">Not set</span>
+                  <ChevronDownIcon size={14} className="shrink-0 opacity-60" />
                 </>
               );
               return (
-                <div
-                  ref={responseTypePickerRef}
-                  className={`dropdown dropdown-end ${responseTypePickerOpen ? "dropdown-open" : ""}`}
-                >
+                <div ref={responseTypePickerRef} className="relative">
                   <button
                     type="button"
-                    tabIndex={0}
                     data-testid={`advanced-param-add-response-type-${key}`}
-                    className={`btn btn-xs gap-1 ${hasType ? "btn-outline" : "btn-outline"}`}
+                    className="flex h-8 w-40 items-center justify-between gap-2 border border-base-300 px-3 text-sm text-base-content transition-colors hover:bg-base-300"
                     onClick={() => setResponseTypePickerOpen((v) => !v)}
                   >
                     {triggerLabel}
                   </button>
                   {responseTypePickerOpen && (
-                    <ul
-                      tabIndex={0}
-                      className="dropdown-content z-[60] p-0 mt-1 shadow-lg bg-base-100 rounded-md border border-base-300 w-44 overflow-hidden"
-                    >
+                    <ul className="absolute right-0 top-full z-high mt-1 w-full overflow-hidden border border-base-300 bg-base-100 shadow-lg">
                       {[
                         { value: "text", label: "Text", isActive: currentType === "text" },
                         {
@@ -750,24 +739,24 @@ const AdvancedParameters = ({
                           ? [{ value: "widget", label: "Widget", isActive: !!configuration?.[key]?.is_template }]
                           : []),
                       ].map((opt) => (
-                        <li key={opt.value} className="border-b border-base-200">
+                        <li key={opt.value}>
                           <button
                             type="button"
-                            className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-base-200 ${
-                              opt.isActive ? "bg-primary/10 text-primary font-medium" : ""
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-base-300 ${
+                              opt.isActive ? "bg-base-300 font-medium" : "text-base-content/80"
                             }`}
                             onClick={() => applySelection(opt.value)}
                           >
                             <span>{opt.label}</span>
-                            {opt.isActive && <Check size={14} className="text-primary" />}
+                            {opt.isActive && <Check size={14} className="shrink-0" />}
                           </button>
                         </li>
                       ))}
                       {hasType && (
-                        <li>
+                        <li className="border-t border-base-300">
                           <button
                             type="button"
-                            className="w-full text-left px-3 py-2 text-sm text-error hover:bg-error/10"
+                            className="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error/10"
                             onClick={() => applySelection("remove")}
                           >
                             Remove
@@ -779,21 +768,47 @@ const AdvancedParameters = ({
                 </div>
               );
             })()}
-          {/* Set Default button - shows when parameter has default value and is not currently default */}
-          {key !== "response_type" && hasDefaultValue && !isDefaultValue && !isReadOnly && (
-            <button
-              data-testid={`advanced-param-reset-${key}`}
-              id={`advanced-param-set-default-btn-${key}`}
-              type="button"
-              className="btn btn-xs btn-ghost text-primary hover:bg-primary/10"
-              onClick={() => {
-                setSliderValue("default", key, isDeafaultObject);
-              }}
-              title="Reset to default value"
-            >
-              Set Default
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Set Default button - shows when parameter has default value and is not currently default */}
+            {key !== "response_type" && hasDefaultValue && !isDefaultValue && !isReadOnly && (
+              <button
+                data-testid={`advanced-param-reset-${key}`}
+                id={`advanced-param-set-default-btn-${key}`}
+                type="button"
+                className="btn btn-xs btn-ghost text-primary hover:bg-primary/10"
+                onClick={() => {
+                  setSliderValue("default", key, isDeafaultObject);
+                }}
+                title="Reset to default value"
+              >
+                Set Default
+              </button>
+            )}
+            {field === "boolean" &&
+              (() => {
+                const modelDefault = modelInfoData?.[key]?.default;
+                const checkedValue = isDefaultValue ? !!modelDefault : inputConfiguration?.[key] || false;
+                return (
+                  <input
+                    autoComplete="off"
+                    data-testid={`advanced-param-checkbox-${key}`}
+                    id={`advanced-param-checkbox-${key}`}
+                    name={key}
+                    type="checkbox"
+                    className="toggle toggle-sm toggle-primary"
+                    checked={checkedValue}
+                    onChange={(e) => {
+                      if (isDefaultValue) {
+                        setSliderValue(e.target.checked, key, isDeafaultObject);
+                      } else {
+                        handleInputChange(e, key);
+                      }
+                    }}
+                    disabled={isReadOnly}
+                  />
+                );
+              })()}
+          </div>
         </div>
 
         {field !== "boolean" && (
@@ -958,7 +973,7 @@ const AdvancedParameters = ({
                       // Fallback for other keys or normal types
                       handleSelectChange(e, key, defaultValue, "{}", isDeafaultObject);
                     }}
-                    className={`select select-bordered ${selectSizeClass} w-full`}
+                    className={`select ${selectSizeClass} w-full`}
                     name={key}
                     disabled={isReadOnly}
                   >
@@ -1127,7 +1142,7 @@ const AdvancedParameters = ({
                       <label className="text-xs font-medium block">Example Output</label>
                       <textarea
                         data-testid={`advanced-param-example-output-textarea-${key}`}
-                        className="textarea textarea-bordered w-full text-xs font-mono"
+                        className="textarea w-full text-xs font-mono"
                         rows={6}
                         placeholder="Enter an example output the model should produce..."
                         disabled={isReadOnly}
@@ -1171,7 +1186,7 @@ const AdvancedParameters = ({
                         >
                           <span
                             data-testid={`advanced-param-json-schema-build-visually-${key}`}
-                            className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                            className="label capitalize font-medium text-primary cursor-pointer hover:opacity-80 transition-opacity text-xs"
                             onClick={() => {
                               guardedResponseTypeAction(() => {
                                 openModal(MODAL_TYPE.JSON_SCHEMA_BUILDER);
@@ -1183,7 +1198,7 @@ const AdvancedParameters = ({
                           <span className="text-xs text-base-content/50">|</span>
                           <span
                             data-testid={`advanced-param-json-schema-build-ai-${key}`}
-                            className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                            className="label capitalize font-medium text-primary cursor-pointer hover:opacity-80 transition-opacity text-xs"
                             onClick={() => {
                               guardedResponseTypeAction(() => {
                                 openModal(MODAL_TYPE.JSON_SCHEMA);
@@ -1435,12 +1450,12 @@ const AdvancedParameters = ({
             )}
             {/* Slider input */}
             {field === "slider" && (
-              <div className="flex items-center gap-2 w-full">
+              <div className="flex items-center gap-3 w-full">
                 <button
                   data-testid={`advanced-param-slider-min-btn-${key}`}
                   id={`advanced-param-slider-min-btn-${key}`}
                   type="button"
-                  className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20`}
+                  className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20 font-medium`}
                   disabled={isReadOnly}
                   onClick={() => {
                     if (isDefaultValue) {
@@ -1452,7 +1467,6 @@ const AdvancedParameters = ({
                 >
                   Min
                 </button>
-                {sliderValueNode}
                 <input
                   autoComplete="off"
                   data-testid={`advanced-param-slider-${key}`}
@@ -1462,7 +1476,7 @@ const AdvancedParameters = ({
                   max={max || 100}
                   step={step || 1}
                   key={`${key}-${configuration?.[key]}-${service}-${model}`}
-                  defaultValue={isDefaultValue ? "default" : (sliderDisplayValue ?? "")}
+                  defaultValue={sliderCurrentValue}
                   onChange={(e) => {
                     // Only update the display value and local state, don't trigger API call
                     const numValue = String(e.target.value)?.includes(".")
@@ -1474,6 +1488,7 @@ const AdvancedParameters = ({
                     }));
                     const el = document.getElementById(sliderValueId);
                     if (el) el.innerText = e.target.value;
+                    e.target.style.setProperty("--slider-progress", `${toSliderPercent(e.target.value)}%`);
                   }}
                   onMouseUp={(e) => {
                     // Trigger API call when user releases mouse
@@ -1483,15 +1498,17 @@ const AdvancedParameters = ({
                     // Trigger API call when user releases touch
                     debouncedInputChange(e, key, true);
                   }}
-                  className={`range range-accent h-2 rounded-full ${rangeSizeClass} flex-1`}
+                  className={`flex-1 ${isDefaultValue ? "slider-default" : ""}`}
+                  style={{ "--slider-progress": `${toSliderPercent(sliderCurrentValue)}%` }}
                   name={key}
                   disabled={isReadOnly}
                 />
+                {sliderValueNode}
                 <button
                   data-testid={`advanced-param-slider-max-btn-${key}`}
                   id={`advanced-param-slider-max-btn-${key}`}
                   type="button"
-                  className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20 text-sm`}
+                  className={`btn ${buttonSizeClass} btn-ghost border border-base-content/20 font-medium text-sm`}
                   disabled={isReadOnly}
                   onClick={() => {
                     if (isDefaultValue) {
@@ -1512,7 +1529,7 @@ const AdvancedParameters = ({
                 <div
                   data-testid={`advanced-param-dropdown-trigger-${key}`}
                   id={`advanced-param-dropdown-trigger-${key}`}
-                  className={`flex items-center gap-2 input input-bordered ${inputSizeClass} w-full min-h-[2rem] cursor-pointer`}
+                  className={`flex items-center gap-2 input ${inputSizeClass} w-full min-h-[2rem] cursor-pointer`}
                   disabled={isReadOnly}
                   onClick={() => !isReadOnly && setShowDropdown(!showDropdown)}
                 >
@@ -1543,7 +1560,7 @@ const AdvancedParameters = ({
                         placeholder="Search functions..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`input input-bordered ${inputSizeClass} w-full`}
+                        className={`input ${inputSizeClass} w-full`}
                         disabled={isReadOnly}
                       />
                     </div>

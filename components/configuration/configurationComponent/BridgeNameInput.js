@@ -4,7 +4,7 @@ import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { sendDataToParent } from "@/utils/utility";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 
 function BridgeNameInput({ params, searchParams, isEmbedUser }) {

@@ -25,7 +25,7 @@ const TemplateNameModal = ({ templateNameRef, handleConvertToTemplate }) => {
           id="template-name-input"
           type="text"
           placeholder="Enter template name"
-          className="input input-bordered input-md w-full placeholder-opacity-50"
+          className="input input-md w-full placeholder-opacity-50"
           ref={templateNameRef}
         />
         <div className="flex justify-end gap-2">

@@ -74,7 +74,7 @@ window.addEventListener('message', (event) => {
             {/* JWT Payload */}
             <div className="form-control">
               <label className="label">
-                <span className="label-text font-medium">JWT Payload</span>
+                <span className="font-medium">JWT Payload</span>
               </label>
               <CodeBlock className="language-json">{jwtPayload}</CodeBlock>
             </div>
@@ -82,7 +82,7 @@ window.addEventListener('message', (event) => {
             {/* Access Token */}
             <div className="form-control">
               <label className="label flex flex-col items-start space-y-1">
-                <span className="label-text font-medium">Access Token (Signed with RS256)</span>
+                <span className="font-medium">Access Token (Signed with RS256)</span>
               </label>
               <div className="text-sm text-base-content/70 leading-relaxed ml-1">
                 RS256 is an asymmetric signing algorithm defined in
@@ -113,7 +113,7 @@ window.addEventListener('message', (event) => {
           <h4 className="card-title text-base">Step 2: Add Script</h4>
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Add this script tag to your HTML</span>
+              <span className="">Add this script tag to your HTML</span>
             </label>
             <CodeBlock className="language-jsx" fromIntegration={true}>
               {integrationScript}
@@ -151,7 +151,7 @@ window.addEventListener('message', (event) => {
           <h4 className="card-title text-base">Configure Interface</h4>
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Send Data to GTWY</span>
+              <span className="">Send Data to GTWY</span>
             </label>
             <CodeBlock className="language-javascript">{interfaceData}</CodeBlock>
           </div>
@@ -164,7 +164,7 @@ window.addEventListener('message', (event) => {
           <h4 className="card-title text-base">Step 3: Integration Functions</h4>
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Available Functions</span>
+              <span className="">Available Functions</span>
             </label>
             <CodeBlock className="language-javascript">{helperFunctions}</CodeBlock>
           </div>
@@ -178,13 +178,13 @@ window.addEventListener('message', (event) => {
           <div className="form-control space-y-4">
             <div>
               <label className="label">
-                <span className="label-text font-medium">Merge meta (spreads new meta over existing)</span>
+                <span className="font-medium">Merge meta (spreads new meta over existing)</span>
               </label>
               <CodeBlock className="language-javascript">{`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "meta": {\n    "key": "value"\n  }\n});`}</CodeBlock>
             </div>
             <div>
               <label className="label">
-                <span className="label-text font-medium">Replace meta (overwrites all existing meta)</span>
+                <span className="font-medium">Replace meta (overwrites all existing meta)</span>
               </label>
               <CodeBlock className="language-javascript">{`window.openGtwy({\n  "agent_id": "your_agent_id",\n  "replaceMeta": {\n    "key": "value"\n  }\n});`}</CodeBlock>
             </div>
@@ -198,7 +198,7 @@ window.addEventListener('message', (event) => {
           <h4 className="card-title text-base">Get Agent Data Using User ID</h4>
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Use this script to get data using user id</span>
+              <span className="">Use this script to get data using user id</span>
             </label>
             <div>
               <CodeBlock className="language-bash">{getDataUsingUserId}</CodeBlock>
@@ -217,7 +217,7 @@ window.addEventListener('message', (event) => {
           <h4 className="card-title text-base">Add Event Listener</h4>
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Add this script to receive GTWY events</span>
+              <span className="">Add this script to receive GTWY events</span>
             </label>
             <CodeBlock className="language-jsx">{eventListenerScript}</CodeBlock>
           </div>

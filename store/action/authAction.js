@@ -1,5 +1,5 @@
 import { createNewAuth, getAuthData } from "@/config/index";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { addAuthenticationData, fetchAllAuthenticationData } from "../reducer/authReducer";
 
 export const getAuthDataAction = (orgId) => async (dispatch) => {

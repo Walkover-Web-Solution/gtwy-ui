@@ -31,7 +31,7 @@ import {
   uploadImage,
   uploadMultipleImages,
 } from "@/config/index";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import posthog, { trackAgentEvent } from "@/utils/posthog";
 import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 import {

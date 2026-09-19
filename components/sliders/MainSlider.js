@@ -698,7 +698,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {/* ------------------------------------------------------------------ */}
         <div
           data-testid="main-sidebar"
-          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : isSideBySideMode ? "ml-3 mr-0" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
+          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-300 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : isSideBySideMode ? "ml-3 mr-0" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
           style={{
             width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "220px" : "50px",
             transform: isMobile ? (isMobileVisible ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",

@@ -1301,7 +1301,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     ? `mr-8 w-full rounded-xl break-words ${message.content ? "px-4 py-3 border border-base-content/20" : ""}`
                                     : message.sender === "error"
                                       ? "rounded-xl w-full overflow-hidden bg-error/10 border border-error/30 text-error px-4 py-3 text-sm"
-                                      : "chat-bubble w-fit max-w-full text-sm text-neutral-content break-words whitespace-pre-wrap"
+                                      : "chat-bubble w-fit max-w-full text-sm text-base-content break-words whitespace-pre-wrap"
                                 } ${isRichUiMessage(message) ? "!bg-transparent !shadow-none !p-0 !border-0" : ""}`}
                               >
                                 {/* Show loader overlay if this is the message being tested and no result yet */}
@@ -1325,7 +1325,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       id="chat-edit-textarea"
                                       value={editContent}
                                       onChange={(e) => setEditContent(e.target.value)}
-                                      className="textarea textarea-bordered w-full min-h-[100px] resize-y text-base-content bg-base-100"
+                                      className="textarea w-full min-h-[100px] resize-y text-base-content bg-base-100"
                                       placeholder="Edit message content..."
                                     />
                                     <div className="flex gap-2 mt-2">

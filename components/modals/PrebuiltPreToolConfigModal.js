@@ -71,7 +71,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, onClose,
       return (
         <textarea
           data-testid={`pretool-config-field-${field.key}`}
-          className="textarea textarea-bordered text-xs w-full"
+          className="textarea text-xs w-full"
           placeholder={field.placeholder}
           value={config[field.key] || ""}
           onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -113,7 +113,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, onClose,
               autoComplete="off"
               data-testid="pretool-config-kb-search-input"
               type="text"
-              className="input input-bordered input-sm text-xs w-full pr-6"
+              className="input input-sm text-xs w-full pr-6"
               placeholder="Search knowledge bases..."
               value={kbSearch}
               onChange={(e) => setKbSearch(e.target.value)}
@@ -157,7 +157,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, onClose,
         autoComplete="off"
         data-testid={`pretool-config-field-${field.key}`}
         type="text"
-        className="input input-bordered input-sm text-xs w-full"
+        className="input input-sm text-xs w-full"
         placeholder={field.placeholder}
         value={config[field.key] || ""}
         onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -197,7 +197,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, onClose,
                   <input
                     autoComplete="off"
                     type="text"
-                    className="input input-bordered input-sm text-xs w-full"
+                    className="input input-sm text-xs w-full"
                     placeholder={field.placeholder}
                     value={args[field.key] || ""}
                     onChange={(e) => setArgs((prev) => ({ ...prev, [field.key]: e.target.value }))}

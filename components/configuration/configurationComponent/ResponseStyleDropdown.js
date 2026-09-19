@@ -88,7 +88,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
   return (
     <div className="flex flex-col gap-2 w-full">
       <div className="flex items-center gap-1">
-        <span className="label-text font-medium">Response Style</span>
+        <span className="font-medium">Response Style</span>
         <InfoTooltip tooltipContent="Choose how detailed and structured you want your AI agent's responses to be.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
@@ -101,7 +101,7 @@ const ResponseStyleDropdown = ({ params, searchParams, isPublished, isEditor = t
           disabled={isReadOnly}
           value={selectedStyle}
           onChange={handleStyleChange}
-          className={`select select-sm select-bordered capitalize w-full ${selectedStyle === "custom" && !isReadOnly ? "pr-8" : ""}`}
+          className={`select select-sm capitalize w-full ${selectedStyle === "custom" && !isReadOnly ? "pr-8" : ""}`}
         >
           <option value="" disabled>
             Select a Response Style

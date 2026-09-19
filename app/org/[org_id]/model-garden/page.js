@@ -269,7 +269,7 @@ const ModelGardenPage = ({ params }) => {
                       placeholder="Search models..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="input input-bordered input-sm w-full pl-9"
+                      className="input input-sm w-full pl-9"
                     />
                   </div>
                 </div>

@@ -5,7 +5,7 @@ import { isEqual } from "lodash";
 import { CopyIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "@/components/UI/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -339,7 +339,7 @@ const ParameterCard = ({
               data-testid={`param-type-select-${currentPath}`}
               id={`param-type-select-${currentPath}`}
               disabled={isReadOnly}
-              className="select select-xs select-bordered text-xs"
+              className="select select-xs text-xs"
               value={param.type || "string"}
               onChange={(e) => onTypeChange(currentPath, e.target.value)}
             >
@@ -360,7 +360,7 @@ const ParameterCard = ({
                 disabled={isReadOnly}
                 type="text"
                 placeholder="your_path"
-                className={`input input-xs input-bordered text-xs ${
+                className={`input input-xs text-xs ${
                   (name === "Pre Tool" || name === "Post Tool") && !variablesPath[currentPath] ? "border-red-500" : ""
                 }`}
                 value={variablesPath[currentPath] || ""}
@@ -432,7 +432,7 @@ const ParameterCard = ({
                 disabled={isReadOnly}
                 type="text"
                 placeholder="['a','b','c']"
-                className="input input-xs input-bordered text-xs"
+                className="input input-xs text-xs"
                 value={editingEnum}
                 onChange={(e) => {
                   setEditingEnum(e.target.value);
@@ -462,7 +462,7 @@ const ParameterCard = ({
                 disabled={isReadOnly}
                 type="text"
                 placeholder="your_path"
-                className={`input input-xs input-bordered text-xs ${
+                className={`input input-xs text-xs ${
                   currentPath in variablesPath && !String(variablesPath[currentPath] || "").trim()
                     ? "border-red-500"
                     : ""
@@ -1406,7 +1406,7 @@ function FunctionParameterModal({
               id="function-param-mode-select"
               data-testid="function-parameter-mode-select"
               disabled={isReadOnly}
-              className="select select-xs select-bordered text-xs min-w-20"
+              className="select select-xs text-xs min-w-20"
               value={isTextareaVisible ? "advanced" : "simple"}
               onChange={(e) => {
                 const isAdvanced = e.target.value === "advanced";
@@ -1465,7 +1465,7 @@ function FunctionParameterModal({
                 <div id="function-param-environment-wrapper" className="flex flex-row ml-2">
                   <div className="form-control flex flex-row w-full max-w-xs items-center">
                     <label className="label flex items-center gap-1">
-                      <span className="label-text">Agent's Environment</span>
+                      <span className="">Agent's Environment</span>
                       <InfoTooltip
                         id="function-param-environment-tooltip"
                         tooltipContent="Select the environment of the agent you want to use."
@@ -1480,7 +1480,7 @@ function FunctionParameterModal({
                     <select
                       id="function-param-environment-select"
                       disabled={isReadOnly}
-                      className="select select-xs select-bordered ml-2"
+                      className="select select-xs ml-2"
                       value={toolData?.environment || ""}
                       onChange={(e) => {
                         setToolData({ ...toolData, environment: e.target.value });
@@ -1531,7 +1531,7 @@ function FunctionParameterModal({
             <div className="flex justify-between">
               <p
                 id="function-param-optimize-button"
-                className="cursor-pointer label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text text-[11px]"
+                className="cursor-pointer label capitalize font-medium text-primary text-[11px]"
                 onClick={handleOptimizeRawJson}
               >
                 Optimize Json Format
@@ -1571,7 +1571,7 @@ function FunctionParameterModal({
                           id="function-param-agent-name-input"
                           data-testid="function-parameter-name-input"
                           type="text"
-                          className="input input-sm text-xs input-bordered w-full"
+                          className="input input-sm text-xs w-full"
                           value={tool_name}
                           disabled
                         />
@@ -1580,7 +1580,7 @@ function FunctionParameterModal({
                           autoComplete="off"
                           id="function-param-name-input"
                           data-testid="function-parameter-name-input"
-                          className="input input-sm text-xs input-bordered w-full"
+                          className="input input-sm text-xs w-full"
                           value={toolName}
                           onChange={(e) => {
                             setToolName(e.target.value);
@@ -1601,7 +1601,7 @@ function FunctionParameterModal({
                         id="function-param-desc-textarea"
                         data-testid="function-parameter-desc-textarea"
                         disabled={isReadOnly}
-                        className="textarea bg-base-100 textarea-sm textarea-bordered w-full resize-y"
+                        className="textarea bg-base-100 textarea-sm w-full resize-y"
                         rows={2}
                         value={toolData?.description || ""}
                         onChange={(e) => {

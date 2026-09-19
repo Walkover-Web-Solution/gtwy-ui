@@ -64,7 +64,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
       <div id="fine-tune-modal-container" className="flex flex-col gap-4">
         <div className="form-control">
           <label className="label cursor-pointer">
-            <span className="label-text flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <GlobeIcon size={16} color="skyblue" />
               All Responses &#40; including no feedback &#41;
             </span>
@@ -81,7 +81,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
         </div>
         <div className="form-control">
           <label className="label cursor-pointer">
-            <span className="label-text flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <CirclePlusIcon size={16} color="green" />
               Positive Feedback Responses
             </span>
@@ -99,7 +99,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
         </div>
         <div className="form-control">
           <label className="label cursor-pointer">
-            <span className="label-text flex items-center gap-2">
+            <span className="flex items-center gap-2">
               <CircleMinusIcon size={16} color="red" />
               Negative Feedback Responses
             </span>
