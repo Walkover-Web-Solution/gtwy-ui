@@ -322,14 +322,14 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, onAgentSliderC
 
               <div>
                 <div className="text-[11px] text-base-content/60 mb-1">Args:</div>
-                <pre className="border hover:border-primary bg-base-200 px-2 py-2 whitespace-pre-wrap text-base-content leading-5">
+                <pre className="border hover:border-primary bg-base-200 px-2 py-2 whitespace-pre-wrap break-words text-base-content leading-5">
                   {JSON.stringify(selectedFunctionData.args, null, 2)}
                 </pre>
               </div>
 
               <div>
                 <div className="text-[11px] text-base-content/60 mb-1">Data:</div>
-                <pre className="border hover:border-primary bg-base-200 px-2 py-2 whitespace-pre-wrap text-base-content leading-5">
+                <pre className="border hover:border-primary bg-base-200 px-2 py-2 whitespace-pre-wrap break-words text-base-content leading-5">
                   {JSON.stringify(selectedFunctionData.data, null, 2)}
                 </pre>
               </div>
@@ -355,7 +355,7 @@ export function BatchUI({ agents, onToolClick, onToolSliderClick, onAgentSliderC
                     No tools found
                   </div>
                 ) : (
-                  <pre className="border hover:border-primary bg-base-200 px-2 py-2 whitespace-pre-wrap text-base-content leading-5">
+                  <pre className="border hover:border-primary bg-base-200 px-2 py-2 whitespace-pre-wrap break-words text-base-content leading-5">
                     {JSON.stringify(selectedAgentMeta?.tools || [], null, 2)}
                   </pre>
                 )}
