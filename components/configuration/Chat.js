@@ -160,7 +160,7 @@ function GenericToolCallItem({ toolCall, isMessageComplete }) {
         onClick={() => canToggle && setOpen((v) => !v)}
       >
         {toolCall.status === "calling" ? (
-          <span className="loading loading-spinner loading-xs text-primary" />
+          <span className="h-4 w-4 inline-block animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
         ) : (
           <Wrench className="h-3.5 w-3.5 text-success shrink-0" />
         )}
@@ -928,7 +928,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           className="absolute inset-0 bg-base-200/90 border-4 border-dashed border-primary flex items-center justify-center z-50 backdrop-blur-sm"
         >
           <div className="pointer-events-none flex flex-col items-center gap-3 bg-base-100 p-6 rounded-xl shadow-2xl border border-primary/20">
-            <span className="loading loading-spinner loading-md text-primary"></span>
+            <span className="h-6 w-6 inline-block animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
             <span className="text-primary font-semibold text-lg">Drop files here to upload to Chat</span>
           </div>
         </div>
@@ -1030,7 +1030,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-md z-50"
             >
               <div className="flex items-center gap-3 bg-base-100 p-4 rounded-lg shadow-lg border border-base-content/20">
-                <span className="loading loading-spinner loading-md text-primary"></span>
+                <span className="h-6 w-6 inline-block animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
                 <span className="text-base font-medium">Loading test case conversation...</span>
               </div>
             </div>
@@ -1311,7 +1311,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   !message.testCaseResult && (
                                     <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10 pointer-events-none">
                                       <div className="flex items-center gap-2">
-                                        <span className="loading loading-spinner loading-sm"></span>
+                                        <span className="h-5 w-5 inline-block animate-spin rounded-full border-2 border-current border-t-transparent" />
                                         <span className="text-sm font-medium">Running Test Case...</span>
                                       </div>
                                     </div>
@@ -1413,8 +1413,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
                                       {/* Loading state for assistant message */}
                                       {message.isLoading && !message.content && !message.toolCalls?.length ? (
-                                        <div data-testid="chat-loading-state" className="py-1">
-                                          <span className="loading loading-dots loading-sm"></span>
+                                        <div data-testid="chat-loading-state" className="flex items-center gap-1 py-2">
+                                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-base-content/50 [animation-delay:-0.3s]" />
+                                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-base-content/50 [animation-delay:-0.15s]" />
+                                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-base-content/50" />
                                         </div>
                                       ) : message.isStreaming && message.content ? (
                                         <StreamingMessage content={message.content} isStreaming={message.isStreaming} />

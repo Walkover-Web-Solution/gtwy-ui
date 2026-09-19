@@ -634,7 +634,7 @@ const AdvancedParameters = ({
         id={`advanced-param-field-${key}`}
         className={`group w-full ${isLevel2 ? "space-y-1" : "space-y-2"}`}
       >
-        <div className="flex items-center justify-between gap-2 mb-1 min-h-[32px]">
+        <div className="flex items-center justify-between gap-2 mb-1">
           <div className="flex items-center gap-2">
             <span className={labelTextClass}>{displayName}</span>
             {displayDescription && (
@@ -643,132 +643,132 @@ const AdvancedParameters = ({
               </InfoTooltip>
             )}
           </div>
-          {/* response_type: dropdown to add/change/remove the response type inline with the label */}
-          {key === "response_type" &&
-            !isReadOnly &&
-            (() => {
-              const currentType = configuration?.[key]?.is_template ? "widget" : configuration?.[key]?.type;
-              const hasType =
-                currentType === "text" ||
-                currentType === "json_schema" ||
-                currentType === "json_object" ||
-                currentType === "widget";
-              const bridgeKind = bridgeType?.toString()?.toLowerCase();
-              const typeLabels = {
-                text: "Text",
-                json_schema: "JSON Schema",
-                json_object: "JSON Object",
-                widget: "Widget",
-              };
-              const applySelection = (selectedValue) => {
-                setResponseTypePickerOpen(false);
-                guardedResponseTypeAction(() => {
-                  if (selectedValue === "remove") {
-                    setSliderValue("default", key, isDeafaultObject);
-                    return;
-                  }
-                  if (selectedValue === "widget") {
-                    const defaultSchema = generateCombinedSchema([], richUiWidgets);
-                    dispatch(
-                      updateBridgeVersionAction({
-                        bridgeId: params?.id,
-                        versionId: searchParams?.version,
-                        dataToSend: {
-                          configuration: {
-                            response_type: {
-                              type: "json_schema",
-                              json_schema: defaultSchema,
-                              is_template: true,
-                              template_id: [],
+          <div className="flex items-center gap-2">
+            {/* response_type: picker sits inline, to the right of the label */}
+            {key === "response_type" &&
+              !isReadOnly &&
+              (() => {
+                const currentType = configuration?.[key]?.is_template ? "widget" : configuration?.[key]?.type;
+                const hasType =
+                  currentType === "text" ||
+                  currentType === "json_schema" ||
+                  currentType === "json_object" ||
+                  currentType === "widget";
+                const bridgeKind = bridgeType?.toString()?.toLowerCase();
+                const typeLabels = {
+                  text: "Text",
+                  json_schema: "JSON Schema",
+                  json_object: "JSON Object",
+                  widget: "Widget",
+                };
+                const applySelection = (selectedValue) => {
+                  setResponseTypePickerOpen(false);
+                  guardedResponseTypeAction(() => {
+                    if (selectedValue === "remove") {
+                      setSliderValue("default", key, isDeafaultObject);
+                      return;
+                    }
+                    if (selectedValue === "widget") {
+                      const defaultSchema = generateCombinedSchema([], richUiWidgets);
+                      dispatch(
+                        updateBridgeVersionAction({
+                          bridgeId: params?.id,
+                          versionId: searchParams?.version,
+                          dataToSend: {
+                            configuration: {
+                              response_type: {
+                                type: "json_schema",
+                                json_schema: defaultSchema,
+                                is_template: true,
+                                template_id: [],
+                              },
                             },
                           },
-                        },
-                      })
-                    );
-                  } else if (selectedValue === "json_schema") {
-                    setObjectFieldValue(null);
-                    dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
-                      localOnly: true,
-                    });
-                  } else if (selectedValue === "text") {
-                    dispatch(
-                      updateBridgeVersionAction({
-                        bridgeId: params?.id,
-                        versionId: searchParams?.version,
-                        dataToSend: {
-                          configuration: {
-                            response_type: { type: "text", text: "" },
+                        })
+                      );
+                    } else if (selectedValue === "json_schema") {
+                      setObjectFieldValue(null);
+                      dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
+                        localOnly: true,
+                      });
+                    } else if (selectedValue === "text") {
+                      dispatch(
+                        updateBridgeVersionAction({
+                          bridgeId: params?.id,
+                          versionId: searchParams?.version,
+                          dataToSend: {
+                            configuration: {
+                              response_type: { type: "text", text: "" },
+                            },
                           },
-                        },
-                      })
-                    );
-                  }
-                });
-              };
-              const triggerLabel = hasType ? (
-                <>
-                  <span className="truncate">{typeLabels[currentType] || currentType}</span>
-                  <ChevronDownIcon size={14} className="shrink-0 opacity-60" />
-                </>
-              ) : (
-                <>
-                  <span className="text-base-content/70">Not set</span>
-                  <ChevronDownIcon size={14} className="shrink-0 opacity-60" />
-                </>
-              );
-              return (
-                <div ref={responseTypePickerRef} className="relative">
-                  <button
-                    type="button"
-                    data-testid={`advanced-param-add-response-type-${key}`}
-                    className="flex h-8 w-40 items-center justify-between gap-2 border border-base-300 px-3 text-sm text-base-content transition-colors hover:bg-base-300"
-                    onClick={() => setResponseTypePickerOpen((v) => !v)}
-                  >
-                    {triggerLabel}
-                  </button>
-                  {responseTypePickerOpen && (
-                    <ul className="absolute right-0 top-full z-high mt-1 w-full overflow-hidden border border-base-300 bg-base-100 shadow-lg">
-                      {[
-                        { value: "text", label: "Text", isActive: currentType === "text" },
-                        {
-                          value: "json_schema",
-                          label: "JSON Schema",
-                          isActive: currentType === "json_schema",
-                        },
-                        ...(bridgeKind === "chatbot" && !isEmbedUser
-                          ? [{ value: "widget", label: "Widget", isActive: !!configuration?.[key]?.is_template }]
-                          : []),
-                      ].map((opt) => (
-                        <li key={opt.value}>
-                          <button
-                            type="button"
-                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-base-300 ${
-                              opt.isActive ? "bg-base-300 font-medium" : "text-base-content/80"
-                            }`}
-                            onClick={() => applySelection(opt.value)}
-                          >
-                            <span>{opt.label}</span>
-                            {opt.isActive && <Check size={14} className="shrink-0" />}
-                          </button>
-                        </li>
-                      ))}
-                      {hasType && (
-                        <li className="border-t border-base-300">
-                          <button
-                            type="button"
-                            className="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error/10"
-                            onClick={() => applySelection("remove")}
-                          >
-                            Remove
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </div>
-              );
-            })()}
-          <div className="flex items-center gap-2">
+                        })
+                      );
+                    }
+                  });
+                };
+                const triggerLabel = hasType ? (
+                  <>
+                    <span className="truncate">{typeLabels[currentType] || currentType}</span>
+                    <ChevronDownIcon size={14} className="shrink-0 opacity-60" />
+                  </>
+                ) : (
+                  <>
+                    <span className="text-base-content/70">Not set</span>
+                    <ChevronDownIcon size={14} className="shrink-0 opacity-60" />
+                  </>
+                );
+                return (
+                  <div ref={responseTypePickerRef} className="relative">
+                    <button
+                      type="button"
+                      data-testid={`advanced-param-add-response-type-${key}`}
+                      className="flex h-8 w-44 items-center justify-between gap-2 border border-base-300 bg-base-100 px-3 text-sm text-base-content"
+                      onClick={() => setResponseTypePickerOpen((v) => !v)}
+                    >
+                      {triggerLabel}
+                    </button>
+                    {responseTypePickerOpen && (
+                      <ul className="absolute right-0 top-full z-high mt-1 w-full overflow-hidden border border-base-300 bg-base-100 shadow-lg">
+                        {[
+                          { value: "text", label: "Text", isActive: currentType === "text" },
+                          {
+                            value: "json_schema",
+                            label: "JSON Schema",
+                            isActive: currentType === "json_schema",
+                          },
+                          ...(bridgeKind === "chatbot" && !isEmbedUser
+                            ? [{ value: "widget", label: "Widget", isActive: !!configuration?.[key]?.is_template }]
+                            : []),
+                        ].map((opt) => (
+                          <li key={opt.value}>
+                            <button
+                              type="button"
+                              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm transition-colors hover:bg-base-300 ${
+                                opt.isActive ? "bg-base-300 font-medium" : "text-base-content/80"
+                              }`}
+                              onClick={() => applySelection(opt.value)}
+                            >
+                              <span>{opt.label}</span>
+                              {opt.isActive && <Check size={14} className="shrink-0" />}
+                            </button>
+                          </li>
+                        ))}
+                        {hasType && (
+                          <li className="border-t border-base-300">
+                            <button
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm text-error transition-colors hover:bg-error/10"
+                              onClick={() => applySelection("remove")}
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })()}
             {/* Set Default button - shows when parameter has default value and is not currently default */}
             {key !== "response_type" && hasDefaultValue && !isDefaultValue && !isReadOnly && (
               <button
@@ -1137,9 +1137,8 @@ const AdvancedParameters = ({
                     <div
                       id={`advanced-param-example-output-${key}`}
                       data-testid={`advanced-param-example-output-${key}`}
-                      className="mt-3 space-y-2"
+                      className="mt-3 p-2 bg-base-100 space-y-2"
                     >
-                      <label className="text-xs font-medium block">Example Output</label>
                       <textarea
                         data-testid={`advanced-param-example-output-textarea-${key}`}
                         className="textarea w-full text-xs font-mono"
@@ -1173,7 +1172,7 @@ const AdvancedParameters = ({
                     <div
                       id={`advanced-param-json-schema-${key}`}
                       data-testid={`advanced-param-json-schema-section-${key}`}
-                      className="mt-3 space-y-2"
+                      className="p-4 bg-base-100 space-y-2"
                     >
                       <div
                         id={`advanced-param-json-schema-header-${key}`}
@@ -1181,7 +1180,7 @@ const AdvancedParameters = ({
                         className="flex justify-between items-center"
                       >
                         <div
-                          className="flex gap-2 mt-4 ml-auto items-center"
+                          className="flex gap-2 ml-auto items-center"
                           data-testid={`advanced-param-json-schema-actions-${key}`}
                         >
                           <span

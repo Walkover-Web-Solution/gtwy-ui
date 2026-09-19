@@ -1,6 +1,7 @@
 "use client";
 import { persistor, store } from "@/store/store";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Provider } from "react-redux";
 import { Toaster } from "react-hot-toast";
 import { PersistGate } from "redux-persist/integration/react";
@@ -9,14 +10,37 @@ import { usePathname } from "next/navigation";
 import { useThemeManager } from "@/customHooks/useThemeManager";
 import PostHogProvider from "@/components/PostHogProvider";
 
-/**
- * The Wrapper component is the top level component of our application
- * It provides the Redux store to all the child components
- * It also has a Toaster for the react-hot-toast notifications
- */
 const Wrapper = ({ children }) => {
   const pathname = usePathname();
   const { actualTheme } = useThemeManager();
+  const [toastPortalTarget, setToastPortalTarget] = useState(null);
+  useEffect(() => {
+    const openDialogs = Array.from(document.querySelectorAll("dialog[open]"));
+    const currentTarget = () => (openDialogs.length ? openDialogs[openDialogs.length - 1] : document.body);
+    setToastPortalTarget(currentTarget());
+
+    const observer = new MutationObserver((mutations) => {
+      let changed = false;
+      for (const mutation of mutations) {
+        const target = mutation.target;
+        if (!(target instanceof HTMLElement) || target.tagName !== "DIALOG") continue;
+        const index = openDialogs.indexOf(target);
+        if (target.hasAttribute("open")) {
+          if (index === -1) {
+            openDialogs.push(target);
+            changed = true;
+          }
+        } else if (index !== -1) {
+          openDialogs.splice(index, 1);
+          changed = true;
+        }
+      }
+      if (changed) setToastPortalTarget(currentTarget());
+    });
+    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["open"] });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const pathSegments = pathname.split("/").filter(Boolean);
@@ -45,17 +69,19 @@ const Wrapper = ({ children }) => {
         <PersistGate loading={null} persistor={persistor}>
           <PostHogProvider>
             <div className="w-screen">
-              {/* All the child components */}
               {children}
-              {/* Global Command Palette */}
               <CommandPalette />
-              {/* Notification toast container */}
-              <Toaster
-                position="top-center"
-                toastOptions={{
-                  style: actualTheme === "dark" ? { background: "#333", color: "#fff" } : {},
-                }}
-              />
+              {toastPortalTarget &&
+                createPortal(
+                  <Toaster
+                    position="top-center"
+                    containerStyle={{ zIndex: 2147483000 }}
+                    toastOptions={{
+                      style: actualTheme === "dark" ? { background: "#333", color: "#fff" } : {},
+                    }}
+                  />,
+                  toastPortalTarget
+                )}
             </div>
           </PostHogProvider>
         </PersistGate>

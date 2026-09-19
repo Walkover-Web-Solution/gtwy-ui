@@ -113,43 +113,64 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
   };
 
   const responseOptions = [
-    { value: "default", label: "Default" },
-    { value: "custom", label: "Custom" },
+    { value: "default", label: "Default", description: "Return the agent's response directly" },
+    { value: "custom", label: "Custom", description: "Deliver responses to your webhook" },
   ];
 
   return (
     <div>
       <div className="flex items-center gap-2">
-        <span className="">Select Response Format</span>
+        <span className="text-sm font-medium text-base-content/70">Select Response Format</span>
         <InfoTooltip tooltipContent="Choose the format in which you want to receive responses from your agent. The 'Default' option will use the standard response format, while the 'Custom' option allows you to specify a webhook URL and headers for more control over how responses are delivered.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
       </div>
-      {responseOptions.map(({ value, label }) => (
-        <div className="form-control w-fit" key={value}>
-          <label className="label  cursor-pointer mx-w-sm flex items-center gap-5">
-            <input
-              autoComplete="off"
-              data-testid={`response-format-radio-${value}`}
-              id={`response-format-radio-${value}`}
-              disabled={isReadOnly}
-              type="radio"
-              name="radio-10"
-              className="radio radio-sm"
-              checked={selectedOption === value}
-              onChange={() => {
-                setSelectedOption(value);
-                handleResponseChange(value);
-              }}
-            />
-            <span className="text-sm">{label}</span>
-          </label>
-        </div>
-      ))}
-      <div className={`${selectedOption === "custom" ? "border border-base-300 rounded" : ""}`}>
-        <div className={`border-t border-base-300 pt-4 px-4 ${selectedOption === "custom" ? "" : "hidden"}`}>
-          <label className="form-control w-full mb-4">
-            <span className="text-sm block mb-2">Webhook URL</span>
+      <div className="mt-3 grid max-w-md grid-cols-2 gap-3">
+        {responseOptions.map(({ value, label, description }) => {
+          const isSelected = selectedOption === value;
+          return (
+            <label
+              key={value}
+              className={`flex flex-col gap-1 border p-3 transition-colors ${
+                isReadOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+              } ${isSelected ? "border-base-content/40 bg-base-300" : "border-base-300 hover:bg-base-300/50"}`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  autoComplete="off"
+                  data-testid={`response-format-radio-${value}`}
+                  id={`response-format-radio-${value}`}
+                  disabled={isReadOnly}
+                  type="radio"
+                  name="response-format"
+                  className="sr-only"
+                  checked={isSelected}
+                  onChange={() => {
+                    setSelectedOption(value);
+                    handleResponseChange(value);
+                  }}
+                />
+                <span
+                  aria-hidden="true"
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                    isSelected ? "border-base-content" : "border-base-content/40"
+                  }`}
+                >
+                  {isSelected && <span className="h-2 w-2 rounded-full bg-base-content" />}
+                </span>
+                <span className="text-sm font-medium">{label}</span>
+              </span>
+              <span className="text-xs text-base-content/60">{description}</span>
+            </label>
+          );
+        })}
+      </div>
+      {selectedOption === "custom" && (
+        <div className="mt-3 max-w-md space-y-4 border border-base-300 bg-base-200 p-4">
+          <div>
+            <label htmlFor="webhook" className="mb-1.5 block text-sm font-medium text-base-content/70">
+              Webhook URL
+            </label>
             <input
               autoComplete="off"
               data-testid="webhook-url-input"
@@ -157,19 +178,21 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
               disabled={isReadOnly}
               type="text"
               placeholder="https://example.com/webhook"
-              className="input max-w-xs input-sm w-full"
+              className="input input-sm w-full"
               defaultValue={webhookData?.url}
               onBlur={handleChangeWebhook}
             />
-            {errors.webhook && <p className="text-red-500 text-xs mt-2">{errors.webhook}</p>}
-          </label>
-          <label className="form-control mb-4">
-            <span className="text-sm block mb-2">Headers (JSON format)</span>
+            {errors.webhook && <p className="mt-1.5 text-xs text-error">{errors.webhook}</p>}
+          </div>
+          <div>
+            <label htmlFor="headers" className="mb-1.5 block text-sm font-medium text-base-content/70">
+              Headers (JSON format)
+            </label>
             <textarea
               data-testid="webhook-headers-textarea"
               id="headers"
               disabled={isReadOnly}
-              className="textarea bg-base-100 h-24 w-full textarea-sm"
+              className="textarea textarea-sm h-24 w-full"
               defaultValue={
                 typeof webhookData?.headers === "object"
                   ? JSON.stringify(webhookData?.headers, null, 2)
@@ -178,26 +201,28 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
               onBlur={handleChangeHeaders}
               placeholder='{"Content-Type": "application/json"}'
             ></textarea>
-            {errors.headers && <p className="text-red-500 text-xs mt-2">{errors.headers}</p>}
-          </label>
-          <button
-            data-testid="response-format-apply-button"
-            id="response-format-apply-button"
-            className="btn btn-primary btn-sm my-2 float-right"
-            onClick={() => handleResponseChange("custom")}
-            disabled={
-              errors.webhook !== "" ||
-              errors.headers !== "" ||
-              isReadOnly ||
-              // Check if there are any changes to apply compared to initial values
-              (webhookData.url === initialValues.url &&
-                JSON.stringify(webhookData.headers) === JSON.stringify(initialValues.headers))
-            }
-          >
-            Apply
-          </button>
+            {errors.headers && <p className="mt-1.5 text-xs text-error">{errors.headers}</p>}
+          </div>
+          <div className="flex justify-end">
+            <button
+              data-testid="response-format-apply-button"
+              id="response-format-apply-button"
+              className="btn btn-primary btn-sm"
+              onClick={() => handleResponseChange("custom")}
+              disabled={
+                errors.webhook !== "" ||
+                errors.headers !== "" ||
+                isReadOnly ||
+                // Check if there are any changes to apply compared to initial values
+                (webhookData.url === initialValues.url &&
+                  JSON.stringify(webhookData.headers) === JSON.stringify(initialValues.headers))
+              }
+            >
+              Apply
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

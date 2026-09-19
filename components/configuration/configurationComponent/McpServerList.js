@@ -3,11 +3,15 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import InfoTooltip from "@/components/InfoTooltip";
-import { CircleQuestionMark, Plus, Save, Server, Trash2 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import McpServerModal from "@/components/modals/McpServerModal";
+import DeleteModal from "@/components/UI/DeleteModal";
+import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { MODAL_TYPE } from "@/utils/enums";
+import { openModal, closeModal } from "@/utils/utility";
+import { CircleQuestionMark, Pencil, Plus, Server, Trash2 } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
-const emptyServer = () => ({ name: "", url: "" });
 const EMPTY_SERVERS = [];
 
 const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) => {
@@ -23,81 +27,65 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
   });
 
   const [servers, setServers] = useState(savedServers);
-  const [edited, setEdited] = useState({});
+  const [editIndex, setEditIndex] = useState(null); // null = adding a new server
+  const [isSaving, setIsSaving] = useState(false);
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState(null);
 
   useEffect(() => {
     setServers(savedServers);
-    setEdited({});
   }, [savedServers]);
 
   const persistServers = useCallback(
-    (nextServers) => {
+    (nextServers) =>
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: {
-            configuration: {
-              mcp_config: {
-                servers: nextServers,
-              },
-            },
-          },
+          dataToSend: { configuration: { mcp_config: { servers: nextServers } } },
         })
-      );
-    },
+      ),
     [dispatch, params?.id, searchParams?.version]
   );
 
-  const handleChange = useCallback((index, field, value) => {
-    setServers((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-    setEdited((prev) => ({ ...prev, [index]: true }));
-  }, []);
+  const openAddModal = () => {
+    setEditIndex(null);
+    openModal(MODAL_TYPE.MCP_SERVER_MODAL);
+  };
 
-  const handleAdd = useCallback(() => {
-    setServers((prev) => {
-      setEdited((editedPrev) => ({ ...editedPrev, [prev.length]: true }));
-      return [...prev, emptyServer()];
-    });
-  }, []);
+  const openEditModal = (index) => {
+    setEditIndex(index);
+    openModal(MODAL_TYPE.MCP_SERVER_MODAL);
+  };
 
-  const handleSave = useCallback(
-    (index) => {
-      const server = servers[index];
-      if (!server?.name?.trim() || !server?.url?.trim()) return;
-      persistServers(servers.map((item) => ({ name: item.name.trim().replace(/ /g, "_"), url: item.url.trim() })));
-      setEdited((prev) => ({ ...prev, [index]: false }));
-    },
-    [persistServers, servers]
-  );
-
-  const handleRemove = useCallback(
-    (index) => {
-      const nextServers = servers.filter((_, i) => i !== index);
+  const handleModalSave = async (data) => {
+    setIsSaving(true);
+    try {
+      const nextServers =
+        editIndex === null ? [...servers, data] : servers.map((item, i) => (i === editIndex ? data : item));
       setServers(nextServers);
-      persistServers(
-        nextServers
-          .map((item) => ({ name: item.name.trim(), url: item.url.trim() }))
-          .filter((item) => item.name && item.url)
-      );
-      setEdited((prev) => {
-        const next = {};
-        Object.entries(prev).forEach(([key, value]) => {
-          const keyIndex = Number(key);
-          if (keyIndex < index) next[keyIndex] = value;
-          if (keyIndex > index) next[keyIndex - 1] = value;
-        });
-        return next;
-      });
-    },
-    [persistServers, servers]
-  );
+      await persistServers(nextServers);
+      closeModal(MODAL_TYPE.MCP_SERVER_MODAL);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  const hasUnsaved = useMemo(() => Object.values(edited).some(Boolean), [edited]);
+  const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE.DELETE_MCP_SERVER_MODAL);
+
+  const openDeleteModal = (index) => {
+    setPendingDeleteIndex(index);
+    openModal(MODAL_TYPE.DELETE_MCP_SERVER_MODAL);
+  };
+
+  const handleConfirmDelete = async () => {
+    await executeDelete(async () => {
+      const nextServers = servers.filter((_, i) => i !== pendingDeleteIndex);
+      setServers(nextServers);
+      return persistServers(nextServers);
+    });
+  };
+
+  const editingServer = editIndex === null ? null : servers[editIndex];
 
   return (
     <div
@@ -105,6 +93,24 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
       id="mcp-server-list-container"
       className="w-full gap-2 flex flex-col px-2 py-2 cursor-default"
     >
+      <McpServerModal
+        initialData={editingServer}
+        isEditing={editIndex !== null}
+        onSave={handleModalSave}
+        isSaving={isSaving}
+      />
+      <DeleteModal
+        onConfirm={handleConfirmDelete}
+        item={pendingDeleteIndex}
+        name={servers[pendingDeleteIndex]?.name}
+        title="Remove MCP server?"
+        description="This will remove the selected MCP server and its tools from this agent."
+        buttonTitle="Remove MCP"
+        modalType={MODAL_TYPE.DELETE_MCP_SERVER_MODAL}
+        loading={isDeleting}
+        isAsync={true}
+      />
+
       <div className="flex items-center gap-2 mb-2">
         <div className="flex items-center gap-2">
           <p className="text-sm whitespace-nowrap">MCP Servers</p>
@@ -116,95 +122,74 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
 
       <div className="flex flex-col gap-2 w-full max-w-md">
         {servers.length > 0 ? (
-          <div className="space-y-3">
-            {servers.map((config, index) => {
-              const isComplete = Boolean(config.name?.trim() && config.url?.trim());
-              const isEdited = edited[index];
-              return (
-                <div
-                  key={index}
-                  className={`group relative bg-base-200/40 border rounded-lg p-3 space-y-2 transition-all hover:bg-base-200/60 ${
-                    isEdited ? "border-warning" : "border-base-300"
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Server size={14} className="text-primary" />
-                      <span className="badge badge-sm badge-primary badge-outline font-medium">MCP {index + 1}</span>
-                      {isEdited && <span className="text-[10px] text-warning font-medium">• Unsaved</span>}
-                    </div>
-                    {!isReadOnly && (
-                      <div className="flex gap-1">
-                        {isEdited && isComplete && (
-                          <button
-                            type="button"
-                            onClick={() => handleSave(index)}
-                            className="btn btn-xs gap-1"
-                            title="Save changes"
-                          >
-                            <Save size={12} />
-                            Save
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(index)}
-                          className="btn btn-xs btn-ghost btn-square text-error hover:bg-error/10"
-                          title="Remove MCP"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    autoComplete="off"
-                    type="text"
-                    placeholder="MCP name (e.g. my-mcp)"
-                    className={`input w-full input-sm ${!config.name ? "input-error" : ""}`}
-                    value={config.name || ""}
-                    onChange={(e) => handleChange(index, "name", e.target.value)}
-                    disabled={isReadOnly}
-                    required
-                  />
-                  <input
-                    autoComplete="off"
-                    type="url"
-                    placeholder="https://mcp.example.com/..."
-                    className={`input w-full input-sm ${!config.url ? "input-error" : ""}`}
-                    value={config.url || ""}
-                    onChange={(e) => handleChange(index, "url", e.target.value)}
-                    disabled={isReadOnly}
-                    required
-                  />
-                </div>
-              );
-            })}
-            {!isReadOnly && !hasUnsaved && (
-              <button
-                type="button"
-                onClick={handleAdd}
-                className="w-full flex items-center justify-center gap-1 py-2 px-3 text-sm rounded-md border-2 border-dashed border-base-200 bg-transparent text-base-content/70 transition-all"
+          <div className="flex flex-col gap-2">
+            {servers.map((config, index) => (
+              <div
+                key={`${config.name}-${index}`}
+                data-testid={`mcp-server-item-${index}`}
+                className="group flex w-full items-center border border-base-300 bg-base-100 transition-colors duration-200 min-h-[44px]"
               >
-                <Plus size={14} />
-                Add Another MCP
-              </button>
+                <div className="p-2 flex-1 flex items-center gap-2 min-w-0">
+                  <Server size={16} className="shrink-0 text-base-content/60" />
+                  <div className="flex-1 min-w-0">
+                    <span className="block truncate text-sm font-medium text-base-content">
+                      {config.name || `MCP ${index + 1}`}
+                    </span>
+                    <span className="block truncate text-xs text-base-content/50">{config.url}</span>
+                  </div>
+                </div>
+                {!isReadOnly && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      data-testid={`mcp-server-edit-button-${index}`}
+                      onClick={() => openEditModal(index)}
+                      className="btn btn-ghost btn-sm p-1 hover:bg-base-300"
+                      title="Edit"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`mcp-server-delete-button-${index}`}
+                      onClick={() => openDeleteModal(index)}
+                      className="btn btn-ghost btn-sm p-1 hover:bg-red-100 hover:text-error"
+                      title="Remove"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {!isReadOnly && (
+              <div className="border-2 border-base-200 border-dashed text-center">
+                <button
+                  type="button"
+                  data-testid="mcp-server-add-button"
+                  onClick={openAddModal}
+                  className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Another MCP
+                </button>
+              </div>
             )}
           </div>
-        ) : (
-          !isReadOnly && (
+        ) : !isReadOnly ? (
+          <div className="border-2 border-base-200 border-dashed text-center">
             <button
               type="button"
-              onClick={handleAdd}
-              className="w-full flex items-center justify-center gap-1 py-2 px-3 text-sm rounded-md border-2 border-dashed border-base-200 bg-transparent text-base-content/70 transition-all"
+              data-testid="mcp-server-add-button-empty"
+              onClick={openAddModal}
+              className="flex items-center justify-center gap-1 p-2 text-base-content/50 hover:text-base-content/80 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full"
             >
-              <Plus size={14} />
+              <Plus className="w-3 h-3" />
               Add MCP Configuration
             </button>
-          )
-        )}
-        {isReadOnly && servers.length === 0 && (
-          <div className="border-2 border-base-200 border-dashed p-4 text-center">
+          </div>
+        ) : (
+          <div className="border border-dashed border-base-300 p-4 text-center">
             <p className="text-sm text-base-content/70">No MCP servers configured.</p>
           </div>
         )}

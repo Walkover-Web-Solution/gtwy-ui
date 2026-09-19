@@ -122,6 +122,8 @@ export const MODAL_TYPE = {
   JSON_SCHEMA_VISUAL_BUILDER: "json-schema-visual-builder",
   JSON_SCHEMA_AI_BUILDER: "json-schema-ai-builder",
   JSON_SCHEMA_FULLSCREEN: "json-schema-fullscreen",
+  MCP_SERVER_MODAL: "MCP_SERVER_MODAL",
+  DELETE_MCP_SERVER_MODAL: "DELETE_MCP_SERVER_MODAL",
 };
 
 export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];

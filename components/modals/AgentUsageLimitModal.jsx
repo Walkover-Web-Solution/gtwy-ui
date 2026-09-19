@@ -165,8 +165,11 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
             <button
               type="button"
               className="btn btn-sm btn-ghost text-xs border border-base-content/10 text-error hover:bg-error/10 hover:border-error/20"
-              disabled={isResetting || usageValue === 0}
-              onClick={handleResetUsage}
+              disabled={isResetting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleResetUsage();
+              }}
             >
               {isResetting ? "Resetting..." : "Reset Usage"}
             </button>

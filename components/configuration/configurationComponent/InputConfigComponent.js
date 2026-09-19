@@ -440,7 +440,7 @@ const InputConfigComponent = memo(
               />
             </>
           ) : isEmbedCustomPrompt ? (
-            <div className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col gap-3">
               {isOldEmbedFormat && !isPublished && isEditor && (
                 <div className="alert alert-warning py-2 text-xs flex items-center justify-between gap-2">
                   <span>This prompt uses an older format. Save to migrate to the new format.</span>
@@ -607,7 +607,7 @@ const InputConfigComponent = memo(
               ))}
             </div>
           ) : isStructuredPrompt ? (
-            <div className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col gap-3">
               {Object.entries(PROMPT_SECTION_CONFIG).map(([key, fieldConfig]) => (
                 <div key={key} className="form-control">
                   <label className="label py-0">
