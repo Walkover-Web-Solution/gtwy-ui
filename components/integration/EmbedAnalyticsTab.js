@@ -10,7 +10,7 @@ import { getStatsConfig } from "@/utils/enums";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
 import { formatRelativeTime, formatDate, buildEmbedLoginUrl } from "@/utils/utility";
 import SearchItems from "@/components/UI/SearchItems";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
 
 const USERS_PAGE_SIZE = 15;
 const EMPTY_USERS = [];

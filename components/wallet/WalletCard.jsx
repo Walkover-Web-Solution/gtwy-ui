@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { getWalletBalance, getCreditPacks, buyCredits } from "@/config/walletApi";
 import { WalletIcon } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
 
 const CREDIT_RATE_USD = 0.0025;
 const WalletMeter = ({ percentRemaining, credits, total }) => (

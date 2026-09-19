@@ -8,7 +8,7 @@ import Protected from "@/components/Protected";
 import { getIconOfService, closeModal } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
 import { ChevronDownIcon, CircleAlert } from "lucide-react";
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";

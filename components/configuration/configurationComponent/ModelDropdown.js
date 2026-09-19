@@ -10,7 +10,7 @@ import { CircleQuestionMark, Sparkles, CircleAlert, Plus, Lock } from "lucide-re
 import InfoTooltip from "@/components/InfoTooltip";
 import AddNewModelModal from "@/components/modals/AddNewModal";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
 
 // Model Preview component to display model specifications
 export const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
