@@ -118,7 +118,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
   ];
 
   return (
-    <div>
+    <div className="p-2 max-w-md">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-base-content/70">Select Response Format</span>
         <InfoTooltip tooltipContent="Choose the format in which you want to receive responses from your agent. The 'Default' option will use the standard response format, while the 'Custom' option allows you to specify a webhook URL and headers for more control over how responses are delivered.">
@@ -133,7 +133,7 @@ const ResponseFormatSelector = ({ params, searchParams, isPublished, isEditor = 
               key={value}
               className={`flex flex-col gap-1 border p-3 transition-colors ${
                 isReadOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-              } ${isSelected ? "border-base-content/40 bg-base-300" : "border-base-300 hover:bg-base-300/50"}`}
+              } ${isSelected ? "border-base-content/40 bg-base-300" : "border-base-200 hover:bg-base-300/50"}`}
             >
               <span className="flex items-center gap-2">
                 <input

@@ -103,7 +103,7 @@ const ModelTab = () => {
             )}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-2">
             {/* Service Provider and Model Row */}
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -133,7 +133,7 @@ const ModelTab = () => {
             </div>
 
             {isOnFreePlan && (
-              <div className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+              <div className="flex w-full items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
                 <span className="flex items-center gap-1.5 text-base-content/70">
                   <Lock size={11} className="shrink-0 text-primary" />
                   You&apos;re on the Free plan — upgrade to Pro to use every service and model.

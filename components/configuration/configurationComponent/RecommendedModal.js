@@ -1,6 +1,9 @@
 import { modelSuggestionApi } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import React, { useState, useCallback } from "react";
+import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
+import { X } from "lucide-react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 const RecommendedModal = ({
   apiKeySectionRef,
@@ -27,6 +30,41 @@ const RecommendedModal = ({
       prompt: isPublished ? bridgeDataFromState?.configuration?.prompt || "" : versionData?.configuration?.prompt || "",
     };
   });
+
+  // Positioned via floating-ui and portaled to document.body (same pattern as
+  // InfoTooltip) instead of a plain CSS `absolute` box: this header row sits
+  // inside the scrollable config sidebar (#config-sidebar-content, which has
+  // overflow-y-auto), so a naive absolute-positioned popup gets clipped or
+  // anchors incorrectly once the panel scrolls.
+  const { refs, floatingStyles, update } = useFloating({
+    placement: "bottom-end",
+    middleware: [offset(8), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
+  const popupRef = useRef(null);
+
+  useEffect(() => {
+    if (!modelRecommendations) return;
+    const handleClickOutside = (e) => {
+      if (
+        refs.reference.current &&
+        !refs.reference.current.contains?.(e.target) &&
+        popupRef.current &&
+        !popupRef.current.contains(e.target)
+      ) {
+        setModelRecommendations(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [modelRecommendations, refs.reference]);
+
+  useEffect(() => {
+    if (modelRecommendations && refs.reference.current && refs.floating.current) {
+      return autoUpdate(refs.reference.current, refs.floating.current, update);
+    }
+  }, [modelRecommendations, update, refs.reference, refs.floating]);
+
   const setErrorBorder = (ref, selector, scrollToView = false) => {
     if (ref?.current) {
       if (scrollToView) {
@@ -91,6 +129,7 @@ const RecommendedModal = ({
       {shouldPromptShow && (
         <>
           <button
+            ref={refs.setReference}
             data-testid="get-recommended-model-button"
             id="get-recommended-model-button"
             className="flex items-center gap-2 text-sm font-medium text-primary hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
@@ -100,22 +139,45 @@ const RecommendedModal = ({
             {isLoadingRecommendations ? "Loading..." : "Get Recommended Model"}
           </button>
 
-          {modelRecommendations && (
-            <div className="absolute right-0 top-full z-high mt-2 w-72 p-4 bg-base-100 border border-base-300 shadow-lg">
-              {modelRecommendations.error ? (
-                <p className="text-error text-sm">{modelRecommendations.error}</p>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  <p className="text-base-content">
-                    <span className="font-medium">Recommended Provider:</span> {modelRecommendations?.service}
-                  </p>
-                  <p className="text-base-content">
-                    <span className="font-medium">Recommended Model:</span> {modelRecommendations?.model}
-                  </p>
+          {modelRecommendations &&
+            typeof window !== "undefined" &&
+            createPortal(
+              <div
+                ref={(node) => {
+                  refs.setFloating(node);
+                  popupRef.current = node;
+                }}
+                style={floatingStyles}
+                data-testid="recommended-model-popup"
+                className="z-high w-72 p-4 bg-base-100 border border-base-400 shadow-2xl"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <span className="text-sm font-semibold text-base-content">Model recommendation</span>
+                  <button
+                    type="button"
+                    data-testid="recommended-model-popup-close"
+                    aria-label="Close"
+                    className="btn btn-ghost btn-xs btn-square -mt-1 -mr-1"
+                    onClick={() => setModelRecommendations(null)}
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+                {modelRecommendations.error ? (
+                  <p className="text-error text-sm">{modelRecommendations.error}</p>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-base-content">
+                      <span className="font-medium">Recommended Provider:</span> {modelRecommendations?.service}
+                    </p>
+                    <p className="text-base-content">
+                      <span className="font-medium">Recommended Model:</span> {modelRecommendations?.model}
+                    </p>
+                  </div>
+                )}
+              </div>,
+              document.body
+            )}
         </>
       )}
     </div>
