@@ -195,9 +195,16 @@ const AdvancedParameters = ({
 
   // Filter parameters by level
   const getParametersByLevel = (level) => {
-    if (!modelInfoData) return [];
+    const entries = modelInfoData ? Object.entries(modelInfoData) : [];
+    // response_type must always be selectable even when the model doesn't
+    // natively support structured output: the backend falls back to
+    // injecting the JSON schema into the prompt for such models. It's a
+    // level-2 parameter (rendered in the Prompt tab, outside the accordion).
+    if (level === 2 && !modelInfoData?.response_type) {
+      entries.push(["response_type", { level: 2, field: "select" }]);
+    }
 
-    return Object.entries(modelInfoData || {}).filter(([key, paramConfig]) => {
+    return entries.filter(([key, paramConfig]) => {
       // Get level from ADVANCED_BRIDGE_PARAMETERS or default to 1
       const paramLevel = paramConfig?.level ?? 1;
       return paramLevel === level;
