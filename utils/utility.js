@@ -1008,6 +1008,74 @@ export const formatDate = (dateString) => {
 };
 
 /**
+ * Usage counters roll over on a window anchored to the limit's start date, not to
+ * the calendar: daily resets at the same time of day, weekly on the same weekday,
+ * monthly on the same day of month. Mirrors calculate_limit_ttl in gtwy-ai so the
+ * UI never shows a window the backend disagrees with.
+ * @param {string} resetPeriod - the configured reset period
+ * @param {string} startDate - the matching limit start date
+ * @returns {Object} a label for the current window and the next reset date
+ */
+export const getUsageWindow = (resetPeriod, startDate) => {
+  const period = (resetPeriod || "monthly").toLowerCase().trim();
+  const normalized = startDate ? normalizeToUTC(String(startDate)) : null;
+  const parsed = normalized ? new Date(normalized) : null;
+  const anchor = parsed && !isNaN(parsed.getTime()) ? parsed : null;
+  const now = new Date();
+
+  const DAY = 86400000;
+  const utc = (y, m, d, h, min, s) => new Date(Date.UTC(y, m, d, h, min, s));
+  const daysInMonth = (y, m) => new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  // Python's weekday() is Monday-based, JS getUTCDay() is Sunday-based
+  const weekday = (d) => (d.getUTCDay() + 6) % 7;
+  const atAnchorTime = (y, m, d) => utc(y, m, d, anchor.getUTCHours(), anchor.getUTCMinutes(), anchor.getUTCSeconds());
+
+  let nextReset;
+
+  if (period === "weekly") {
+    if (!anchor) {
+      const untilMonday = (7 - weekday(now)) % 7 || 7;
+      const midnight = utc(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0);
+      nextReset = new Date(midnight.getTime() + untilMonday * DAY);
+    } else {
+      const diff = (weekday(anchor) - weekday(now) + 7) % 7;
+      const thisWeek = atAnchorTime(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      nextReset = new Date(thisWeek.getTime() + diff * DAY);
+      if (nextReset <= now) nextReset = new Date(nextReset.getTime() + 7 * DAY);
+    }
+  } else if (period === "monthly") {
+    if (!anchor) {
+      nextReset = utc(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0);
+    } else {
+      let year = now.getUTCFullYear();
+      let month = now.getUTCMonth();
+      // clamp so a 31st anchor still resets in shorter months
+      nextReset = atAnchorTime(year, month, Math.min(anchor.getUTCDate(), daysInMonth(year, month)));
+      if (nextReset <= now) {
+        month += 1;
+        if (month > 11) {
+          month = 0;
+          year += 1;
+        }
+        nextReset = atAnchorTime(year, month, Math.min(anchor.getUTCDate(), daysInMonth(year, month)));
+      }
+    }
+  } else {
+    // daily, and the fallback for an unknown period (same as the backend)
+    if (!anchor) {
+      const midnight = utc(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0);
+      nextReset = new Date(midnight.getTime() + DAY);
+    } else {
+      nextReset = atAnchorTime(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      if (nextReset <= now) nextReset = new Date(nextReset.getTime() + DAY);
+    }
+  }
+
+  const labels = { daily: "today", weekly: "this week", monthly: "this month" };
+  return { label: labels[period] || "today", nextReset };
+};
+
+/**
  * Reusable outside click handler utility
  * @param {React.RefObject} elementRef - Ref to the element that should not trigger close
  * @param {React.RefObject} triggerRef - Ref to the trigger element that should not trigger close
