@@ -1,5 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+export const buildThreadKey = (threadId, subThreadId) => (threadId ? `${threadId}::${subThreadId || threadId}` : null);
+
 const initialState = {
   history: [],
   versionHistory: [],
@@ -12,6 +14,8 @@ const initialState = {
   success: false,
   subThreads: [],
   subThreadsParentId: null,
+  // Which thread the messages in `thread` belong to.
+  loadedThreadKey: null,
 };
 
 export const historyReducer = createSlice({
@@ -27,15 +31,21 @@ export const historyReducer = createSlice({
       state.success = true;
     },
     fetchThreadReducer: (state, action) => {
-      if (action.payload.nextPage == 1) {
+      const { threadKey = null, nextPage } = action.payload;
+      if (nextPage == 1) {
         state.thread = action.payload.data.data;
-      } else {
-        state.thread = [...action.payload.data.data, ...state.thread];
+        state.loadedThreadKey = threadKey;
+        return;
       }
+      // Drop a page that resolved after the user moved to another thread.
+      if (threadKey && state.loadedThreadKey && threadKey !== state.loadedThreadKey) return;
+      state.thread = [...action.payload.data.data, ...state.thread];
+      if (threadKey) state.loadedThreadKey = threadKey;
     },
 
     clearThreadData: (state) => {
       state.thread = [];
+      state.loadedThreadKey = null;
       state.recursiveHistory = null;
       state.recursiveHistoryLoading = false;
       state.recursiveHistoryError = null;
