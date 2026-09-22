@@ -30,6 +30,7 @@ import testCaseConfigSliceReducer from "./reducer/testCaseConfigReducer";
 import analyticsSliceReducer from "./reducer/analyticsReducer";
 import planSliceReducer from "./reducer/planReducer";
 import walletSliceReducer from "./reducer/walletReducer";
+import notificationSliceReducer from "./reducer/notificationReducer";
 const createNoopStorage = () => {
   return {
     getItem(_key) {
@@ -99,6 +100,7 @@ const rootReducer = combineReducers({
   analyticsReducer: analyticsSliceReducer,
   planReducer: planSliceReducer,
   walletReducer: walletSliceReducer,
+  notificationReducer: notificationSliceReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
