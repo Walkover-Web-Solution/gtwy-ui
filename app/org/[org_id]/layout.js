@@ -441,7 +441,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           openaiToolJson: e?.data?.openaiToolJson,
           folder_id: e?.data?.metadata?.folder_id || null,
         };
-        dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
+        dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then(async (data) => {
           // Handle reviewer tools - works regardless of page context
           if (e?.data?.metadata?.createFrom === "reviewer" && path[5] && resolvedSearchParams?.get("version")) {
             // Add as reviewer tool - preserve existing review_agent settings
@@ -462,10 +462,19 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
             );
           } else if (pathName.includes("agents")) {
             if (e?.data?.metadata?.createFrom === "preFunction") {
-              // Only add as pre-tool if not already present (preTools is an array of objects)
-              const alreadyPreTool =
-                Array.isArray(preTools) && preTools.some((pt) => pt?.config?.function_id === data?._id);
-              if (!alreadyPreTool) {
+              // Only one pre-tool can be connected at a time
+              const existingPreTool = Array.isArray(preTools) ? preTools[0] : null;
+              if (existingPreTool?.config?.function_id !== data?._id) {
+                // Remove the currently connected pre-tool so the new one replaces it
+                if (existingPreTool) {
+                  await dispatch(
+                    updateApiAction(path[5], {
+                      pre_tools: existingPreTool,
+                      status: "0",
+                      version_id: resolvedSearchParams?.get("version"),
+                    })
+                  );
+                }
                 dispatch(
                   updateApiAction(path[5], {
                     pre_tools: {
