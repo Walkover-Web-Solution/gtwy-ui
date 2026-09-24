@@ -2,13 +2,15 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { BarChart3, Users, Bot, CheckCircle2, ChevronDown, ChevronRight } from "lucide-react";
+import { BarChart3, Users, Bot, CheckCircle2, ChevronDown, ChevronRight, LogIn } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { getEmbedAnalyticsApi } from "@/config/analyticsApi";
+import { generateEmbedTokenApi, embedLoginApi } from "@/config/integrationApi";
 import { getStatsConfig } from "@/utils/enums";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
-import { formatRelativeTime, formatDate } from "@/utils/utility";
+import { formatRelativeTime, formatDate, buildEmbedLoginUrl } from "@/utils/utility";
 import SearchItems from "@/components/UI/SearchItems";
+import { toast } from "react-hot-toast";
 
 const USERS_PAGE_SIZE = 15;
 const EMPTY_USERS = [];
@@ -42,6 +44,15 @@ function emailLocalPart(value) {
   return at > 0 ? value.slice(0, at) : value;
 }
 
+// Id for the embed token: the part after the folder id in `${org_id}_${folder_id}_${embedUserId}@gtwy.ai`. Null for pre-2026-09-07 accounts, which have none.
+function embedUserIdOf(user, folderId) {
+  const source = user?.external_user_id;
+  if (!folderId || typeof source !== "string") return null;
+  const marker = `_${folderId}_`;
+  const at = source.indexOf(marker);
+  return at >= 0 ? source.slice(at + marker.length) || null : null;
+}
+
 function formatChartTime(t) {
   if (!t) return "";
   const d = new Date(t);
@@ -62,6 +73,7 @@ const EmbedAnalyticsTab = ({ data }) => {
   const [userPage, setUserPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loginAsUserId, setLoginAsUserId] = useState(null);
 
   // One request per settled search term rather than one per keystroke.
   useEffect(() => {
@@ -80,6 +92,37 @@ const EmbedAnalyticsTab = ({ data }) => {
   const handleUserSearchChange = useCallback((term) => {
     setSearch(term);
   }, []);
+
+  // Same steps gtwy.js takes: get a token, log in with it, open the embed as that user.
+  const handleLoginAs = useCallback(
+    async (user) => {
+      // Open the tab inside the click — after the awaits below it would be blocked as a popup.
+      const tab = window.open("about:blank", "_blank");
+      if (!tab) return toast.error("Allow pop-ups for this site to open the embed");
+      tab.opener = null;
+      setLoginAsUserId(user.user_id);
+      try {
+        const embedUserId = embedUserIdOf(user, folderId);
+        if (!embedUserId) throw new Error("UserId Not Available");
+
+        const tokenRes = await generateEmbedTokenApi({ folder_id: folderId, user_id: embedUserId });
+        if (!tokenRes?.data?.embedToken) throw new Error("Could not create an embed token for this user");
+
+        const loginRes = await embedLoginApi(tokenRes.data.embedToken);
+        // `standalone` tells the embed page it is a plain tab, not a gtwy.js iframe.
+        const url = buildEmbedLoginUrl(loginRes?.data && { ...loginRes.data, standalone: true });
+        if (!url) throw new Error("Embed login did not return a session");
+        tab.location.href = url;
+      } catch (err) {
+        console.error(err);
+        tab.close();
+        toast.error(err?.response?.data?.message || err?.message || "Failed to open the embed");
+      } finally {
+        setLoginAsUserId(null);
+      }
+    },
+    [folderId]
+  );
 
   const fetchAnalytics = useCallback(async () => {
     if (!folderId) return;
@@ -368,6 +411,7 @@ const EmbedAnalyticsTab = ({ data }) => {
                     <th>Tokens</th>
                     <th>Cost</th>
                     <th>Last active</th>
+                    <th className="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -414,10 +458,30 @@ const EmbedAnalyticsTab = ({ data }) => {
                               <span className="text-base-content/50 text-xs">-</span>
                             )}
                           </td>
+                          <td className="text-right">
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs gap-1"
+                              title="Open the embed as this user"
+                              data-testid={`embed-login-as-${key}`}
+                              disabled={!user.user_id || loginAsUserId === user.user_id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLoginAs(user);
+                              }}
+                            >
+                              {loginAsUserId === user.user_id ? (
+                                <span className="loading loading-spinner loading-xs" />
+                              ) : (
+                                <LogIn size={12} />
+                              )}
+                              Login as
+                            </button>
+                          </td>
                         </tr>
                         {isOpen && (
                           <tr className="bg-base-200/40">
-                            <td colSpan={8} className="p-0">
+                            <td colSpan={9} className="p-0">
                               <div className="px-10 py-3 space-y-1">
                                 <p className="text-[11px] uppercase tracking-wider text-base-content/60 mb-2">
                                   Agents for this user

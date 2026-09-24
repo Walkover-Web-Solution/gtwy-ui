@@ -36,7 +36,7 @@ import DeleteModal from "./UI/DeleteModal";
 import Protected from "./Protected";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { updateBridgeAction, updateBridgeVersionAction } from "@/store/action/bridgeAction";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { isEqual } from "lodash";
 
 /* ========================= Helpers ========================= */
@@ -644,7 +644,7 @@ function Flow({
 
   const closeConfigSidebar = useCallback(() => setConfigSidebar({ isOpen: false, nodeId: null, agent: null }), []);
 
-  const handleSaveAgentParameters = useCallback(() => {
+  const handleSaveAgentParameters = useCallback(async () => {
     const nodeToUpdate = nodes.find(
       (node) =>
         (node.type === "agentNode" && node.data?.selectedAgent?._id === selectedAgent?._id) ||
@@ -714,14 +714,14 @@ function Flow({
         parentNode?.data?.selectedAgent?.bridgeData?.published_version_id ||
         searchParams?.version ||
         parentNode?.data?.selectedAgent?.bridgeData?.versions?.[0];
-      dispatch(
+      await dispatch(
         updateBridgeVersionAction({
           bridgeId: selectedAgent?._id || selectedAgent?.bridge_id,
           versionId: sourceAgentVersionId,
           dataToSend,
         })
       );
-      dispatch(
+      await dispatch(
         updateBridgeAction({
           bridgeId: selectedAgent?._id || selectedAgent?.bridge_id,
           dataToSend: {
@@ -736,7 +736,7 @@ function Flow({
         })
       );
       if (!isEqual(variablesPath, variablesPath[selectedAgent?._id || selectedAgent?.bridge_id])) {
-        dispatch(
+        await dispatch(
           updateBridgeVersionAction({
             bridgeId: params.id,
             versionId:

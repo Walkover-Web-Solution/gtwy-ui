@@ -135,6 +135,9 @@ const Layout = ({ children, isEmbedUser }) => {
         sessionStorage.setItem("embedUser", true);
       }
 
+      // A plain tab ("login as") has no parent script to send openGtwy, so send it ourselves or the loader never clears.
+      if (toBoolean(urlParamsObj.standalone)) setOpenGtwyReceived(true);
+
       if (urlParamsObj.config) {
         const configUpdates = {};
         Object.entries(urlParamsObj.config).forEach(([key, value]) => {
@@ -226,7 +229,9 @@ const Layout = ({ children, isEmbedUser }) => {
             messageData.replaceMeta != null
               ? messageData.replaceMeta
               : { ...(bridge?.meta || {}), ...messageData.meta };
-          dispatch(updateBridgeAction({ dataToSend: { meta: updatedMeta }, bridgeId: messageData.agent_id }));
+          dispatch(updateBridgeAction({ dataToSend: { meta: updatedMeta }, bridgeId: messageData.agent_id })).catch(
+            (error) => console.error("Failed to sync agent meta:", error)
+          );
         }
         setIsLoading(true);
         const bridgeData = bridges.find((b) => b._id === messageData.agent_id);

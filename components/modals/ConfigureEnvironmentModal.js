@@ -126,7 +126,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
     >
       <div className="flex flex-col">
         {!bridgeId && (
-          <div className="flex items-start gap-2 mb-4 p-3 bg-warning/10 border border-warning/30 rounded-md">
+          <div className="flex items-start gap-2 mb-4 p-3 bg-warning/10 border border-warning/30">
             <AlertCircle size={16} className="text-warning flex-shrink-0 mt-0.5" />
             <p className="text-sm text-warning">Please open this modal from an agent to configure environments.</p>
           </div>
@@ -137,10 +137,10 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
         <div className="space-y-4" style={{ opacity: !bridgeId ? 0.5 : 1, pointerEvents: !bridgeId ? "none" : "auto" }}>
           <div className="grid grid-cols-2 gap-4 pb-4 border-b border-base-300">
             <div>
-              <label className="label-text font-semibold text-sm">When</label>
+              <label className="label font-semibold text-sm">When</label>
             </div>
             <div>
-              <label className="label-text font-semibold text-sm">Do</label>
+              <label className="label font-semibold text-sm">Do</label>
             </div>
           </div>
 
@@ -161,7 +161,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
                     data-testid={`environment-when-input-${index}`}
                     type="text"
                     placeholder="e.g., Production, Testing, Staging"
-                    className={`input input-bordered w-full input-sm${whenErrors[index] ? " input-error" : ""}`}
+                    className={`input w-full input-sm${whenErrors[index] ? " input-error" : ""}`}
                     value={env.when}
                     onChange={(e) => handleEnvironmentChange(index, "when", e.target.value)}
                   />
@@ -172,7 +172,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
                   <div className="form-control w-full">
                     <select
                       data-testid={`environment-do-select-${index}`}
-                      className="select select-bordered w-full select-sm"
+                      className="select w-full select-sm"
                       value={env.do}
                       onChange={(e) => handleEnvironmentChange(index, "do", e.target.value)}
                     >
@@ -211,7 +211,7 @@ const ConfigureEnvironmentModal = ({ bridgeId, bridgeData }) => {
           Add Environment
         </button>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-8">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end mt-8">
           <button
             data-testid="configure-environment-cancel-button"
             id="configure-environment-cancel-button"

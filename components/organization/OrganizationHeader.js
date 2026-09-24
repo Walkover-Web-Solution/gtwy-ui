@@ -15,7 +15,7 @@ const OrganizationHeader = ({ organizationsArray, setDisplayedOrganizations }) =
 
   const currentOrgId = useCustomSelector((state) => state.orgReducer?.currentOrgId);
 
-  const orgId = currentOrgId || orgIdFromUrl; // ✅ MOVE UP
+  const orgId = orgIdFromUrl || currentOrgId;
 
   const { userdetails, organizations } = useCustomSelector((state) => ({
     userdetails: state.userDetailsReducer.userDetails,
@@ -62,7 +62,7 @@ const OrganizationHeader = ({ organizationsArray, setDisplayedOrganizations }) =
                 data={organizationsArray}
                 setFilterItems={setDisplayedOrganizations}
                 item="Workspaces"
-                style="input input-sm input-bordered w-full border border-base-content/30 bg-base-200/80 text-base-content placeholder-base-content/60 focus:border-primary focus:outline-none px-4 transition-all duration-150 rounded-none"
+                style="input input-sm w-full border border-base-content/30 bg-base-200/80 text-base-content placeholder-base-content/60 focus:border-primary focus:outline-none px-4 transition-all duration-150 rounded-none"
               />
             </div>
             <button

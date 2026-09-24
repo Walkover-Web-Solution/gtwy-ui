@@ -390,10 +390,11 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                       const missingDesc = !item?.description;
                       const isWebSearchTool = WEB_SEARCH_PREBUILT_TOOL_VALUES.has(item?.value);
                       const isNotSupported =
-                        !showInbuiltTools ||
-                        (Array.isArray(showInbuiltTools)
-                          ? !showInbuiltTools.includes(item?.value)
-                          : !showInbuiltTools[item?.value]);
+                        !item?.isGtwyTool &&
+                        (!showInbuiltTools ||
+                          (Array.isArray(showInbuiltTools)
+                            ? !showInbuiltTools.includes(item?.value)
+                            : !showInbuiltTools[item?.value]));
                       const hasIssue = missingDesc || isNotSupported;
 
                       return (

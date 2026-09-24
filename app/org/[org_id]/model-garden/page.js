@@ -24,9 +24,20 @@ const ModelGardenPage = ({ params }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(null);
 
+  const serviceList = Array.isArray(services) ? services : Object.entries(services || {}).map(([key]) => key);
+
   useEffect(() => {
     dispatch(getServiceAction());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!selectedService && serviceList.length > 0) {
+      const firstService = serviceList[0];
+      const serviceKey = typeof firstService === "object" ? firstService.value : firstService;
+      setSelectedService(serviceKey);
+      setIsPanelOpen(true);
+    }
+  }, [serviceList, selectedService]);
 
   // Fetch models when a service is selected
   useEffect(() => {
@@ -41,11 +52,6 @@ const ModelGardenPage = ({ params }) => {
     setSearchQuery("");
     closeSidebar(SLIDER_ID, "right"); // Close model details when switching services
     setSelectedModel(null);
-  };
-
-  const handleClosePanel = () => {
-    setIsPanelOpen(false);
-    setTimeout(() => setSelectedService(null), 300);
   };
 
   const handleModelClick = useCallback((model) => {
@@ -112,8 +118,6 @@ const ModelGardenPage = ({ params }) => {
     return service?.value || "Unknown";
   };
 
-  const serviceList = Array.isArray(services) ? services : Object.entries(services || {}).map(([key]) => key);
-
   // Build detail rows for the slider from the selected model
   const detailFields = useMemo(() => {
     if (!selectedModel) return [];
@@ -133,7 +137,7 @@ const ModelGardenPage = ({ params }) => {
           selectedModel.vision === true ? (
             <Check size={16} className="text-success" />
           ) : (
-            <X size={16} className="text-error" />
+            <span className="text-base-content/50">—</span>
           ),
       },
       {
@@ -142,7 +146,7 @@ const ModelGardenPage = ({ params }) => {
           selectedModel.files === true ? (
             <Check size={16} className="text-success" />
           ) : (
-            <X size={16} className="text-error" />
+            <span className="text-base-content/50">—</span>
           ),
       },
     ];
@@ -244,9 +248,6 @@ const ModelGardenPage = ({ params }) => {
                     {filteredModels.length} model{filteredModels.length !== 1 ? "s" : ""} available
                   </p>
                 </div>
-                <button onClick={handleClosePanel} className="btn btn-ghost btn-sm btn-square">
-                  <X size={18} />
-                </button>
               </div>
 
               {/* Search Bar */}
@@ -260,7 +261,7 @@ const ModelGardenPage = ({ params }) => {
                       placeholder="Search models..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="input input-bordered input-sm w-full pl-9"
+                      className="input input-sm w-full pl-9"
                     />
                   </div>
                 </div>
@@ -324,14 +325,14 @@ const ModelGardenPage = ({ params }) => {
                             {model.vision === true ? (
                               <Check size={16} className="text-success" />
                             ) : (
-                              <X size={16} className="text-error opacity-30" />
+                              <span className="text-base-content/30">—</span>
                             )}
                           </td>
                           <td className="text-sm">
                             {model.files === true ? (
                               <Check size={16} className="text-success" />
                             ) : (
-                              <X size={16} className="text-error opacity-30" />
+                              <span className="text-base-content/30">—</span>
                             )}
                           </td>
                         </tr>

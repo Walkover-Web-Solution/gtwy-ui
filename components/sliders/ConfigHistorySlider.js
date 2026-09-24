@@ -205,7 +205,7 @@ function ConfigHistorySlider({ versionId }) {
             <div>
               <label className="block text-xs font-medium mb-1">Filter by User</label>
               <select
-                className="select select-sm select-bordered w-full"
+                className="select select-sm w-full"
                 value={filters[CONFIG_HISTORY_FILTER_KEYS.USER_IDS][0] || ""}
                 onChange={(e) => handleDropdownFilterChange(CONFIG_HISTORY_FILTER_KEYS.USER_IDS, e.target.value)}
               >
@@ -221,7 +221,7 @@ function ConfigHistorySlider({ versionId }) {
             <div>
               <label className="block text-xs font-medium mb-1">Filter by Feature</label>
               <select
-                className="select select-sm select-bordered w-full"
+                className="select select-sm w-full"
                 value={filters[CONFIG_HISTORY_FILTER_KEYS.TYPES][0] || ""}
                 onChange={(e) => handleDropdownFilterChange(CONFIG_HISTORY_FILTER_KEYS.TYPES, e.target.value)}
               >

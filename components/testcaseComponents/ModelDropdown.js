@@ -1,14 +1,18 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Check, Zap, ChevronDownIcon, Search, AlertCircle } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getBridgeApikeysByVersionAction } from "@/store/action/apiKeyAction";
 import InfoTooltip from "@/components/InfoTooltip";
+import { ModelPreview } from "@/components/configuration/configurationComponent/ModelDropdown";
 
 const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions = [], versions = [], bridgeId }) => {
   const dispatch = useDispatch();
+  const dropdownRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredModel, setHoveredModel] = useState(null);
+  const [modelSpecs, setModelSpecs] = useState(null);
   // Fetch services, models, and per-version API-key availability from Redux
   const { SERVICES, serviceModels, apikeysByVersion } = useCustomSelector((state) => {
     return {
@@ -21,6 +25,16 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
   useEffect(() => {
     if (bridgeId) dispatch(getBridgeApikeysByVersionAction(bridgeId));
   }, [dispatch, bridgeId]);
+
+  const clearModelPreview = useCallback(() => {
+    setHoveredModel(null);
+    setModelSpecs(null);
+  }, []);
+
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false);
+    clearModelPreview();
+  }, [clearModelPreview]);
 
   const getVersionsMissingService = (service) => {
     if (!Array.isArray(selectedVersions) || selectedVersions.length === 0) return [];
@@ -68,7 +82,12 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
             Object.entries(categoryModels).forEach(([, modelConfig]) => {
               const modelName = modelConfig?.configuration?.model?.default;
               if (modelName) {
-                modelList.push({ name: modelName, provider: serviceName, category });
+                modelList.push({
+                  name: modelName,
+                  provider: serviceName,
+                  category,
+                  specs: modelConfig?.validationConfig?.specification,
+                });
               }
             });
           }
@@ -118,11 +137,16 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
     } else {
       onChange([...selectedModels, { model: modelName, service: provider }]);
     }
-    setIsOpen(false);
+    // Keep dropdown open so multiple models can be selected.
+  };
+
+  const handleModelHover = (model) => {
+    setHoveredModel(model?.name || null);
+    setModelSpecs(model?.specs || null);
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         data-testid="testcase-model-dropdown-btn"
         onClick={() => setIsOpen((o) => !o)}
@@ -141,9 +165,12 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
           <div
             className="fixed inset-0 z-[90]"
             data-testid="testcase-model-dropdown-backdrop"
-            onClick={() => setIsOpen(false)}
+            onClick={closeDropdown}
           />
-          <div className="absolute top-[calc(100%+8px)] -left-16 z-[100] w-[280px] max-h-[400px] overflow-y-auto bg-base-100 border border-base-300 rounded-2xl shadow-lg p-2 flex flex-col">
+          <div
+            className="dropdown-content absolute top-[calc(100%+8px)] -left-16 z-[100] w-[280px] max-h-[400px] overflow-y-auto bg-base-100 border border-base-300 rounded-2xl shadow-lg p-2 flex flex-col"
+            onMouseLeave={clearModelPreview}
+          >
             <div className="flex items-center justify-between gap-2 px-2.5 pt-1.5 pb-2.5 border-b border-base-200 mb-1.5">
               <span className="text-[11px] font-bold tracking-[0.05em] text-base-content/50 uppercase">
                 Select Models
@@ -165,8 +192,9 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
                 data-testid="testcase-model-option-default"
                 onClick={() => {
                   onChange([]);
-                  setIsOpen(false);
+                  closeDropdown();
                 }}
+                onMouseEnter={clearModelPreview}
                 className={`w-full flex items-center justify-between gap-2 px-2.5 py-2.5 rounded-[9px] text-left cursor-pointer transition-colors ${
                   isDefault ? "bg-base-200" : "bg-transparent hover:bg-base-200"
                 }`}
@@ -247,6 +275,7 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
                         <button
                           key={model.name}
                           onClick={() => toggleModel(model.name, group.provider)}
+                          onMouseEnter={() => handleModelHover(model)}
                           disabled={disabled}
                           title={disabled ? unavailableTooltip : versionsLabel ? `Connected to: ${versionsLabel}` : ""}
                           className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-[9px] text-left text-[13.5px] transition-colors ${
@@ -293,6 +322,7 @@ const TestCaseModelDropdown = ({ selectedModels = [], onChange, selectedVersions
               })}
             </div>
           </div>
+          <ModelPreview hoveredModel={hoveredModel} modelSpecs={modelSpecs} dropdownRef={dropdownRef} />
         </>
       )}
     </div>

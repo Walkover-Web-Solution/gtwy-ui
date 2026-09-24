@@ -158,7 +158,7 @@ function EmbedListSuggestionDropdownMenu({
       (t) =>
         !selected.has(t.value) &&
         t?.name?.toLowerCase()?.includes(normalizedSearchQuery) &&
-        showInbuiltTools?.[t?.value]
+        (t?.isGtwyTool || showInbuiltTools?.[t?.value])
     );
   }, [prebuiltToolsData, toolsVersionData, normalizedSearchQuery, showInbuiltTools]);
 
@@ -184,6 +184,7 @@ function EmbedListSuggestionDropdownMenu({
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
           className={`menu menu-dropdown-toggle dropdown-content ${name === "preFunction" ? "z-[15]" : "z-high"} px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0`}
+          style={{ pointerEvents: "auto" }}
         >
           <div className="flex flex-col gap-2 w-full">
             {name === "preFunction" ? (
@@ -201,7 +202,7 @@ function EmbedListSuggestionDropdownMenu({
               placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
               value={searchQuery}
               onChange={handleInputChange} // Update search query on input change
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
             />
             {name === "preFunction" && (
               <>

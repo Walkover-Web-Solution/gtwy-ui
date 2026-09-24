@@ -99,7 +99,9 @@ ${variablesObject}
     <div data-testid="second-step-container" id="second-step-container" className="flex w-full flex-col gap-4 p-4">
       <Section title="Step 2" caption="Add below code in your product." />
       <div data-testid="second-step-main-script-code" id="second-step-main-script-code">
-        <CodeBlock className="language-jsx">{DataObject.script}</CodeBlock>
+        <CodeBlock className="language-jsx" fromIntegration={true}>
+          {DataObject.script}
+        </CodeBlock>
       </div>
 
       <Section title="Usage" caption="Use this methods to receive data." />

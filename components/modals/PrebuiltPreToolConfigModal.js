@@ -7,7 +7,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 
-export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId }) {
+export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, onClose, isPendingAdd = false, orgId }) {
   const [config, setConfig] = useState({});
   const [args, setArgs] = useState({});
   const [kbSearch, setKbSearch] = useState("");
@@ -38,23 +38,32 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
     JSON.stringify(config) === JSON.stringify(initialConfig) && JSON.stringify(args) === JSON.stringify(initialArgs);
 
   const isSaveDisabled =
-    isUnchanged ||
+    (!isPendingAdd && isUnchanged) ||
     (toolEntry?.type === "rag_knowledgebase" && !config.resource_id) ||
     (toolEntry?.type === "gtwy_web_search" && !isValidDomain(args.url));
 
-  const disabledHint = isUnchanged
-    ? "No changes to save."
-    : toolEntry?.type === "rag_knowledgebase"
+  const disabledHint =
+    toolEntry?.type === "rag_knowledgebase" && !config.resource_id
       ? "Please select a knowledge base to save."
       : toolEntry?.type === "gtwy_web_search" && !args.url?.trim()
         ? "Please enter a domain to save."
         : toolEntry?.type === "gtwy_web_search" && !isValidDomain(args.url)
           ? "Please enter a valid domain (e.g. example.com)."
-          : null;
+          : !isPendingAdd && isUnchanged
+            ? "No changes to save."
+            : null;
+
+  const handleClose = () => {
+    if (typeof onClose === "function") {
+      onClose();
+      return;
+    }
+    closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+  };
 
   const handleSave = () => {
     onSave({ ...toolEntry, config, args });
-    closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+    handleClose();
   };
 
   const renderConfigField = (field) => {
@@ -62,7 +71,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
       return (
         <textarea
           data-testid={`pretool-config-field-${field.key}`}
-          className="textarea textarea-bordered text-xs w-full"
+          className="textarea text-xs w-full"
           placeholder={field.placeholder}
           value={config[field.key] || ""}
           onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -104,7 +113,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
               autoComplete="off"
               data-testid="pretool-config-kb-search-input"
               type="text"
-              className="input input-bordered input-sm text-xs w-full pr-6"
+              className="input input-sm text-xs w-full pr-6"
               placeholder="Search knowledge bases..."
               value={kbSearch}
               onChange={(e) => setKbSearch(e.target.value)}
@@ -148,7 +157,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
         autoComplete="off"
         data-testid={`pretool-config-field-${field.key}`}
         type="text"
-        className="input input-bordered input-sm text-xs w-full"
+        className="input input-sm text-xs w-full"
         placeholder={field.placeholder}
         value={config[field.key] || ""}
         onChange={(e) => setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -159,11 +168,21 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
   return (
     <Modal
       MODAL_ID={MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL}
-      title={toolEntry ? `${PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings` : "Tool Settings"}
-      description="Configure this prebuilt tool's options"
+      title={
+        toolEntry
+          ? isPendingAdd
+            ? `Configure ${PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type}`
+            : `${PRE_TOOL_LABELS[toolEntry.type] || toolEntry.type} Settings`
+          : "Tool Settings"
+      }
+      description={
+        isPendingAdd
+          ? "Select the required options before this pre-tool is added to the agent."
+          : "Configure this prebuilt tool's options"
+      }
       icon={<Wrench size={16} className="text-trace-gold" />}
       widthClass={toolEntry?.type === "rag_knowledgebase" ? "w-[min(520px,92vw)]" : "w-[min(480px,92vw)]"}
-      onClose={() => closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL)}
+      onClose={handleClose}
     >
       {toolEntry && schema ? (
         <div
@@ -178,7 +197,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
                   <input
                     autoComplete="off"
                     type="text"
-                    className="input input-bordered input-sm text-xs w-full"
+                    className="input input-sm text-xs w-full"
                     placeholder={field.placeholder}
                     value={args[field.key] || ""}
                     onChange={(e) => setArgs((prev) => ({ ...prev, [field.key]: e.target.value }))}
@@ -207,7 +226,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
               data-testid="pretool-config-cancel-button"
               data-test-id="pretool-config-cancel-button"
               className="btn btn-sm btn-outline text-xs"
-              onClick={() => closeModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL)}
+              onClick={handleClose}
             >
               Cancel
             </button>
@@ -224,7 +243,7 @@ export default function PrebuiltPreToolConfigModal({ toolEntry, onSave, orgId })
                 onClick={handleSave}
                 disabled={isSaveDisabled}
               >
-                Save
+                {isPendingAdd ? "Add" : "Save"}
               </button>
             </div>
           </div>

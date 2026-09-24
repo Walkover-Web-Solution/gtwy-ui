@@ -4,7 +4,7 @@ import { closeModal } from "@/utils/utility";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Modal from "@/components/UI/Modal";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { Blocks } from "lucide-react";
 
 const IntegrationModal = ({ params, type = "embed" }) => {
@@ -43,7 +43,6 @@ const IntegrationModal = ({ params, type = "embed" }) => {
         showAdvancedParameters: true,
         showAdvancedConfigurations: true,
         showPreTool: true,
-        showCreateManuallyButton: true,
         showPromptHelper: true,
         showMcp: false,
         prompt: {
@@ -85,7 +84,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
             id="integration-name-input"
             type="text"
             placeholder="Enter embed name"
-            className="input input-bordered input-sm w-full placeholder-opacity-50"
+            className="input input-sm w-full placeholder-opacity-50"
             maxLength={50}
             ref={integrationNameRef}
             onKeyDown={(e) => {

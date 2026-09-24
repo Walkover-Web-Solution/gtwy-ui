@@ -588,7 +588,7 @@ const NewThreadContainer = ({
     const versionId = thread?.[0]?.version_id;
     if (!versionId) return "";
     const idx = bridgeVersionsArray.indexOf(versionId);
-    const name = idx >= 0 ? `v${idx + 1}` : "";
+    const name = idx >= 0 ? `V${idx + 1}` : "";
     const isProd = publishedVersionId && versionId === publishedVersionId;
     if (!name && !isProd) return "";
     return `${name}${name && isProd ? " · " : ""}${isProd ? "prod" : ""}`;

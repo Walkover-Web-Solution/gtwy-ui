@@ -681,6 +681,17 @@ const TestCaseDetailsPanel = ({
             </div>
           )}
 
+          {/* Preset Tool Response */}
+          <div className="mb-6">
+            <MockToolResponsesSection
+              ref={mockToolResponsesRef}
+              tools={bridgeToolOptions}
+              initialValue={selectedTestCase?.tools_response}
+              resetKey={selectedTestCase?._id}
+              onBlurSave={handleMockToolResponsesChange}
+            />
+          </div>
+
           {/* Input Section - last user message (editable).
               If no user message exists yet, render an empty editable field so
               the user can add one; typing appends a new user message at the
@@ -834,17 +845,6 @@ const TestCaseDetailsPanel = ({
               </ExpandCollapse>
             </div>
           </div>
-          {/* Mock Tool Responses */}
-          <div className="mb-6">
-            <MockToolResponsesSection
-              ref={mockToolResponsesRef}
-              tools={bridgeToolOptions}
-              initialValue={selectedTestCase?.tools_response}
-              resetKey={selectedTestCase?._id}
-              onBlurSave={handleMockToolResponsesChange}
-            />
-          </div>
-
           {/* Version Comparison — driven by header "Versions" selector (single source of truth) */}
           <div data-testid="testcase-comparison-section">
             <div className="mb-5 flex items-center gap-2 flex-wrap" data-testid="testcase-comparison-controls">

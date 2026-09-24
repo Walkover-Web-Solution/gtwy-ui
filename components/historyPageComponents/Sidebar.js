@@ -12,7 +12,7 @@ import { ThumbsDownIcon, ThumbsUpIcon, UserIcon, MessageCircleIcon } from "@/com
 import { useEffect, useState, memo, useCallback, useRef, Fragment } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import CreateFineTuneModal from "../modals/CreateFineTuneModal.js";
 import DateRangePicker from "./DateRangePicker.js";
 import { usePathname, useRouter } from "next/navigation.js";
@@ -702,7 +702,7 @@ const Sidebar = memo(
                                   autoComplete="off"
                                   data-testid={`history-sidebar-filter-by-${fieldKey}`}
                                   type="text"
-                                  className="input input-xs input-bordered w-full text-xs"
+                                  className="input input-xs w-full text-xs"
                                   placeholder={`Search ${fieldKey.replace(/_/g, " ")}...`}
                                   value={filterByFields[fieldKey] || ""}
                                   onChange={(e) =>
@@ -718,7 +718,7 @@ const Sidebar = memo(
                                 autoComplete="off"
                                 data-testid="history-sidebar-filter-by-variable-key"
                                 type="text"
-                                className="input input-xs input-bordered flex-1 min-w-0 text-xs"
+                                className="input input-xs flex-1 min-w-0 text-xs"
                                 placeholder="key"
                                 value={variableKey}
                                 onChange={(e) => setVariableKey(e.target.value)}
@@ -727,7 +727,7 @@ const Sidebar = memo(
                                 autoComplete="off"
                                 data-testid="history-sidebar-filter-by-variable-value"
                                 type="text"
-                                className="input input-xs input-bordered flex-1 min-w-0 text-xs"
+                                className="input input-xs flex-1 min-w-0 text-xs"
                                 placeholder="value"
                                 value={variableValue}
                                 onChange={(e) => setVariableValue(e.target.value)}
@@ -780,7 +780,7 @@ const Sidebar = memo(
                 <select
                   data-testid="history-sidebar-version-select"
                   id="history-sidebar-version-select"
-                  className="select select-bordered select-sm rounded-lg w-full text-xs"
+                  className="select select-sm rounded-lg w-full text-xs"
                   value={selectedVersion}
                   onChange={handleVersionChange}
                 >
@@ -818,7 +818,7 @@ const Sidebar = memo(
                   ref={searchRef}
                   placeholder="Search..."
                   onChange={(e) => handleChange(e)}
-                  className="input input-bordered input-sm rounded-lg w-full pr-6 text-xs"
+                  className="input input-sm rounded-lg w-full pr-6 text-xs"
                 />
                 {searchQuery && (
                   <X
@@ -881,7 +881,7 @@ const Sidebar = memo(
                             />
                           </div>
                           <ul
-                            className={`min-h-full text-base-content flex flex-col space-y-2 px-2 pb-1 ${!isAnalytics ? "menu" : ""}`}
+                            className={`min-h-full min-w-full text-base-content flex flex-col space-y-2 px-2 pb-1 ${!isAnalytics ? "menu" : ""}`}
                           >
                             {items.map((item) => (
                               <div className="flex-col" key={item?.thread_id}>

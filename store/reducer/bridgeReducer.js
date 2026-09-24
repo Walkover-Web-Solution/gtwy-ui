@@ -20,6 +20,10 @@ const initialState = {
     loading: false, // Track loading state for metrics API
   },
   agentsVersionsData: {},
+  // True while the UI is moving between agent versions, so the page can show its
+  // skeleton. Lives here because the page remounts on a version switch while the
+  // version dropdown (mounted in the layout) does not.
+  versionSwitching: false,
 };
 
 export const bridgeReducer = createSlice({
@@ -91,6 +95,9 @@ export const bridgeReducer = createSlice({
     },
     createBridgeReducer: (state, action) => {
       state.org[action.payload.orgId]?.orgs?.push(action.payload.data.data.agent);
+    },
+    setVersionSwitchingReducer: (state, action) => {
+      state.versionSwitching = action.payload;
     },
     createBridgeVersionReducer: (state, action) => {
       const { newVersionId, parentVersionId, bridgeId, version_description, orgId } = action.payload;
@@ -387,6 +394,7 @@ export const {
   fetchSingleBridgeVersionReducer,
   fetchAllBridgeReducer,
   fetchAllFunctionsReducer,
+  setVersionSwitchingReducer,
   createBridgeVersionReducer,
   deleteBridgeVersionReducer,
   createBridgeReducer,

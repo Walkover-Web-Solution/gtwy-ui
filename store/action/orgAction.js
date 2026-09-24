@@ -7,14 +7,20 @@ import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 export const createOrgAction = (dataToSend, onSuccess, onError) => async (dispatch) => {
   try {
     const data = await createOrg(dataToSend);
-    onSuccess(data.data.data);
-    dispatch(organizationCreated(data));
-    if (data?.data?.data) {
-      trackOrganizationEvent("created", {
-        org_id: data.data.data.id,
-        name: data.data.data.name,
-      });
+    if (data instanceof Error || data?.data?.success === false || !data?.data?.data?.org_id) {
+      throw data instanceof Error ? data : new Error(data?.data?.message || "Failed to create organization");
     }
+    const { org_id, organization, billing } = data.data.data;
+    const name = organization?.name || organization?.company?.name || dataToSend?.company?.name || "";
+    if (billing && billing.provisioned === false) {
+      console.error(
+        "Organization created but billing provisioning failed; it will be retried automatically.",
+        billing.error
+      );
+    }
+    onSuccess({ id: org_id, name });
+    dispatch(organizationCreated({ id: org_id, name }));
+    trackOrganizationEvent("created", { org_id, name });
   } catch (error) {
     console.error(error);
     if (onError) {

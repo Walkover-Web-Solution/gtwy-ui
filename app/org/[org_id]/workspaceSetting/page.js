@@ -133,10 +133,11 @@ export default function SettingsPage({ params }) {
                 ))}
               </div>
               <div className="flex justify-end gap-2 mt-3">
-                <button className="btn btn-sm" onClick={handleCancel}>
+                <button data-testid="workspace-setting-cancel-button" className="btn btn-sm" onClick={handleCancel}>
                   Cancel
                 </button>
                 <button
+                  data-testid="workspace-setting-save-button"
                   className="btn btn-primary btn-sm"
                   onClick={handleSave}
                   disabled={!selectedTimezone || selectedTimezone?.identifier === userDetails?.meta?.identifier}

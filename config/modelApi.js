@@ -1,5 +1,5 @@
 import axios from "@/utils/interceptor";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -75,8 +75,7 @@ export const deleteApikey = async (id, service) => {
     return response;
   } catch (error) {
     console.error(error);
-    toast.error(error?.response?.data?.message);
-    return error;
+    throw error;
   }
 };
 
@@ -129,6 +128,23 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
     }
     return { success: true, data: dryRun.data };
   } catch (error) {
+    if (error?.response?.data && typeof error.response.data.getReader === "function") {
+      try {
+        const reader = error.response.data.getReader();
+        const decoder = new TextDecoder();
+        let raw = "";
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          raw += decoder.decode(value, { stream: true });
+        }
+        error.response.data = JSON.parse(raw);
+      } catch (streamReadError) {
+        console.error("Failed to read/parse streamed error body", streamReadError);
+      }
+    }
+
     console.error("dry run error", error, error?.response?.data?.error);
 
     if (error?.response?.status === 403) {
@@ -137,12 +153,13 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
       throw new Error(blockedMessage);
     }
 
-    const detail = error.response;
+    const responseData = error?.response?.data;
+    const detailMessage =
+      typeof responseData?.detail === "string"
+        ? responseData.detail
+        : responseData?.detail?.error || responseData?.detail?.message;
     const errorMessage =
-      error?.response?.data?.error ||
-      (typeof detail === "string" ? detail : detail?.error) ||
-      error?.message ||
-      "Something went wrong.";
+      responseData?.message || detailMessage || responseData?.error || error?.message || "Something went wrong.";
 
     const hasBothErrors = errorMessage.includes("Initial Error:") && errorMessage.includes("Fallback Error:");
 
