@@ -114,11 +114,11 @@ const AgentCard = ({ agent }) => (
           <div className="flex flex-col gap-1">
             {agent.versions.map((version) => (
               <div key={version.id} className="flex items-center gap-2">
-                <span className="inline text-xs font-mono bg-base-300 p-1 w-fit">
+                <span className="inline text-xs font-mono bg-base-300 p-1 rounded w-fit">
                   V{version.versionIndex + 1}:({version.id})
                 </span>
                 {version.isPublished && (
-                  <span className="inline text-xs font-semibold bg-green-500/20 text-green-600 px-2 py-0.5 border border-green-500/30">
+                  <span className="inline text-xs font-semibold bg-green-500/20 text-green-600 px-2 py-0.5 rounded border border-green-500/30">
                     Published
                   </span>
                 )}
