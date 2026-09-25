@@ -20,6 +20,7 @@ import { getRichUiTemplatesAction } from "@/store/action/richUiTemplateAction";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import { updateUserMetaOnboarding, updateOrgMetaAction, getUsersAction } from "@/store/action/orgAction";
 import { getServiceAction } from "@/store/action/serviceAction";
+import { getPlanAction } from "@/store/action/planAction";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, use } from "react";
@@ -278,6 +279,10 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(getServiceAction());
     }
   }, [SERVICES]);
+
+  useEffect(() => {
+    dispatch(getPlanAction());
+  }, [dispatch]);
 
   useEffect(() => {
     if (isValidOrg) {

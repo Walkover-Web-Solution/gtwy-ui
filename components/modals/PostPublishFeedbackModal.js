@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "../UI/Modal";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
@@ -35,7 +35,7 @@ function PostPublishFeedbackModal({ agentName = "", orgId = "" }) {
 
   const handleSubmit = useCallback(async () => {
     if (!feedbackData.feedback.trim()) {
-      toast.warn("Please add feedback before submitting.");
+      toast("Please add feedback before submitting.", { icon: "⚠️" });
       return;
     }
 
@@ -94,11 +94,11 @@ function PostPublishFeedbackModal({ agentName = "", orgId = "" }) {
       <div id="post-publish-feedback-modal-box" className="flex flex-col gap-4">
         <div>
           <label className="label">
-            <span className="label-text">What worked well / what can be better?</span>
+            <span className="">What worked well / what can be better?</span>
           </label>
           <textarea
             id="post-publish-feedback-textarea"
-            className="textarea bg-base-100 textarea-bordered w-full h-32"
+            className="textarea bg-base-100 w-full h-32"
             placeholder="Share your feedback..."
             value={feedbackData.feedback}
             onChange={(e) => setFeedbackData((prev) => ({ ...prev, feedback: e.target.value }))}

@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
 import AgentEmptyState from "@/components/AgentEmptyState";
@@ -119,7 +119,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
               autoComplete="off"
               type="number"
               placeholder="Enter limit in $"
-              className="input input-bordered max-w-sm w-full input-sm"
+              className="input max-w-sm w-full input-sm"
               value={limit}
               min="0"
               step="0.0001"
@@ -143,7 +143,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
             <span className="text-base-content/60">Reset Period</span>
             <select
               data-testid="agent-reset-period-select"
-              className="select select-bordered select-sm w-36"
+              className="select select-sm w-36"
               value={resetPeriod}
               onChange={handleResetPeriodChange}
             >
@@ -1473,7 +1473,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       autoComplete="off"
                       type="date"
                       data-testid="usage-filter-start-date"
-                      className="input input-bordered input-sm w-full"
+                      className="input input-sm w-full"
                       value={usageFilterDates.start_date}
                       max={usageFilterDates.end_date || undefined}
                       onChange={(e) => handleUsageDateChange("start_date", e.target.value)}
@@ -1485,7 +1485,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       autoComplete="off"
                       type="date"
                       data-testid="usage-filter-end-date"
-                      className="input input-bordered input-sm w-full"
+                      className="input input-sm w-full"
                       value={usageFilterDates.end_date}
                       min={usageFilterDates.start_date || undefined}
                       onChange={(e) => handleUsageDateChange("end_date", e.target.value)}

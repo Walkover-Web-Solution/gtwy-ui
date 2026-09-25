@@ -61,14 +61,14 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
         className="flex flex-col gap-4"
       >
         <div className="form-control w-full">
-          <label className="label-text mb-1 font-medium">Limit (in $)</label>
+          <label className="label mb-1 font-medium">Limit (in $)</label>
           <input
             autoComplete="off"
             data-testid="usage-limit-input"
             id="usage-limit-input"
             type="number"
             placeholder="Enter limit in $"
-            className="input input-bordered w-full input-sm"
+            className="input w-full input-sm"
             value={limit || ""}
             onChange={(e) => setLimit(e.target.value)}
             min="0"
@@ -78,9 +78,9 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
         </div>
 
         <div className="form-control w-full">
-          <label className="label-text mb-1 font-medium">Reset Period</label>
+          <label className="label mb-1 font-medium">Reset Period</label>
           <select
-            className="select select-bordered w-full select-sm"
+            className="select w-full select-sm"
             value={resetPeriod}
             onChange={(e) => setResetPeriod(e.target.value)}
           >

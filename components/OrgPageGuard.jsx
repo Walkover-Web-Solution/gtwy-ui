@@ -68,7 +68,7 @@ const OrgPageGuard = ({ children }) => {
         <div
           data-testid="org-page-guard-modal-overlay"
           id="org-page-guard-modal-overlay"
-          className="fixed inset-0 z-50 bg-base-100 bg-opacity-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-base-100/50 flex items-center justify-center p-4"
         >
           <div
             data-testid="org-page-guard-modal-container"

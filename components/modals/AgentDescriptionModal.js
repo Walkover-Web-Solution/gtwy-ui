@@ -60,13 +60,13 @@ const AgentDescriptionModal = ({ setDescription, handleSaveAgent, description, i
     >
       <div className="py-2">
         <label className="label">
-          <span className="label-text">Description</span>
+          <span className="">Description</span>
         </label>
         <textarea
           autoFocus
           data-testid="agent-description-textarea"
           id="agent-description-textarea"
-          className="textarea bg-base-100 textarea-bordered w-full h-32"
+          className="textarea bg-base-100 w-full h-32"
           placeholder="Enter description for the agent..."
           value={draftDescription}
           required

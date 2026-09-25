@@ -55,10 +55,9 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const pathParts = pathname.split("?")[0].split("/");
   const orgId = orgIdFromHeader || pathParts[2];
 
-  const { userdetails, organizations, currrentOrgDetail, allBridges } = useCustomSelector((state) => ({
+  const { userdetails, organizations, allBridges } = useCustomSelector((state) => ({
     userdetails: state.userDetailsReducer.userDetails,
     organizations: state.userDetailsReducer.organizations,
-    currrentOrgDetail: state?.userDetailsReducer?.organizations?.[orgId],
     allBridges: state.bridgeReducer?.org?.[orgId]?.orgs || [],
   }));
   const orgName = useMemo(() => organizations?.[orgId]?.name || "Organization", [organizations, orgId]);
@@ -698,7 +697,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
         {/* ------------------------------------------------------------------ */}
         <div
           data-testid="main-sidebar"
-          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-200 left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : isSideBySideMode ? "ml-3 mr-0" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
+          className={`${sidebarPositioning} sidebar bg-base-100 border ${isMobile ? "overflow-hidden" : ""} border-base-content/15 shadow-sm left-0 top-0 h-[100dvh] bg-base-100 my-0 ${isMobile ? "mx-1" : isSideBySideMode ? "ml-3 mr-0" : "mx-3"} flex flex-col pb-2 ${sidebarZIndex}`}
           style={{
             width: isMobile ? (isMobileVisible ? "56px" : "0px") : isOpen ? "220px" : "50px",
             transform: isMobile ? (isMobileVisible ? "translateX(0)" : "translateX(-100%)") : "translateX(0)",
@@ -898,8 +897,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
             {/* Footer Actions Section */}
             <div className="border-t border-base-content/20 p-1">
               <div className="space-y-1">
-                {/* Wallet balance -> plans page */}
-                <WalletSidebarWidget orgId={orgId} showLabel={showSidebarContent} />
+                {/* Wallet balance -> plans page (only when we have an unambiguous org from the URL) */}
+                {pathParts[2] && <WalletSidebarWidget orgId={pathParts[2]} showLabel={showSidebarContent} />}
 
                 {/* Primary action: Admin */}
                 <button
@@ -918,38 +917,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                     </span>
                   )}
                 </button>
-
-                {/* Primary action: Lifetime access */}
-                {!currrentOrgDetail?.meta?.unlimited_access && (
-                  <div className="relative">
-                    <button
-                      id="main-slider-lifetime-access-button"
-                      onClick={() => {
-                        guardedNavigate(`/org/${orgId}/lifetime-access`);
-                        if (isMobile) setIsMobileVisible(false);
-                      }}
-                      onMouseEnter={(e) => onItemEnter("lifetimeAccess", e)}
-                      onMouseLeave={onItemLeave}
-                      className={`w-full flex items-center gap-3 rounded-lg p-2.5 transition-all duration-300 border border-yellow-500/60 bg-yellow-500/5 hover:bg-yellow-500/10 ${!showSidebarContent ? "justify-center" : ""}`}
-                    >
-                      <div className="relative z-10 flex items-center gap-3 w-full">
-                        <div className="relative">
-                          {ITEM_ICONS.lifetimeAccess}
-                          <div className="absolute -top-1 -right-1 w-1 h-1 bg-yellow-400 animate-ping opacity-40"></div>
-                        </div>
-                        {showSidebarContent && (
-                          <span className="text-xs truncate font-semibold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                            Free Lifetime Access
-                          </span>
-                        )}
-                      </div>
-                    </button>
-
-                    {showSidebarContent && (
-                      <div className="absolute -top-0.5 -right-0.5 text-xs opacity-60 transform rotate-12">🎁</div>
-                    )}
-                  </div>
-                )}
 
                 {/* Secondary actions become compact horizontal footer in expanded mode */}
                 {showSidebarContent ? (

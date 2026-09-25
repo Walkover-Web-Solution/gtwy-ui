@@ -33,7 +33,7 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
           <div className="flex gap-2 min-h-[200px] max-h-[500px] h-auto w-full mt-3">
             <div className="w-1/2 flex flex-col">
               <div className="label">
-                <span className="label-text font-medium text-red-600">Published Prompt</span>
+                <span className="font-medium text-red-600">Published Prompt</span>
               </div>
               <div className="flex-1 border border-base-300 rounded-lg overflow-auto">
                 <div
@@ -74,7 +74,7 @@ const ComparisonCheck = ({ oldContent, newContent, isFromPublishModal }) => {
 
             <div className="w-1/2 flex flex-col">
               <div className="label">
-                <span className="label-text font-medium text-green-600">Current Prompt</span>
+                <span className="font-medium text-green-600">Current Prompt</span>
               </div>
               <div className="flex-1 border border-base-300 rounded-lg overflow-auto">
                 <div

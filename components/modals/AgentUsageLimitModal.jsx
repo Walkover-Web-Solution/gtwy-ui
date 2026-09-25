@@ -6,7 +6,7 @@ import { closeModal } from "@/utils/utility";
 import { Settings2 } from "lucide-react";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const UsageProgressDonut = ({ percent, label }) => (
   <div className="relative h-24 w-24 flex-shrink-0">
@@ -99,7 +99,7 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
       widthClass="w-[min(480px,92vw)]"
     >
       <div className="flex flex-col gap-6" id="agent-usage-limit-modal-content">
-        <div className="flex items-center gap-6 p-4 bg-base-200/40 rounded-xl border border-base-content/5">
+        <div className="flex items-center gap-6 p-4 bg-base-200/40 border border-base-content/5">
           <UsageProgressDonut
             percent={hasLimit ? usagePercent : 0}
             label={hasLimit ? `${Math.round(usagePercent)}%` : "—"}
@@ -127,12 +127,12 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
 
         <div className="flex flex-col gap-4">
           <div className="form-control w-full">
-            <label className="label-text mb-1 font-medium text-xs text-base-content/70">Limit (in $)</label>
+            <label className="label mb-1 font-medium text-xs text-base-content/70">Limit (in $)</label>
             <input
               autoComplete="off"
               type="number"
               placeholder="Enter limit in $"
-              className="input input-bordered w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
+              className="input w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
               value={limit}
               min="0"
               step="0.0001"
@@ -142,9 +142,9 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
 
           {!isEmbedUser && (
             <div className="form-control w-full">
-              <label className="label-text mb-1 font-medium text-xs text-base-content/70">Reset Period</label>
+              <label className="label mb-1 font-medium text-xs text-base-content/70">Reset Period</label>
               <select
-                className="select select-bordered w-full select-sm h-9 px-3 text-sm border-base-content/20"
+                className="select w-full select-sm h-9 px-3 text-sm border-base-content/20"
                 value={resetPeriod}
                 onChange={(e) => setResetPeriod(e.target.value)}
               >
@@ -165,8 +165,11 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
             <button
               type="button"
               className="btn btn-sm btn-ghost text-xs border border-base-content/10 text-error hover:bg-error/10 hover:border-error/20"
-              disabled={isResetting || usageValue === 0}
-              onClick={handleResetUsage}
+              disabled={isResetting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleResetUsage();
+              }}
             >
               {isResetting ? "Resetting..." : "Reset Usage"}
             </button>

@@ -38,7 +38,7 @@ const ConfigurationSettingsAccordion = ({ isEmbedUser, isPublished, isEditor = t
       >
         <div className="flex items-center gap-2">
           <SettingsIcon size={14} className="shrink-0" />
-          <span className="label-text text-sm">Settings</span>
+          <span className="text-sm">Settings</span>
         </div>
         <span className="cursor-pointer">{isOpen ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}</span>
       </div>

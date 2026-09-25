@@ -22,7 +22,7 @@ const StepperSectionsLayout = ({ tabs, activeTab, onTabChange }) => {
   const isLast = stepIndex === tabs.length - 1;
 
   return (
-    <div data-testid="config-layout-stepper" className="flex flex-col gap-6 w-full pb-8 pt-1">
+    <div data-testid="config-layout-stepper" className="flex flex-col gap-6 w-full pb-8 pt-4">
       <div className="flex items-start gap-1">
         {tabs.map((tab, idx) => {
           const isDone = idx < stepIndex;

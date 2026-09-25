@@ -1,5 +1,5 @@
 import axios from "@/utils/interceptor";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -75,8 +75,7 @@ export const deleteApikey = async (id, service) => {
     return response;
   } catch (error) {
     console.error(error);
-    toast.error(error?.response?.data?.message);
-    return error;
+    throw error;
   }
 };
 
@@ -154,12 +153,13 @@ export const dryRun = async ({ localDataToSend, bridge_id }) => {
       throw new Error(blockedMessage);
     }
 
-    const detail = error.response;
+    const responseData = error?.response?.data;
+    const detailMessage =
+      typeof responseData?.detail === "string"
+        ? responseData.detail
+        : responseData?.detail?.error || responseData?.detail?.message;
     const errorMessage =
-      error?.response?.data?.error ||
-      (typeof detail === "string" ? detail : detail?.error) ||
-      error?.message ||
-      "Something went wrong.";
+      responseData?.message || detailMessage || responseData?.error || error?.message || "Something went wrong.";
 
     const hasBothErrors = errorMessage.includes("Initial Error:") && errorMessage.includes("Fallback Error:");
 

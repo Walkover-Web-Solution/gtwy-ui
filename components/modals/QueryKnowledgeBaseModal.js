@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Send, Loader2, SearchCode } from "lucide-react";
 import { queryKnowledgeBase } from "@/config/knowledgeBaseApi";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import Modal from "../UI/Modal";
@@ -58,12 +58,12 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Query</span>
+              <span className="font-medium">Query</span>
             </label>
             <textarea
               data-testid="query-kb-textarea"
               id="query-kb-textarea"
-              className="textarea textarea-bordered h-24"
+              className="textarea h-24"
               placeholder="Enter your query to test the knowledge base..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -107,7 +107,7 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
         {results !== null && (
           <div className="mt-2">
             <div className="divider">Results</div>
-            <div className="bg-base-200 rounded-lg p-4 max-h-96 overflow-y-auto">
+            <div className="bg-base-200 p-4 max-h-96 overflow-y-auto">
               {results && (typeof results === "string" ? results.trim() : JSON.stringify(results, null, 2).trim()) ? (
                 <pre className="text-sm whitespace-pre-wrap break-words">
                   {typeof results === "string" ? results : JSON.stringify(results, null, 2)}

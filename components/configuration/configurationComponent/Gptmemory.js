@@ -93,7 +93,7 @@ const GptMemory = ({ params, searchParams, isPublished, isEditor = true }) => {
             data-testid="gpt-memory-context-textarea"
             id="gpt-memory-context-textarea"
             disabled={isReadOnly}
-            className="textarea textarea-bordered w-full min-h-[400px] "
+            className="textarea w-full min-h-[400px] "
             defaultValue={gpt_memory_context}
             onBlur={handleUserReferenceChange}
             key={gpt_memory_context}

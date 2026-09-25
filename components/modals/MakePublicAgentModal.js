@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CircleX, Globe } from "lucide-react";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { closeModal } from "@/utils/utility";
 import { useDispatch } from "react-redux";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
@@ -46,12 +46,12 @@ function MakePublicAgentModal({ bridgeId, agent_name, pageConfig, agentSummary }
 
   const handleAddEmail = () => {
     if (!formData.newEmail?.includes("@")) {
-      toast.warn("Please enter a valid email address.");
+      toast("Please enter a valid email address.", { icon: "⚠️" });
       return;
     }
 
     if (formData.publicUsers.includes(formData.newEmail)) {
-      toast.warn("This email has already been added.");
+      toast("This email has already been added.", { icon: "⚠️" });
       return;
     }
 
@@ -156,27 +156,22 @@ function MakePublicAgentModal({ bridgeId, agent_name, pageConfig, agentSummary }
         {/* Agent Name Display */}
         <div className="form-control w-full">
           <label className="label">
-            <span className="label-text font-medium">Agent Name</span>
+            <span className="font-medium">Agent Name</span>
           </label>
-          <input
-            type="text"
-            disabled
-            value={agent_name || ""}
-            className="input input-bordered input-sm w-full bg-base-200"
-          />
+          <input type="text" disabled value={agent_name || ""} className="input input-sm w-full bg-base-200" />
         </div>
 
         {/* Description Field */}
         <div className="form-control w-full">
           <label className="label">
-            <span className="label-text font-medium">Description</span>
+            <span className="font-medium">Description</span>
           </label>
           <textarea
             id="make-public-description-textarea"
             data-testid="make-public-description-textarea"
             name="description"
             placeholder="Enter a description for your public agent"
-            className="textarea bg-base-100 textarea-bordered textarea-sm w-full h-24"
+            className="textarea bg-base-100 textarea-sm w-full h-24"
             value={formData.description}
             onChange={handleChange}
           />
@@ -185,12 +180,12 @@ function MakePublicAgentModal({ bridgeId, agent_name, pageConfig, agentSummary }
         {/* Visibility Field */}
         <div className="form-control w-full">
           <label className="label">
-            <span className="label-text font-medium">Visibility</span>
+            <span className="font-medium">Visibility</span>
           </label>
           <select
             id="make-public-visibility-select"
             data-testid="make-public-visibility-select"
-            className="select select-sm select-bordered w-full"
+            className="select select-sm w-full"
             name="availability"
             value={formData.availability}
             onChange={handleChange}
@@ -204,11 +199,11 @@ function MakePublicAgentModal({ bridgeId, agent_name, pageConfig, agentSummary }
         {formData.availability === "private" && (
           <div className="form-control w-full">
             <label className="label">
-              <span className="label-text font-medium">Allowed Users</span>
+              <span className="font-medium">Allowed Users</span>
             </label>
 
             {formData.publicUsers?.length > 0 && (
-              <div className="mb-4 p-4 bg-base-200/50 rounded-lg">
+              <div className="mb-4 p-4 bg-base-200/50">
                 <p className="text-xs text-base-content/70 mb-3 font-medium">
                   Allowed Users ({formData.publicUsers.length})
                 </p>
@@ -229,7 +224,7 @@ function MakePublicAgentModal({ bridgeId, agent_name, pageConfig, agentSummary }
               <input
                 type="email"
                 placeholder="Enter email address"
-                className="input input-bordered join-item flex-1 input-sm"
+                className="input join-item flex-1 input-sm"
                 value={formData.newEmail || ""}
                 onChange={(e) => {
                   setFormData((prev) => ({

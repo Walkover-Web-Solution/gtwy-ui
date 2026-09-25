@@ -232,7 +232,7 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
 
           {category !== "curl" && (
             <select
-              className="select select-sm select-bordered ml-auto w-auto text-xs"
+              className="select select-sm ml-auto w-auto text-xs"
               aria-label="Language"
               data-testid={category === "gtwy" ? "onboarding-gtwy-lang-tabs" : "onboarding-openai-lang-tabs"}
               value={category === "gtwy" ? gtwyLang : openaiLang}

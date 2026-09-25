@@ -5,7 +5,7 @@ import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import React, { useMemo } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Canvas from "../Canvas";
 import Modal from "../UI/Modal";
 import { closeModal } from "@/utils/utility";
@@ -81,6 +81,7 @@ function JsonSchemaModal({
         return;
       }
       toast.success("Schema applied successfully");
+      handleCloseModal();
     } catch (error) {
       toast.error("Invalid JSON Schema");
       console.error("JSON parse error:", error);
@@ -106,7 +107,7 @@ function JsonSchemaModal({
         style={{ height: "calc(100dvh - 14rem)", minHeight: "400px" }}
       >
         {/* AI Assistant Canvas - Left Side (50%) */}
-        <div className="flex-1 flex flex-col min-w-0 bg-base-200 rounded-lg overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 bg-base-200 overflow-hidden">
           <Canvas
             OptimizePrompt={handleOptimizeApi}
             messages={messages}
@@ -120,7 +121,7 @@ function JsonSchemaModal({
         </div>
 
         {/* Current JSON Schema - Right Side (50%) */}
-        <div className="flex-1 flex flex-col bg-base-200 rounded-lg overflow-hidden border border-base-300">
+        <div className="flex-1 flex flex-col bg-base-200 overflow-hidden border border-base-300">
           <div className="px-4 py-3 border-b border-base-300 bg-base-100">
             <h4 className="font-semibold text-sm">Current Schema</h4>
           </div>

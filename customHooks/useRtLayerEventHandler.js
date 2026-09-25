@@ -22,7 +22,7 @@ import { updateAnalyticsFromRtLayer, addAnalyticsThread } from "@/store/reducer/
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import WebSocketClient from "rtlayer-client";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { didCurrentTabInitiateUpdate } from "@/utils/utility";
 import { RefreshIcon } from "@/components/Icons";
 import { buildLlmUrls } from "@/utils/attachmentUtils";
@@ -107,38 +107,32 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
 
   // Helper function to show toast notification
   const showAgentUpdatedToast = useCallback(() => {
-    if (!toast.isActive("agent-updated")) {
-      const RefreshButton = () => {
-        const handleRefresh = () => {
-          toast.dismiss("agent-updated");
-          window.location.reload();
-        };
-        return (
-          <div className="mt-2 flex justify-center">
-            <button onClick={handleRefresh} className="btn btn-primary btn-sm">
-              <RefreshIcon size={16} />
-              Refresh Page
-            </button>
-          </div>
-        );
+    const RefreshButton = () => {
+      const handleRefresh = () => {
+        toast.dismiss("agent-updated");
+        window.location.reload();
       };
-      toast.info(
-        <div className="">
-          <div className="">Agent has been updated. Please refresh to see changes.</div>
-          <RefreshButton />
-        </div>,
-        {
-          position: "top-right",
-          autoClose: false,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          toastId: "agent-updated",
-          style: { border: "1px solid #ccc" },
-        }
+      return (
+        <div className="mt-2 flex justify-center">
+          <button onClick={handleRefresh} className="btn btn-primary btn-sm">
+            <RefreshIcon size={16} />
+            Refresh Page
+          </button>
+        </div>
       );
-    }
+    };
+    toast(
+      <div className="">
+        <div className="">Agent has been updated. Please refresh to see changes.</div>
+        <RefreshButton />
+      </div>,
+      {
+        position: "top-right",
+        duration: Infinity,
+        id: "agent-updated",
+        style: { border: "1px solid #ccc" },
+      }
+    );
   }, []);
 
   // ---------- History data processor (socket messages) ----------
@@ -150,7 +144,8 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
         if (
           parsedData.type === "summary" ||
           parsedData.type === "requests_over_time" ||
-          parsedData.type === "response_time"
+          parsedData.type === "response_time" ||
+          parsedData.type === "cost_over_time"
         ) {
           dispatch(updateAnalyticsFromRtLayer(parsedData));
           return;

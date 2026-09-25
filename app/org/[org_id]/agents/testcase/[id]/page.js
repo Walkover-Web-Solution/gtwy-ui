@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, use, useRef } from "r
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import InfiniteScroll from "react-infinite-scroll-component";
 import {
   deleteTestCaseAction,
@@ -14,6 +14,7 @@ import {
   updateTestCaseAction,
 } from "@/store/action/testCasesAction";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import { PlayIcon } from "@/components/Icons";
 import {
@@ -774,7 +775,9 @@ function TestCases({ params }) {
                         bridgeId: resolvedParams?.id,
                         dataToSend: { agent_info: { ai_matching_custom_prompt: prompt } },
                       })
-                    );
+                    ).catch((error) => {
+                      toast.error(getErrorMessage(error) || "Failed to save custom prompt");
+                    });
                   }}
                   onCustomPromptClear={() => {
                     setGlobalCustomPrompt("");
@@ -785,7 +788,9 @@ function TestCases({ params }) {
                         bridgeId: resolvedParams?.id,
                         dataToSend: { agent_info: { ai_matching_custom_prompt: "" } },
                       })
-                    );
+                    ).catch((error) => {
+                      toast.error(getErrorMessage(error) || "Failed to clear custom prompt");
+                    });
                   }}
                   label="Matching"
                 />
@@ -1019,7 +1024,7 @@ function TestCases({ params }) {
                     placeholder="Search test cases..."
                     value={searchKeyword}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="input input-sm input-bordered w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    className="input input-sm w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
                     {searchKeyword && (

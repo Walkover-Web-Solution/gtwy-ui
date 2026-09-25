@@ -1,23 +1,64 @@
 "use client";
 import { persistor, store } from "@/store/store";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Provider } from "react-redux";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { Toaster } from "react-hot-toast";
 import { PersistGate } from "redux-persist/integration/react";
 import CommandPalette from "@/components/command/CommandPalette";
 import { usePathname } from "next/navigation";
 import { useThemeManager } from "@/customHooks/useThemeManager";
 import PostHogProvider from "@/components/PostHogProvider";
 
-/**
- * The Wrapper component is the top level component of our application
- * It provides the Redux store to all the child components
- * It also has a ToastContainer for the react-toastify notifications
- */
 const Wrapper = ({ children }) => {
   const pathname = usePathname();
   const { actualTheme } = useThemeManager();
+  const [toastPortalTarget, setToastPortalTarget] = useState(null);
+  useEffect(() => {
+    const openDialogs = Array.from(document.querySelectorAll("dialog[open]"));
+    const pruneDetached = () => {
+      let removed = false;
+      for (let i = openDialogs.length - 1; i >= 0; i -= 1) {
+        if (!openDialogs[i].isConnected) {
+          openDialogs.splice(i, 1);
+          removed = true;
+        }
+      }
+      return removed;
+    };
+    const currentTarget = () => {
+      pruneDetached();
+      return openDialogs.length ? openDialogs[openDialogs.length - 1] : document.body;
+    };
+    setToastPortalTarget(currentTarget());
+
+    const observer = new MutationObserver((mutations) => {
+      let changed = pruneDetached();
+      for (const mutation of mutations) {
+        const target = mutation.target;
+        if (!(target instanceof HTMLElement) || target.tagName !== "DIALOG") continue;
+        const index = openDialogs.indexOf(target);
+        if (target.hasAttribute("open") && target.isConnected) {
+          if (index === -1) {
+            openDialogs.push(target);
+            changed = true;
+          }
+        } else if (index !== -1) {
+          openDialogs.splice(index, 1);
+          changed = true;
+        }
+      }
+      if (changed) setToastPortalTarget(currentTarget());
+    });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["open"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const pathSegments = pathname.split("/").filter(Boolean);
@@ -36,22 +77,31 @@ const Wrapper = ({ children }) => {
     document.title = title;
   }, [pathname]);
 
-  // Return a Provider component that wraps all the child components
-  // with the Redux store
-  // It also has a div that wraps all the child components
-  // And adds a ToastContainer for the notifications
+  const resolvedToastTarget = toastPortalTarget?.isConnected
+    ? toastPortalTarget
+    : typeof document !== "undefined"
+      ? document.body
+      : null;
+
   return (
     <>
       <Provider store={store}>
         <PersistGate loading={null} persistor={persistor}>
           <PostHogProvider>
             <div className="w-screen">
-              {/* All the child components */}
               {children}
-              {/* Global Command Palette */}
               <CommandPalette />
-              {/* Notification toast container */}
-              <ToastContainer position="bottom-left" theme={actualTheme === "dark" ? "dark" : "light"} />
+              {resolvedToastTarget &&
+                createPortal(
+                  <Toaster
+                    position="top-center"
+                    containerStyle={{ zIndex: 2147483000 }}
+                    toastOptions={{
+                      style: actualTheme === "dark" ? { background: "#333", color: "#fff" } : {},
+                    }}
+                  />,
+                  resolvedToastTarget
+                )}
             </div>
           </PostHogProvider>
         </PersistGate>

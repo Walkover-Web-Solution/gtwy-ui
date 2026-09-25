@@ -195,7 +195,7 @@ const ChatbotTestingControlsInner = ({ chatBotId }) => {
           <h4 className="card-title text-sm">Ask AI</h4>
           <textarea
             data-testid="chatbot-testing-ask-ai-input"
-            className="textarea textarea-bordered textarea-xs text-xs w-full"
+            className="textarea textarea-xs text-xs w-full"
             rows={3}
             value={askAiData}
             onChange={(e) => setAskAiData(e.target.value)}

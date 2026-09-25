@@ -126,7 +126,7 @@ const MigratePromptWarningModal = ({
               className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0 overflow-y-auto pr-1"
               style={{ maxHeight: "65vh" }}
             >
-              <div className="border border-base-300 rounded-lg p-3 bg-base-200/30 min-w-0">
+              <div className="border border-base-300 p-3 bg-base-200/30 min-w-0">
                 <h4 className="text-sm font-semibold mb-2">
                   {isEmbedMigration && !isEmbedDefaultPromptMode && hasAgentVisibleFields
                     ? "Current Agent Fields"
@@ -139,16 +139,12 @@ const MigratePromptWarningModal = ({
                         <div key={field?.name} className="space-y-1 min-w-0">
                           <label className="text-xs font-medium text-base-content/70 break-all">{field?.name}</label>
                           {field?.type === "textarea" ? (
-                            <textarea
-                              className="textarea textarea-bordered w-full h-20"
-                              value={field?.value || ""}
-                              readOnly
-                            />
+                            <textarea className="textarea w-full h-20" value={field?.value || ""} readOnly />
                           ) : (
                             <input
                               autoComplete="off"
                               type="text"
-                              className="input input-bordered w-full"
+                              className="input w-full"
                               value={field?.value || ""}
                               readOnly
                             />
@@ -161,14 +157,14 @@ const MigratePromptWarningModal = ({
                   </div>
                 ) : (
                   <textarea
-                    className="textarea textarea-bordered w-full h-[50vh] text-sm font-mono"
+                    className="textarea w-full h-[50vh] text-sm font-mono"
                     value={sourcePrompt || ""}
                     readOnly
                   />
                 )}
               </div>
 
-              <div className="border border-base-300 rounded-lg p-3 bg-base-200/30 space-y-3 min-w-0">
+              <div className="border border-base-300 p-3 bg-base-200/30 space-y-3 min-w-0">
                 <h4 className="text-sm font-semibold">
                   {isMainMigration || isEmbedDefaultPromptMode ? "New Structured Prompt" : "Fill Embed Fields"}
                 </h4>
@@ -177,7 +173,7 @@ const MigratePromptWarningModal = ({
                     <input
                       autoComplete="off"
                       type="text"
-                      className="input input-bordered w-full"
+                      className="input w-full"
                       placeholder="Role"
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
@@ -185,13 +181,13 @@ const MigratePromptWarningModal = ({
                     <input
                       autoComplete="off"
                       type="text"
-                      className="input input-bordered w-full"
+                      className="input w-full"
                       placeholder="Goal"
                       value={goal}
                       onChange={(e) => setGoal(e.target.value)}
                     />
                     <textarea
-                      className="textarea textarea-bordered w-full h-40"
+                      className="textarea w-full h-40"
                       placeholder="Instruction"
                       value={instruction}
                       onChange={(e) => setInstruction(e.target.value)}
@@ -208,7 +204,7 @@ const MigratePromptWarningModal = ({
                             <label className="text-xs font-medium text-base-content/70 break-all">{fieldName}</label>
                             {isTextarea ? (
                               <textarea
-                                className="textarea textarea-bordered w-full h-24"
+                                className="textarea w-full h-24"
                                 value={embedFieldValues[fieldName] || ""}
                                 onChange={(e) =>
                                   setEmbedFieldValues((prev) => ({
@@ -221,7 +217,7 @@ const MigratePromptWarningModal = ({
                               <input
                                 autoComplete="off"
                                 type="text"
-                                className="input input-bordered w-full"
+                                className="input w-full"
                                 value={embedFieldValues[fieldName] || ""}
                                 onChange={(e) =>
                                   setEmbedFieldValues((prev) => ({

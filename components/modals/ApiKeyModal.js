@@ -10,7 +10,7 @@ import Modal from "../UI/Modal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { FolderContext } from "@/components/folders/FolderContext";
 import { Key } from "lucide-react";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const ApiKeyModal = ({
   params,
@@ -257,7 +257,7 @@ const ApiKeyModal = ({
           const isRequired = field !== "apikey_limit";
           return (
             <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
-              <label className="label-text">
+              <label className="label">
                 {displayLabel}
                 {isRequired && RequiredItem()} <span className="opacity-55">{field === "apikey_limit" && "in $"}</span>
               </label>
@@ -269,7 +269,7 @@ const ApiKeyModal = ({
                 type={
                   (field === "apikey" && isEditing && "password") || (field === "apikey_limit" && "number") || "text"
                 }
-                className="input input-bordered input-sm"
+                className="input input-sm"
                 name={field}
                 key={field}
                 placeholder={`Enter ${displayLabel}`}
@@ -298,7 +298,7 @@ const ApiKeyModal = ({
             : field.charAt(0).toUpperCase() + field.slice(1);
           return (
             <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
-              <label className="label-text">
+              <label className="label">
                 {displayLabel} <span className="opacity-55">in $</span>
               </label>
               <input
@@ -306,7 +306,7 @@ const ApiKeyModal = ({
                 data-testid={`apikey-modal-field-${field}-input`}
                 id={field}
                 type="number"
-                className="input input-bordered input-sm"
+                className="input input-sm"
                 name={field}
                 placeholder={`Enter ${displayLabel}`}
                 defaultValue={selectedApiKey ? selectedApiKey.apikey_limit : ""}
@@ -319,14 +319,14 @@ const ApiKeyModal = ({
           );
         })}
         <div id="apikey-modal-reset-period-field" className="flex flex-col gap-2">
-          <label htmlFor="apikey_limit_reset_period" className="label-text">
+          <label htmlFor="apikey_limit_reset_period" className="label">
             Limit Reset Period
           </label>
           <select
             data-testid="apikey-modal-reset-period-select"
             id="apikey_limit_reset_period"
             name="apikey_limit_reset_period"
-            className="select select-sm select-bordered"
+            className="select select-sm"
             defaultValue={selectedApiKey?.apikey_limit_reset_period || "monthly"}
             onChange={handleFormChange}
           >
@@ -337,14 +337,14 @@ const ApiKeyModal = ({
         </div>
 
         <div id="apikey-modal-service-field" className="flex flex-col gap-2">
-          <label htmlFor="service" className="label-text">
+          <label htmlFor="service" className="label">
             Service{RequiredItem()}
           </label>
           <select
             data-testid="apikey-modal-service-select"
             id="service"
             name="service"
-            className="select select-sm select-bordered"
+            className="select select-sm"
             key={lockedService || "service-select"}
             defaultValue={lockedService || ""}
             disabled={Boolean(lockedService)}

@@ -1,5 +1,7 @@
 const STYLE_TAG_ID = "gtwy-theme-style";
 
+// daisyUI v5 reads colors from --color-<name> custom properties (e.g. --color-base-100,
+// --color-primary), not the old v3/v4 short aliases (--b1, --p, ...).
 const VAR_ALIAS_MAP = {
   "base-100": ["--b1"],
   "base-200": ["--b2"],
@@ -38,12 +40,14 @@ const buildThemeCssBlock = (themeName, tokens = {}) => {
 
   Object.entries(tokens).forEach(([key, raw]) => {
     if (!raw) return;
-    const normalized = normalizeColor(raw);
-    lines.push(`  --${key}: ${normalized};`);
+    const fullColor = raw.trim();
+    lines.push(`  --color-${key}: ${fullColor};`);
+    const bareTuple = normalizeColor(raw);
+    lines.push(`  --${key}: ${bareTuple};`);
 
     const aliases = VAR_ALIAS_MAP[key];
     if (aliases) {
-      aliases.forEach((alias) => lines.push(`  ${alias}: ${normalized};`));
+      aliases.forEach((alias) => lines.push(`  ${alias}: ${bareTuple};`));
     }
   });
 

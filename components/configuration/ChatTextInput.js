@@ -15,7 +15,7 @@ import {
 import Image from "next/image";
 import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { SendHorizontalIcon, UploadIcon, LinkIcon, PlayIcon, CloseCircleIcon } from "@/components/Icons";
 import { Paperclip } from "lucide-react";
 import { PdfIcon } from "@/icons/pdfIcon";
@@ -742,7 +742,7 @@ function ChatTextInput({
     <div
       data-testid="chat-text-input-container"
       id="chat-text-input-container"
-      className="input-group flex justify-end items-end gap-2 w-full relative"
+      className="flex justify-end items-end gap-2 w-full relative"
     >
       {/* Unsaved prompt changes modal */}
       <ConfirmationModal
@@ -937,14 +937,14 @@ function ChatTextInput({
       )}
 
       {/* Input Group */}
-      <div className="input-group flex justify-end items-end gap-2 w-full relative">
+      <div className="flex justify-end items-end gap-2 w-full relative">
         {modelType !== "completion" && (
           <textarea
             data-testid="chat-message-textarea"
             id="chat-message-textarea"
             ref={inputRef}
             placeholder="Type here"
-            className={`textarea bg-base-100 textarea-bordered w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
+            className={`textarea bg-base-100 w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
               validationError || attachmentError
                 ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                 : "focus:border-primary"

@@ -342,8 +342,8 @@ The embed script reads these attributes from `<script id="gtwy-main-script">`:
 
 | Attribute              | Purpose                                                 |
 | ---------------------- | ------------------------------------------------------- |
-| `embedToken`           | Authentication token                                    |
-| `parentId`             | DOM container ID (optional, defaults to fixed position) |
+| `embed_token`          | Authentication token (legacy: `embedToken`)             |
+| `parent_id`            | DOM container ID (optional; legacy: `parentId`)         |
 | `slide`                | Position: `"full"` \| `"left"` \| `"right"`             |
 | `defaultOpen`          | Auto-open on page load                                  |
 | `showCloseButton`      | Show close button in header                             |
@@ -352,6 +352,18 @@ The embed script reads these attributes from `<script id="gtwy-main-script">`:
 | `agent_id`             | Target a specific agent                                 |
 | `agent_name`           | Create agent with this name                             |
 | `agent_purpose`        | Create agent with AI-generated config                   |
+
+**Naming convention:** `snake_case` is the naming standard for public embed keys — script
+attributes, `window.openGtwy({...})` and `GtwyEmbed.sendDataToGtwy({...})`. Only the keys shown in
+the integration guide are migrated so far (`embed_token`, `parent_id`); the rest still use their
+original camelCase names and are left alone for now. Both spellings of a migrated key are accepted:
+`KEY_ALIASES` / `normalizeKeys()` at the top of `public/gtwy.js` maps every incoming key to the
+internal name before it is used, so internal code and the iframe side stay camelCase.
+
+Adding a new public option? Name it in `snake_case`. Migrating an existing camelCase key? Add the
+`snake_case: 'internalName'` pair to `KEY_ALIASES` in all three embed scripts (`gtwy.js`,
+`gtwy_dev.js`, `gtwy_embed_local.js`) — the reverse lookup and all three entry points pick it up
+automatically.
 
 ## Extensible Config Schema
 

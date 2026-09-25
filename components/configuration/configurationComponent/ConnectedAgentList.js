@@ -7,7 +7,7 @@ import { updateBridgeAction, updateBridgeVersionAction } from "@/store/action/br
 import { AddIcon, SettingsIcon, TrashIcon, BotIcon } from "@/components/Icons";
 import { closeModal, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import AgentDescriptionModal from "@/components/modals/AgentDescriptionModal";
 import FunctionParameterModal from "./FunctionParameterModal";
 import { useRouter } from "next/navigation";
@@ -106,7 +106,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           },
         })
       );
-      dispatch(
+      await dispatch(
         updateBridgeAction({
           bridgeId: sb?._id || sb?.bridge_id,
           dataToSend: {
@@ -197,6 +197,21 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   const handleSaveAgentVariable = async () => {
     try {
       // Update agent connection with new connected_tool format
+      const dataToSend = {
+        agents: {
+          connected_agents: {
+            [selectedBridge?.name]: {
+              bridge_id: selectedBridge?._id || selectedBridge?.bridge_id,
+              thread_id: agentTools?.thread_id ? agentTools?.thread_id : false,
+            },
+          },
+          agent_status: "1",
+        },
+      };
+      if (agentTools?.environment) {
+        dataToSend.agents.connected_agents[selectedBridge?.name].environment = agentTools?.environment;
+      }
+      // on Save the bridge and thread id in version only
       await dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
@@ -229,6 +244,15 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           },
         })
       );
+      if (!isEqual(variablesPath, variables_path[selectedBridge?.bridge_id])) {
+        await dispatch(
+          updateBridgeVersionAction({
+            bridgeId: params.id,
+            versionId: searchParams?.version,
+            dataToSend: { variables_path: { [selectedBridge?.bridge_id]: variablesPath } },
+          })
+        );
+      }
       closeModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
       setCurrentVariable(agentTools);
       setAgentTools(agentTools);

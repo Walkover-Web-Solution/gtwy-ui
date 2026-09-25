@@ -335,7 +335,7 @@ const CustomTable = ({
 
   // Render table view for desktop
   const renderTableView = () => {
-    const tableClass = viewportWidth < 1024 ? "table-compact" : "";
+    const tableClass = viewportWidth < 1024 ? "table-sm" : "";
 
     return (
       <div

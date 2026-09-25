@@ -17,7 +17,7 @@ function RadioButton({ name, label, checked, onChange }) {
           checked={checked}
           onChange={() => onChange({ target: { name, value: label.replaceAll(" ", "_").toLowerCase() } })}
         />
-        <span className="label-text">{label}</span>
+        <span className="">{label}</span>
       </label>
     </div>
   );
@@ -35,7 +35,7 @@ function RadioGroup({ onChange, name, value }) {
   return (
     <div data-testid="radio-group-position" id="radio-group-position">
       <div className="label">
-        <span className="label-text">Position</span>
+        <span className="">Position</span>
       </div>
       <div className="flex items-center justify-start gap-2">
         {options.map((option, index) => (
@@ -56,14 +56,14 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
   return (
     <div className="flex flex-col">
       <div className="label">
-        <span className="label-text">{placeholder}</span>
+        <span className="">{placeholder}</span>
       </div>
       <div className="join">
         <input
           autoComplete="off"
           data-testid={`dimension-input-${name}`}
           id={`dimension-input-${name}`}
-          className="input input-bordered join-item input-sm max-w-[90px]"
+          className="input join-item input-sm max-w-[90px]"
           type="number"
           placeholder={placeholder}
           defaultValue={value || ""}
@@ -74,7 +74,7 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
         <select
           data-testid={`dimension-select-${name}-unit`}
           id={`dimension-select-${name}-unit`}
-          className="select select-bordered join-item select-sm max-w-[70px]"
+          className="select join-item select-sm max-w-[70px]"
           value={unit || ""}
           onChange={onChange}
           name={`${name}Unit`}
@@ -204,7 +204,7 @@ export default function FormSection({ params, chatbotId = null }) {
           <div className="space-y-4">
             <label className="form-control w-full">
               <div className="label">
-                <span className="label-text font-medium">Chatbot Title</span>
+                <span className="font-medium">Chatbot Title</span>
               </div>
               <input
                 autoComplete="off"
@@ -212,7 +212,7 @@ export default function FormSection({ params, chatbotId = null }) {
                 id="form-section-chatbot-title"
                 type="text"
                 placeholder="Enter chatbot title"
-                className="input input-bordered w-full max-w-xs input-sm"
+                className="input w-full max-w-xs input-sm"
                 value={formData.chatbotTitle}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
@@ -222,7 +222,7 @@ export default function FormSection({ params, chatbotId = null }) {
 
             <label className="form-control w-full">
               <div className="label">
-                <span className="label-text font-medium">Chatbot Subtitle</span>
+                <span className="font-medium">Chatbot Subtitle</span>
               </div>
               <input
                 autoComplete="off"
@@ -230,7 +230,7 @@ export default function FormSection({ params, chatbotId = null }) {
                 id="form-section-chatbot-subtitle"
                 type="text"
                 placeholder="Enter chatbot subtitle"
-                className="input input-bordered w-full max-w-xs input-sm"
+                className="input w-full max-w-xs input-sm"
                 value={formData.chatbotSubtitle}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
@@ -240,7 +240,7 @@ export default function FormSection({ params, chatbotId = null }) {
 
             <label className="form-control w-full">
               <div className="label">
-                <span className="label-text font-medium">Button Title</span>
+                <span className="font-medium">Button Title</span>
               </div>
               <input
                 autoComplete="off"
@@ -248,7 +248,7 @@ export default function FormSection({ params, chatbotId = null }) {
                 id="form-section-button-title"
                 type="text"
                 placeholder="Enter button title"
-                className="input input-bordered w-full max-w-xs input-sm"
+                className="input w-full max-w-xs input-sm"
                 value={formData.buttonName}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
@@ -258,7 +258,7 @@ export default function FormSection({ params, chatbotId = null }) {
 
             <label className="form-control w-full">
               <div className="label">
-                <span className="label-text font-medium">Button Icon URL</span>
+                <span className="font-medium">Button Icon URL</span>
               </div>
               <input
                 autoComplete="off"
@@ -266,7 +266,7 @@ export default function FormSection({ params, chatbotId = null }) {
                 id="form-section-icon-url"
                 type="text"
                 placeholder="Enter icon URL"
-                className="input input-bordered w-full max-w-xs input-sm"
+                className="input w-full max-w-xs input-sm"
                 value={formData.iconUrl}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
@@ -310,7 +310,7 @@ export default function FormSection({ params, chatbotId = null }) {
 
             <label className="form-control">
               <div className="label">
-                <span className="label-text font-medium">Theme Color</span>
+                <span className="font-medium">Theme Color</span>
               </div>
               <div className="flex items-center gap-3">
                 <input

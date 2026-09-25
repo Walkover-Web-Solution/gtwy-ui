@@ -136,7 +136,11 @@ export function FinalResponseCard({
             fadeHeight={90}
             expandLabel="Show more"
             collapseLabel="Collapse"
-            style={{ "--expand-collapse-fade": isDark ? "oklch(var(--b2) / 0.97)" : "oklch(var(--b1) / 0.97)" }}
+            style={{
+              "--expand-collapse-fade": isDark
+                ? "color-mix(in oklch, var(--color-base-200) 97%, transparent)"
+                : "color-mix(in oklch, var(--color-base-100) 97%, transparent)",
+            }}
           >
             <CodeBlock className="language-json" showCopy={true} isDark={isDark}>
               {JSON.stringify(parsedJson, null, 2)}

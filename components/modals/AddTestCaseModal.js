@@ -7,7 +7,7 @@ import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical, ExternalLink } fr
 import { useParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "../UI/Modal";
 import { clearChatTestCaseIdAction } from "@/store/action/chatAction";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
@@ -312,7 +312,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       <form id="add-testcase-modal-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="space-y-4">
           {/* Test Case Name Section */}
-          <div className="space-y-2 bg-base-50 rounded-lg p-4 border border-base-200">
+          <div className="space-y-2 bg-base-50 p-4 border border-base-300">
             <label className="text-sm font-semibold text-base-content">Test Case Name</label>
             <input
               data-testid="add-testcase-name-input"
@@ -321,27 +321,27 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
               placeholder="Enter test case name"
               value={testCaseName}
               onChange={(e) => setTestCaseName(e.target.value)}
-              className="input input-sm input-bordered bg-base-100 w-full focus:outline-none"
+              className="input input-sm bg-base-100 w-full focus:outline-none"
             />
           </div>
           {/* Variables Section */}
           {Object.keys(editableVariables).length > 0 && (
-            <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
+            <div className="space-y-3 bg-base-50 p-4 border border-base-300">
               <div className="text-sm font-semibold text-base-content mb-4">Variables</div>
               <div className="space-y-3">
                 {Object.entries(editableVariables).map(([key, value]) => (
-                  <div key={key} className="bg-base-100 rounded-lg p-3 border border-base-200">
+                  <div key={key} className="bg-base-100 p-3 border border-base-300">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-base-content mb-1 block">Key</label>
-                        <div className="text-sm font-mono bg-base-200 px-3 py-2 rounded text-base-content">{key}</div>
+                        <div className="text-sm font-mono bg-base-200 px-3 py-2 text-base-content">{key}</div>
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-base-content mb-1 block">Value</label>
                         <AutoResizeTextarea
                           value={typeof value === "string" ? value : JSON.stringify(value)}
                           onChange={(e) => handleVariableChange(key, e.target.value)}
-                          className="textarea textarea-bordered textarea-sm bg-base-50 text-sm w-full leading-relaxed"
+                          className="textarea textarea-sm bg-base-50 text-sm w-full leading-relaxed"
                           placeholder="Enter value"
                           rows={1}
                         />
@@ -353,17 +353,9 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
           )}
 
-          {/* Mock Tool Responses Section */}
-          <MockToolResponsesSection
-            ref={mockToolResponsesRef}
-            tools={bridgeToolOptions}
-            initialValue={initialToolsResponseFromHistory}
-            resetKey={testCaseConversation}
-          />
-
           {/* User URLs Section */}
           {userUrlsList.length > 0 && (
-            <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
+            <div className="space-y-3 bg-base-50 p-4 border border-base-300">
               <div className="text-sm font-semibold text-base-content mb-4">Attachments</div>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {userUrlsList.map((urlObj, idx) => {
@@ -379,7 +371,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                         alt={`User Image ${idx + 1}`}
                         width={80}
                         height={80}
-                        className="object-cover rounded-lg cursor-pointer flex-shrink-0"
+                        className="object-cover cursor-pointer flex-shrink-0"
                         onClick={() => window.open(urlString, "_blank")}
                       />
                     );
@@ -391,7 +383,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                         href={urlString}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-2 text-primary bg-base-200 rounded-lg hover:bg-base-300 flex-shrink-0"
+                        className="flex items-center gap-2 p-2 text-primary bg-base-200 hover:bg-base-300 flex-shrink-0"
                       >
                         <PdfIcon height={20} width={20} />
                         <span className="text-sm font-medium max-w-[6rem] truncate text-primary">
@@ -414,7 +406,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 data-testid="add-testcase-conversation-toggle"
                 type="button"
                 onClick={() => setShowFullConversation(!showFullConversation)}
-                className="w-full flex items-center justify-between bg-base-50 hover:bg-base-100 rounded-lg px-4 py-3 border border-base-200 transition-colors"
+                className="w-full flex items-center justify-between bg-base-50 hover:bg-base-100 px-4 py-3 border border-base-300 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-sm font-medium text-base-content">Conversation History</span>
@@ -426,7 +418,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 />
               </button>
               {showFullConversation && (
-                <div className="mt-3 bg-base-100 rounded-lg px-6 py-4 border border-base-200 space-y-4">
+                <div className="mt-3 bg-base-100 px-6 py-4 border border-base-300 space-y-4">
                   {getConversationPairs().map((pair, pairIndex) => (
                     <div key={pair.id || pairIndex} className="space-y-4">
                       {/* User Message */}
@@ -442,7 +434,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                             <Trash2 size={13} />
                           </button>
                         </div>
-                        <div className="w-[90%] bg-primary text-primary-content rounded-lg rounded-br-none px-4 py-3">
+                        <div className="w-[90%] bg-primary text-primary-content px-4 py-3">
                           <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                             <div
                               contentEditable
@@ -459,7 +451,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                       {/* Assistant Message */}
                       <div className="flex flex-col items-start gap-1">
                         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
-                        <div className="w-[90%] bg-base-300 text-base-content rounded-lg rounded-bl-none px-4 py-3">
+                        <div className="w-[90%] bg-base-300 text-base-content px-4 py-3">
                           <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                             <div
                               contentEditable
@@ -480,12 +472,20 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
           )}
 
+          {/* Preset Tool Response */}
+          <MockToolResponsesSection
+            ref={mockToolResponsesRef}
+            tools={bridgeToolOptions}
+            initialValue={initialToolsResponseFromHistory}
+            resetKey={testCaseConversation}
+          />
+
           {/* User Query - From user field (always visible) */}
           {userQueryText && (
             <div id="add-testcase-last-user-message" className="space-y-4">
               <div className="space-y-2" data-testid="add-testcase-user-query-wrapper">
                 <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
-                <div className="bg-base-100 rounded-lg shadow-sm p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                <div className="bg-base-100 shadow-sm p-3 text-sm text-base-content whitespace-pre-wrap break-words">
                   <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                     <div className="whitespace-pre-wrap break-words">{userQueryText}</div>
                   </ExpandCollapse>
@@ -496,20 +496,17 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         </div>
 
         {/* User Expected Output Section (editable) */}
-        <div
-          className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0 rounded-lg"
-          data-testid="add-testcase-bottom-panel"
-        >
+        <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0" data-testid="add-testcase-bottom-panel">
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase text-base-content tracking-wide">User Expected Output</div>
-            <div className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2">
+            <div className="bg-base-50 border border-base-300 px-4 pt-3 pb-2">
               <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                 <AutoResizeTextarea
                   data-testid="add-testcase-expected-output-textarea"
                   value={expectedOutputText}
                   onChange={(e) => setExpectedOutputText(e.target.value)}
                   placeholder="Enter the expected output..."
-                  className="w-full bg-base-100 rounded p-3 text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-0"
+                  className="w-full bg-base-100 p-3 text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-0"
                   rows={3}
                 />
               </ExpandCollapse>
