@@ -277,8 +277,6 @@ const FallbackModel = ({
         const optionConfig = options?.[optionKey];
         const modelName = optionConfig?.configuration?.model?.default || optionKey;
 
-        if (currentModel === modelName || currentModel === optionKey) return;
-
         const serviceConfig = embedModelsConfig?.[fallbackService];
         const modelConfig = serviceConfig?.[modelName];
         if (modelConfig?.hide === true) return;
@@ -294,7 +292,7 @@ const FallbackModel = ({
       });
     });
     return opts;
-  }, [computedModelsList, currentModel, embedModelsConfig, fallbackService]);
+  }, [computedModelsList, embedModelsConfig, fallbackService]);
 
   const fallbackServiceOptions = useMemo(() => {
     if (!Array.isArray(SERVICES)) return [];
@@ -374,7 +372,7 @@ const FallbackModel = ({
       )}
 
       {isFallbackEnabled && (
-        <div className="w-full p-3 border border-base-200 rounded-lg bg-base-50" ref={dropdownContainerRef}>
+        <div className="w-full p-3 border border-base-300 bg-base-50" ref={dropdownContainerRef}>
           <div className="grid grid-cols-2 gap-4">
             {/* Fallback Service */}
             <div className="space-y-2 flex-1">
@@ -454,7 +452,7 @@ const FallbackModel = ({
           <div className="flex flex-col gap-3 w-full">
             {/* Multiple API Keys Label */}
             <div className="flex items-center gap-1">
-              <span className="label-text font-medium">Multiple API Keys</span>
+              <span className="font-medium">Multiple API Keys</span>
               <InfoTooltip tooltipContent="Add API keys for different models/services. This ensures your agent continues working when switching models in runtime or using fallback options.">
                 <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
               </InfoTooltip>

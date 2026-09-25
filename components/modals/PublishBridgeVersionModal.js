@@ -10,7 +10,7 @@ import { convertAgentToTemplate } from "@/config/bridgeApi";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "../UI/Modal";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import Protected from "../Protected";
@@ -56,7 +56,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     const orgId = params?.org_id;
     const currentOrgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name || "Viewer";
     const currentUser = state.userDetailsReducer.userDetails;
-    const agentUsers = bridgeDataFromState?.users || [];
+    const agentUsers = bridgeDataFromState?.settings?.editAccess || [];
 
     // Determine if user is allowed to edit based on role and agent access
     const isAdminOrOwner = currentOrgRole === "Admin" || currentOrgRole === "Owner";
@@ -65,8 +65,8 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       (currentOrgRole === "Editor" &&
         (agentUsers?.length === 0 ||
           !agentUsers ||
-          (agentUsers?.length > 0 && agentUsers?.some((user) => user.id === currentUser?.id)))) ||
-      (currentOrgRole === "Viewer" && agentUsers?.some((user) => user === currentUser?.id)) ||
+          (agentUsers?.length > 0 && agentUsers?.some((user) => String(user) === String(currentUser?.id))))) ||
+      (currentOrgRole === "Viewer" && agentUsers?.some((user) => String(user) === String(currentUser?.id))) ||
       currentOrgRole === "Creator" ||
       isAdminOrOwner;
 
@@ -687,7 +687,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
             toast.success(`Successfully published ${selectedAgentsToPublish.size} connected agent(s)`);
           } catch (error) {
             console.error("Error publishing connected agents:", error);
-            toast.warning("Main agent published, but some connected agents failed to publish");
+            toast("Main agent published, but some connected agents failed to publish", { icon: "⚠️" });
           }
         }
         dispatch(getAllBridgesAction());
@@ -702,13 +702,9 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         if (shouldConvertToTemplate) {
           const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim());
           toast.promise(templatePromise, {
-            pending: "Evaluating and publishing template...",
+            loading: "Evaluating and publishing template...",
             success: "Agent converted to template successfully!",
-            error: {
-              render({ data }) {
-                return data?.response?.data?.message || data?.message || "Failed to convert agent to template";
-              },
-            },
+            error: (err) => err?.response?.data?.message || err?.message || "Failed to convert agent to template",
           });
         }
       } catch (error) {
@@ -782,20 +778,6 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
       footer={footerContent}
     >
       <div id="publish-bridge-modal-container" data-testid="publish-version-modal" className="flex flex-col gap-4">
-        {/* Comparison Toggle Button */}
-        <div className="flex justify-end">
-          <button
-            id="publish-toggle-comparison-button"
-            data-testid="publish-version-comparison-toggle"
-            onClick={toggleComparison}
-            className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
-            title="Compare Version Changes"
-          >
-            <ArrowRightLeft size={16} />
-            {showComparison ? "Hide Changes" : "View Changes"}
-          </button>
-        </div>
-
         {/* Warning Section */}
         {!showComparison && (
           <div className="flex flex-col gap-3 mb-6">
@@ -840,7 +822,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         {/* Changes Summary */}
         {!showComparison && (
           <div className="mb-6">
-            <div className="bg-base-200 rounded-lg p-4">
+            <div className="bg-base-200 p-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold">Changes Summary</h3>
                 {Object.keys(changesSummary).length > 0 && (
@@ -932,7 +914,20 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         {/* Full Data Comparison View */}
         {showComparison && (
           <div>
-            <div className="bg-base-100 rounded-lg p-2">
+            <div className="bg-base-100 p-2">
+              {/* Comparison Toggle Button */}
+              <div className="flex justify-end mt-3">
+                <button
+                  id="publish-toggle-comparison-button"
+                  data-testid="publish-version-comparison-toggle"
+                  onClick={toggleComparison}
+                  className={`btn btn-sm btn-outline flex gap-1 ${!showComparison ? "hidden" : "block"}`}
+                  title="Compare Version Changes"
+                >
+                  <ArrowRightLeft size={16} />
+                  {showComparison ? "Hide Changes" : "View Changes"}
+                </button>
+              </div>
               <PublishVersionDataComparisonView
                 oldData={filteredBridgeData}
                 newData={filteredVersionData}

@@ -5,7 +5,7 @@ import { ArchiveRestore, MoreVertical, Pause, Play, Settings2, Trash2, Users, Gl
 import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import ConfigureEnvironmentModal from "../modals/ConfigureEnvironmentModal";
 
 const BRIDGE_STATUS = {

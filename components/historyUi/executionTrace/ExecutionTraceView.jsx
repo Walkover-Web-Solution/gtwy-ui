@@ -418,6 +418,7 @@ function ToolStep({ step, inRail = true }) {
       {open && (
         <div className="pb-1 pt-1">
           <IoPanel label="Input" value={step.input} />
+          {step.queryParams && <IoPanel label="Query Params" value={step.queryParams} />}
           <IoPanel label="Output" value={step.output} />
         </div>
       )}
@@ -536,7 +537,9 @@ function MessageBubble({ text, align = "left", expandable = true, isError = fals
             collapsedHeight={TRACE_BUBBLE_CLAMP_HEIGHT}
             fadeHeight={40}
             style={{
-              "--expand-collapse-fade": isError ? "oklch(var(--er) / 0.10)" : "oklch(var(--b2) / 0.55)",
+              "--expand-collapse-fade": isError
+                ? "color-mix(in oklch, var(--color-error) 10%, transparent)"
+                : "color-mix(in oklch, var(--color-base-200) 55%, transparent)",
             }}
           >
             <div className="whitespace-pre-wrap">{text}</div>
@@ -717,7 +720,7 @@ function RootExecutionShell({ node, agents, userMessage }) {
 
       {/* Expanded Container */}
       {open && (
-        <div className="w-full border border-base-200 rounded-xl p-4 bg-base-200/10 shadow-sm space-y-2">
+        <div className="w-full border border-base-200 dark:border-base-content/20 rounded-xl p-4 bg-base-200/10 shadow-sm space-y-2">
           <HistoryExecutionSteps node={node} agents={agents} inRail={false} />
         </div>
       )}

@@ -233,15 +233,18 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
       <h5 className="text-sm font-semibold border-b border-base-300 pb-2">Prompt Configuration</h5>
       <div className="space-y-4 p-2 bg-base-200 rounded-lg border border-base-300">
         {/* Toggle: Use Default Prompt */}
-        <div className="form-control bg-base-200 rounded flex flex-row items-center justify-between">
-          <span data-testid="embed-config-toggle-useDefaultPrompt" className="label-text text-sm ml-1">
+        <div className="bg-base-200 rounded flex w-full flex-row flex-nowrap items-center justify-between gap-2">
+          <span
+            data-testid="embed-config-toggle-useDefaultPrompt"
+            className="text-sm ml-1 whitespace-nowrap text-base-content"
+          >
             Use default prompt
           </span>
           <input
             autoComplete="off"
             type="checkbox"
             data-testid="use-default-prompt-toggle"
-            className="toggle toggle-sm"
+            className="toggle toggle-sm shrink-0"
             checked={promptConfig.useDefaultPrompt}
             onChange={(e) => handleUseDefaultToggle(e.target.checked)}
           />
@@ -320,20 +323,18 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
             {/* Custom Prompt Textarea */}
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-sm font-medium">Custom Prompt Template</span>
+                <span className="text-sm font-medium">Custom Prompt Template</span>
               </label>
               <textarea
                 data-testid="custom-prompt-textarea"
-                className="textarea textarea-bordered w-full h-64 font-mono text-sm"
+                className="textarea w-full h-64 font-mono text-sm"
                 placeholder='e.g., "You are a {{role}} and your context is {{context}}"'
                 value={promptConfig.customPrompt}
                 onChange={(e) => handleCustomPromptChange(e.target.value)}
                 onBlur={(e) => handleCustomPromptBlur(e.target.value)}
               />
               <label className="label">
-                <span className="label-text-alt text-base-content/60">
-                  Use {`{{variable}}`} syntax to create dynamic fields
-                </span>
+                <span className="text-base-content/60">Use {`{{variable}}`} syntax to create dynamic fields</span>
               </label>
             </div>
 
@@ -341,7 +342,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
             {promptConfig.embedFields.length > 0 && (
               <div className="space-y-2">
                 <label className="label">
-                  <span className="label-text text-sm font-medium">Dynamic Fields</span>
+                  <span className="text-sm font-medium">Dynamic Fields</span>
                 </label>
                 <div className="space-y-2">
                   {promptConfig.embedFields.map((field) => (
@@ -358,7 +359,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                           autoComplete="off"
                           type="text"
                           data-testid={`field-display-value-input-${field.name}`}
-                          className="input input-sm input-bordered w-full"
+                          className="input input-sm w-full"
                           placeholder={`Display label (default: ${field.name})`}
                           value={field.displayValue || ""}
                           onChange={(e) => handleFieldDisplayValueChange(field.name, e.target.value)}
@@ -370,7 +371,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                           autoComplete="off"
                           type="text"
                           data-testid={`field-description-input-${field.name}`}
-                          className="input input-sm input-bordered w-full"
+                          className="input input-sm w-full"
                           placeholder="Description"
                           value={field.description || ""}
                           onChange={(e) => handleFieldDescriptionChange(field.name, e.target.value)}
@@ -382,7 +383,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         {!field.hidden ? (
                           <select
-                            className="select select-sm select-bordered"
+                            className="select select-sm"
                             value={field.type}
                             onChange={(e) => handleFieldTypeChange(field.name, e.target.value)}
                           >
@@ -394,7 +395,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                         )}
                         <div className="flex items-center gap-3">
                           <label className="label cursor-pointer gap-2 py-0">
-                            <span className="label-text text-sm">Hide</span>
+                            <span className="text-sm">Hide</span>
                             <input
                               type="checkbox"
                               className="checkbox checkbox-sm"
@@ -403,7 +404,7 @@ const EmbedPromptBuilder = ({ configuration, onChange, onPromptBlur, onValidate,
                             />
                           </label>
                           <label className="label cursor-pointer gap-2 py-0 items-center">
-                            <span className="label-text text-sm">Prompt Helper</span>
+                            <span className="text-sm">Prompt Helper</span>
                             <input
                               type="checkbox"
                               className="checkbox checkbox-sm"

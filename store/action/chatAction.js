@@ -20,7 +20,9 @@ import {
   clearChatTestCaseId,
   clearChannelData,
   addToolCallToMessage,
+  appendToolCallDelta,
   updateToolCallResult,
+  setToolCallHandoff,
   appendReasoningChunk,
   setReviewData,
   appendReviewDelta,
@@ -28,6 +30,7 @@ import {
   setFallbackData,
 } from "../reducer/chatReducer";
 import { haveSameItems, buildUserUrls, buildLlmUrls, extractImageUrlsFromResponse } from "@/utils/attachmentUtils";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 const getVideoIdentifier = (video) => {
   if (!video) return null;
@@ -402,7 +405,7 @@ export const sendMessageWithRtLayer =
         dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
       }
 
-      dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
+      dispatch(setChatError(channelId, getErrorMessage(error)));
       dispatch(setChatLoading(channelId, false)); // Clear loading on error
       throw error;
     }
@@ -415,7 +418,14 @@ export const sendMessageWithApiStreaming =
   async (dispatch) => {
     let userMessage = null;
     let loadingMessage = null;
-    const streamingState = { messageId: null, content: "", isReviewStreaming: false, isTemplateResponse: false };
+    const streamingState = {
+      messageId: null,
+      content: "",
+      isReviewStreaming: false,
+      isTemplateResponse: false,
+      activeToolCallId: null,
+      activeToolCallName: null,
+    };
     let rafId = null;
 
     try {
@@ -530,6 +540,17 @@ export const sendMessageWithApiStreaming =
                 dispatch(
                   appendReviewDelta({ channelId, messageId: streamingState.messageId, chunk: parsed.content || "" })
                 );
+              } else if (streamingState.activeToolCallId !== null) {
+                // Delta emitted while a tool call is in flight → route into the tool call's accordion, NOT the assistant message
+                dispatch(
+                  appendToolCallDelta({
+                    channelId,
+                    messageId: streamingState.messageId,
+                    callId: streamingState.activeToolCallId,
+                    name: streamingState.activeToolCallName,
+                    chunk: parsed.content || "",
+                  })
+                );
               } else {
                 // Accumulate content; flush to Redux once per animation frame
                 streamingState.content += parsed.content || "";
@@ -542,6 +563,8 @@ export const sendMessageWithApiStreaming =
                 );
               }
             } else if (parsed.event === "tool_call") {
+              streamingState.activeToolCallId = parsed.call_id || parsed.name || null;
+              streamingState.activeToolCallName = parsed.name || null;
               dispatch(
                 addToolCallToMessage({
                   channelId,
@@ -556,6 +579,8 @@ export const sendMessageWithApiStreaming =
                 })
               );
             } else if (parsed.event === "tool_result") {
+              streamingState.activeToolCallId = null;
+              streamingState.activeToolCallName = null;
               dispatch(
                 updateToolCallResult({
                   channelId,
@@ -563,6 +588,17 @@ export const sendMessageWithApiStreaming =
                   callId: parsed.call_id,
                   name: parsed.name,
                   result: parsed.content,
+                })
+              );
+            } else if (parsed.event === "browser_handoff") {
+              dispatch(
+                setToolCallHandoff({
+                  channelId,
+                  messageId: streamingState.messageId,
+                  callId: parsed.call_id,
+                  name: parsed.name,
+                  liveUrl: parsed.live_url,
+                  message: parsed.message,
                 })
               );
             } else if (parsed.event === "template_response") {
@@ -647,7 +683,7 @@ export const sendMessageWithApiStreaming =
       }
       if (userMessage) dispatch(removeMessage({ channelId, messageId: userMessage.id }));
       if (loadingMessage) dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
-      dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
+      dispatch(setChatError(channelId, getErrorMessage(error)));
       dispatch(setChatLoading(channelId, false));
       throw error;
     }

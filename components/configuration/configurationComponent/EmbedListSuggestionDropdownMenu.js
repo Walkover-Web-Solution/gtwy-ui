@@ -34,16 +34,19 @@ function EmbedListSuggestionDropdownMenu({
   const { getFunctionCreationVideo } = useTutorialVideos();
   const versionId = searchParams?.version;
 
-  const { integrationData, function_data, embedToken, variablesPath } = useCustomSelector((state) => {
-    const orgId = Number(params?.org_id);
-    const orgData = state?.bridgeReducer?.org?.[orgId] || {};
-    return {
-      integrationData: orgData.integrationData,
-      function_data: orgData.functionData,
-      embedToken: orgData.embed_token,
-      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-    };
-  });
+  const { integrationData, function_data, embedToken, variablesPath, embedDefaultToolIds } = useCustomSelector(
+    (state) => {
+      const orgId = Number(params?.org_id);
+      const orgData = state?.bridgeReducer?.org?.[orgId] || {};
+      return {
+        integrationData: orgData.integrationData,
+        function_data: orgData.functionData,
+        embedToken: orgData.embed_token,
+        variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
+        embedDefaultToolIds: state?.appInfoReducer?.embedUserDetails?.tools_id || [],
+      };
+    }
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -54,14 +57,21 @@ function EmbedListSuggestionDropdownMenu({
 
   const handleItemClick = (id) => {
     onSelect(id); // Assuming onSelect is a function you've defined elsewhere
+    setSearchQuery("");
+    document.activeElement?.blur();
   };
   const handlePrebuiltToolClick = (tool) => {
     onSelectPrebuiltTool(tool);
+    setSearchQuery("");
+    document.activeElement?.blur();
   };
 
   const handleBuiltInPreToolClick = (type) => {
     onSelectBuiltInPreTool(type);
+    setSearchQuery("");
+    document.activeElement?.blur();
   };
+
   const renderEmbedSuggestions = useMemo(
     () =>
       function_data &&
@@ -72,7 +82,8 @@ function EmbedListSuggestionDropdownMenu({
           return (
             title !== undefined &&
             title?.toLowerCase()?.includes(normalizedSearchQuery) &&
-            !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id)
+            !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id) &&
+            !(embedDefaultToolIds || []).includes(value?._id)
           );
         })
         .slice() // Create a copy of the array to avoid mutating the original
@@ -129,7 +140,15 @@ function EmbedListSuggestionDropdownMenu({
             </li>
           );
         }),
-    [integrationData, function_data, normalizedSearchQuery, getStatusClass, connectedFunctions, searchParams?.version]
+    [
+      integrationData,
+      function_data,
+      normalizedSearchQuery,
+      getStatusClass,
+      connectedFunctions,
+      embedDefaultToolIds,
+      searchParams?.version,
+    ]
   );
 
   const availablePrebuiltTools = useMemo(() => {
@@ -139,7 +158,7 @@ function EmbedListSuggestionDropdownMenu({
       (t) =>
         !selected.has(t.value) &&
         t?.name?.toLowerCase()?.includes(normalizedSearchQuery) &&
-        showInbuiltTools?.[t?.value]
+        (t?.isGtwyTool || showInbuiltTools?.[t?.value])
     );
   }, [prebuiltToolsData, toolsVersionData, normalizedSearchQuery, showInbuiltTools]);
 
@@ -165,6 +184,7 @@ function EmbedListSuggestionDropdownMenu({
           id="embed-suggestion-dropdown-menu"
           tabIndex={0}
           className={`menu menu-dropdown-toggle dropdown-content ${name === "preFunction" ? "z-[15]" : "z-high"} px-4 shadow bg-base-100 rounded-box w-72 max-h-96 overflow-y-auto pb-0`}
+          style={{ pointerEvents: "auto" }}
         >
           <div className="flex flex-col gap-2 w-full">
             {name === "preFunction" ? (
@@ -182,13 +202,8 @@ function EmbedListSuggestionDropdownMenu({
               placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
               value={searchQuery}
               onChange={handleInputChange} // Update search query on input change
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
             />
-            {Object.values(function_data || {})?.length > 0 ? (
-              renderEmbedSuggestions
-            ) : (
-              <li className="text-center mt-2">No tools found</li>
-            )}
             {name === "preFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Built-in Pre Tools</li>
@@ -203,6 +218,11 @@ function EmbedListSuggestionDropdownMenu({
                       </div>
                     </li>
                   ))}
+              </>
+            )}
+            {name === "postFunction" && (
+              <>
+                <li className="text-sm font-semibold disabled mt-2">Custom Post Functions</li>
               </>
             )}
             {name !== "preFunction" && name !== "postFunction" && (
@@ -233,6 +253,16 @@ function EmbedListSuggestionDropdownMenu({
                   <li className="text-center mt-2">No prebuilt tools</li>
                 )}
               </>
+            )}
+            {name !== "postFunction" && (
+              <li className="text-sm font-semibold disabled mt-2">
+                {name === "preFunction" ? "Custom Pre Functions" : "Custom Tools"}
+              </li>
+            )}
+            {Object.values(function_data || {})?.length > 0 ? (
+              renderEmbedSuggestions
+            ) : (
+              <li className="text-center mt-2">No tools found</li>
             )}
 
             {!hideCreateFunction && (

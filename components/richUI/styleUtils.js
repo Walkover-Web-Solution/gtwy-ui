@@ -209,7 +209,7 @@ export function resolveBorder(border) {
   if (border === true) return { className: "border border-base-content/10", style: {} };
   if (typeof border === "object") {
     const style = {};
-    const color = border.color || "rgba(var(--bc), 0.1)"; // fallback to semantic base-content
+    const color = border.color || "color-mix(in oklch, var(--color-base-content) 10%, transparent)"; // fallback to semantic base-content
     const sides = { top: "borderTop", bottom: "borderBottom", left: "borderLeft", right: "borderRight", all: "border" };
     Object.entries(border).forEach(([k, v]) => {
       if (sides[k] && v) {

@@ -13,14 +13,12 @@ import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { useRouter } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
-import AgentSetupGuide from "@/components/AgentSetupGuide";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { RefreshIcon } from "@/components/Icons";
 import { CircleAlert } from "lucide-react";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 const ConfigurationPage = dynamic(() => import("@/components/configuration/ConfigurationPage"));
 const Chat = dynamic(() => import("@/components/configuration/Chat"), { loading: () => null });
-const WebhookForm = dynamic(() => import("@/components/BatchApi"), { ssr: false });
 const PromptHelper = dynamic(() => import("@/components/PromptHelper"), { ssr: false });
 const NotesPanel = dynamic(() => import("@/components/NotesPanel"), { ssr: false });
 const ConfigurationSkeleton = dynamic(() => import("@/components/skeletons/ConfigurationSkeleton"), { ssr: false });
@@ -143,6 +141,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     isNotesCollapsed: false,
   }));
 
+  // setIsGuideVisible is wired to AgentSetupGuide, temporarily commented out below.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const [isGuideVisible, setIsGuideVisible] = useState(false);
   const [apiKeyError, setApiKeyError] = useState(false);
 
@@ -150,8 +150,18 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   const containerRef = useRef(null);
 
   // Optimized selector with better memoization
-  const { bridgeType, versionService, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
+  const { bridgeType, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
     useConfigurationSelector(resolvedParams, resolvedSearchParams);
+
+  // Set by BridgeVersionDropdown, which lives in the layout and survives the remount
+  // this page goes through on a version change.
+  const isVersionSwitching = useCustomSelector((state) => state?.bridgeReducer?.versionSwitching);
+
+  const currentVariablesState = useCustomSelector(
+    (state) =>
+      state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams?.id]?.[resolvedSearchParams?.version]?.agent_info
+        ?.variables_state || {}
+  );
 
   const showPlayground = useCustomSelector((state) => {
     const details = state?.appInfoReducer?.embedUserDetails || {};
@@ -360,14 +370,17 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [uiState.isConfigCollapsed, uiState.isPromptHelperCollapsed, uiState.isPromptHelperOpen]);
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleSwitchToModelTab = useCallback(() => {
     setParam("tab", "model");
   }, [setParam]);
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleSwitchToPromptTab = useCallback(() => {
     setParam("tab", "prompt");
   }, [setParam]);
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleSwitchToConnectorsTab = useCallback(() => {
     setParam("tab", "connectors");
   }, [setParam]);
@@ -404,12 +417,14 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
       const newValue = isObject ? newPrompt : (newPrompt || "").trim();
       const promptForVars = isObject ? Object.values(newPrompt).join(" ") : newValue;
       const promptVariables = extractPromptVariables(promptForVars);
-      const variablesState = {};
+      const variablesState = { ...(currentVariablesState || {}) };
 
       promptVariables.forEach((varName) => {
+        const existing = currentVariablesState?.[varName];
         variablesState[varName] = {
-          status: "required",
-          default_value: "",
+          status: existing?.status || "required",
+          default_value: existing?.default_value ?? "",
+          type: existing?.type || "string",
         };
       });
 
@@ -435,7 +450,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
         );
       }
     },
-    [dispatch, resolvedSearchParams?.version, reduxPrompt]
+    [dispatch, resolvedSearchParams?.version, reduxPrompt, currentVariablesState]
   );
 
   const scrollToTextarea = () => {
@@ -603,8 +618,9 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [bridgeType]);
 
-  // Show skeleton loading state only for initial load (when no data exists)
-  if (isLoading && !hasData && !hasError) {
+  // Skeleton covers the initial load and every version switch. It stays up past
+  // VERSION_SWITCH_MIN_MS while the newly selected version is still being fetched.
+  if ((isVersionSwitching || (isLoading && !hasData)) && !hasError) {
     return (
       <div className="w-full h-full">
         <ConfigurationSkeleton />
@@ -783,7 +799,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                         className={`flex-1 overflow-x-hidden ${isGuideVisible ? "overflow-y-hidden" : "overflow-y-auto"}`}
                       >
                         <div id="chat-container" className="h-full flex flex-col">
-                          <AgentSetupGuide
+                          {/* eslint-disable-next-line no-commented-code/no-commented-code -- AgentSetupGuide temporarily disabled, kept for quick re-enable */}
+                          {/* <AgentSetupGuide
                             id="agent-setup-guide"
                             promptTextAreaRef={promptTextAreaRef}
                             apiKeySectionRef={apiKeySectionRef}
@@ -795,25 +812,17 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             onSwitchToPromptTab={handleSwitchToPromptTab}
                             onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                             setApiKeyError={setApiKeyError}
-                          />
+                          /> */}
                           {!isGuideVisible && (
                             <>
                               {!sessionStorage.getItem("orchestralUser") ? (
                                 <div id="chat-content-container" className="flex-1 min-h-0">
-                                  {bridgeType === "batch" && versionService === "openai" ? (
-                                    <WebhookForm
-                                      id="webhook-form"
-                                      params={resolvedParams}
-                                      searchParams={resolvedSearchParams}
-                                    />
-                                  ) : (
-                                    <Chat
-                                      id="chat-component"
-                                      params={resolvedParams}
-                                      searchParams={resolvedSearchParams}
-                                      draftPrompt={draftPromptForPlayground}
-                                    />
-                                  )}
+                                  <Chat
+                                    id="chat-component"
+                                    params={resolvedParams}
+                                    searchParams={resolvedSearchParams}
+                                    draftPrompt={draftPromptForPlayground}
+                                  />
                                 </div>
                               ) : (
                                 <div id="alternative-chat-container" className="flex-1 min-h-0">
@@ -867,6 +876,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                       savePrompt={savePrompt}
                       isEmbedUser={isEmbedUser}
                       variable_key={promptState.activeHelperField || null}
+                      draftPrompt={promptState.draftPromptValue}
                       setPrompt={(value) => {
                         // Update prompt state for diff/summary
                         setPromptState((prev) => ({ ...prev, newContent: value }));
@@ -1016,39 +1026,33 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
 
           {/* Chat Panel */}
           {(!isEmbedUser || (isEmbedUser && showPlayground)) && (
-            <div id="parentChatbot" className="min-h-screen">
-              <div id="mobile-chat-container" className="h-full flex flex-col">
-                <AgentSetupGuide
+            <div id="parentChatbot" className="h-[100dvh] flex flex-col">
+              <div id="mobile-chat-container" className="flex-1 min-h-0 flex flex-col">
+                {/* eslint-disable-next-line no-commented-code/no-commented-code -- AgentSetupGuide temporarily disabled, kept for quick re-enable */}
+                {/* <AgentSetupGuide
                   id="mobile-agent-setup-guide"
                   promptTextAreaRef={promptTextAreaRef}
                   apiKeySectionRef={apiKeySectionRef}
                   params={resolvedParams}
                   searchParams={resolvedSearchParams}
                   draftPrompt={promptState.newContent}
+                  onVisibilityChange={setIsGuideVisible}
                   onSwitchToModelTab={handleSwitchToModelTab}
                   onSwitchToPromptTab={handleSwitchToPromptTab}
                   onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                   setApiKeyError={setApiKeyError}
-                />
+                /> */}
 
-                {!isGuideVisible && (
+                {isGuideVisible && (
                   <>
                     {!sessionStorage.getItem("orchestralUser") ? (
                       <div id="mobile-chat-content-container" className="flex-1 min-h-0">
-                        {bridgeType === "batch" && versionService === "openai" ? (
-                          <WebhookForm
-                            id="mobile-webhook-form"
-                            params={resolvedParams}
-                            searchParams={resolvedSearchParams}
-                          />
-                        ) : (
-                          <Chat
-                            id="mobile-chat-component"
-                            params={resolvedParams}
-                            searchParams={resolvedSearchParams}
-                            draftPrompt={draftPromptForPlayground}
-                          />
-                        )}
+                        <Chat
+                          id="mobile-chat-component"
+                          params={resolvedParams}
+                          searchParams={resolvedSearchParams}
+                          draftPrompt={draftPromptForPlayground}
+                        />
                       </div>
                     ) : (
                       <div id="mobile-alternative-chat-container" className="flex-1 min-h-0">

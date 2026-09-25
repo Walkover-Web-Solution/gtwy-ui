@@ -20,6 +20,10 @@ const initialState = {
     loading: false, // Track loading state for metrics API
   },
   agentsVersionsData: {},
+  // True while the UI is moving between agent versions, so the page can show its
+  // skeleton. Lives here because the page remounts on a version switch while the
+  // version dropdown (mounted in the layout) does not.
+  versionSwitching: false,
 };
 
 export const bridgeReducer = createSlice({
@@ -92,6 +96,9 @@ export const bridgeReducer = createSlice({
     createBridgeReducer: (state, action) => {
       state.org[action.payload.orgId]?.orgs?.push(action.payload.data.data.agent);
     },
+    setVersionSwitchingReducer: (state, action) => {
+      state.versionSwitching = action.payload;
+    },
     createBridgeVersionReducer: (state, action) => {
       const { newVersionId, parentVersionId, bridgeId, version_description, orgId } = action.payload;
       if (!state.bridgeVersionMapping[bridgeId]) {
@@ -126,7 +133,7 @@ export const bridgeReducer = createSlice({
       }
     },
     updateBridgeReducer: (state, action) => {
-      const { bridges, functionData } = action.payload;
+      const { bridges } = action.payload;
       const { _id, configuration, ...extraData } = bridges;
 
       state.allBridgesMap[_id] = {
@@ -146,19 +153,6 @@ export const bridgeReducer = createSlice({
         }
       }
 
-      if (functionData) {
-        const existingBridgeIds = state.org[bridges.org_id].functionData[functionData.function_id]?.bridge_ids || [];
-
-        if (functionData?.function_operation) {
-          // Create a new array with the added bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = [...existingBridgeIds, _id];
-        } else {
-          // Create a new array without the removed bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = existingBridgeIds.filter(
-            (id) => id !== _id
-          );
-        }
-      }
       if (bridges?.name) {
         const allData = state.org[bridges.org_id]?.orgs;
         if (allData) {
@@ -176,26 +170,10 @@ export const bridgeReducer = createSlice({
       state.loading = false;
     },
     updateBridgeVersionReducer: (state, action) => {
-      const { bridges, functionData } = action.payload;
+      const { bridges } = action.payload;
       // Use the complete bridges object that was already merged in the action
       // Don't destructure or we'll lose fields like agents, variables_path, etc.
       state.bridgeVersionMapping[bridges.parent_id][bridges._id] = bridges;
-      if (functionData) {
-        const existingBridgeIds = state.org[bridges.org_id].functionData[functionData.function_id]?.bridge_ids || [];
-
-        if (functionData?.function_operation) {
-          // Create a new array with the added bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = [
-            ...existingBridgeIds,
-            bridges._id,
-          ];
-        } else {
-          // Create a new array without the removed bridge_id
-          state.org[bridges.org_id].functionData[functionData.function_id].bridge_ids = existingBridgeIds.filter(
-            (id) => id !== bridges._id
-          );
-        }
-      }
       state.loading = false;
     },
 
@@ -387,6 +365,7 @@ export const {
   fetchSingleBridgeVersionReducer,
   fetchAllBridgeReducer,
   fetchAllFunctionsReducer,
+  setVersionSwitchingReducer,
   createBridgeVersionReducer,
   deleteBridgeVersionReducer,
   createBridgeReducer,

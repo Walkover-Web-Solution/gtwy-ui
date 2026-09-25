@@ -2,7 +2,7 @@ import { MODAL_TYPE } from "@/utils/enums";
 import React, { useState } from "react";
 import Modal from "../UI/Modal";
 import { getInvitedUsers, inviteUser } from "@/config/index";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { closeModal, RequiredItem } from "@/utils/utility";
 import { Mail, UserPlus } from "lucide-react";
 
@@ -69,7 +69,7 @@ const InviteUserModal = () => {
       >
         <div className="form-control w-full">
           <label className="label">
-            <span className="label-text font-medium">
+            <span className="font-medium">
               Email Address <RequiredItem />
             </span>
           </label>
@@ -85,7 +85,7 @@ const InviteUserModal = () => {
               value={email}
               onChange={handleEmailChange}
               placeholder="Enter email address"
-              className="input input-bordered w-full pl-10"
+              className="input w-full pl-10"
               disabled={isInviting}
               required
             />

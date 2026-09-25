@@ -33,7 +33,13 @@ const ConfigurationPage = ({
   const [currentView, setCurrentView] = useState(viewOverride || view);
   const [promptResetKey, setPromptResetKey] = useState(0);
 
-  const channelId = params?.org_id && params?.id ? `${params.org_id}_${params.id}`.replace(/ /g, "_") : "";
+  const currentUserId = isEmbedUser
+    ? typeof window !== "undefined"
+      ? sessionStorage.getItem("gtwy_user_id")
+      : null
+    : useCustomSelector((state) => state?.userDetailsReducer?.userDetails?.id);
+  const channelId =
+    params?.org_id && params?.id ? `${params.org_id}_${params.id}_${currentUserId || ""}`.replace(/ /g, "_") : "";
   useRtLayerEventHandler(channelId);
 
   const discardPromptDraft = useCallback(() => {
@@ -70,14 +76,16 @@ const ConfigurationPage = ({
     // Original logic for non-embed users
     return (
       (currentOrgRole === "Editor" &&
-        (bridge?.users?.length === 0 ||
-          !bridge?.users ||
-          (bridge?.users?.length > 0 && bridge?.users?.some((user) => user === currentUser.id)))) ||
-      (currentOrgRole === "Viewer" && bridge?.users?.some((user) => user === currentUser.id)) ||
+        (bridge?.settings?.editAccess?.length === 0 ||
+          !bridge?.settings?.editAccess ||
+          (bridge?.settings?.editAccess?.length > 0 &&
+            bridge?.settings?.editAccess?.some((user) => String(user) === String(currentUser.id))))) ||
+      (currentOrgRole === "Viewer" &&
+        bridge?.settings?.editAccess?.some((user) => String(user) === String(currentUser.id))) ||
       currentOrgRole === "Creator" ||
       isAdminOrOwner
     );
-  }, [currentOrgRole, currentUser, bridge?.users, isAdminOrOwner, isEmbedUser]);
+  }, [currentOrgRole, currentUser, bridge?.settings?.editAccess, isAdminOrOwner, isEmbedUser]);
   // }, [bridgeType, currentView, params.org_id, params.id, searchParams.version, router]);
 
   const handleNavigation = useCallback(

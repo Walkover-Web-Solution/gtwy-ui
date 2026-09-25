@@ -8,7 +8,7 @@ export const getServiceAction = () => async (dispatch) => {
     if (data && typeof data === "object") {
       const default_model = { ...data?.services };
 
-      const services = Object.keys(data?.services).map((service) => ({
+      const services = Object.keys(data?.services || {}).map((service) => ({
         value: service,
         displayName: data?.services?.[service]?.default_name,
       }));

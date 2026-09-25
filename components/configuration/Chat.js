@@ -2,6 +2,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import ChatTextInput from "./ChatTextInput";
 import { PdfIcon } from "@/icons/pdfIcon";
+import GoogleDocIcon from "@/icons/GoogleDocIcon";
+import { isWordFileUrl } from "@/utils/attachmentUtils";
 import { truncate } from "../historyPageComponents/AssistFile";
 import { AlertIcon, CloseCircleIcon } from "@/components/Icons";
 import {
@@ -20,6 +22,7 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   SquarePen,
   Copy,
   Check,
@@ -27,7 +30,7 @@ import {
 import TestCaseSidebar from "./TestCaseSidebar";
 import AddTestCaseModal from "../modals/AddTestCaseModal";
 import { createConversationForTestCase, toggleSidebar, openModal, extractErrorMessage } from "@/utils/utility";
-import { MODAL_TYPE, DEFAULT_STARTER_QUESTIONS } from "@/utils/enums";
+import { MODAL_TYPE, DEFAULT_STARTER_QUESTIONS, AVAILABLE_MODEL_TYPES } from "@/utils/enums";
 import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
 import { runTestCaseAction } from "@/store/action/testCasesAction";
 import { testRunResetReducer } from "@/store/reducer/testCasesReducer";
@@ -49,6 +52,7 @@ import {
 import RenderNode from "../richUI/RenderNode";
 import ReasoningAccordion from "./ReasoningAccordion";
 import ReviewPhaseAccordion from "./ReviewPhaseAccordion";
+import BrowserToolPreview, { isBrowserTool } from "./BrowserToolPreview";
 import { mdComponentsDark, mdRemarkPlugins, mdProseClass } from "@/utils/markdownComponents";
 
 const mdComponents = mdComponentsDark;
@@ -111,8 +115,24 @@ function StreamingMessage({ content, isStreaming }) {
   );
 }
 
-function ToolCallItem({ toolCall, isMessageComplete }) {
+// Browser tool calls render as a page-preview card; everything else as the raw accordion.
+function ToolCallItem({ toolCall, isMessageComplete, isActiveHandoff }) {
+  return isBrowserTool(toolCall.name) ? (
+    <BrowserToolPreview toolCall={toolCall} isActiveHandoff={isActiveHandoff} />
+  ) : (
+    <GenericToolCallItem toolCall={toolCall} isMessageComplete={isMessageComplete} />
+  );
+}
+
+function GenericToolCallItem({ toolCall, isMessageComplete }) {
   const [open, setOpen] = useState(false);
+
+  // Auto-open when streaming content starts arriving during tool call
+  useEffect(() => {
+    if (toolCall.status === "calling" && toolCall.streamingContent) setOpen(true);
+  }, [toolCall.status, toolCall.streamingContent]);
+
+  // Auto-open when result arrives
   useEffect(() => {
     if (toolCall.status === "done") setOpen(true);
   }, [toolCall.status]);
@@ -120,6 +140,7 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
   useEffect(() => {
     if (isMessageComplete) setOpen(false);
   }, [isMessageComplete]);
+
   let parsedResult = null;
   if (toolCall.result) {
     try {
@@ -128,19 +149,23 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
       parsedResult = toolCall.result;
     }
   }
+
+  const hasBody = toolCall.status === "done" ? !!toolCall.result : !!toolCall.streamingContent;
+  const canToggle = hasBody;
+
   return (
     <div className="rounded-lg border border-base-300 bg-base-200 text-xs overflow-hidden">
       <div
-        className={`flex items-center gap-2 px-3 py-1.5 select-none ${toolCall.status === "done" ? "cursor-pointer" : "cursor-default"}`}
-        onClick={() => toolCall.status === "done" && setOpen((v) => !v)}
+        className={`flex items-center gap-2 px-3 py-1.5 select-none ${canToggle ? "cursor-pointer" : "cursor-default"}`}
+        onClick={() => canToggle && setOpen((v) => !v)}
       >
         {toolCall.status === "calling" ? (
-          <span className="loading loading-spinner loading-xs text-primary" />
+          <span className="h-4 w-4 inline-block animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
         ) : (
           <Wrench className="h-3.5 w-3.5 text-success shrink-0" />
         )}
         <span className=" font-medium truncate flex-1">{toolCall.name}</span>
-        {toolCall.status === "calling" ? (
+        {!canToggle ? (
           <span className="text-base-content/50 italic">calling…</span>
         ) : open ? (
           <ChevronUp className="h-3.5 w-3.5 shrink-0" />
@@ -148,9 +173,19 @@ function ToolCallItem({ toolCall, isMessageComplete }) {
           <ChevronDown className="h-3.5 w-3.5 shrink-0" />
         )}
       </div>
-      {toolCall.status === "done" && open && (
-        <div className="border-t border-base-300 px-3 py-2 bg-base-100  whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
-          {typeof parsedResult === "object" ? JSON.stringify(parsedResult, null, 2) : String(parsedResult)}
+      {open && hasBody && (
+        <div className="border-t border-base-300 px-3 py-2 bg-base-100 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+          {toolCall.status === "done" ? (
+            // Final tool result
+            typeof parsedResult === "object" ? (
+              JSON.stringify(parsedResult, null, 2)
+            ) : (
+              String(parsedResult)
+            )
+          ) : (
+            // Live streaming output while the tool is executing
+            <span className="text-base-content/70">{toolCall.streamingContent}</span>
+          )}
         </div>
       )}
     </div>
@@ -171,6 +206,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
   const isAtBottomRef = useRef(true);
   const dispatch = useDispatch();
   const inputRef = useRef(null);
+  const suggestionsScrollRef = useRef(null);
   const [showTestCases, setShowTestCases] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState("exact");
   const [testCaseId, setTestCaseId] = useState(null);
@@ -200,17 +236,29 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     (state) => state?.bridgeReducer?.allBridgesMap?.[params?.id]?.published_version_id
   );
 
+  const currentUserId = isEmbedUser
+    ? typeof window !== "undefined"
+      ? sessionStorage.getItem("gtwy_user_id")
+      : null
+    : useCustomSelector((state) => state?.userDetailsReducer?.userDetails?.id);
+
   const channelIdentifier = useMemo(() => {
     const isPublished = searchParams?.isPublished === "true";
 
     if (isPublished) {
       // For published version, use published version ID in channel identifier
-      return (params.org_id + "_" + params?.id + "_" + publishedVersionId).replace(/ /g, "_");
+      return (params.org_id + "_" + params?.id + "_" + publishedVersionId + "_" + (currentUserId || "")).replace(
+        / /g,
+        "_"
+      );
     } else {
       // For draft versions, include the version
-      return (params.org_id + "_" + params?.id + "_" + searchParams?.version).replace(/ /g, "_");
+      return (params.org_id + "_" + params?.id + "_" + searchParams?.version + "_" + (currentUserId || "")).replace(
+        / /g,
+        "_"
+      );
     }
-  }, [params, searchParams, publishedVersionId]);
+  }, [params, searchParams, publishedVersionId, currentUserId]);
 
   // Redux selectors for chat state
   const {
@@ -245,11 +293,30 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
     };
   });
 
+  const activeHandoffCallId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const toolCalls = messages[i].toolCalls || [];
+      const firstHandoffCall = toolCalls.find(
+        (tc) => !!tc.handoff?.liveUrl || (typeof tc.result === "string" && tc.result.includes("live_url"))
+      );
+      if (firstHandoffCall) return firstHandoffCall.call_id;
+    }
+    return null;
+  }, [messages]);
+
   // Starter questions: use bridge-level configured ones, fall back to defaults
   const displayStarterQuestions = useMemo(() => {
     const configured = Array.isArray(starterQuestions) ? starterQuestions.filter((q) => q?.trim()) : [];
     return configured.length > 0 ? configured : DEFAULT_STARTER_QUESTIONS;
   }, [starterQuestions]);
+
+  // Follow-up suggestions attach to the last assistant message; once a new
+  // message is sent it's no longer last, so the chips naturally disappear.
+  const latestAssistantMessage = messages[messages.length - 1];
+  const latestAssistantSuggestions =
+    latestAssistantMessage?.sender === "assistant" && !latestAssistantMessage?.isLoading
+      ? latestAssistantMessage.suggestions
+      : null;
 
   // Initialize channel and RT layer
   useEffect(() => {
@@ -829,7 +896,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                   rel="noopener noreferrer"
                   className="flex items-center space-x-1 hover:underline"
                 >
-                  <PdfIcon height={20} width={20} />
+                  {isWordFileUrl(url) ? <GoogleDocIcon height={20} width={20} /> : <PdfIcon height={20} width={20} />}
                   <span className="text-sm overflow-hidden truncate max-w-[10rem]">
                     {truncate(url.split("/").pop(), 20)}
                   </span>
@@ -861,7 +928,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
           className="absolute inset-0 bg-base-200/90 border-4 border-dashed border-primary flex items-center justify-center z-50 backdrop-blur-sm"
         >
           <div className="pointer-events-none flex flex-col items-center gap-3 bg-base-100 p-6 rounded-xl shadow-2xl border border-primary/20">
-            <span className="loading loading-spinner loading-md text-primary"></span>
+            <span className="h-6 w-6 inline-block animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
             <span className="text-primary font-semibold text-lg">Drop files here to upload to Chat</span>
           </div>
         </div>
@@ -910,7 +977,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                 className="btn btn-sm gap-1.5 px-3"
                 onClick={handleAddConversationToTestCase}
                 disabled={
-                  !messages || messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0
+                  !messages ||
+                  messages.filter((m) => m.sender === "user" || m.sender === "assistant").length === 0 ||
+                  modelType === AVAILABLE_MODEL_TYPES.IMAGE ||
+                  messages.some((m) => m?.llm_urls?.length > 0)
                 }
               >
                 + Add To Testcase
@@ -960,7 +1030,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-md z-50"
             >
               <div className="flex items-center gap-3 bg-base-100 p-4 rounded-lg shadow-lg border border-base-content/20">
-                <span className="loading loading-spinner loading-md text-primary"></span>
+                <span className="h-6 w-6 inline-block animate-spin rounded-full border-2 border-current border-t-transparent text-primary" />
                 <span className="text-base font-medium">Loading test case conversation...</span>
               </div>
             </div>
@@ -1231,7 +1301,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     ? `mr-8 w-full rounded-xl break-words ${message.content ? "px-4 py-3 border border-base-content/20" : ""}`
                                     : message.sender === "error"
                                       ? "rounded-xl w-full overflow-hidden bg-error/10 border border-error/30 text-error px-4 py-3 text-sm"
-                                      : "chat-bubble w-fit max-w-full text-sm text-neutral-content break-words whitespace-pre-wrap"
+                                      : "chat-bubble w-fit max-w-full text-sm text-base-content break-words whitespace-pre-wrap"
                                 } ${isRichUiMessage(message) ? "!bg-transparent !shadow-none !p-0 !border-0" : ""}`}
                               >
                                 {/* Show loader overlay if this is the message being tested and no result yet */}
@@ -1241,7 +1311,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                   !message.testCaseResult && (
                                     <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10 pointer-events-none">
                                       <div className="flex items-center gap-2">
-                                        <span className="loading loading-spinner loading-sm"></span>
+                                        <span className="h-5 w-5 inline-block animate-spin rounded-full border-2 border-current border-t-transparent" />
                                         <span className="text-sm font-medium">Running Test Case...</span>
                                       </div>
                                     </div>
@@ -1255,7 +1325,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                       id="chat-edit-textarea"
                                       value={editContent}
                                       onChange={(e) => setEditContent(e.target.value)}
-                                      className="textarea textarea-bordered w-full min-h-[100px] resize-y text-base-content bg-base-100"
+                                      className="textarea w-full min-h-[100px] resize-y text-base-content bg-base-100"
                                       placeholder="Edit message content..."
                                     />
                                     <div className="flex gap-2 mt-2">
@@ -1335,6 +1405,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                               key={tc.call_id}
                                               toolCall={tc}
                                               isMessageComplete={!message.isStreaming && !message.isLoading}
+                                              isActiveHandoff={tc.call_id === activeHandoffCallId}
                                             />
                                           ))}
                                         </div>
@@ -1342,8 +1413,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
 
                                       {/* Loading state for assistant message */}
                                       {message.isLoading && !message.content && !message.toolCalls?.length ? (
-                                        <div data-testid="chat-loading-state" className="py-1">
-                                          <span className="loading loading-dots loading-sm"></span>
+                                        <div data-testid="chat-loading-state" className="flex items-center gap-1 py-2">
+                                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-base-content/50 [animation-delay:-0.3s]" />
+                                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-base-content/50 [animation-delay:-0.15s]" />
+                                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-base-content/50" />
                                         </div>
                                       ) : message.isStreaming && message.content ? (
                                         <StreamingMessage content={message.content} isStreaming={message.isStreaming} />
@@ -1471,10 +1544,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                     </button>
                                   )}
 
-                                  {/* Message Metrics (Tokens, Cost, Latency) */}
-                                  {(message.usage || message.latency) && (
+                                  {/* Message Metrics (Tokens, Cost, Latency) — usage is hidden from embed users */}
+                                  {((!isEmbedUser && message.usage) || message.latency) && (
                                     <div className="see-on-hover transition-opacity duration-200 inline-flex flex-wrap items-center gap-1.5 text-[10px] text-base-content/60 font-medium select-none">
-                                      {message.usage?.cost > 0 && (
+                                      {!isEmbedUser && message.usage?.cost > 0 && (
                                         <span
                                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200 border border-base-content/15 shadow-sm"
                                           title="Estimated cost"
@@ -1499,7 +1572,7 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                           )}
                                         </span>
                                       )}
-                                      {message.usage?.total_tokens > 0 && (
+                                      {!isEmbedUser && message.usage?.total_tokens > 0 && (
                                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-base-200 border border-base-content/15 shadow-sm">
                                           <span className="font-semibold text-base-content/70">Tokens:</span>
                                           <span className="text-base-content/90">
@@ -1565,6 +1638,50 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
               className="border-base-content/30 pt-4 pb-4 w-full"
             >
               <div className="relative flex flex-col gap-4 w-full">
+                {/* Follow-up suggestion chips — shown above the input while the latest
+                    assistant message has suggestions attached; disappear once the next
+                    message is sent since a new last message won't carry them. */}
+                {latestAssistantSuggestions?.length > 0 && (
+                  <div className="relative w-full">
+                    <div
+                      ref={suggestionsScrollRef}
+                      data-testid="chat-suggestions"
+                      className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-hide pr-8"
+                    >
+                      {latestAssistantSuggestions.map((suggestion, sIndex) => (
+                        <button
+                          key={sIndex}
+                          data-testid={`chat-suggestion-chip-${sIndex}`}
+                          className="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full border border-base-content/15 bg-base-200/50 hover:bg-primary/10 hover:border-primary/40 text-xs text-base-content/80 transition-colors duration-150"
+                          onClick={() => {
+                            if (handleSendMessageRef.current && inputRef.current) {
+                              inputRef.current.value = suggestion;
+                              setTimeout(() => handleSendMessageRef.current(null, true), 50);
+                              setTimeout(() => {
+                                if (inputRef.current) inputRef.current.value = "";
+                              }, 200);
+                            }
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Scroll suggestions right"
+                      onClick={() => {
+                        suggestionsScrollRef.current?.scrollBy({
+                          left: 120,
+                          behavior: "smooth",
+                        });
+                      }}
+                      className="absolute right-0 top-0 bottom-0 flex items-center justify-center w-8 bg-gradient-to-l from-base-100 via-base-100/80 to-transparent"
+                    >
+                      <ChevronRight className="w-4 h-4 text-base-content/60" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex flex-row gap-2">
                   <ChatTextInput
                     channelIdentifier={channelIdentifier}

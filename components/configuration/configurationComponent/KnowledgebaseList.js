@@ -6,6 +6,8 @@ import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { GetFileTypeIcon, openModal } from "@/utils/utility";
 import { MODAL_TYPE } from "@/utils/enums";
 import KnowledgeBaseModal from "@/components/modals/KnowledgeBaseModal";
+import ResourceChunksModal from "@/components/modals/ResourceChunksModal";
+import QueryKnowledgeBaseModal from "@/components/modals/QueryKnowledgeBaseModal";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
 import OnBoarding from "@/components/OnBoarding";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
@@ -14,7 +16,8 @@ import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
-import { CircleQuestionMark, SquarePenIcon } from "lucide-react";
+import { CircleQuestionMark, FileSearch, SquarePenIcon } from "lucide-react";
+import toast from "react-hot-toast";
 
 const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true }) => {
   // Determine if content is read-only (either published or user is not an editor)
@@ -22,7 +25,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   // Use the tutorial videos hook
   const { getKnowledgeBaseVideo } = useTutorialVideos();
 
-  const { knowledgeBaseData, knowbaseVersionData, shouldToolsShow } = useCustomSelector((state) => {
+  const { knowledgeBaseData, knowbaseVersionData, shouldToolsShow, isOrgBlocked } = useCustomSelector((state) => {
     const modelReducer = state?.modelReducer?.serviceModels;
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -33,10 +36,23 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     const modelTypeName = activeData?.configuration?.type?.toLowerCase();
     const modelName = activeData?.configuration?.model;
 
+    // Read from connected_tools array and filter by type "docs"
+    const connectedTools = activeData?.connected_tools || [];
+    const docEntries = connectedTools.filter((t) => t?.type === "docs");
+
+    // Transform to legacy format for compatibility
+    const knowbaseVersionData = docEntries.map((entry) => ({
+      resource_id: entry.id,
+      collection_id: entry.collection_id,
+      name: entry.name,
+      description: entry.description,
+    }));
+
     return {
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
-      knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
+      knowbaseVersionData,
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
+      isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(params?.org_id) || false,
     };
   });
 
@@ -64,18 +80,20 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     );
     if (existingItem) return;
 
-    // Format the new item with collection_id and resource_id
-    const newDocItem = {
-      collection_id: knowledgeBaseItem.collectionId,
-      resource_id: id,
-      description: knowledgeBaseItem.description,
-      name: knowledgeBaseItem.title,
-    };
-
     dispatch(
       updateBridgeVersionAction({
+        bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { doc_ids: [...(knowbaseVersionData || []), newDocItem] },
+        dataToSend: {
+          connected_tool: {
+            type: "docs",
+            id: id,
+            collection_id: knowledgeBaseItem.collectionId,
+            name: knowledgeBaseItem.title,
+            description: knowledgeBaseItem.description,
+          },
+          operation: 1,
+        },
       })
     );
     // Close dropdown after selection
@@ -89,16 +107,14 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     await executeDelete(async () => {
       return dispatch(
         updateBridgeVersionAction({
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            doc_ids: knowbaseVersionData.filter((docItem) => {
-              // Handle both old format (string) and new format (object)
-              if (typeof docItem === "string") {
-                return docItem !== item?._id;
-              } else {
-                return docItem.resource_id !== item?._id;
-              }
-            }),
+            connected_tool: {
+              type: "docs",
+              id: item?._id,
+            },
+            operation: 0,
           },
         })
       );
@@ -112,6 +128,16 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   const handleEditKnowledgebase = (item) => {
     setSelectedResource(item);
     openModal(MODAL_TYPE?.KNOWLEDGE_BASE_MODAL);
+  };
+
+  const handleViewChunks = (item) => {
+    setSelectedKnowledgebase(item);
+    openModal(MODAL_TYPE?.RESOURCE_CHUNKS_MODAL);
+  };
+
+  const handleTestKnowledgebase = (item) => {
+    setSelectedKnowledgebase(item);
+    openModal(MODAL_TYPE?.QUERY_KNOWLEDGE_BASE_MODAL);
   };
 
   useEffect(() => {
@@ -147,7 +173,7 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
           placeholder="Search Knowledge Base"
           value={searchQuery}
           onChange={handleInputChange}
-          className="input input-bordered w-full input-sm"
+          className="input w-full input-sm"
         />
         {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
           .filter((item) => {
@@ -188,6 +214,12 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
           id="knowledgebase-add-new-button"
           className="py-2 border-t border-base-300 w-full sticky bottom-0 bg-base-100"
           onClick={() => {
+            if (isOrgBlocked) {
+              toast.error(
+                "Your org is blocked. You cannot create knowledge bases. Contact support@gtwy.ai for assistance."
+              );
+              return;
+            }
             if (window.openRag) {
               window.openRag();
             } else {
@@ -211,21 +243,29 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     const knowledgebaseItems = (Array.isArray(knowbaseVersionData) ? knowbaseVersionData : [])
       ?.map((docItem, index) => {
         // Handle both old format (string) and new format (object)
-        let resourceId, _collectionId;
+        let resourceId, _collectionId, storedName, storedDescription;
         if (typeof docItem === "string") {
           resourceId = docItem;
           _collectionId = null;
         } else {
           resourceId = docItem.resource_id;
           _collectionId = docItem.collection_id;
+          storedName = docItem.name;
+          storedDescription = docItem.description;
         }
 
-        const item = knowledgeBaseData?.find((kb) => kb._id === resourceId);
+        // Prefer the name/description saved on the connected_tool entry itself so we
+        // don't need to depend on a full knowledgeBaseData fetch for display.
+        const matchedItem = knowledgeBaseData?.find((kb) => kb._id === resourceId);
+        const item = storedName
+          ? { ...matchedItem, _id: resourceId, title: storedName, description: storedDescription }
+          : matchedItem;
         return item ? (
           <div
             data-testid={`knowledgebase-card-${item._id}`}
             id={`knowledgebase-card-${item._id}`}
             key={resourceId || index}
+            onClick={() => handleViewChunks(item)}
             className={`group flex items-center border border-base-200 bg-base-100 relative min-h-[44px] w-full ${item?.description?.trim() === "" ? "border-red-600" : ""} transition-colors duration-200 ${isReadOnly ? "cursor-not-allowed opacity-50 pointer-events-none" : "cursor-pointer"}`}
           >
             <div className="flex items-center gap-2 w-full ml-2">
@@ -249,6 +289,18 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
             <div
               className={`opacity-0 ${!isReadOnly ? "group-hover:opacity-100" : ""} transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0`}
             >
+              <button
+                data-testid={`knowledgebase-test-button-${item._id}`}
+                id={`knowledgebase-test-button-${item._id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTestKnowledgebase(item);
+                }}
+                className="btn btn-ghost btn-sm p-1 hover:bg-blue-100 hover:text-primary"
+                title="Test Knowledge Base"
+              >
+                <FileSearch size={16} />
+              </button>
               <button
                 data-testid={`knowledgebase-edit-button-${item._id}`}
                 id={`knowledgebase-edit-button-${item._id}`}
@@ -366,6 +418,11 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
         addToVersion={true}
         selectedResource={selectedResource}
         setSelectedResource={setSelectedResource}
+      />
+      <ResourceChunksModal resourceId={selectedKnowledgebase?._id} resourceName={selectedKnowledgebase?.title} />
+      <QueryKnowledgeBaseModal
+        resource={selectedKnowledgebase ? { _id: selectedKnowledgebase._id, name: selectedKnowledgebase.title } : null}
+        orgId={params?.org_id}
       />
     </div>
   );

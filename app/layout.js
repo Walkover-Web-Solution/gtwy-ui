@@ -2,13 +2,22 @@ import "./globals.css";
 import "../styles/performance-optimizations.css";
 import Wrapper from "@/wrapper/Wrapper";
 import { GoogleTagManager } from "@next/third-parties/google";
-import { DM_Sans } from "next/font/google";
+import { DM_Sans, DM_Mono } from "next/font/google";
 import NetworkStatus from "@/components/NetworkStatus";
 import PaletteFocusGuard from "@/components/PaletteFocusGuard";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
   display: "swap",
+});
+
+// Used for credit and price figures on the billing pages, exposed as a CSS
+// variable rather than the body font so it only applies where opted into.
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-dm-mono",
 });
 
 export const metadata = {
@@ -30,7 +39,7 @@ export default function RootLayout({ children }) {
     <html lang="en" data-theme="light">
       <GoogleTagManager gtmId="GTM-PXRN8T45" />
       <script src={`https://main.d2f49esifpcbwh.amplifyapp.com/tracker.js`} async />
-      <body suppressHydrationWarning className={dmSans.className}>
+      <body suppressHydrationWarning className={`${dmSans.className} ${dmMono.variable}`}>
         <PaletteFocusGuard />
         <Wrapper>{children}</Wrapper>
         <NetworkStatus />

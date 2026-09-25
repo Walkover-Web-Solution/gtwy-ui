@@ -621,7 +621,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
           {/* Search Section - Fixed at top */}
           <div className="p-4 flex-shrink-0">
             <div className="form-control">
-              <div className="input-group flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <input
                   autoComplete="off"
                   data-testid="agent-sidebar-search-input"
@@ -629,7 +629,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Search agents..."
-                  className="input input-sm input-bordered input-primary flex-1 focus:outline-offset-0 w-full"
+                  className="input input-sm input-primary flex-1 focus:outline-offset-0 w-full"
                 />
               </div>
             </div>
@@ -794,12 +794,12 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
               </div>
 
               {isCreateDropdownOpen && (
-                <div className="dropdown-content z-[1] card card-compact w-full bg-base-100 shadow-xl border border-primary/20 mb-2">
+                <div className="dropdown-content z-[1] card card-sm w-full bg-base-100 shadow-xl border border-primary/20 mb-2">
                   <div className="card-body space-y-4">
                     {/* Creation Type Selector */}
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text font-medium text-sm">Creation Method</span>
+                        <span className="font-medium text-sm">Creation Method</span>
                       </label>
                       <div className="join w-full">
                         <button
@@ -834,7 +834,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                           value={inputValue}
                           onChange={(e) => setInputValue(e.target.value)}
                           placeholder="Enter agent name..."
-                          className="input input-bordered input-primary w-full"
+                          className="input input-primary w-full"
                         />
                       ) : (
                         <textarea
@@ -843,7 +843,7 @@ export function AgentSidebar({ isOpen, title, agents, onClose, nodes, onChoose, 
                           onChange={(e) => setInputValue(e.target.value)}
                           placeholder="Describe what the agent should do..."
                           rows={2}
-                          className="textarea bg-base-100 textarea-bordered textarea-primary w-full resize-none"
+                          className="textarea bg-base-100 textarea-primary w-full resize-none"
                         />
                       )}
                     </div>

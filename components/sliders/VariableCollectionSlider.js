@@ -110,6 +110,15 @@ const fallbackValueForType = (type) => {
   }
 };
 
+/** Prefer persisted type from variables_state; fall back to inferring from values. */
+const resolveStoredVariableType = (variableStateData) => {
+  const storedType = variableStateData?.type;
+  if (storedType && VARIABLE_TYPES.some((t) => t.value === storedType)) {
+    return storedType;
+  }
+  return inferType(variableStateData?.value || variableStateData?.default_value, "") || "string";
+};
+
 const normaliseDraftList = (list = []) =>
   list.map((item) => ({
     id: item.id || item.__localId || createLocalId(),
@@ -120,19 +129,34 @@ const normaliseDraftList = (list = []) =>
     required: item.required !== false,
   }));
 
-const collectPreToolVariableKeys = (preTools = []) => {
+const collectPreToolVariableKeys = (connectedTools = []) => {
   const keys = new Set();
 
-  (preTools || []).forEach((tool) => {
-    if (tool?.type === "custom_function" && tool?.args) {
-      Object.values(tool.args).forEach((argValue) => {
-        const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
+  (connectedTools || []).forEach((tool) => {
+    if (tool?.type === "pre_tool" && tool?.pre_tool_type === "custom_function" && tool?.variable_path) {
+      Object.values(tool.variable_path).forEach((varValue) => {
+        const trimmedKey = typeof varValue === "string" ? varValue.trim() : "";
         if (trimmedKey) {
           keys.add(trimmedKey);
         }
       });
     }
   });
+
+  return keys;
+};
+
+const collectPostToolVariableKeys = (postTool) => {
+  const keys = new Set();
+
+  if (postTool?.args) {
+    Object.values(postTool.args).forEach((argValue) => {
+      const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
+      if (trimmedKey) {
+        keys.add(trimmedKey);
+      }
+    });
+  }
 
   return keys;
 };
@@ -196,22 +220,27 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     variablesKeyValue,
     variablesPath,
     variable_state,
-    bridge_pre_tools,
+    post_tool,
+    connectedTools,
   } = useCustomSelector((state) => {
     const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
     const groups = versionState?.groups || [];
     const activeGroupId = versionState?.activeGroupId;
+    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId];
+
+    // Read connected_tools from the new structure
+    const connectedTools = versionData?.connected_tools || [];
 
     return {
-      prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
+      prompt: versionData?.configuration?.prompt || "",
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
       variablesKeyValue: versionState?.variables || [],
-      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
-      variable_state:
-        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.agent_info?.variables_state || {},
-      bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
+      variablesPath: versionData?.variables_path || {},
+      variable_state: versionData?.agent_info?.variables_state || {},
+      post_tool: connectedTools.find((t) => t?.type === "post_tool") || null,
+      connectedTools: connectedTools,
     };
   });
   const [draftVariables, setDraftVariables] = useState([]);
@@ -224,8 +253,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const activeGroupId = activeGroup?.id;
 
   const preToolKeySet = useMemo(() => {
-    return collectPreToolVariableKeys(bridge_pre_tools);
-  }, [bridge_pre_tools]);
+    return collectPreToolVariableKeys(connectedTools);
+  }, [connectedTools]);
+
+  const postToolKeySet = useMemo(() => {
+    return collectPostToolVariableKeys(post_tool);
+  }, [post_tool]);
 
   const functionPathKeySet = useMemo(() => {
     const keys = new Set();
@@ -241,9 +274,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   }, [variablesPath]);
 
   const variablesPathKeySet = useMemo(() => {
-    const keys = new Set([...preToolKeySet, ...functionPathKeySet]);
+    const keys = new Set([...preToolKeySet, ...functionPathKeySet, ...postToolKeySet]);
     return keys;
-  }, [preToolKeySet, functionPathKeySet]);
+  }, [preToolKeySet, functionPathKeySet, postToolKeySet]);
 
   const visibleEmbedFieldNameSet = useMemo(() => {
     if (!isEmbedUser || typeof prompt !== "object" || !Array.isArray(prompt?.embedFields)) {
@@ -297,14 +330,18 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           : [];
 
       // Create a fresh copy to avoid reference issues
-      const allVariables = baseVariables.map((variable) => ({
-        id: variable.id || createLocalId(),
-        key: variable.key || "",
-        value: variable.value || "",
-        defaultValue: variable.defaultValue || "",
-        type: variable.type || "string",
-        required: variable.required !== false,
-      }));
+      const allVariables = baseVariables.map((variable) => {
+        const key = variable.key || "";
+        const variableStateData = key ? variable_state?.[key] : null;
+        return {
+          id: variable.id || createLocalId(),
+          key,
+          value: variable.value || "",
+          defaultValue: variable.defaultValue ?? variableStateData?.default_value ?? "",
+          type: variableStateData?.type ? resolveStoredVariableType(variableStateData) : variable.type || "string",
+          required: variable.required !== false,
+        };
+      });
 
       // Add variables from variables_path
       Object.keys(variablesPath || {}).forEach((functionId) => {
@@ -329,15 +366,17 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
               key: trimmedKey,
               value: variableStateData?.value || "",
               defaultValue: variableStateData?.default_value || "",
-              type: inferType(variableStateData?.value || variableStateData?.default_value, "") || "string",
+              type: resolveStoredVariableType(variableStateData),
               required: variableStateData?.status === "required" || false,
             });
           }
         });
       });
 
-      // Add variables from bridge_pre_tools
-      collectPreToolVariableKeys(bridge_pre_tools).forEach((trimmedKey) => {
+      // Add variables from connected_tools (pre-tools) and post_tool
+      const preToolKeys = collectPreToolVariableKeys(connectedTools);
+      const postToolKeys = collectPostToolVariableKeys(post_tool);
+      new Set([...preToolKeys, ...postToolKeys]).forEach((trimmedKey) => {
         const existsInSource = allVariables.find((v) => v.key === trimmedKey);
 
         if (!existsInSource) {
@@ -347,7 +386,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             key: trimmedKey,
             value: variableStateData?.value || "",
             defaultValue: variableStateData?.default_value || "",
-            type: inferType(variableStateData?.value || variableStateData?.default_value, "") || "string",
+            type: resolveStoredVariableType(variableStateData),
             required: variableStateData?.status === "required" || false,
           });
         }
@@ -370,7 +409,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             key: trimmedKey,
             value: variableStateData?.value || "",
             defaultValue: variableStateData?.default_value || "",
-            type: inferType(variableStateData?.value || variableStateData?.default_value, "") || "string",
+            type: resolveStoredVariableType(variableStateData),
             required: variableStateData?.status === "required" || false,
           });
         }
@@ -389,7 +428,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const { normalised } = validateVariables(filteredVariables, { suppressErrors: true });
       setDraftVariables(normalised);
     },
-    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, bridge_pre_tools, visibleEmbedFieldNameSet]
+    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, connectedTools, post_tool, visibleEmbedFieldNameSet]
   );
 
   useEffect(() => {
@@ -496,16 +535,22 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     }
   }, [activeGroup, draftVariables]);
 
-  // Function to check if variables have actually changed (only prompt and variables_path variables)
+  // Function to check if variables have actually changed
   const hasVariablesChanged = useCallback(
     (currentVariables) => {
       const dbVariablesMap = new Map(
         (Array.isArray(variablesKeyValue) ? variablesKeyValue : []).map((variable) => [variable.key, variable])
       );
+      const currentKeys = new Set(
+        (currentVariables || []).map((item) => (typeof item?.key === "string" ? item.key.trim() : "")).filter(Boolean)
+      );
+      if ([...dbVariablesMap.keys()].some((key) => key && !currentKeys.has(key))) {
+        return true;
+      }
 
       return currentVariables.some((current) => {
         const key = typeof current?.key === "string" ? current.key.trim() : "";
-        if (!key || (!promptKeySet.has(key) && !variablesPathKeySet.has(key))) {
+        if (!key) {
           return false;
         }
 
@@ -552,10 +597,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         pairsToProcess
           .filter((pair) => {
             const key = typeof pair?.key === "string" ? pair.key.trim() : "";
-            if (!key) {
-              return false;
-            }
-            return promptKeySet.has(key) || variablesPathKeySet.has(key);
+            return Boolean(key);
           })
           .map((pair) => {
             const key = typeof pair?.key === "string" ? pair.key.trim() : "";
@@ -607,12 +649,19 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
               [key]: {
                 status: pair?.required ? "required" : "optional",
                 default_value: formattedDefaultValue ?? formattedValue ?? "",
+                type: type || "string",
               },
             };
           })
           ?.filter(Boolean) ?? [];
-      // Deep check filtered pairs against existing variable_state
-      const currentVariableState = Object.assign({}, ...filteredPairs);
+      // Keep existing vars; overlay slider rows; drop only keys removed from the slider
+      const currentVariableState = Object.assign({}, variable_state || {}, ...filteredPairs);
+      (variablesKeyValue || []).forEach((item) => {
+        const key = typeof item?.key === "string" ? item.key.trim() : "";
+        if (key && !filteredPairs.some((pair) => pair[key])) {
+          delete currentVariableState[key];
+        }
+      });
 
       // Check if there are actual changes between current and existing variable_state
       const hasVariableStateChanged = () => {
@@ -634,6 +683,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
           // Deep compare the variable objects
           return (
             existing.status !== current.status ||
+            existing.type !== current.type ||
             JSON.stringify(existing.default_value) !== JSON.stringify(current.default_value)
           );
         });
@@ -704,14 +754,17 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
       // Update all variables in Redux
       if (allVariables.length > 0) {
-        dispatch(
-          updateVariables({
-            data: allVariables,
-            bridgeId: params.id,
-            versionId,
-            groupId: activeGroupId,
-          })
-        );
+        // Defer dispatch to avoid calling during render
+        setTimeout(() => {
+          dispatch(
+            updateVariables({
+              data: allVariables,
+              bridgeId: params.id,
+              versionId,
+              groupId: activeGroupId,
+            })
+          );
+        }, 0);
       }
 
       // Check if variables have actually changed compared to DB data before making API calls
@@ -1114,7 +1167,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             </p>
             {/* Show missing variables warning without button */}
             {missingVariables.length > 0 && (
-              <div className="mt-3 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+              <div className="mt-3 p-3 bg-warning/10 border border-warning/40">
                 <p className="text-sm text-warning">Missing values for: {missingVariables.join(", ")}</p>
                 <p className="text-xs text-warning/70 mt-1">
                   Fill in the missing variables below or use "Run Anyway" button at the bottom.
@@ -1177,7 +1230,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
           {!bulkEditMode && (
             <div className="mt-4 overflow-hidden rounded-lg border border-base-200 bg-base-100">
-              <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 border-b border-base-200 bg-base-200/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
+              <div className="grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_auto] gap-2 border-b border-base-200 bg-base-200/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
                 <span>Key</span>
                 <span>Value</span>
                 <span>Default Value</span>
@@ -1202,12 +1255,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                         key={variable.id || `${variable.key}-${index}`}
                         className="px-3 py-3 text-sm border-b border-base-200 hover:bg-base-200/30 transition-colors"
                       >
-                        <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 items-center">
+                        <div className="grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_auto] gap-2 items-center">
                           <input
                             autoComplete="off"
                             id={`variable-key-input-${index}`}
                             type="text"
-                            className={`input input-xs input-bordered w-full ${
+                            className={`input input-xs w-full ${
                               missingVariables.includes(variable.key)
                                 ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                 : ""
@@ -1222,7 +1275,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           {variable.type === "boolean" ? (
                             <select
                               id={`variable-value-select-${index}`}
-                              className={`select select-xs select-bordered w-full ${
+                              className={`select select-xs w-full ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1244,7 +1297,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               id={`variable-value-number-${index}`}
                               type="number"
                               step="any"
-                              className={`input input-xs input-bordered w-full ${
+                              className={`input input-xs w-full ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1260,7 +1313,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               autoComplete="off"
                               id={`variable-value-text-${index}`}
                               type="text"
-                              className={`input input-xs input-bordered w-full ${
+                              className={`input input-xs w-full ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1273,7 +1326,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             />
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
-                              className={`textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs ${
+                              className={`textarea textarea-xs w-full min-h-[90px] font-mono text-xs ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1287,7 +1340,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           ) : (
                             <textarea
                               id={`variable-value-textarea-${index}`}
-                              className="textarea textarea-xs textarea-bordered w-full min-h-[60px]"
+                              className="textarea textarea-xs w-full min-h-[60px]"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.value}
                               onChange={(event) => handleFieldChange(index, "value", event.target.value)}
@@ -1299,7 +1352,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           {variable.type === "boolean" ? (
                             <select
                               id={`variable-default-select-${index}`}
-                              className="select select-xs select-bordered w-full"
+                              className="select select-xs w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={
                                 variable.defaultValue === "false"
@@ -1323,7 +1376,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               id={`variable-default-number-${index}`}
                               type="number"
                               step="any"
-                              className="input input-xs input-bordered w-full"
+                              className="input input-xs w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
@@ -1333,7 +1386,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
                               id={`variable-default-textarea-${index}`}
-                              className="textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs"
+                              className="textarea textarea-xs w-full min-h-[90px] font-mono text-xs"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
@@ -1345,7 +1398,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               autoComplete="off"
                               id={`variable-default-text-${index}`}
                               type="text"
-                              className="input input-xs input-bordered w-full"
+                              className="input input-xs w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
@@ -1356,7 +1409,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
                           <select
                             id={`variable-type-select-${index}`}
-                            className="select select-xs select-bordered w-full"
+                            className="select select-xs w-full"
                             disabled={!isCurrentRowEnabled || !variable.key.trim()}
                             value={variable.type}
                             onChange={(event) => {
@@ -1426,13 +1479,11 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             <div className="mt-4 space-y-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-sm font-medium">Bulk Edit Variables</span>
-                  <span className="label-text-alt text-xs text-base-content/60">
-                    Paste key-value pairs or JSON object
-                  </span>
+                  <span className="text-sm font-medium">Bulk Edit Variables</span>
+                  <span className="text-xs text-base-content/60">Paste key-value pairs or JSON object</span>
                 </label>
                 <textarea
-                  className="textarea textarea-bordered textarea-sm w-full resize-y min-h-[280px] font-mono text-xs"
+                  className="textarea textarea-sm w-full resize-y min-h-[280px] font-mono text-xs"
                   placeholder={`Option 1 - Key-value pairs:
 customer_email,user@example.com
 attempts,3
@@ -1446,9 +1497,7 @@ Option 2 - JSON object:
                   onChange={(event) => setBulkEditText(event.target.value)}
                 />
                 <div className="label">
-                  <span className="label-text-alt text-xs text-base-content/50">
-                    Format: key,value per line OR valid JSON object
-                  </span>
+                  <span className="text-xs text-base-content/50">Format: key,value per line OR valid JSON object</span>
                 </div>
               </div>
             </div>

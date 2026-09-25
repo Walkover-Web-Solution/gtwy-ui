@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
 import AgentEmptyState from "@/components/AgentEmptyState";
@@ -119,7 +119,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
               autoComplete="off"
               type="number"
               placeholder="Enter limit in $"
-              className="input input-bordered max-w-sm w-full input-sm"
+              className="input max-w-sm w-full input-sm"
               value={limit}
               min="0"
               step="0.0001"
@@ -143,7 +143,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
             <span className="text-base-content/60">Reset Period</span>
             <select
               data-testid="agent-reset-period-select"
-              className="select select-bordered select-sm w-36"
+              className="select select-sm w-36"
               value={resetPeriod}
               onChange={handleResetPeriodChange}
             >
@@ -697,6 +697,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         status: item.status,
         bridge_status: item.bridge_status,
         versionId: item?.published_version_id || item?.versions?.[0],
+        published_version_id: item?.published_version_id || null,
         promptDetails:
           promptTotalTokens != null || promptEnhancerPercentage != null ? (
             <div className="flex flex-col text-xs">
@@ -732,7 +733,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         agent_limit_original: item?.bridge_limit || 0,
         agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
         isLoading: loadingAgentId === item._id,
-        users: item?.users,
+        users: item?.settings?.editAccess,
         last_used: renderMetricsTimestamp(item, lastUsed),
         last_used_original: item.metrics?.last_used_time || lastUsed,
         last_used_orignal: usageMetricsMap[item._id]?.last_used_time || lastUsed,
@@ -910,6 +911,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
       folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
       settings: item?.settings || {},
+      published_version_id: item?.published_version_id || null,
     };
   });
 
@@ -927,19 +929,23 @@ function Home({ params, searchParams, isEmbedUser }) {
     }
     const routeKey = `${row._id}-${row.versionId}`;
     if (!prefetchedRoutes.current.has(routeKey)) {
-      const prefetchUrl = `/org/${resolvedParams.org_id}/agents/configure/${row._id}?version=${row.versionId}&type=${bridgeTypeFilter}`;
+      const tab = isEmbedUser || row.published_version_id ? "prompt" : "integration";
+      const prefetchUrl = `/org/${resolvedParams.org_id}/agents/configure/${row._id}?version=${row.versionId}&type=${bridgeTypeFilter}&tab=${tab}`;
       router.prefetch(prefetchUrl);
       prefetchedRoutes.current.add(routeKey);
     }
   };
 
-  const onClickConfigure = (id, versionId) => {
+  const onClickConfigure = (id, versionId, publishedVersionId) => {
     // Prevent multiple clicks while loading
     if (loadingAgentId) return;
 
     setLoadingAgentId(id);
     // Include the type parameter to maintain sidebar selection
-    router.push(`/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}`);
+    const tab = isEmbedUser || publishedVersionId ? "prompt" : "integration";
+    router.push(
+      `/org/${resolvedParams.org_id}/agents/configure/${id}?version=${versionId}&type=${bridgeTypeFilter}&tab=${tab}`
+    );
   };
 
   const closeUsageFilterPopover = () => {
@@ -1107,8 +1113,8 @@ function Home({ params, searchParams, isEmbedUser }) {
       (currentOrgRole === "Editor" &&
         (row.users?.length === 0 ||
           !row.users ||
-          (row.users?.length > 0 && row.users?.some((user) => user.id === currentUser.id)))) ||
-      (currentOrgRole === "Viewer" && row.users?.some((user) => user.id === currentUser.id)) ||
+          (row.users?.length > 0 && row.users?.some((user) => String(user) === String(currentUser.id))))) ||
+      (currentOrgRole === "Viewer" && row.users?.some((user) => String(user) === String(currentUser.id))) ||
       currentOrgRole === "Creator" ||
       isAdminOrOwner;
 
@@ -1143,32 +1149,36 @@ function Home({ params, searchParams, isEmbedUser }) {
               setTimeout(() => openModal(MODAL_TYPE.DELETE_MODAL), 10);
             }}
           />
-          <div className="divider my-1"></div>
-          <div className={`dropdown dropdown-hover dropdown-left ${isNearBottom ? "dropdown-top" : ""} w-full`}>
-            <label
-              tabIndex={0}
-              data-testid="agent-move-to-folder-dropdown"
-              className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center justify-between cursor-pointer"
-            >
-              <div className="flex items-center gap-2 text-base-content">
-                <Folder size={14} className="text-base-content/70" />
-                <span>Move to Folder</span>
+          {!isEmbedUser && (
+            <>
+              <div className="divider my-1"></div>
+              <div className={`dropdown dropdown-hover dropdown-left ${isNearBottom ? "dropdown-top" : ""} w-full`}>
+                <label
+                  tabIndex={0}
+                  data-testid="agent-move-to-folder-dropdown"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-base-200 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 text-base-content">
+                    <Folder size={14} className="text-base-content/70" />
+                    <span>Move to Folder</span>
+                  </div>
+                </label>
+                <div
+                  tabIndex={0}
+                  className={`dropdown-content z-[100] ${isNearBottom ? "bottom-0 top-auto pb-2" : "top-0 bottom-auto pt-2"} right-full pr-2`}
+                >
+                  <MoveToFolderMenu
+                    folders={folders}
+                    currentFolderId={row.folder_id}
+                    onMove={(folderId) => {
+                      moveResource(row._id, folderId);
+                      handlePortalCloseImmediate();
+                    }}
+                  />
+                </div>
               </div>
-            </label>
-            <div
-              tabIndex={0}
-              className={`dropdown-content z-[100] ${isNearBottom ? "bottom-0 top-auto pb-2" : "top-0 bottom-auto pt-2"} right-full pr-2`}
-            >
-              <MoveToFolderMenu
-                folders={folders}
-                currentFolderId={row.folder_id}
-                onMove={(folderId) => {
-                  moveResource(row._id, folderId);
-                  handlePortalCloseImmediate();
-                }}
-              />
-            </div>
-          </div>
+            </>
+          )}
         </div>
       );
 
@@ -1304,7 +1314,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                         </div>
                       </MainLayout>
 
-                      <div className="flex flex-row flex-wrap gap-4 px-4 pb-3 items-center">
+                      <div className="flex flex-row flex-wrap gap-4 pb-3 items-center">
                         {allBridges.length > 5 && (
                           <SearchItems data={allBridges} setFilterItems={setFilterBridges} item="Agents" />
                         )}
@@ -1377,9 +1387,11 @@ function Home({ params, searchParams, isEmbedUser }) {
                             "created_by",
                             "updated_by",
                           ]}
-                          handleRowClick={(props) => onClickConfigure(props?._id, props?.versionId)}
+                          handleRowClick={(props) =>
+                            onClickConfigure(props?._id, props?.versionId, props?.published_version_id)
+                          }
                           handleRowHover={handleRowHover}
-                          keysToExtractOnRowClick={["_id", "versionId"]}
+                          keysToExtractOnRowClick={["_id", "versionId", "published_version_id"]}
                           keysToWrap={["name", "model"]}
                           endComponent={EndComponent}
                           onUsageFilterClick={handleUsageFilterIconClick}
@@ -1461,7 +1473,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       autoComplete="off"
                       type="date"
                       data-testid="usage-filter-start-date"
-                      className="input input-bordered input-sm w-full"
+                      className="input input-sm w-full"
                       value={usageFilterDates.start_date}
                       max={usageFilterDates.end_date || undefined}
                       onChange={(e) => handleUsageDateChange("start_date", e.target.value)}
@@ -1473,7 +1485,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       autoComplete="off"
                       type="date"
                       data-testid="usage-filter-end-date"
-                      className="input input-bordered input-sm w-full"
+                      className="input input-sm w-full"
                       value={usageFilterDates.end_date}
                       min={usageFilterDates.start_date || undefined}
                       onChange={(e) => handleUsageDateChange("end_date", e.target.value)}

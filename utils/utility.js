@@ -17,6 +17,7 @@ import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
 import Grok from "@/icons/Grok";
 import GroqIcon from "@/icons/GroqIcon";
+import MinimaxIcon from "@/icons/minimax";
 import MistralIcon from "@/icons/MistralIcon";
 import MoonshotIcon from "@/icons/MoonshotIcon";
 import NeevCloudIcon from "@/icons/NeevCloudIcon";
@@ -284,6 +285,12 @@ export const closeSidebar = (sidebarId, direction = "left") => {
   }
 };
 
+export const isServiceAllowedByPlan = (service, planServices) => {
+  if (!planServices || planServices === "*") return true;
+  if (typeof planServices !== "object") return true;
+  return Object.prototype.hasOwnProperty.call(planServices, service);
+};
+
 export const getIconOfService = (service, height, width) => {
   switch (service) {
     case "openai":
@@ -312,6 +319,8 @@ export const getIconOfService = (service, height, width) => {
       return <MoonshotIcon height={height} width={width} />;
     case "neev_cloud":
       return <NeevCloudIcon height={height} width={width} />;
+    case "minimax":
+      return <MinimaxIcon height={height} width={width} />;
     default:
       return <OpenAiIcon height={height} width={width} />;
   }
@@ -420,6 +429,12 @@ export function closeModal(modalName) {
   }
 }
 
+// Variables the platform injects at runtime — hidden from user-facing variable lists
+export const HIDDEN_VARIABLE_KEYS = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
+
+export const omitHiddenVariables = (variables) =>
+  Object.fromEntries(Object.entries(variables || {}).filter(([key]) => !HIDDEN_VARIABLE_KEYS.includes(key)));
+
 export const allowedAttributes = {
   important: [["latency", "Latency"]],
   optional: [
@@ -452,6 +467,7 @@ export const GetPreBuiltToolTypeIcon = (preBuiltTools, height = 24, width = 24) 
     case "image_generation":
       return <Image height={height} width={width} alt="image generation icon" />;
     case "Gtwy_Web_Search":
+    case "Gtwy_Browser":
       return <FavIconSVG height={height} width={width} />;
     default:
       return null;
@@ -967,6 +983,12 @@ export const formatRelativeTime = (dateString) => {
   return `${Math.floor(diffInSeconds / 31536000)}y ago`;
 };
 
+export const toUtcIso = (value) => {
+  if (!value) return value;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toISOString();
+};
+
 export const formatDate = (dateString) => {
   const normalized = normalizeToUTC(dateString);
   if (!normalized) return "No records found";
@@ -1296,8 +1318,8 @@ export const formatTokensTable = (tokensObj) => {
   const costObj = tokensObj.cost || {};
   const categories = TOKEN_CATEGORIES;
   const rows = [];
-  const processedTokenKeys = new Set(["cost", "expected_cost"]);
-  const processedCostKeys = new Set();
+  const processedTokenKeys = new Set(["cost", "expected_cost", "total_tokens"]);
+  const processedCostKeys = new Set(["total_cost"]);
 
   categories.forEach((cat) => {
     let tokenVal = undefined;
@@ -1323,13 +1345,18 @@ export const formatTokensTable = (tokensObj) => {
 
   Object.keys(tokensObj).forEach((tk) => {
     if (!processedTokenKeys.has(tk)) {
+      const rawVal = tokensObj[tk];
+      if (rawVal !== null && typeof rawVal === "object") {
+        processedTokenKeys.add(tk);
+        return;
+      }
       let matchedCostKey = null;
       const potentialCostKey = tk.replace(/_tokens$/, "_cost");
       if (costObj[potentialCostKey] !== undefined) matchedCostKey = potentialCostKey;
 
       rows.push({
         label: tk.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-        token: tokensObj[tk],
+        token: rawVal,
         cost: matchedCostKey ? costObj[matchedCostKey] : undefined,
       });
 
@@ -1383,4 +1410,16 @@ export const parseNestedJson = (val) => {
     return res;
   }
   return val;
+};
+
+// Host serving the embed page, matching gtwy.js — not the dashboard's, since the interceptor only reads the session token on an embed/localhost host.
+const getEmbedBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_ENV === "LOCAL") return `${process.env.NEXT_PUBLIC_FRONTEND_URL}/embed`;
+  return process.env.NEXT_PUBLIC_ENV === "PROD" ? "https://embed.gtwy.ai/embed" : "https://dev-embed.gtwy.ai/embed";
+};
+
+// Same URL gtwy.js gives its iframe after /api/embed/login succeeds.
+export const buildEmbedLoginUrl = (interfaceDetails) => {
+  if (!interfaceDetails) return null;
+  return `${getEmbedBaseUrl()}?interfaceDetails=${encodeURIComponent(JSON.stringify(interfaceDetails))}`;
 };

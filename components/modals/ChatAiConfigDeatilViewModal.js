@@ -4,7 +4,7 @@ import { CopyIcon } from "@/components/Icons";
 import React, { useMemo, useState } from "react";
 import Modal from "../UI/Modal";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Brain } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers (used by the generic fallback modal path)
@@ -64,7 +64,7 @@ function JsonSection({ label, data, count, fullHeight = false }) {
   };
 
   return (
-    <section className="overflow-hidden rounded-lg border border-base-content/10">
+    <section className="overflow-hidden border border-base-content/10">
       <div
         className="flex items-center justify-between gap-2 border-b border-base-content/10 px-3 py-2"
         style={{ background: "var(--ai-config-section-header)" }}
@@ -141,6 +141,8 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
 
   const isLatencyView = modalTitle === "Latency Details" || modalTitle === "Latency";
 
+  const isMemoryView = modalTitle === "Memory";
+
   const isAiConfigView =
     modalTitle === "AI Configuration" ||
     (modalContent &&
@@ -172,6 +174,21 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
         widthClass="w-[min(720px,92vw)]"
       >
         <JsonSection label="Latency" data={modalContent} fullHeight={true} />
+      </Modal>
+    );
+  }
+
+  // ── Memory view ─────────────────────────────────────────────────────────
+  if (isMemoryView) {
+    return (
+      <Modal
+        MODAL_ID={MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL}
+        onClose={() => closeModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL)}
+        title={modalTitle || "Memory"}
+        icon={<Brain size={16} className="text-trace-gold" />}
+        widthClass="w-[min(720px,92vw)]"
+      >
+        <AiConfigPanel config={modalContent} />
       </Modal>
     );
   }
@@ -226,7 +243,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
       <div
         data-testid="chat-details-content-container"
         id="chat-details-content-container"
-        className="bg-base-200 rounded-lg p-6 h-auto overflow-auto relative"
+        className="bg-base-200 p-6 h-auto overflow-auto relative"
       >
         {modalContent &&
           contentEntries.map(([key, value]) => (
@@ -236,7 +253,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
                 <ul className="space-y-2 ml-4">
                   {value.map((item, index) => (
                     <li key={index} className="break-words">
-                      <div className="bg-base-100 p-4 rounded-lg shadow-inner break-words whitespace-pre-wrap relative">
+                      <div className="bg-base-100 p-4 shadow-inner break-words whitespace-pre-wrap relative">
                         {typeof item === "object" && item !== null && key === "messages" ? (
                           renderFlattenedMessage(item)
                         ) : (
@@ -249,7 +266,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
                   ))}
                 </ul>
               ) : (
-                <div className="bg-base-100 p-4 rounded-lg shadow-inner relative">
+                <div className="bg-base-100 p-4 shadow-inner relative">
                   {typeof value === "object" && value !== null ? (
                     <pre className="text-base-content/80 break-words whitespace-pre-wrap">
                       {JSON.stringify(value, null, 2)}

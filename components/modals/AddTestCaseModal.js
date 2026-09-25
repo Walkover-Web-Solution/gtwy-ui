@@ -1,22 +1,29 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { createTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal } from "@/utils/utility";
-import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical } from "lucide-react";
+import { closeModal, omitHiddenVariables } from "@/utils/utility";
+import { Trash2, ChevronDown as ChevronDownIcon, FlaskConical, ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "../UI/Modal";
 import { clearChatTestCaseIdAction } from "@/store/action/chatAction";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import { PdfIcon } from "@/icons/pdfIcon";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
+import { flattenToolsCallData } from "@/utils/executionTraceTransform";
 
 function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, channelIdentifier }) {
   const params = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
-  const { mongoIdsOfTools } = useCustomSelector((state) => {
+  const mockToolResponsesRef = useRef(null);
+  const { mongoIdsOfTools, functionData, bridgeVersionMapping, publishedFunctionIds } = useCustomSelector((state) => {
     const functionData = state.bridgeReducer.org?.[params.org_id]?.functionData;
     const mongoIds = functionData
       ? Object.values(functionData).reduce((acc, item) => {
@@ -27,8 +34,42 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         }, {})
       : {};
 
-    return { mongoIdsOfTools: mongoIds };
+    return {
+      mongoIdsOfTools: mongoIds,
+      functionData: functionData || {},
+      bridgeVersionMapping: state.bridgeReducer?.bridgeVersionMapping?.[params?.id] || {},
+      publishedFunctionIds: state.bridgeReducer?.allBridgesMap?.[params?.id]?.function_ids || [],
+    };
   });
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Pre-fill mock recordings from the tool calls that actually happened in this
+  // conversation — the same args/response already shown in the history UI —
+  // instead of starting the mock editor blank.
+  const initialToolsResponseFromHistory = useMemo(() => {
+    if (!Array.isArray(testCaseConversation)) return undefined;
+    const grouped = {};
+    testCaseConversation.forEach((message) => {
+      flattenToolsCallData(message?.tools_call_data).forEach((tool) => {
+        const toolName = tool?.name;
+        if (!toolName) return;
+        const isRAGTool = tool?.data?.metadata?.type === "RAG";
+        const isAgentTool = tool?.type?.toUpperCase?.() === "AGENT" || !!tool?.bridge_id;
+        if (isRAGTool || isAgentTool) return;
+        if (!grouped[toolName]) grouped[toolName] = { recordings: [] };
+        grouped[toolName].recordings.push({ args: tool?.args || {}, response: tool?.data?.response ?? null });
+      });
+    });
+    return Object.keys(grouped).length > 0 ? grouped : undefined;
+  }, [testCaseConversation]);
   // Process testCaseConversation - extract from outside AiConfig (from item data)
   const processTestCaseData = () => {
     if (!testCaseConversation || testCaseConversation.length === 0) return [];
@@ -87,14 +128,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
 
   // Filter out unwanted variables
   const filterVariables = (vars) => {
-    const excludeKeys = ["_user_message", "current_time_date_and_current_identifier", "pre_function"];
-    const filtered = {};
-    Object.entries(vars || {}).forEach(([key, value]) => {
-      if (!excludeKeys.includes(key)) {
-        filtered[key] = value;
-      }
-    });
-    return filtered;
+    return omitHiddenVariables(vars);
   };
 
   const [finalTestCases, setFinalTestCases] = useState([]);
@@ -148,10 +182,19 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
     const isToolsCall = lastTestCase.role === "tools_call";
 
     const conversationData = finalTestCases.slice(0, -1);
+    const { toolsResponse, errors: toolsResponseErrors } = mockToolResponsesRef.current?.getPayload() || {
+      toolsResponse: {},
+      errors: [],
+    };
+    if (toolsResponseErrors.length > 0) {
+      toast.error(toolsResponseErrors[0]);
+      setIsLoading(false);
+      return;
+    }
     const payload = {
       name: testCaseName,
       ...(conversationData.length > 0 && { conversation: conversationData }),
-      type: isAssistant ? "response" : "function",
+      type: "response",
       expected: {
         ...(isAssistant && { response: lastTestCase.content }),
         ...(isToolsCall && { tool_calls: lastTestCase.tools }),
@@ -161,6 +204,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       matching_type: "ai",
       variables: editableVariables,
       ...(userUrlsList.length > 0 && { user_urls: userUrlsList }),
+      ...(Object.keys(toolsResponse).length > 0 && { tools_response: toolsResponse }),
       // Backend resolves ai_config server-side using message_id (see
       // historyService.findHistoryByMessageId). We stop sending ai_config
       // from the client and instead forward the source message_id.
@@ -268,7 +312,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
       <form id="add-testcase-modal-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="space-y-4">
           {/* Test Case Name Section */}
-          <div className="space-y-2 bg-base-50 rounded-lg p-4 border border-base-200">
+          <div className="space-y-2 bg-base-50 p-4 border border-base-300">
             <label className="text-sm font-semibold text-base-content">Test Case Name</label>
             <input
               data-testid="add-testcase-name-input"
@@ -277,27 +321,27 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
               placeholder="Enter test case name"
               value={testCaseName}
               onChange={(e) => setTestCaseName(e.target.value)}
-              className="input input-sm input-bordered bg-base-100 w-full focus:outline-none"
+              className="input input-sm bg-base-100 w-full focus:outline-none"
             />
           </div>
           {/* Variables Section */}
           {Object.keys(editableVariables).length > 0 && (
-            <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
+            <div className="space-y-3 bg-base-50 p-4 border border-base-300">
               <div className="text-sm font-semibold text-base-content mb-4">Variables</div>
               <div className="space-y-3">
                 {Object.entries(editableVariables).map(([key, value]) => (
-                  <div key={key} className="bg-base-100 rounded-lg p-3 border border-base-200">
+                  <div key={key} className="bg-base-100 p-3 border border-base-300">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-base-content mb-1 block">Key</label>
-                        <div className="text-sm font-mono bg-base-200 px-3 py-2 rounded text-base-content">{key}</div>
+                        <div className="text-sm font-mono bg-base-200 px-3 py-2 text-base-content">{key}</div>
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-base-content mb-1 block">Value</label>
                         <AutoResizeTextarea
                           value={typeof value === "string" ? value : JSON.stringify(value)}
                           onChange={(e) => handleVariableChange(key, e.target.value)}
-                          className="textarea textarea-bordered textarea-sm bg-base-50 text-sm w-full leading-relaxed"
+                          className="textarea textarea-sm bg-base-50 text-sm w-full leading-relaxed"
                           placeholder="Enter value"
                           rows={1}
                         />
@@ -311,47 +355,45 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
 
           {/* User URLs Section */}
           {userUrlsList.length > 0 && (
-            <div className="space-y-3 bg-base-50 rounded-lg p-4 border border-base-200">
-              <div className="text-sm font-semibold text-base-content mb-4">User URLs</div>
-              <div className="space-y-2">
+            <div className="space-y-3 bg-base-50 p-4 border border-base-300">
+              <div className="text-sm font-semibold text-base-content mb-4">Attachments</div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {userUrlsList.map((urlObj, idx) => {
                   const urlString = typeof urlObj === "string" ? urlObj : urlObj?.url;
-                  const isImageUrl = urlString && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
-
-                  return (
-                    <div key={idx} className="bg-base-100 rounded-lg p-3 border border-base-200">
-                      <div className="text-xs font-semibold text-base-content mb-2">URL {idx + 1}</div>
-                      {isImageUrl ? (
-                        <div className="flex flex-col gap-2">
-                          <img
-                            src={urlString}
-                            alt={`User URL ${idx + 1}`}
-                            className="max-w-full max-h-64 rounded border border-base-300"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                            }}
-                          />
-                          <a
-                            href={urlString}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm break-all text-blue-600 hover:underline"
-                          >
-                            {urlString}
-                          </a>
-                        </div>
-                      ) : (
-                        <a
-                          href={urlString}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm break-all text-blue-600 hover:underline block"
-                        >
-                          {urlString || JSON.stringify(urlObj)}
-                        </a>
-                      )}
-                    </div>
-                  );
+                  if (!urlString) return null;
+                  const isImageUrl = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlString);
+                  const isPdfUrl = /\.pdf($|\?)/i.test(urlString);
+                  if (isImageUrl) {
+                    return (
+                      <img
+                        key={`user-${idx}`}
+                        src={urlString}
+                        alt={`User Image ${idx + 1}`}
+                        width={80}
+                        height={80}
+                        className="object-cover cursor-pointer flex-shrink-0"
+                        onClick={() => window.open(urlString, "_blank")}
+                      />
+                    );
+                  }
+                  if (isPdfUrl) {
+                    return (
+                      <a
+                        key={`user-${idx}`}
+                        href={urlString}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 text-primary bg-base-200 hover:bg-base-300 flex-shrink-0"
+                      >
+                        <PdfIcon height={20} width={20} />
+                        <span className="text-sm font-medium max-w-[6rem] truncate text-primary">
+                          {urlString.split("/").pop() || "PDF"}
+                        </span>
+                        <ExternalLink className="text-primary" size={14} />
+                      </a>
+                    );
+                  }
+                  return null;
                 })}
               </div>
             </div>
@@ -364,7 +406,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 data-testid="add-testcase-conversation-toggle"
                 type="button"
                 onClick={() => setShowFullConversation(!showFullConversation)}
-                className="w-full flex items-center justify-between bg-base-50 hover:bg-base-100 rounded-lg px-4 py-3 border border-base-200 transition-colors"
+                className="w-full flex items-center justify-between bg-base-50 hover:bg-base-100 px-4 py-3 border border-base-300 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-sm font-medium text-base-content">Conversation History</span>
@@ -376,7 +418,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                 />
               </button>
               {showFullConversation && (
-                <div className="mt-3 bg-base-100 rounded-lg px-6 py-4 border border-base-200 space-y-4">
+                <div className="mt-3 bg-base-100 px-6 py-4 border border-base-300 space-y-4">
                   {getConversationPairs().map((pair, pairIndex) => (
                     <div key={pair.id || pairIndex} className="space-y-4">
                       {/* User Message */}
@@ -392,7 +434,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                             <Trash2 size={13} />
                           </button>
                         </div>
-                        <div className="w-[90%] bg-primary text-primary-content rounded-lg rounded-br-none px-4 py-3">
+                        <div className="w-[90%] bg-primary text-primary-content px-4 py-3">
                           <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                             <div
                               contentEditable
@@ -409,7 +451,7 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
                       {/* Assistant Message */}
                       <div className="flex flex-col items-start gap-1">
                         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
-                        <div className="w-[90%] bg-base-300 text-base-content rounded-lg rounded-bl-none px-4 py-3">
+                        <div className="w-[90%] bg-base-300 text-base-content px-4 py-3">
                           <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                             <div
                               contentEditable
@@ -430,12 +472,20 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
             </div>
           )}
 
+          {/* Preset Tool Response */}
+          <MockToolResponsesSection
+            ref={mockToolResponsesRef}
+            tools={bridgeToolOptions}
+            initialValue={initialToolsResponseFromHistory}
+            resetKey={testCaseConversation}
+          />
+
           {/* User Query - From user field (always visible) */}
           {userQueryText && (
             <div id="add-testcase-last-user-message" className="space-y-4">
               <div className="space-y-2" data-testid="add-testcase-user-query-wrapper">
                 <div className="text-xs font-medium uppercase text-base-content tracking-wide">User Query</div>
-                <div className="bg-base-100 rounded-lg shadow-sm p-3 text-sm text-base-content whitespace-pre-wrap break-words">
+                <div className="bg-base-100 shadow-sm p-3 text-sm text-base-content whitespace-pre-wrap break-words">
                   <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                     <div className="whitespace-pre-wrap break-words">{userQueryText}</div>
                   </ExpandCollapse>
@@ -446,20 +496,17 @@ function AddTestCaseModal({ testCaseConversation, setTestCaseConversation, chann
         </div>
 
         {/* User Expected Output Section (editable) */}
-        <div
-          className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0 rounded-lg"
-          data-testid="add-testcase-bottom-panel"
-        >
+        <div className="flex flex-col gap-4 p-6 pt-4 bg-base-200 bottom-0" data-testid="add-testcase-bottom-panel">
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase text-base-content tracking-wide">User Expected Output</div>
-            <div className="bg-base-50 rounded-lg border border-base-200 px-4 pt-3 pb-2">
+            <div className="bg-base-50 border border-base-300 px-4 pt-3 pb-2">
               <ExpandCollapse collapsedHeight={160} fadeHeight={60}>
                 <AutoResizeTextarea
                   data-testid="add-testcase-expected-output-textarea"
                   value={expectedOutputText}
                   onChange={(e) => setExpectedOutputText(e.target.value)}
                   placeholder="Enter the expected output..."
-                  className="w-full bg-base-100 rounded p-3 text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-0"
+                  className="w-full bg-base-100 p-3 text-sm text-base-content leading-relaxed outline-none border-0 focus:ring-0"
                   rows={3}
                 />
               </ExpandCollapse>

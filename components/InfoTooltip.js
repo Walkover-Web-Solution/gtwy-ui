@@ -75,9 +75,9 @@ const InfoTooltip = ({ video = "", children, tooltipContent, docLink, disabled =
               }
               onMouseLeave={disabled ? undefined : handleClose}
               className="
-              z-[99999] max-w-xs w-max p-3 ml-3 bg-base-300 text-base-content text-primary-foreground
-              rounded-md shadow-xl text-xs animate-in fade-in zoom-in
-              border border-base-300 space-y-2 pointer-events-auto
+              z-[99999] max-w-xs w-max p-3 ml-3 bg-base-300 text-base-content
+              rounded-md shadow-2xl text-xs animate-in fade-in zoom-in
+              border border-base-400 space-y-2 pointer-events-auto
             "
             >
               <p className="whitespace-pre-line">

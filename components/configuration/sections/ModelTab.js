@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import ServiceDropdown from "../configurationComponent/ServiceDropdown";
 import ModelDropdown from "../configurationComponent/ModelDropdown";
 import ApiKeyInput from "../configurationComponent/ApiKeyInput";
@@ -8,6 +10,7 @@ import { useConfigurationContext } from "../ConfigurationContext";
 import RecommendedModal from "../configurationComponent/RecommendedModal";
 import AdvancedParameters from "../configurationComponent/AdvancedParamenter";
 import FallbackModel from "../configurationComponent/FallbackModel";
+import { useCustomSelector } from "@/customHooks/customSelector";
 
 const ModelTab = () => {
   const {
@@ -22,6 +25,7 @@ const ModelTab = () => {
     isEmbedUser,
     showAdvancedParameters,
     showAdvancedConfigurations,
+    showFallbackModel,
     bridgeType,
     isPublished,
     isEditor,
@@ -32,80 +36,142 @@ const ModelTab = () => {
     () => (!showDefaultApikeys && isEmbedUser) || !isEmbedUser,
     [isEmbedUser, showDefaultApikeys]
   );
+
+  const { planServices, isOnFreePlan } = useCustomSelector((state) => ({
+    planServices: state?.planReducer?.services,
+    // planReducer.services is "*" once the plan itself is loaded and unrestricted;
+    // null only before the plan has loaded at all — don't flash the banner then.
+    isOnFreePlan: state?.planReducer?.loaded && state?.planReducer?.services !== "*",
+  }));
+
+  const isServiceInPlan = useMemo(() => {
+    if (!service || !planServices) return false;
+    if (planServices === "*") return true;
+    if (Array.isArray(planServices)) return planServices.includes(service);
+    if (typeof planServices === "object") return Object.prototype.hasOwnProperty.call(planServices, service);
+    return false;
+  }, [planServices, service]);
+
+  const apiKeyConfigButton = useMemo(() => {
+    if (!shouldRenderApiKey || !isServiceInPlan) return null;
+    return (
+      <ApiKeyInput
+        apiKeySectionRef={apiKeySectionRef}
+        params={params}
+        searchParams={searchParams}
+        isEmbedUser={isEmbedUser}
+        showAdvancedParameters={showAdvancedParameters}
+        isPublished={isPublished}
+        isEditor={isEditor}
+        hasError={apiKeyError}
+        compact
+      />
+    );
+  }, [
+    shouldRenderApiKey,
+    isServiceInPlan,
+    apiKeySectionRef,
+    params,
+    searchParams,
+    isEmbedUser,
+    showAdvancedParameters,
+    isPublished,
+    isEditor,
+    apiKeyError,
+  ]);
   return (
     <div data-testid="model-tab-container" id="model-tab-container" className="flex flex-col mt-4 w-full">
-      {/* LLM Configuration Header */}
-      <div className="mb-4 mt-2">
-        <h3 className="text-base-content text-md font-medium">LLM Configuration</h3>
-      </div>
-
-      {!isEmbedUser && (
-        <RecommendedModal
-          params={params}
-          searchParams={searchParams}
-          apiKeySectionRef={apiKeySectionRef}
-          promptTextAreaRef={promptTextAreaRef}
-          bridgeApiKey={bridgeApiKey}
-          shouldPromptShow={shouldPromptShow}
-          service={service}
-          deafultApiKeys={showDefaultApikeys}
-          isPublished={isPublished}
-          isEditor={isEditor}
-        />
-      )}
-
       <div data-testid="model-tab-config-section" id="model-tab-config-section" className="space-y-6">
-        {/* Service Provider and Model Row */}
-        <div className="grid grid-cols-2 mt-2 gap-6">
-          <div className="space-y-2">
-            <label className="block text-base-content/70 text-sm font-medium">Service Provider</label>
-            <ServiceDropdown
-              params={params}
-              searchParams={searchParams}
-              apiKeySectionRef={apiKeySectionRef}
-              promptTextAreaRef={promptTextAreaRef}
-              isEmbedUser={isEmbedUser}
-              isPublished={isPublished}
-              isEditor={isEditor}
-            />
+        {/* LLM Configuration panel */}
+        <div className="border border-base-300 bg-base-200 px-5 py-5">
+          {/* Header - action sits inline with the heading */}
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-base-content text-md font-medium">LLM Configuration</h3>
+            {!isEmbedUser && (
+              <RecommendedModal
+                params={params}
+                searchParams={searchParams}
+                apiKeySectionRef={apiKeySectionRef}
+                promptTextAreaRef={promptTextAreaRef}
+                bridgeApiKey={bridgeApiKey}
+                shouldPromptShow={shouldPromptShow}
+                service={service}
+                deafultApiKeys={showDefaultApikeys}
+                isPublished={isPublished}
+                isEditor={isEditor}
+              />
+            )}
           </div>
 
           <div className="space-y-2">
-            <ModelDropdown
-              params={params}
-              searchParams={searchParams}
-              isPublished={isPublished}
-              isEditor={isEditor}
-              isEmbedUser={isEmbedUser}
-              showAdvancedConfigurations={showAdvancedConfigurations}
-            />
+            {/* Service Provider and Model Row */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-base-content/70 text-sm font-medium">Service Provider</label>
+                <ServiceDropdown
+                  params={params}
+                  searchParams={searchParams}
+                  apiKeySectionRef={apiKeySectionRef}
+                  promptTextAreaRef={promptTextAreaRef}
+                  isEmbedUser={isEmbedUser}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <ModelDropdown
+                  params={params}
+                  searchParams={searchParams}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                  isEmbedUser={isEmbedUser}
+                  showAdvancedConfigurations={showAdvancedConfigurations}
+                  apiKeyActionButton={apiKeyConfigButton}
+                />
+              </div>
+            </div>
+
+            {isOnFreePlan && !isEmbedUser && (
+              <div className="flex w-full items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                <span className="flex items-center gap-1.5 text-base-content/70">
+                  <Lock size={11} className="shrink-0 text-primary" />
+                  You&apos;re on the Free plan — upgrade to Pro to use every service and model.
+                </span>
+                <Link
+                  href={`/org/${params?.org_id}/plans`}
+                  className="btn btn-primary btn-xs h-6 min-h-0 shrink-0 rounded-md px-2 text-[11px] font-semibold"
+                >
+                  Upgrade
+                </Link>
+              </div>
+            )}
+
+            {shouldRenderApiKey && !isServiceInPlan && (
+              <div className="space-y-2">
+                <label className="block text-base-content/70 text-sm font-medium">API Key</label>
+                <ApiKeyInput
+                  apiKeySectionRef={apiKeySectionRef}
+                  params={params}
+                  searchParams={searchParams}
+                  isEmbedUser={isEmbedUser}
+                  showAdvancedParameters={showAdvancedParameters}
+                  isPublished={isPublished}
+                  isEditor={isEditor}
+                  hasError={apiKeyError}
+                />
+                <p className="text-xs text-base-content/50 mt-2">Your API key is encrypted and stored securely</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* API Key Section */}
-        {shouldRenderApiKey && (
-          <div className="space-y-2">
-            <label className="block text-base-content/70 text-sm font-medium">API Key</label>
-            <ApiKeyInput
-              apiKeySectionRef={apiKeySectionRef}
-              params={params}
-              searchParams={searchParams}
-              isEmbedUser={isEmbedUser}
-              showAdvancedParameters={showAdvancedParameters}
-              isPublished={isPublished}
-              isEditor={isEditor}
-              hasError={apiKeyError}
-            />
-            <p className="text-xs text-base-content/50 mt-2">Your API key is encrypted and stored securely</p>
-          </div>
-        )}
-
-        {/* Parameters Section with Border */}
+        {/* Parameters Section - rendered as its own panel so it reads apart from the fields above */}
         {((showAdvancedParameters && isEmbedUser) || !isEmbedUser) && (
           <div
             data-testid="model-tab-parameters-section"
             id="model-tab-parameters-section"
-            className="border-t border-base-200 pt-6"
+            className="border border-base-300 bg-base-200 px-5 py-5"
           >
             <div className="mb-4">
               <h2 className="text-base-content text-md font-medium">Parameters</h2>
@@ -128,7 +194,7 @@ const ModelTab = () => {
           </div>
         )}
         {/* Fallback Model Section */}
-        {((isEmbedUser && showAdvancedConfigurations) || !isEmbedUser) && modelType !== "image" && (
+        {((isEmbedUser && showFallbackModel) || !isEmbedUser) && modelType !== "image" && (
           <div className="space-y-2">
             <FallbackModel
               params={params}

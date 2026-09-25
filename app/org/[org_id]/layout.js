@@ -14,13 +14,13 @@ import {
   getAllFunctions,
   getPrebuiltToolsAction,
   integrationAction,
-  updateApiAction,
   updateBridgeVersionAction,
 } from "@/store/action/bridgeAction";
 import { getRichUiTemplatesAction } from "@/store/action/richUiTemplateAction";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
 import { updateUserMetaOnboarding, updateOrgMetaAction, getUsersAction } from "@/store/action/orgAction";
 import { getServiceAction } from "@/store/action/serviceAction";
+import { getPlanAction } from "@/store/action/planAction";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, use } from "react";
@@ -42,9 +42,12 @@ import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { getAllAuthData } from "@/store/action/authkeyAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
+import { getBlockedOrgs } from "@/config/organizationApi";
+import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
 const MainSlider = dynamic(() => import("@/components/sliders/MainSlider"), { loading: () => <LoadingSpinner /> });
+const BlockedOrgBanner = dynamic(() => import("@/components/organization/BlockedOrgBanner"));
 const ChatDetails = dynamic(() => import("@/components/historyPageComponents/ChatDetails"), {
   loading: () => <LoadingSpinner />,
 });
@@ -80,6 +83,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     functionData,
     tools,
     historyEmbed,
+    isOrgBlocked,
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
@@ -87,17 +91,24 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.variables_path ||
       {},
     organizations: state.userDetailsReducer.organizations,
-    preTools:
-      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.pre_tools || [],
+    preTools: (
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.connected_tools ||
+      []
+    ).filter((t) => t?.type === "pre_tool"),
     SERVICES: state?.serviceReducer?.services,
-    tools:
-      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.function_ids || [],
+    tools: (
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.connected_tools ||
+      []
+    )
+      .filter((t) => t?.type === "tools")
+      .map((t) => t.id),
     currentUser: state.userDetailsReducer.userDetails,
     doctstar_embed_token: state?.bridgeReducer?.org?.[resolvedParams.org_id]?.doctstar_embed_token || "",
     currrentOrgDetail: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id],
     themeMode: state.appInfoReducer?.embedUserDetails?.themeMode || "system",
     functionData: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.functionData || {},
     historyEmbed: state?.appInfoReducer?.embedUserDetails?.historyEmbed || false,
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams.org_id) || false,
   }));
   useEffect(() => {
     if (!isEmbedUser) {
@@ -117,6 +128,19 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       dispatch(getApiKeyGuideAction());
     }
   }, [pathName, resolvedParams.org_id, isEmbedUser]);
+
+  // Blocked orgs are also fetched on the /org page, but the layout may be the first
+  // page a user lands on (direct link or refresh), so fetch it here too.
+  useEffect(() => {
+    if (isEmbedUser) return;
+    getBlockedOrgs()
+      .then((response) => {
+        dispatch(setBlockedOrgs(response?.data?.data || []));
+      })
+      .catch((error) => {
+        console.error("Failed to fetch blocked organizations", error);
+      });
+  }, [resolvedParams.org_id, isEmbedUser]);
 
   const { changeTheme } = useThemeManager();
 
@@ -257,6 +281,10 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   }, [SERVICES]);
 
   useEffect(() => {
+    dispatch(getPlanAction());
+  }, [dispatch]);
+
+  useEffect(() => {
     if (isValidOrg) {
       dispatch(
         getAllBridgesAction(() => {
@@ -338,7 +366,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     pathName,
   ]);
   async function handleMessage(e) {
-    if (e.data?.metadata?.type !== "tool") return;
+    if (e.data?.metadata?.type !== "tool" && e.data?.metadata?.type !== "pre_tool") return;
     // todo: need to make api call to update the name & description
     if (e?.data?.webhookurl) {
       const dataToSend = {
@@ -370,32 +398,49 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                 bridgeId: path[5],
                 versionId: resolvedSearchParams?.get("version"),
                 dataToSend: {
-                  functionData: {
-                    function_id: fnFromData._id,
-                    script_id: fnFromData.script_id,
+                  connected_tool: {
+                    type: "tools",
+                    id: fnFromData._id,
                   },
+                  operation: 0,
                 },
               })
             );
-            const isInPreTools =
-              Array.isArray(preTools) && preTools.some((tool) => tool?.config?.function_id === fnFromData._id);
-            if (isInPreTools) {
+            const matchingPreTool = Array.isArray(preTools) && preTools.find((tool) => tool?.id === fnFromData._id);
+            if (matchingPreTool) {
               dispatch(
-                updateApiAction(path[5], {
-                  pre_tools: preTools[0],
-                  status: "0",
-                  version_id: resolvedSearchParams?.get("version"),
+                updateBridgeVersionAction({
+                  bridgeId: path[5],
+                  versionId: resolvedSearchParams?.get("version"),
+                  dataToSend: {
+                    connected_tool: {
+                      type: "pre_tool",
+                      id: matchingPreTool.id,
+                      pre_tool_type: matchingPreTool.pre_tool_type,
+                    },
+                    operation: 0,
+                  },
                 })
               );
             }
           } else {
-            dispatch(
-              updateApiAction(path[5], {
-                pre_tools: preTools[0],
-                status: "0",
-                version_id: resolvedSearchParams?.get("version"),
-              })
-            );
+            const matchingPreTool = Array.isArray(preTools) && preTools.find((tool) => tool?.id === fnFromData._id);
+            if (matchingPreTool) {
+              dispatch(
+                updateBridgeVersionAction({
+                  bridgeId: path[5],
+                  versionId: resolvedSearchParams?.get("version"),
+                  dataToSend: {
+                    connected_tool: {
+                      type: "pre_tool",
+                      id: matchingPreTool.id,
+                      pre_tool_type: matchingPreTool.pre_tool_type,
+                    },
+                    operation: 0,
+                  },
+                })
+              );
+            }
           }
           dispatch(deleteFunctionAction({ script_id: e?.data?.id, orgId: path[2], functionId: fnFromData._id }));
         }
@@ -419,27 +464,62 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           folder_id: e?.data?.metadata?.folder_id || null,
         };
         dispatch(createApiAction(resolvedParams.org_id, dataFromEmbed)).then((data) => {
-          if (pathName.includes("agents")) {
+          // Handle reviewer tools - works regardless of page context
+          if (e?.data?.metadata?.createFrom === "reviewer" && path[5] && resolvedSearchParams?.get("version")) {
+            // Add as reviewer tool - preserve existing review_agent settings
+            const currentReviewAgent = versionData?.settings?.review_agent || {};
+            dispatch(
+              updateBridgeVersionAction({
+                bridgeId: path[5],
+                versionId: resolvedSearchParams?.get("version"),
+                dataToSend: {
+                  settings: {
+                    review_agent: {
+                      ...currentReviewAgent,
+                      reviewer_tools: [data?._id],
+                    },
+                  },
+                },
+              })
+            );
+          } else if (pathName.includes("agents")) {
             if (e?.data?.metadata?.createFrom === "preFunction") {
-              // Only add as pre-tool if not already present (preTools is an array of objects)
-              const alreadyPreTool =
-                Array.isArray(preTools) && preTools.some((pt) => pt?.config?.function_id === data?._id);
+              // Only add as pre-tool if not already present (only one pre_tool entry is allowed at a time)
+              const alreadyPreTool = Array.isArray(preTools) && preTools.some((pt) => pt?.id === data?._id);
               if (!alreadyPreTool) {
                 dispatch(
-                  updateApiAction(path[5], {
-                    pre_tools: {
-                      type: "custom_function",
-                      config: {
-                        function_id: data?._id,
-                        script_id: data?.script_id,
-                        required: data?.required || [],
+                  updateBridgeVersionAction({
+                    bridgeId: path[5],
+                    versionId: resolvedSearchParams?.get("version"),
+                    dataToSend: {
+                      connected_tool: {
+                        type: "pre_tool",
+                        pre_tool_type: "custom_function",
+                        id: data?._id,
+                        url: data?.url,
+                        variable_path: { required: data?.required || [] },
                       },
+                      operation: 1,
                     },
-                    status: "1",
-                    version_id: resolvedSearchParams?.get("version"),
                   })
                 );
               }
+            } else if (e?.data?.metadata?.createFrom === "postFunction") {
+              // Add as post tool
+              dispatch(
+                updateBridgeVersionAction({
+                  bridgeId: path[5],
+                  versionId: resolvedSearchParams?.get("version"),
+                  dataToSend: {
+                    connected_tool: {
+                      type: "post_tool",
+                      id: data?._id,
+                      args: {},
+                    },
+                    operation: 1,
+                  },
+                })
+              );
             } else {
               // Only add as regular tool if not already in versionData
               if (!tools?.includes(data?._id)) {
@@ -448,10 +528,11 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                     bridgeId: path[5],
                     versionId: resolvedSearchParams?.get("version"),
                     dataToSend: {
-                      functionData: {
-                        function_id: data?._id,
-                        function_operation: "1",
+                      connected_tool: {
+                        type: "tools",
+                        id: data?._id,
                       },
+                      operation: 1,
                     },
                   })
                 );
@@ -501,6 +582,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
 
   if (!isEmbedUser) {
     const hasFolders = ["agents", "apikeys", "tools", "knowledge_base"].includes(path[3]);
+    // Embed detail pages collapse the MainSlider and render their own left rail,
+    // so the banner needs extra left padding to clear it.
+    const isEmbedPageOpen = (path[3] === "RAG_embed" || path[3] === "embed") && Boolean(path[4]);
 
     return (
       <div className="h-screen flex flex-col overflow-hidden">
@@ -515,6 +599,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           <div
             className={`flex-1 ${path.length > 4 ? "ml-0  md:ml-12 lg:ml-12" : ""} flex flex-col overflow-hidden z-medium`}
           >
+            {isOrgBlocked ? <BlockedOrgBanner className={isEmbedPageOpen ? "pl-16" : ""} /> : null}
             <div
               className={`sticky top-0 z-medium bg-base-100 border-b border-base-300 ${hasFolders ? "ml-0" : "ml-2"}`}
             >

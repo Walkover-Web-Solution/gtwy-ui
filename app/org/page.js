@@ -9,6 +9,7 @@ import { switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { setCurrentOrgIdAction } from "@/store/action/orgAction";
 import { setInCookies, getFromCookies } from "@/utils/utility";
+import { peekCheckoutReturnUrl } from "@/utils/billingReturn";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -51,6 +52,16 @@ function Page() {
   }, [organizations]);
 
   useEffect(() => {
+    // Returning from Stripe checkout (?checkout=success|cancel): go back to the exact plans
+    // page the user left from. The plans page consumes the stored entry, so this can't loop.
+    const checkoutReturnUrl = searchParams.get("checkout") ? peekCheckoutReturnUrl() : null;
+    if (checkoutReturnUrl) {
+      setIsRedirecting(true);
+      const qs = searchParams.toString();
+      route.replace(`${checkoutReturnUrl}${qs ? `?${qs}` : ""}`);
+      return;
+    }
+
     const redirectPreviousUrl = searchParams.get("redirect_previous_url");
     if (redirectPreviousUrl === "true") {
       setIsRedirecting(true);

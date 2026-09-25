@@ -5,22 +5,34 @@ import { useDispatch } from "react-redux";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import { getThread } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
-import { getAgentAnalyticsFiltersApi } from "@/config";
 import { setSelectedVersion } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
 import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen } from "lucide-react";
-import { ResponsiveContainer, ComposedChart, Bar, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  AreaChart,
+  Bar,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 
 import Sidebar from "@/components/historyPageComponents/Sidebar";
 import BatchSubthreadPanel from "@/components/historyPageComponents/BatchSubthreadPanel";
-import ThreadContainer from "@/components/historyPageComponents/ThreadContainer";
+// Threads opened from the Analytics dashboard use the redesigned Thread Details UI.
+import NewThreadContainer from "@/components/historyPageComponents/NewThreadContainer";
 import { getStatsConfig, MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
+import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
 
 // URL params that must never be forwarded to the analytics API.
 const UI_ONLY_QUERY_PARAMS = new Set([
@@ -109,15 +121,27 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const dispatch = useDispatch();
 
-  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading } = useCustomSelector((state) => {
-    return {
-      thread: state?.historyReducer?.thread || [],
-      analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
-      selectedVersion: state?.historyReducer?.selectedVersion || "all",
-      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
-      analyticsLoading: state?.analyticsReducer?.loading || false,
-    };
-  });
+  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading, isEmbedUser, reduxUserId } =
+    useCustomSelector((state) => {
+      return {
+        thread: state?.historyReducer?.thread || [],
+        analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
+        selectedVersion: state?.historyReducer?.selectedVersion || "all",
+        knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
+        analyticsLoading: state?.analyticsReducer?.loading || false,
+        isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
+        reduxUserId: state?.userDetailsReducer?.userDetails?.id,
+      };
+    });
+
+  // Backend analytics pushes charts to `${org_id}_${bridge_id}_${user_id}` (same as ConfigurationPage).
+  const currentUserId =
+    isEmbedUser && typeof window !== "undefined" ? sessionStorage.getItem("gtwy_user_id") : reduxUserId;
+  const analyticsRtChannelId = useMemo(() => {
+    if (!resolvedParams?.org_id || !resolvedParams?.id || !currentUserId) return "";
+    return `${resolvedParams.org_id}_${resolvedParams.id}_${currentUserId}`.replace(/ /g, "_");
+  }, [resolvedParams?.org_id, resolvedParams?.id, currentUserId]);
+  useRtLayerEventHandler(analyticsRtChannelId);
 
   // Derive pagination from analytics response
   const hasMore = analyticsData?.pagination?.has_more ?? false;
@@ -144,6 +168,7 @@ function Page({ params, searchParams }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [executionChartType, setExecutionChartType] = useState("area");
   const [latencyChartType, setLatencyChartType] = useState("area");
+  const [costChartType, setCostChartType] = useState("area");
 
   const router = useRouter();
   const { buildUrl } = useQueryParams();
@@ -284,6 +309,7 @@ function Page({ params, searchParams }) {
   const summary = analyticsData?.summary || {};
   const requestsOverTime = analyticsData?.requests_over_time || [];
   const responseTime = analyticsData?.response_time || [];
+  const costOverTime = analyticsData?.cost_over_time || [];
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -302,6 +328,40 @@ function Page({ params, searchParams }) {
     slow: Number(((item.slow || 0) / 1000).toFixed(2)),
     worst: Number(((item.worst || 0) / 1000).toFixed(2)),
   }));
+
+  const costData = costOverTime.map((item) => ({
+    time: formatDate(item.t),
+    cost: Number(Number(item.cost || 0).toFixed(4)),
+  }));
+
+  const statSparklines = useMemo(
+    () => ({
+      "Total Requests": {
+        color: "#8b5cf6",
+        data: requestsOverTime.map((d) => ({ v: (d.success || 0) + (d.failed || 0) })),
+      },
+      "Success Rate": {
+        color: "#22c55e",
+        data: requestsOverTime.map((d) => {
+          const total = (d.success || 0) + (d.failed || 0);
+          return { v: total ? ((d.success || 0) / total) * 100 : 0 };
+        }),
+      },
+      "Failed Runs": {
+        color: "#ef4444",
+        data: requestsOverTime.map((d) => ({ v: d.failed || 0 })),
+      },
+      "Avg Successful Response": {
+        color: "#f59e0b",
+        data: responseTime.map((d) => ({ v: Number(((d.typical || 0) / 1000).toFixed(2)) })),
+      },
+      "Est. Cost": {
+        color: "#ef4444",
+        data: costOverTime.map((d) => ({ v: Number(d.cost || 0) })),
+      },
+    }),
+    [requestsOverTime, responseTime, costOverTime]
+  );
 
   useEffect(() => {
     const urlVersion = search.get("version") || "all";
@@ -612,7 +672,7 @@ function Page({ params, searchParams }) {
   }, []);
 
   const handleThreadItemClick = useCallback((thread_id, item, value) => {
-    if (value === "AiConfig" || value === "Latency") {
+    if (value === "AiConfig" || value === "Latency" || value === "Memory") {
       setSelectedItem({ variables: item.variables, ...item, value });
       openModal(MODAL_TYPE.CHAT_DETAILS_VIEW_MODAL);
     }
@@ -717,8 +777,10 @@ function Page({ params, searchParams }) {
             {/* Dashboard Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-base-content">Agent Analytics</h1>
-                <p className="text-sm text-base-content/60 mt-1">
+                <h1 className="text-[30px] leading-tight font-bold tracking-tight text-base-content">
+                  Agent Analytics
+                </h1>
+                <p className="text-[15px] text-base-content/50 mt-0.5">
                   Overview of agent performance and execution history.
                 </p>
               </div>
@@ -728,270 +790,270 @@ function Page({ params, searchParams }) {
             {Object.keys(summary).length === 0 ? (
               <AnalyticsStatsSkeleton />
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
-                {getStatsConfig(summary).map((stat, idx) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div
-                      key={idx}
-                      className="bg-base-100 p-5 rounded-2xl border border-base-300 shadow-sm flex flex-col gap-1"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color}`}>
-                          <Icon size={16} />
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+                {getStatsConfig(summary)
+                  .filter((stat) => stat.title !== "Positive" && stat.title !== "Negative")
+                  .map((stat, idx) => {
+                    const spark = statSparklines[stat.title];
+                    const hasSpark = spark && spark.data.length > 1;
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-base-100 px-4 py-3.5 rounded-lg border border-base-300 flex flex-col gap-2.5"
+                      >
+                        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-base-content/45 truncate">
+                          {stat.title}
+                        </h3>
+                        <div className="flex items-end justify-between gap-2">
+                          <p className="text-2xl leading-none font-bold tracking-tight text-base-content">
+                            {stat.value}
+                          </p>
+                          {hasSpark && (
+                            <div className="h-8 w-[64px] shrink-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={spark.data} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
+                                  <Area
+                                    type="monotone"
+                                    dataKey="v"
+                                    stroke={spark.color}
+                                    strokeWidth={1.5}
+                                    fill={spark.color}
+                                    fillOpacity={0.12}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                  />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )}
                         </div>
-                        <div
-                          className={`flex items-center gap-1 text-xs font-semibold ${stat.trend === "up" ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                          {stat.change}
-                        </div>
+                        {stat.change ? (
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                stat.trend === "up"
+                                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+                                  : "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400"
+                              }`}
+                            >
+                              {stat.trend === "up" ? "▲" : "▼"} {stat.change}
+                            </span>
+                            <span className="text-[10px] text-base-content/40">vs prev</span>
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="flex flex-col mt-2">
-                        <p className="text-xl font-bold text-base-content">{stat.value}</p>
-                        <h3 className="text-[11px] font-medium text-base-content/60 mt-0.5">{stat.title}</h3>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
 
             {/* Filters Container */}
-            <div className="bg-base-100 border border-base-300 rounded-lg  mb-8 shadow-sm">
+            <div className="bg-base-100 border border-base-300 rounded-lg mb-6">
               {/* Row 1: Time Range, Interval, Feedback, Error, Advance Toggle */}
-              <div className="flex items-center gap-4 px-4 py-1.5 flex-wrap">
-                {/* Time Range */}
-                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                  Time Range
-                </span>
-                <div className="flex gap-1.5 shrink-0 ">
-                  {[
-                    { label: "24h", value: "24h" },
-                    { label: "7d", value: "7d" },
-                    { label: "30d", value: "30d" },
-                  ].map((item) => {
-                    const isActive = filterRange === item.value && !filterStart && !filterEnd;
+              <div className="px-4 py-3 space-y-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Time Range */}
+                  <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
+                    Time Range
+                  </span>
+                  <div className="flex gap-1.5 shrink-0 ">
+                    {[
+                      { label: "24h", value: "24h" },
+                      { label: "7d", value: "7d" },
+                      { label: "30d", value: "30d" },
+                    ].map((item) => {
+                      const isActive = filterRange === item.value && !filterStart && !filterEnd;
 
-                    return (
+                      return (
+                        <button
+                          key={item.value}
+                          onClick={() => {
+                            setFilterRange(item.value);
+                            setFilterStart("");
+                            setFilterEnd("");
+                            applyFilters({ range: item.value, start: "", end: "" });
+                          }}
+                          className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            isActive ? "bg-indigo-600 text-white" : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom Date Dropdown replacing the pill */}
+                    <div ref={customDropdownRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomOpen(!isCustomOpen)}
+                        className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer border-none outline-none focus:outline-none focus:ring-0 ${
+                          filterStart || filterEnd
+                            ? "bg-indigo-600 text-white"
+                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                        }`}
+                      >
+                        Custom
+                      </button>
+                      {isCustomOpen && (
+                        <div className="absolute left-0 z-50 menu p-4 shadow-xl border border-base-300 bg-base-100 rounded-box w-80 ">
+                          <h3 className="font-semibold text-sm mb-4 text-base-content">Custom Date Range</h3>
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
+                              <input
+                                type="datetime-local"
+                                className="input input-sm w-full text-xs"
+                                value={filterStart}
+                                max={filterEnd}
+                                onChange={(e) => {
+                                  setFilterStart(e.target.value);
+                                  setFilterRange("");
+                                }}
+                                onClick={(e) => e.target.showPicker()}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
+                              <input
+                                type="datetime-local"
+                                className="input input-sm w-full text-xs"
+                                value={filterEnd}
+                                min={filterStart}
+                                onChange={(e) => {
+                                  setFilterEnd(e.target.value);
+                                  setFilterRange("");
+                                }}
+                                onClick={(e) => e.target.showPicker()}
+                              />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                              <button
+                                className="btn btn-sm btn-primary flex-1"
+                                disabled={!filterStart && !filterEnd}
+                                onClick={() => {
+                                  applyFilters();
+                                  setIsCustomOpen(false);
+                                  if (document.activeElement) document.activeElement.blur();
+                                }}
+                              >
+                                Apply
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline flex-1"
+                                disabled={!hasAnyFilter}
+                                onClick={() => {
+                                  clearFilters();
+                                  setIsCustomOpen(false);
+                                }}
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Interval */}
+                  <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0 ml-2">
+                    Interval
+                  </span>
+                  <div className="flex gap-1.5 shrink-0">
+                    {[
+                      { label: "1h", value: "1h" },
+                      { label: "3h", value: "3h" },
+                      { label: "6h", value: "6h" },
+                      { label: "12h", value: "12h" },
+                      { label: "24h", value: "24h" },
+                    ].map((item) => (
                       <button
                         key={item.value}
                         onClick={() => {
-                          setFilterRange(item.value);
-                          setFilterStart("");
-                          setFilterEnd("");
-                          applyFilters({ range: item.value, start: "", end: "" });
+                          const newInterval = filterInterval === item.value ? "" : item.value;
+                          setFilterInterval(newInterval);
+                          applyFilters({ interval: newInterval });
                         }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          isActive ? "bg-blue-500 text-white" : "bg-base-200 text-base-content/70 hover:bg-base-300"
+                        className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                          filterInterval === item.value
+                            ? "bg-indigo-600 text-white"
+                            : "bg-base-200 text-base-content/70 hover:bg-base-300"
                         }`}
                       >
                         {item.label}
                       </button>
-                    );
-                  })}
-
-                  {/* Custom Date Dropdown replacing the pill */}
-                  <div ref={customDropdownRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomOpen(!isCustomOpen)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer border-none outline-none focus:outline-none focus:ring-0 ${
-                        filterStart || filterEnd
-                          ? "bg-blue-500 text-white"
-                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
-                    >
-                      Custom
-                    </button>
-                    {isCustomOpen && (
-                      <div className="absolute left-0 z-50 menu p-4 shadow-xl border border-base-300 bg-base-100 rounded-box w-80 ">
-                        <h3 className="font-semibold text-sm mb-4 text-base-content">Custom Date Range</h3>
-
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
-                            <input
-                              type="datetime-local"
-                              className="input input-sm input-bordered w-full text-xs"
-                              value={filterStart}
-                              max={filterEnd}
-                              onChange={(e) => {
-                                setFilterStart(e.target.value);
-                                setFilterRange("");
-                              }}
-                              onClick={(e) => e.target.showPicker()}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
-                            <input
-                              type="datetime-local"
-                              className="input input-sm input-bordered w-full text-xs"
-                              value={filterEnd}
-                              min={filterStart}
-                              onChange={(e) => {
-                                setFilterEnd(e.target.value);
-                                setFilterRange("");
-                              }}
-                              onClick={(e) => e.target.showPicker()}
-                            />
-                          </div>
-
-                          <div className="flex gap-2 pt-2">
-                            <button
-                              className="btn btn-sm btn-primary flex-1"
-                              disabled={!filterStart && !filterEnd}
-                              onClick={() => {
-                                applyFilters();
-                                setIsCustomOpen(false);
-                                if (document.activeElement) document.activeElement.blur();
-                              }}
-                            >
-                              Apply
-                            </button>
-                            <button
-                              className="btn btn-sm btn-outline flex-1"
-                              disabled={!hasAnyFilter}
-                              onClick={() => {
-                                clearFilters();
-                                setIsCustomOpen(false);
-                              }}
-                            >
-                              Clear
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </div>
 
-                <div className="w-px h-4 bg-base-300 shrink-0"></div>
-
-                {/* Interval */}
-                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                  Interval
-                </span>
-                <div className="flex gap-1.5 shrink-0">
-                  {[
-                    { label: "1h", value: "1h" },
-                    { label: "3h", value: "3h" },
-                    { label: "6h", value: "6h" },
-                    { label: "12h", value: "12h" },
-                    { label: "24h", value: "24h" },
-                  ].map((item) => (
-                    <button
-                      key={item.value}
-                      onClick={() => {
-                        const newInterval = filterInterval === item.value ? "" : item.value;
-                        setFilterInterval(newInterval);
-                        applyFilters({ interval: newInterval });
+                <div className="flex items-center gap-5 flex-wrap">
+                  {/* Reviewer Failures Toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      className={`toggle toggle-sm scale-75 origin-center ${filterReviewFailed ? "toggle-warning" : ""}`}
+                      checked={filterReviewFailed}
+                      onChange={(e) => {
+                        setFilterReviewFailed(e.target.checked);
+                        applyFilters({ review_failed: e.target.checked });
                       }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        filterInterval === item.value
-                          ? "bg-blue-500 text-white"
-                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
+                    />
+                    <span
+                      className={`text-sm ${filterReviewFailed ? "text-base-content font-medium" : "text-base-content/70"}`}
                     >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+                      Reviewer Failures
+                    </span>
+                  </label>
 
-                <div className="w-px h-4 bg-base-300 shrink-0"></div>
-
-                {/* Feedback */}
-                <span className="text-[11px] font-bold tracking-widest text-base-content/40 uppercase shrink-0">
-                  Feedback
-                </span>
-                <div className="flex gap-1.5 shrink-0">
-                  {[
-                    { label: "Any", value: "all" },
-                    { label: "Good", value: "1" },
-                    { label: "Bad", value: "2" },
-                  ].map((item) => (
-                    <button
-                      key={item.value}
-                      onClick={() => {
-                        setFilterFeedback(item.value);
-                        applyFilters({ feedback: item.value });
+                  {/* Error Toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      className={`toggle toggle-sm scale-75 origin-center ${filterError ? "toggle-error" : ""}`}
+                      checked={filterError}
+                      onChange={(e) => {
+                        setFilterError(e.target.checked);
+                        applyFilters({ error: e.target.checked });
                       }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        filterFeedback === item.value
-                          ? "bg-blue-500 text-white"
-                          : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                      }`}
+                    />
+                    <span
+                      className={`text-sm ${filterError ? "text-base-content font-medium" : "text-base-content/70"}`}
                     >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+                      Error History
+                    </span>
+                  </label>
 
-                {/* Reviewer Failures Toggle */}
-                <label
-                  className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
-                    filterReviewFailed ? "bg-[#FD9900] text-white border border-[#FD9900]" : "border border-base-200"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className={`toggle toggle-sm scale-75 origin-center ${filterReviewFailed ? "toggle-warning" : ""}`}
-                    checked={filterReviewFailed}
-                    onChange={(e) => {
-                      setFilterReviewFailed(e.target.checked);
-                      applyFilters({ review_failed: e.target.checked });
-                    }}
-                  />
-                  <span className={`text-xs font-medium ${filterReviewFailed ? "text-white" : "text-base-content/70"}`}>
-                    Reviewer Failures
-                  </span>
-                </label>
-
-                {/* Error Toggle */}
-                <label
-                  className={`flex items-center gap-2 cursor-pointer shrink-0 px-3 py-1.5 rounded-full transition-colors ${
-                    filterError ? "bg-[#FA2C36] text-white border border-[#FA2C36]" : "border border-base-200"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className={`toggle toggle-sm scale-75 origin-center ${filterError ? "toggle-error" : ""}`}
-                    checked={filterError}
-                    onChange={(e) => {
-                      setFilterError(e.target.checked);
-                      applyFilters({ error: e.target.checked });
-                    }}
-                  />
-                  <span className={`text-xs font-medium ${filterError ? "text-white" : "text-base-content/70"}`}>
-                    Error History
-                  </span>
-                </label>
-
-                {/* Advance Filter Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsAdvanceFilterOpen(!isAdvanceFilterOpen)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${
-                    isAdvanceFilterOpen
-                      ? "bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:border-primary/40"
-                      : "bg-base-100 text-base-content/70 border-base-200 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:bg-base-100 dark:hover:bg-primary/10 dark:hover:text-primary"
-                  }`}
-                >
-                  <Filter className="w-4 h-4" />
-                  Search by Fields
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isAdvanceFilterOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                {hasAnyFilter && (
+                  {/* Advance Filter Toggle */}
                   <button
                     type="button"
-                    onClick={clearFilters}
-                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
+                    onClick={() => setIsAdvanceFilterOpen(!isAdvanceFilterOpen)}
+                    className={`px-3.5 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 border ${
+                      isAdvanceFilterOpen
+                        ? "bg-primary/10 text-primary border-primary/30 dark:bg-primary/20 dark:border-primary/40"
+                        : "bg-base-100 text-base-content/70 border-base-300 hover:bg-primary/5 hover:text-primary hover:border-primary/40 dark:bg-base-100 dark:hover:bg-primary/10 dark:hover:text-primary"
+                    }`}
                   >
-                    <X className="w-3.5 h-3.5" />
-                    Clear All
+                    <Filter className="w-3.5 h-3.5" />
+                    Search by Fields
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform ${isAdvanceFilterOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
-                )}
+
+                  {hasAnyFilter && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 border bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Clear All
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Row 2: Advance Filters (expandable inside same container) */}
@@ -1018,9 +1080,9 @@ function Page({ params, searchParams }) {
                           setFilterAgent([]);
                           applyFilters({ tool_id: [], knowledgebase_id: [], agent_id: [] });
                         }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           !filterTool.length && !filterKnowledgeBase.length && !filterAgent.length
-                            ? "bg-blue-500 text-white"
+                            ? "bg-indigo-600 text-white"
                             : "bg-base-200 text-base-content/70 hover:bg-base-300"
                         }`}
                       >
@@ -1084,9 +1146,9 @@ function Page({ params, searchParams }) {
                                 <button
                                   key={`${item.type}-${item.id}`}
                                   onClick={() => toggle(item)}
-                                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                                  className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
                                     selected
-                                      ? "bg-blue-500 text-white"
+                                      ? "bg-indigo-600 text-white"
                                       : "bg-base-200 text-base-content/70 hover:bg-base-300"
                                   }`}
                                   title={item.name}
@@ -1101,7 +1163,7 @@ function Page({ params, searchParams }) {
                             {allItems.length > 8 && (
                               <button
                                 onClick={() => setShowAllToolGroup(!showAllToolGroup)}
-                                className="px-3 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
+                                className="px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
                               >
                                 {showAllToolGroup ? "Less" : `+${allItems.length - 8} More`}
                               </button>
@@ -1123,9 +1185,9 @@ function Page({ params, searchParams }) {
                           setFilterModel([]);
                           applyFilters({ model: [] });
                         }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           !filterModel.length
-                            ? "bg-blue-500 text-white"
+                            ? "bg-indigo-600 text-white"
                             : "bg-base-200 text-base-content/70 hover:bg-base-300"
                         }`}
                       >
@@ -1148,9 +1210,9 @@ function Page({ params, searchParams }) {
                             setFilterModel(next);
                             applyFilters({ model: next });
                           }}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                             filterModel.includes(m)
-                              ? "bg-blue-500 text-white"
+                              ? "bg-indigo-600 text-white"
                               : "bg-base-200 text-base-content/70 hover:bg-base-300"
                           }`}
                         >
@@ -1161,7 +1223,7 @@ function Page({ params, searchParams }) {
                         .length > 4 && (
                         <button
                           onClick={() => setShowAllModels(!showAllModels)}
-                          className="px-3 py-1 rounded-full text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
+                          className="px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors border border-dashed border-base-content/30 text-base-content/60 hover:border-base-content/50 hover:text-base-content"
                         >
                           {showAllModels
                             ? "Less"
@@ -1187,7 +1249,7 @@ function Page({ params, searchParams }) {
                         <label className="block text-xs font-medium text-base-content/70 mb-0.5">{f.label}</label>
                         <input
                           type="text"
-                          className="input input-sm input-bordered w-full rounded-lg text-xs"
+                          className="input input-sm w-full rounded-lg text-xs"
                           placeholder={`Search ${f.label.toLowerCase()}...`}
                           value={filterByFields[f.key] || ""}
                           onChange={(e) => setFilterByFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
@@ -1201,7 +1263,7 @@ function Page({ params, searchParams }) {
                           <div key={idx} className="flex gap-2 items-center">
                             <input
                               type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                              className="input input-sm rounded-lg flex-1 text-xs"
                               placeholder="key"
                               value={row.key}
                               onChange={(e) => {
@@ -1212,7 +1274,7 @@ function Page({ params, searchParams }) {
                             />
                             <input
                               type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                              className="input input-sm rounded-lg flex-1 text-xs"
                               placeholder="value"
                               value={row.value}
                               onChange={(e) => {
@@ -1289,13 +1351,21 @@ function Page({ params, searchParams }) {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Success / Failure Chart */}
-              <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-5">
                   <div>
-                    <h3 className="text-base font-semibold text-base-content">Execution Volume</h3>
-                    <p className="text-xs text-base-content/60">Success vs Failed runs over time</p>
+                    <h3 className="text-[15px] font-semibold text-base-content">Execution Volume</h3>
+                    <p className="text-xs text-base-content/50 mt-0.5">Success vs Failed runs over time</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#10b981]" />
+                      Success
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#ef4444]" />
+                      Failed
+                    </span>
                     <button
                       onClick={() => setExecutionChartType((prev) => (prev === "area" ? "bar" : "area"))}
                       className="btn btn-ghost btn-xs btn-circle"
@@ -1326,14 +1396,20 @@ function Page({ params, searchParams }) {
                             <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                         <XAxis
                           dataKey="time"
-                          tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
                           axisLine={false}
                           tickLine={false}
+                          minTickGap={24}
                         />
-                        <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={34}
+                        />
                         <Tooltip
                           contentStyle={{
                             fontSize: "12px",
@@ -1348,14 +1424,14 @@ function Page({ params, searchParams }) {
                               type="monotone"
                               dataKey="success"
                               stroke="#10b981"
-                              strokeWidth={2}
+                              strokeWidth={1.5}
                               fill="url(#gradSuccess)"
                             />
                             <Area
                               type="monotone"
                               dataKey="failed"
                               stroke="#ef4444"
-                              strokeWidth={2}
+                              strokeWidth={1.5}
                               fill="url(#gradFailed)"
                             />
                           </>
@@ -1372,13 +1448,25 @@ function Page({ params, searchParams }) {
               </div>
 
               {/* Latency Chart */}
-              <div className="bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm flex flex-col">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-5">
                   <div>
-                    <h3 className="text-base font-semibold text-base-content">Average Latency</h3>
-                    <p className="text-xs text-base-content/60">Agent response time (s)</p>
+                    <h3 className="text-[15px] font-semibold text-base-content">Average Latency</h3>
+                    <p className="text-xs text-base-content/50 mt-0.5">Agent response time (s)</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#3b82f6]" />
+                      Typical
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#f59e0b]" />
+                      Slow
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#ef4444]" />
+                      Worst
+                    </span>
                     <button
                       onClick={() => setLatencyChartType((prev) => (prev === "area" ? "bar" : "area"))}
                       className="btn btn-ghost btn-xs btn-circle"
@@ -1413,14 +1501,20 @@ function Page({ params, searchParams }) {
                             <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
                         <XAxis
                           dataKey="time"
-                          tick={{ fill: "#9ca3af", fontSize: "11px" }}
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
                           axisLine={false}
                           tickLine={false}
+                          minTickGap={24}
                         />
-                        <YAxis tick={{ fill: "#9ca3af", fontSize: "11px" }} axisLine={false} tickLine={false} />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={34}
+                        />
                         <Tooltip
                           contentStyle={{
                             fontSize: "12px",
@@ -1435,21 +1529,21 @@ function Page({ params, searchParams }) {
                               type="monotone"
                               dataKey="worst"
                               stroke="#ef4444"
-                              strokeWidth={2}
+                              strokeWidth={1.5}
                               fill="url(#gradWorst)"
                             />
                             <Area
                               type="monotone"
                               dataKey="slow"
                               stroke="#f59e0b"
-                              strokeWidth={2}
+                              strokeWidth={1.5}
                               fill="url(#gradSlow)"
                             />
                             <Area
                               type="monotone"
                               dataKey="typical"
                               stroke="#3b82f6"
-                              strokeWidth={2}
+                              strokeWidth={1.5}
                               fill="url(#gradTypical)"
                             />
                           </>
@@ -1465,11 +1559,88 @@ function Page({ params, searchParams }) {
                   )}
                 </div>
               </div>
+
+              {/* Cost Chart */}
+              <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-base-content">Cost</h3>
+                    <p className="text-xs text-base-content/50 mt-0.5">Estimated spend over time ($)</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#0d9488]" />
+                      Cost
+                    </span>
+                    <button
+                      onClick={() => setCostChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                      className="btn btn-ghost btn-xs btn-circle"
+                      title="Toggle bar / area"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-[240px]">
+                  {analyticsData?.cost_over_time === undefined ? (
+                    <AnalyticsChartSkeleton title="Cost" />
+                  ) : costData.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
+                      <p className="text-sm text-base-content/50">No content</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={costData}>
+                        <defs>
+                          <linearGradient id="gradCost" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis
+                          dataKey="time"
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          minTickGap={24}
+                        />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={42}
+                          tickFormatter={(v) => `$${Number(v).toFixed(v >= 1 ? 2 : 4)}`}
+                        />
+                        <Tooltip
+                          formatter={(value) => [`$${Number(value).toFixed(4)}`, "Cost"]}
+                          contentStyle={{
+                            fontSize: "12px",
+                            borderRadius: "4px",
+                            border: "none",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        {costChartType === "area" ? (
+                          <Area
+                            type="monotone"
+                            dataKey="cost"
+                            stroke="#0d9488"
+                            strokeWidth={1.5}
+                            fill="url(#gradCost)"
+                          />
+                        ) : (
+                          <Bar dataKey="cost" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                        )}
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Backdrop overlay when slider is open */}
         {selectedThreadId && (
           <div
             className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30 transition-opacity duration-300"
@@ -1483,14 +1654,10 @@ function Page({ params, searchParams }) {
             selectedThreadId ? "translate-x-0 w-[85%]" : "translate-x-full w-[85%]"
           }`}
         >
-          <div className="h-14 border-b border-base-300 flex items-center justify-between px-4 bg-base-100 shrink-0">
-            <h3 className="font-semibold text-sm truncate">Thread Details</h3>
-            <button onClick={handleCloseAside} className="btn btn-ghost btn-sm btn-circle shrink-0">
-              <X size={16} className="text-base-content/60 hover:text-base-content" />
-            </button>
-          </div>
+          {/* NewThreadContainer renders its own header, including the close button */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <ThreadContainer
+            <NewThreadContainer
+              onClose={handleCloseAside}
               thread={
                 selectedBatchMessageId && !searchMessageId
                   ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
@@ -1564,8 +1731,20 @@ function Page({ params, searchParams }) {
       </div>
 
       <ChatAiConfigDeatilViewModal
-        modalContent={selectedItem?.value === "Latency" ? selectedItem?.latency : selectedItem?.AiConfig}
-        modalTitle={selectedItem?.value === "Latency" ? "Latency Details" : "AI Configuration"}
+        modalContent={
+          selectedItem?.value === "Latency"
+            ? selectedItem?.latency
+            : selectedItem?.value === "Memory"
+              ? selectedItem?.memoryContent
+              : selectedItem?.AiConfig
+        }
+        modalTitle={
+          selectedItem?.value === "Latency"
+            ? "Latency Details"
+            : selectedItem?.value === "Memory"
+              ? "Memory"
+              : "AI Configuration"
+        }
       />
     </div>
   );

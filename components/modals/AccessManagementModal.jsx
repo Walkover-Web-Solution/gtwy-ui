@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, getIconOfService } from "@/utils/utility";
-import { toast } from "react-toastify";
-import { getInvitedUsers, inviteUser } from "@/config";
+import toast from "react-hot-toast";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { useDispatch } from "react-redux";
 import { UserCircleIcon } from "@/components/Icons";
 import { UserPlus2, Shield } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { getInvitedUsers, inviteUser } from "@/config/organizationApi";
 const AccessManagementModal = ({ agent }) => {
   // agent.users contains the users already added to this agent
   const users = useCustomSelector((state) => state.orgReducer.users) || [];
@@ -184,7 +184,7 @@ const AccessManagementModal = ({ agent }) => {
 
     // Check if user is already added to the agent
     if (agentMembers.some((member) => String(member.id) === String(userId))) {
-      toast.info("User already has access to this agent");
+      toast("User already has access to this agent");
       setEmailInput("");
       setFoundUser(null);
       return;
@@ -401,7 +401,7 @@ const AccessManagementModal = ({ agent }) => {
     >
       <>
         {agent?.service ? (
-          <div className="flex items-center gap-2 mb-4 p-2 bg-base-200/50 rounded-lg w-fit">
+          <div className="flex items-center gap-2 mb-4 p-2 bg-base-200/50 w-fit">
             <span className="text-xs text-base-content/70">Provider:</span>
             {getIconOfService(agent.service, 16, 16)}
           </div>
@@ -409,7 +409,7 @@ const AccessManagementModal = ({ agent }) => {
 
         {/* Email input with contextual Add/Invite actions */}
         <div className="mb-4">
-          <div id="access-management-search-section" className="bg-base-200 rounded-lg mb-4">
+          <div id="access-management-search-section" className="bg-base-200 mb-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
@@ -421,7 +421,7 @@ const AccessManagementModal = ({ agent }) => {
                   onChange={handleEmailChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Enter user email..."
-                  className="input input-sm input-bordered w-full pr-10"
+                  className="input input-sm w-full pr-10"
                   ref={emailInputRef}
                   // Keep enabled during search to avoid losing focus
                   disabled={isInviting || isUpdating}
@@ -475,7 +475,7 @@ const AccessManagementModal = ({ agent }) => {
             {emailInput.trim() && searchResults.length > 0 && (
               <div
                 id="access-management-search-results"
-                className="mt-3 border border-base-300 rounded-lg bg-base-100 max-h-60 overflow-y-auto"
+                className="mt-3 border border-base-300 bg-base-100 max-h-60 overflow-y-auto"
               >
                 <ul className="menu p-0">
                   {searchResults.map((user) => (
@@ -502,7 +502,7 @@ const AccessManagementModal = ({ agent }) => {
 
             {/* Show searching indicator - only when not typing */}
             {isSearching && emailInput.trim() && !isTypingRef.current && (
-              <div className="mt-3 p-3 border border-base-300 rounded-lg bg-base-100">
+              <div className="mt-3 p-3 border border-base-300 bg-base-100">
                 <div className="flex items-center justify-center gap-2">
                   <span className="loading loading-spinner loading-xs"></span>
                   <span className="text-sm">Searching for members...</span>
@@ -512,7 +512,7 @@ const AccessManagementModal = ({ agent }) => {
 
             {/* Show no results message with invite button - only when not typing */}
             {!isSearching && emailInput.trim() && searchResults.length === 0 && !isTypingRef.current && (
-              <div id="access-management-no-results" className="mt-3 p-3 border border-base-300 rounded-lg bg-base-100">
+              <div id="access-management-no-results" className="mt-3 p-3 border border-base-300 bg-base-100">
                 <div className="text-center">
                   <p className="text-sm">
                     No users found with email: <span className="font-medium">{emailInput}</span>
@@ -533,7 +533,7 @@ const AccessManagementModal = ({ agent }) => {
 
         <div id="access-management-members-section" className="mt-6">
           <h3 className="text-sm font-medium mb-2">Users with Access to this Agent</h3>
-          <div className="border border-base-200 rounded-lg">
+          <div className="border border-base-300">
             <div className="max-h-[50vh] overflow-y-auto">
               {agentMembers.length > 0 ? (
                 <div id="access-management-members-list" className="flex flex-wrap gap-2 p-2">
@@ -541,7 +541,7 @@ const AccessManagementModal = ({ agent }) => {
                     <div
                       id={`access-management-member-${agentMember.id}`}
                       key={agentMember.id}
-                      className="flex items-center gap-2 px-2 py-1 border border-base-200 rounded-full bg-base-100 hover:bg-base-200"
+                      className="flex items-center gap-2 px-2 py-1 border border-base-300 rounded-full bg-base-100 hover:bg-base-200"
                     >
                       <UserCircleIcon size={18} className="text-base-content/70" />
                       <div className="flex flex-col">
