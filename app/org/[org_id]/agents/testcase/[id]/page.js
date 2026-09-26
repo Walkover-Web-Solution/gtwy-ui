@@ -13,7 +13,7 @@ import {
   runTestCaseAction,
   updateTestCaseAction,
 } from "@/store/action/testCasesAction";
-import { updateBridgeAction } from "@/store/action/bridgeAction";
+import { updateBridgeAction, getBridgeVersionAction } from "@/store/action/bridgeAction";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import { PlayIcon } from "@/components/Icons";
@@ -670,6 +670,20 @@ function TestCases({ params }) {
   }, [versions]);
 
   const selectedTestCase = Array.isArray(testCases) && testCases[selectedTestCaseIndex];
+
+  // Version configuration is not fetched anywhere on this page, so `bridgeVersionMapping`
+  // stays empty unless the user came via the configure page. The debug agent reads the
+  // system prompt (and falls back to the config for aiconfig) from it, so pull in each
+  // selected version once — same as the history page does before opening the debug agent.
+  const requestedVersionConfigs = useRef(new Set());
+  useEffect(() => {
+    selectedVersions.forEach((versionId) => {
+      if (!versionId || requestedVersionConfigs.current.has(versionId)) return;
+      if (bridgeVersionMapping?.[versionId]?.configuration) return;
+      requestedVersionConfigs.current.add(versionId);
+      dispatch(getBridgeVersionAction({ versionId }));
+    });
+  }, [selectedVersions, bridgeVersionMapping, dispatch]);
 
   // Check which selected versions don't have an API key configured for their service
   const versionsWithoutApiKeys = useMemo(() => {

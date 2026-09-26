@@ -181,6 +181,8 @@ export const runTestCaseAction =
                   model_output: result.actual_result,
                   expected: result.expected,
                   matching_type: result.matching_type,
+                  // Carried through so the debug agent can fetch this run's AiConfig.
+                  message_id: result.message_id || null,
                   tools_call_data: result.tools_call_data || null,
                   metadata: {
                     bridge_id: result.bridge_id,
