@@ -554,6 +554,7 @@ function FunctionParameterModal({
   functionName = "",
   variablesPath = {},
   setVariablesPath = () => {},
+  originalArgs = null,
   isMasterAgent = false,
   params = {},
   tool_name = "",
@@ -592,8 +593,7 @@ function FunctionParameterModal({
           const environment = function_details?.environment;
           setToolData({ ...function_details, thread_id, environment });
         } else {
-          const version_id = function_details?.version_id;
-          setToolData({ ...function_details, thread_id, version_id });
+          setToolData({ ...function_details, thread_id });
         }
       } else {
         setToolData({});
