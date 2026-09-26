@@ -53,7 +53,7 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
   }
 
   const reviewerAgent = useMemo(
-    () => bridges.find((b) => b._id === reviewerAgentId) || null,
+    () => bridges.find((b) => b._id === reviewerAgentId && !b.deletedAt) || null,
     [bridges, reviewerAgentId]
   );
 
