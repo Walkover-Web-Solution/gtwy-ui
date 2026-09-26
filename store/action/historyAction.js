@@ -15,6 +15,7 @@ import {
   userFeedbackCountReducer,
   fetchRecursiveHistoryStart,
   fetchRecursiveHistorySuccess,
+  buildThreadKey,
 } from "../reducer/historyReducer";
 
 export const getHistoryAction =
@@ -57,7 +58,13 @@ export const getThread =
         versionId,
         error
       );
-      dispatch(fetchThreadReducer({ data: data.data, nextPage }));
+      dispatch(
+        fetchThreadReducer({
+          data: data.data,
+          nextPage,
+          threadKey: buildThreadKey(threadId, subThreadId),
+        })
+      );
       return data.data;
     } catch (error) {
       console.error(error);
@@ -92,6 +99,7 @@ export const getSubThreadsAction =
     try {
       const data = await getSubThreadIds({ thread_id, error, bridge_id, version_id });
       dispatch(fetchSubThreadReducer({ data: data.threads, thread_id }));
+      return data.threads;
     } catch (error) {
       console.error(error);
     }
@@ -104,7 +112,13 @@ export const getMessageByIdAction =
       const response = await getMessageByIdApi({ message_id });
       const messageData = response?.data || response;
       if (messageData) {
-        dispatch(fetchThreadReducer({ data: { data: [messageData] }, nextPage: 1 }));
+        dispatch(
+          fetchThreadReducer({
+            data: { data: [messageData] },
+            nextPage: 1,
+            threadKey: buildThreadKey(messageData?.thread_id, messageData?.sub_thread_id),
+          })
+        );
       }
       return messageData;
     } catch (error) {

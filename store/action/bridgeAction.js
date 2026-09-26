@@ -519,7 +519,7 @@ export const updateBridgeVersionAction =
     try {
       if (!versionId) {
         toast.error("You cannot update published data");
-        return;
+        return { success: false, error: "You cannot update published data", notified: true };
       }
 
       // Step 1: Find the parent bridge ID if not provided
@@ -536,7 +536,7 @@ export const updateBridgeVersionAction =
 
       if (!parentBridgeId) {
         console.error("Could not find parent bridge ID for version:", versionId);
-        return;
+        return { success: false, error: "Could not find the agent this version belongs to." };
       }
 
       if (!localOnly) {
@@ -691,7 +691,7 @@ export const updateBridgeVersionAction =
       );
 
       if (localOnly) {
-        return;
+        return { success: true, localOnly: true };
       }
 
       // Show saving indi\ation in navbar
@@ -739,6 +739,7 @@ export const updateBridgeVersionAction =
     } catch (error) {
       console.error(error);
 
+      let notified = false;
       let parentBridgeId = bridgeId;
       if (versionId && !parentBridgeId) {
         const state = getState().bridgeReducer;
@@ -754,6 +755,7 @@ export const updateBridgeVersionAction =
         dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
       }
       toast.error(error?.response?.data?.message || "Failed to update version. Changes have been reverted.");
+      notified = true;
 
       dispatch(isError());
       // Show error status
@@ -761,7 +763,7 @@ export const updateBridgeVersionAction =
 
       // Clear the status after 3 seconds
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to update version";
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage, notified };
     }
   };
 
