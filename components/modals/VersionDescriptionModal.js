@@ -80,7 +80,7 @@ const VersionDescriptionModal = ({ versionDescriptionRef, handleCreateNewVersion
           id="version-description-input"
           type="text"
           placeholder="Enter version description"
-          className="input input-bordered input-md w-full placeholder-opacity-50"
+          className="input input-md w-full placeholder-opacity-50"
           ref={versionDescriptionRef}
           disabled={isLoading}
         />

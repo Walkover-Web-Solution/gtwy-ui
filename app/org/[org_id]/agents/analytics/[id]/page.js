@@ -5,9 +5,10 @@ import { useDispatch } from "react-redux";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getThread } from "@/store/action/historyAction";
+import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
+import { getSubThreadsAction } from "@/store/action/historyAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
-import { setSelectedVersion } from "@/store/reducer/historyReducer";
+import { setSelectedVersion, buildThreadKey } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
 import { BarChart3, X, Bot, Filter, ChevronDown, Wrench, BookOpen } from "lucide-react";
@@ -32,6 +33,9 @@ import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
 import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
+
+// Stable reference so a stale render does not hand children a fresh array each time.
+const EMPTY_THREAD = [];
 
 // URL params that must never be forwarded to the analytics API.
 const UI_ONLY_QUERY_PARAMS = new Set([
@@ -120,15 +124,36 @@ function Page({ params, searchParams }) {
   const pathName = usePathname();
   const dispatch = useDispatch();
 
-  const { thread, analyticsData, selectedVersion, knowledgeBaseData, analyticsLoading } = useCustomSelector((state) => {
+  const {
+    thread,
+    loadedThreadKey,
+    analyticsData,
+    selectedVersion,
+    knowledgeBaseData,
+    analyticsLoading,
+    isEmbedUser,
+    reduxUserId,
+  } = useCustomSelector((state) => {
     return {
       thread: state?.historyReducer?.thread || [],
+      loadedThreadKey: state?.historyReducer?.loadedThreadKey || null,
       analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
       selectedVersion: state?.historyReducer?.selectedVersion || "all",
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[resolvedParams?.org_id] || [],
       analyticsLoading: state?.analyticsReducer?.loading || false,
+      isEmbedUser: state?.appInfoReducer?.embedUserDetails?.isEmbedUser,
+      reduxUserId: state?.userDetailsReducer?.userDetails?.id,
     };
   });
+
+  // Backend analytics pushes charts to `${org_id}_${bridge_id}_${user_id}` (same as ConfigurationPage).
+  const currentUserId =
+    isEmbedUser && typeof window !== "undefined" ? sessionStorage.getItem("gtwy_user_id") : reduxUserId;
+  const analyticsRtChannelId = useMemo(() => {
+    if (!resolvedParams?.org_id || !resolvedParams?.id || !currentUserId) return "";
+    return `${resolvedParams.org_id}_${resolvedParams.id}_${currentUserId}`.replace(/ /g, "_");
+  }, [resolvedParams?.org_id, resolvedParams?.id, currentUserId]);
+  useRtLayerEventHandler(analyticsRtChannelId);
 
   // Derive pagination from analytics response
   const hasMore = analyticsData?.pagination?.has_more ?? false;
@@ -155,6 +180,7 @@ function Page({ params, searchParams }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [executionChartType, setExecutionChartType] = useState("area");
   const [latencyChartType, setLatencyChartType] = useState("area");
+  const [costChartType, setCostChartType] = useState("area");
 
   const router = useRouter();
   const { buildUrl } = useQueryParams();
@@ -295,6 +321,7 @@ function Page({ params, searchParams }) {
   const summary = analyticsData?.summary || {};
   const requestsOverTime = analyticsData?.requests_over_time || [];
   const responseTime = analyticsData?.response_time || [];
+  const costOverTime = analyticsData?.cost_over_time || [];
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -312,6 +339,11 @@ function Page({ params, searchParams }) {
     typical: Number(((item.typical || 0) / 1000).toFixed(2)),
     slow: Number(((item.slow || 0) / 1000).toFixed(2)),
     worst: Number(((item.worst || 0) / 1000).toFixed(2)),
+  }));
+
+  const costData = costOverTime.map((item) => ({
+    time: formatDate(item.t),
+    cost: Number(Number(item.cost || 0).toFixed(4)),
   }));
 
   const statSparklines = useMemo(
@@ -335,8 +367,12 @@ function Page({ params, searchParams }) {
         color: "#f59e0b",
         data: responseTime.map((d) => ({ v: Number(((d.typical || 0) / 1000).toFixed(2)) })),
       },
+      "Est. Cost": {
+        color: "#ef4444",
+        data: costOverTime.map((d) => ({ v: Number(d.cost || 0) })),
+      },
     }),
-    [requestsOverTime, responseTime]
+    [requestsOverTime, responseTime, costOverTime]
   );
 
   useEffect(() => {
@@ -360,7 +396,10 @@ function Page({ params, searchParams }) {
     };
   }, [dispatch]);
 
-  // Never restore thread/slider state or filters from URL on load or refresh.
+  // Never restore thread/slider state or filters from URL on load or refresh, and re-run this
+  // reset whenever the agent id changes — the App Router reuses this component instance across
+  // agents matching the same [id] route, so without this the previous agent's selected
+  // thread/sub-thread/batch panel stays open on the newly viewed agent's page.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
 
@@ -436,7 +475,7 @@ function Page({ params, searchParams }) {
     isFirstRender.current = false;
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [resolvedParams?.id]);
 
   useEffect(() => {
     if (!resolvedParams?.id) return;
@@ -549,33 +588,38 @@ function Page({ params, searchParams }) {
   const threadHandler = useCallback(
     async (thread_id, item, options = {}) => {
       const opts = options && typeof options === "object" ? options : {};
-      const firstSubThreadId =
-        opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id || thread_id;
+      let firstSubThreadId = opts.subThreadId || item?.sub_thread?.[0]?.sub_thread_id || item?.sub_thread_id;
 
       setSelectedThreadId(thread_id);
-      setSelectedSubThreadId(firstSubThreadId);
       setSidebarExpandedThreadId(thread_id);
-      setSidebarExpandedSubThreadId(firstSubThreadId);
       setIsSliderOpen(true);
       setSelectedBatchMessageId(null);
 
-      dispatch(
-        getThread({
-          threadId: thread_id,
-          bridgeId: resolvedParams.id,
-          nextPage: 1,
-          user_feedback: "all",
-          subThreadId: firstSubThreadId,
-          versionId: "",
-          error: false,
-        })
-      );
+      // The listing does not always carry sub threads; falling back to thread_id loads an empty one.
+      if (!firstSubThreadId) {
+        setSelectedSubThreadId(null);
+        setSidebarExpandedSubThreadId(null);
+        const subThreads = await dispatch(
+          getSubThreadsAction({
+            thread_id,
+            error: false,
+            bridge_id: resolvedParams.id,
+            version_id: selectedVersion,
+          })
+        );
+        firstSubThreadId = subThreads?.[0]?.sub_thread_id || thread_id;
+      }
 
+      setSelectedSubThreadId(firstSubThreadId);
+      setSidebarExpandedSubThreadId(firstSubThreadId);
+
+      // NewThreadContainer loads the messages off these params, so do not fetch here as well.
+      // Raw ids only: buildUrl writes through URLSearchParams, which encodes them itself.
       router.push(
         buildUrl(
           {
-            thread_id: encodeURIComponent(String(thread_id).replace(/&/g, "%26")),
-            subThread_id: encodeURIComponent(String(firstSubThreadId).replace(/&/g, "%26")),
+            thread_id: String(thread_id),
+            subThread_id: String(firstSubThreadId),
             message_id: null,
             batch_id: null,
           },
@@ -583,7 +627,7 @@ function Page({ params, searchParams }) {
         )
       );
     },
-    [pathName, router, buildUrl, resolvedParams.id, dispatch]
+    [pathName, router, buildUrl, resolvedParams.id, dispatch, selectedVersion]
   );
 
   const handleAnalyticsMessageNavigate = useCallback(
@@ -606,23 +650,12 @@ function Page({ params, searchParams }) {
       setSidebarExpandedSubThreadId(subThreadId);
       setIsSliderOpen(true);
 
-      dispatch(
-        getThread({
-          threadId,
-          bridgeId: resolvedParams.id,
-          nextPage: 1,
-          user_feedback: "all",
-          subThreadId,
-          versionId: "",
-          error: false,
-        })
-      );
-
+      // As in threadHandler: NewThreadContainer loads the messages, and buildUrl encodes the ids.
       router.push(
         buildUrl(
           {
-            thread_id: encodeURIComponent(String(threadId).replace(/&/g, "%26")),
-            subThread_id: encodeURIComponent(String(subThreadId).replace(/&/g, "%26")),
+            thread_id: String(threadId),
+            subThread_id: String(subThreadId),
             message_id: null,
             batch_id: null,
           },
@@ -630,7 +663,7 @@ function Page({ params, searchParams }) {
         )
       );
     },
-    [pathName, selectedThreadId, sidebarExpandedThreadId, resolvedParams.id, dispatch, router, buildUrl]
+    [pathName, selectedThreadId, sidebarExpandedThreadId, router, buildUrl]
   );
 
   const handleCloseAside = useCallback(() => {
@@ -646,6 +679,43 @@ function Page({ params, searchParams }) {
     setSearchMessageId(null);
     setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId));
   }, []);
+
+  // Selection switches before the new messages arrive, so the store still holds the thread just left.
+  const currentThreadKey = buildThreadKey(selectedThreadId, selectedSubThreadId);
+  const isThreadStale = !currentThreadKey || loadedThreadKey !== currentThreadKey;
+
+  // Sub thread already auto-selected, so a manual deselect is not undone on the next render.
+  const autoSelectedBatchForRef = useRef(null);
+
+  // A batch sub thread holds one message per batch value; select the first, as the history page does.
+  useEffect(() => {
+    if (!selectedThreadId || !selectedSubThreadId) {
+      autoSelectedBatchForRef.current = null;
+      return;
+    }
+    if (!Array.isArray(thread) || thread.length === 0) return;
+    if (isThreadStale) return;
+
+    if (autoSelectedBatchForRef.current === currentThreadKey) return;
+
+    const firstBatch = thread.find((msg) => msg?.batch_data?.batch_id);
+    autoSelectedBatchForRef.current = currentThreadKey;
+    if (firstBatch && !searchMessageId) setSelectedBatchMessageId(firstBatch.message_id);
+  }, [thread, selectedThreadId, selectedSubThreadId, searchMessageId, isThreadStale, currentThreadKey]);
+
+  // One batch value when selected, the whole sub thread otherwise (also when it matches nothing).
+  const displayThread = useMemo(() => {
+    if (isThreadStale) return EMPTY_THREAD;
+    if (!selectedBatchMessageId || searchMessageId) return thread;
+    const selectedOnly = thread.filter((msg) => msg?.message_id === selectedBatchMessageId);
+    return selectedOnly.length > 0 ? selectedOnly : thread;
+  }, [thread, selectedBatchMessageId, searchMessageId, isThreadStale]);
+
+  // Messages the batch/sub thread panel derives its batch values from.
+  const panelThread = useMemo(() => {
+    if (isThreadStale) return EMPTY_THREAD;
+    return thread;
+  }, [thread, isThreadStale]);
 
   const handleThreadItemClick = useCallback((thread_id, item, value) => {
     if (value === "AiConfig" || value === "Latency" || value === "Memory") {
@@ -880,7 +950,7 @@ function Page({ params, searchParams }) {
                               <label className="block text-xs font-medium text-base-content/70 mb-1">Start Date</label>
                               <input
                                 type="datetime-local"
-                                className="input input-sm input-bordered w-full text-xs"
+                                className="input input-sm w-full text-xs"
                                 value={filterStart}
                                 max={filterEnd}
                                 onChange={(e) => {
@@ -894,7 +964,7 @@ function Page({ params, searchParams }) {
                               <label className="block text-xs font-medium text-base-content/70 mb-1">End Date</label>
                               <input
                                 type="datetime-local"
-                                className="input input-sm input-bordered w-full text-xs"
+                                className="input input-sm w-full text-xs"
                                 value={filterEnd}
                                 min={filterStart}
                                 onChange={(e) => {
@@ -1225,7 +1295,7 @@ function Page({ params, searchParams }) {
                         <label className="block text-xs font-medium text-base-content/70 mb-0.5">{f.label}</label>
                         <input
                           type="text"
-                          className="input input-sm input-bordered w-full rounded-lg text-xs"
+                          className="input input-sm w-full rounded-lg text-xs"
                           placeholder={`Search ${f.label.toLowerCase()}...`}
                           value={filterByFields[f.key] || ""}
                           onChange={(e) => setFilterByFields((prev) => ({ ...prev, [f.key]: e.target.value }))}
@@ -1239,7 +1309,7 @@ function Page({ params, searchParams }) {
                           <div key={idx} className="flex gap-2 items-center">
                             <input
                               type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                              className="input input-sm rounded-lg flex-1 text-xs"
                               placeholder="key"
                               value={row.key}
                               onChange={(e) => {
@@ -1250,7 +1320,7 @@ function Page({ params, searchParams }) {
                             />
                             <input
                               type="text"
-                              className="input input-sm rounded-lg input-bordered flex-1 text-xs"
+                              className="input input-sm rounded-lg flex-1 text-xs"
                               placeholder="value"
                               value={row.value}
                               onChange={(e) => {
@@ -1535,11 +1605,88 @@ function Page({ params, searchParams }) {
                   )}
                 </div>
               </div>
+
+              {/* Cost Chart */}
+              <div className="bg-base-100 p-5 rounded-lg border border-base-300 flex flex-col">
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-base-content">Cost</h3>
+                    <p className="text-xs text-base-content/50 mt-0.5">Estimated spend over time ($)</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-base-content/60">
+                      <span className="w-2.5 h-2.5 rounded-[2px] bg-[#0d9488]" />
+                      Cost
+                    </span>
+                    <button
+                      onClick={() => setCostChartType((prev) => (prev === "area" ? "bar" : "area"))}
+                      className="btn btn-ghost btn-xs btn-circle"
+                      title="Toggle bar / area"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 min-h-[240px]">
+                  {analyticsData?.cost_over_time === undefined ? (
+                    <AnalyticsChartSkeleton title="Cost" />
+                  ) : costData.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                      <BarChart3 className="w-10 h-10 text-base-content/30 mb-2" />
+                      <p className="text-sm text-base-content/50">No content</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={costData}>
+                        <defs>
+                          <linearGradient id="gradCost" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis
+                          dataKey="time"
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          minTickGap={24}
+                        />
+                        <YAxis
+                          tick={{ fill: "#9ca3af", fontSize: "10px" }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={42}
+                          tickFormatter={(v) => `$${Number(v).toFixed(v >= 1 ? 2 : 4)}`}
+                        />
+                        <Tooltip
+                          formatter={(value) => [`$${Number(value).toFixed(4)}`, "Cost"]}
+                          contentStyle={{
+                            fontSize: "12px",
+                            borderRadius: "4px",
+                            border: "none",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        {costChartType === "area" ? (
+                          <Area
+                            type="monotone"
+                            dataKey="cost"
+                            stroke="#0d9488"
+                            strokeWidth={1.5}
+                            fill="url(#gradCost)"
+                          />
+                        ) : (
+                          <Bar dataKey="cost" fill="#0d9488" radius={[4, 4, 0, 0]} />
+                        )}
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Backdrop overlay when slider is open */}
         {selectedThreadId && (
           <div
             className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-30 transition-opacity duration-300"
@@ -1557,11 +1704,7 @@ function Page({ params, searchParams }) {
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <NewThreadContainer
               onClose={handleCloseAside}
-              thread={
-                selectedBatchMessageId && !searchMessageId
-                  ? thread.filter((msg) => msg?.message_id === selectedBatchMessageId)
-                  : thread
-              }
+              thread={displayThread}
               searchParamsHook={search}
               isFetchingMore={false}
               setIsFetchingMore={() => {}}
@@ -1588,12 +1731,16 @@ function Page({ params, searchParams }) {
 
       {/* Batch Subthread Panel - between main content and sidebar */}
       <BatchSubthreadPanel
-        thread={thread}
+        thread={panelThread}
         subThreadIdFromURL={selectedSubThreadId}
         parentThreadId={selectedThreadId}
         selectedBatchMessageId={selectedBatchMessageId}
         onSelectBatch={handleSelectBatch}
         onSelectSubThread={handleSelectSubThread}
+        // The sidebar hides its sub thread list once a thread is open, so a lone one must show here.
+        showSingleSubThread
+        // This page's thread list sits to the right of the panel.
+        threadListOnRight
       />
 
       {/* Right Sidebar */}

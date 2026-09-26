@@ -5,7 +5,7 @@ import { isEqual } from "lodash";
 import { CopyIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "@/components/UI/Modal";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -150,161 +150,164 @@ const ParameterCard = ({
           />
           {name !== "Pre Tool" && name !== "Post Tool" && (
             <div className="flex items-center mr-4 gap-2">
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  autoComplete="off"
-                  data-testid={`param-required-checkbox-${currentPath}`}
-                  id={`param-required-checkbox-${currentPath}`}
-                  type="checkbox"
-                  className="checkbox checkbox-xs"
-                  checked={(() => {
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length === 1) {
-                      // For top-level parameters, check in toolData.required
-                      return (toolData?.required || []).includes(paramKey);
-                    } else {
-                      // For nested parameters, navigate to the direct parent field
-                      const parentKeyParts = keyParts.slice(0, -1);
-                      let currentField = toolData?.fields;
+              {/* A non-empty Value Path is set for this parameter -> required is not applicable, hide it */}
+              {!variablesPath[currentPath] && (
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    autoComplete="off"
+                    data-testid={`param-required-checkbox-${currentPath}`}
+                    id={`param-required-checkbox-${currentPath}`}
+                    type="checkbox"
+                    className="checkbox checkbox-xs"
+                    checked={(() => {
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length === 1) {
+                        // For top-level parameters, check in toolData.required
+                        return (toolData?.required || []).includes(paramKey);
+                      } else {
+                        // For nested parameters, navigate to the direct parent field
+                        const parentKeyParts = keyParts.slice(0, -1);
+                        let currentField = toolData?.fields;
 
-                      // Navigate to the parent field that contains this parameter
-                      for (let i = 0; i < parentKeyParts.length; i++) {
-                        const key = parentKeyParts[i];
-                        if (currentField?.[key]?.type === "array") {
-                          currentField = currentField[key]?.items;
-                        } else {
-                          if (i === parentKeyParts.length - 1) {
-                            // This is the direct parent - check its required
-                            currentField = currentField?.[key];
+                        // Navigate to the parent field that contains this parameter
+                        for (let i = 0; i < parentKeyParts.length; i++) {
+                          const key = parentKeyParts[i];
+                          if (currentField?.[key]?.type === "array") {
+                            currentField = currentField[key]?.items;
                           } else {
-                            // Navigate deeper into nested structure
-                            currentField = currentField?.[key]?.properties || currentField?.[key]?.parameter;
-                          }
-                        }
-                      }
-
-                      return (currentField?.required || []).includes(paramKey);
-                    }
-                  })()}
-                  disabled={(() => {
-                    if (isPublished) return true;
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length === 1) {
-                      // Top-level parameters are always enabled
-                      return false;
-                    } else {
-                      // For nested parameters, check if all parent parameters are required
-                      let isParentRequired = true;
-
-                      // Check each level of parent to ensure they are all required
-                      for (let i = 0; i < keyParts.length - 1; i++) {
-                        const key = keyParts[i];
-
-                        if (i === 0) {
-                          // Check if top-level parent is required
-                          isParentRequired = (toolData?.required || []).includes(key);
-                        } else {
-                          // Check if nested parent is required
-                          const parentPath = keyParts.slice(0, i);
-                          let parentField = toolData?.fields;
-
-                          // Navigate to the field that should contain the required
-                          for (let j = 0; j < parentPath.length; j++) {
-                            const parentKey = parentPath[j];
-                            if (parentField?.[parentKey]?.type === "array") {
-                              parentField = parentField[parentKey]?.items;
+                            if (i === parentKeyParts.length - 1) {
+                              // This is the direct parent - check its required
+                              currentField = currentField?.[key];
                             } else {
-                              if (j === parentPath.length - 1) {
-                                parentField = parentField?.[parentKey];
-                              } else {
-                                parentField =
-                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
-                              }
+                              // Navigate deeper into nested structure
+                              currentField = currentField?.[key]?.properties || currentField?.[key]?.parameter;
                             }
                           }
-
-                          isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
                         }
 
-                        if (!isParentRequired) break;
+                        return (currentField?.required || []).includes(paramKey);
                       }
+                    })()}
+                    disabled={(() => {
+                      if (isPublished) return true;
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length === 1) {
+                        // Top-level parameters are always enabled
+                        return false;
+                      } else {
+                        // For nested parameters, check if all parent parameters are required
+                        let isParentRequired = true;
 
-                      return !isParentRequired;
-                    }
-                  })()}
-                  onChange={() => onRequiredChange(currentPath)}
-                />
-                <span
-                  className={`text-base-content ${(() => {
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length > 1) {
-                      // Check if parent is required to determine text opacity
-                      let isParentRequired = true;
-                      for (let i = 0; i < keyParts.length - 1; i++) {
-                        const key = keyParts[i];
-                        if (i === 0) {
-                          isParentRequired = (toolData?.required || []).includes(key);
-                        } else {
-                          const parentPath = keyParts.slice(0, i);
-                          let parentField = toolData?.fields;
-                          for (let j = 0; j < parentPath.length; j++) {
-                            const parentKey = parentPath[j];
-                            if (parentField?.[parentKey]?.type === "array") {
-                              parentField = parentField[parentKey]?.items;
-                            } else {
-                              if (j === parentPath.length - 1) {
-                                parentField = parentField?.[parentKey];
+                        // Check each level of parent to ensure they are all required
+                        for (let i = 0; i < keyParts.length - 1; i++) {
+                          const key = keyParts[i];
+
+                          if (i === 0) {
+                            // Check if top-level parent is required
+                            isParentRequired = (toolData?.required || []).includes(key);
+                          } else {
+                            // Check if nested parent is required
+                            const parentPath = keyParts.slice(0, i);
+                            let parentField = toolData?.fields;
+
+                            // Navigate to the field that should contain the required
+                            for (let j = 0; j < parentPath.length; j++) {
+                              const parentKey = parentPath[j];
+                              if (parentField?.[parentKey]?.type === "array") {
+                                parentField = parentField[parentKey]?.items;
                               } else {
-                                parentField =
-                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                if (j === parentPath.length - 1) {
+                                  parentField = parentField?.[parentKey];
+                                } else {
+                                  parentField =
+                                    parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                }
                               }
                             }
+
+                            isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
                           }
-                          isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
+
+                          if (!isParentRequired) break;
                         }
-                        if (!isParentRequired) break;
+
+                        return !isParentRequired;
                       }
-                      return !isParentRequired ? "opacity-50" : "";
-                    }
-                    return "";
-                  })()}`}
-                >
-                  Required{" "}
-                  {(() => {
-                    const keyParts = currentPath.split(".");
-                    if (keyParts.length > 1) {
-                      // Check if parent is required
-                      let isParentRequired = true;
-                      for (let i = 0; i < keyParts.length - 1; i++) {
-                        const key = keyParts[i];
-                        if (i === 0) {
-                          isParentRequired = (toolData?.required || []).includes(key);
-                        } else {
-                          const parentPath = keyParts.slice(0, i);
-                          let parentField = toolData?.fields;
-                          for (let j = 0; j < parentPath.length; j++) {
-                            const parentKey = parentPath[j];
-                            if (parentField?.[parentKey]?.type === "array") {
-                              parentField = parentField[parentKey]?.items;
-                            } else {
-                              if (j === parentPath.length - 1) {
-                                parentField = parentField?.[parentKey];
+                    })()}
+                    onChange={() => onRequiredChange(currentPath)}
+                  />
+                  <span
+                    className={`text-base-content ${(() => {
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length > 1) {
+                        // Check if parent is required to determine text opacity
+                        let isParentRequired = true;
+                        for (let i = 0; i < keyParts.length - 1; i++) {
+                          const key = keyParts[i];
+                          if (i === 0) {
+                            isParentRequired = (toolData?.required || []).includes(key);
+                          } else {
+                            const parentPath = keyParts.slice(0, i);
+                            let parentField = toolData?.fields;
+                            for (let j = 0; j < parentPath.length; j++) {
+                              const parentKey = parentPath[j];
+                              if (parentField?.[parentKey]?.type === "array") {
+                                parentField = parentField[parentKey]?.items;
                               } else {
-                                parentField =
-                                  parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                if (j === parentPath.length - 1) {
+                                  parentField = parentField?.[parentKey];
+                                } else {
+                                  parentField =
+                                    parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                }
                               }
                             }
+                            isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
                           }
-                          isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
+                          if (!isParentRequired) break;
                         }
-                        if (!isParentRequired) break;
+                        return !isParentRequired ? "opacity-50" : "";
                       }
-                      return !isParentRequired ? "(parent must be required first)" : "";
-                    }
-                    return "";
-                  })()}
-                </span>
-              </label>
+                      return "";
+                    })()}`}
+                  >
+                    Required{" "}
+                    {(() => {
+                      const keyParts = currentPath.split(".");
+                      if (keyParts.length > 1) {
+                        // Check if parent is required
+                        let isParentRequired = true;
+                        for (let i = 0; i < keyParts.length - 1; i++) {
+                          const key = keyParts[i];
+                          if (i === 0) {
+                            isParentRequired = (toolData?.required || []).includes(key);
+                          } else {
+                            const parentPath = keyParts.slice(0, i);
+                            let parentField = toolData?.fields;
+                            for (let j = 0; j < parentPath.length; j++) {
+                              const parentKey = parentPath[j];
+                              if (parentField?.[parentKey]?.type === "array") {
+                                parentField = parentField[parentKey]?.items;
+                              } else {
+                                if (j === parentPath.length - 1) {
+                                  parentField = parentField?.[parentKey];
+                                } else {
+                                  parentField =
+                                    parentField?.[parentKey]?.properties || parentField?.[parentKey]?.parameter;
+                                }
+                              }
+                            }
+                            isParentRequired = isParentRequired && (parentField?.required || []).includes(key);
+                          }
+                          if (!isParentRequired) break;
+                        }
+                        return !isParentRequired ? "(parent must be required first)" : "";
+                      }
+                      return "";
+                    })()}
+                  </span>
+                </label>
+              )}
               <label className="flex items-center gap-2">
                 <input
                   autoComplete="off"
@@ -336,7 +339,7 @@ const ParameterCard = ({
               data-testid={`param-type-select-${currentPath}`}
               id={`param-type-select-${currentPath}`}
               disabled={isReadOnly}
-              className="select select-xs select-bordered text-xs"
+              className="select select-xs text-xs w-24 shrink-0 pr-7"
               value={param.type || "string"}
               onChange={(e) => onTypeChange(currentPath, e.target.value)}
             >
@@ -357,7 +360,7 @@ const ParameterCard = ({
                 disabled={isReadOnly}
                 type="text"
                 placeholder="your_path"
-                className={`input input-xs input-bordered text-xs ${
+                className={`input input-xs text-xs ${
                   (name === "Pre Tool" || name === "Post Tool") && !variablesPath[currentPath] ? "border-red-500" : ""
                 }`}
                 value={variablesPath[currentPath] || ""}
@@ -419,7 +422,7 @@ const ParameterCard = ({
                 }
               }}
             />
-            <span className="text-xs">Set allowed values</span>
+            <span className="text-xs whitespace-nowrap">Set allowed values</span>
 
             {param.hasOwnProperty("enum") && (
               <input
@@ -429,7 +432,7 @@ const ParameterCard = ({
                 disabled={isReadOnly}
                 type="text"
                 placeholder="['a','b','c']"
-                className="input input-xs input-bordered text-xs"
+                className="input input-xs h-6 min-h-6 text-xs flex-1 min-w-0"
                 value={editingEnum}
                 onChange={(e) => {
                   setEditingEnum(e.target.value);
@@ -459,8 +462,10 @@ const ParameterCard = ({
                 disabled={isReadOnly}
                 type="text"
                 placeholder="your_path"
-                className={`input input-xs input-bordered text-xs ${
-                  name === "Pre Tool" && !variablesPath[currentPath] ? "border-red-500" : ""
+                className={`input input-xs text-xs ${
+                  currentPath in variablesPath && !String(variablesPath[currentPath] || "").trim()
+                    ? "border-red-500"
+                    : ""
                 }`}
                 value={variablesPath[currentPath] || ""}
                 onChange={(e) => {
@@ -549,6 +554,7 @@ function FunctionParameterModal({
   functionName = "",
   variablesPath = {},
   setVariablesPath = () => {},
+  originalArgs = null,
   isMasterAgent = false,
   params = {},
   tool_name = "",
@@ -587,8 +593,7 @@ function FunctionParameterModal({
           const environment = function_details?.environment;
           setToolData({ ...function_details, thread_id, environment });
         } else {
-          const version_id = function_details?.version_id;
-          setToolData({ ...function_details, thread_id, version_id });
+          setToolData({ ...function_details, thread_id });
         }
       } else {
         setToolData({});
@@ -618,16 +623,19 @@ function FunctionParameterModal({
 
   // Only sync variablesPath when functionName changes (i.e., different function selected)
   // Don't sync when variables_path prop changes to avoid resetting user input
+  // For Pre Tool, always sync from the passed variablesPath prop
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
-    if (prevFunctionNameRef.current !== functionName) {
-      if (name !== "Pre Tool" && name !== "Post Tool") {
-        const newVariablesPath = variables_path[functionName] || {};
-        setVariablesPath(newVariablesPath);
-      }
+    if (name === "Pre Tool" || name === "Post Tool") {
+      // For pre-tools and post-tools, use the passed variablesPath directly
+      setVariablesPath(variablesPath);
+    } else if (prevFunctionNameRef.current !== functionName) {
+      // For other tools, only sync when functionName changes
+      const newVariablesPath = variables_path[functionName] || {};
+      setVariablesPath(newVariablesPath);
       prevFunctionNameRef.current = functionName;
     }
-  }, [functionName, variables_path, name]);
+  }, [functionName, variablesPath, variables_path, name]);
 
   useEffect(() => {
     if (!toolData || !function_details) {
@@ -1343,6 +1351,9 @@ function FunctionParameterModal({
     ]
   );
 
+  // Fill with AI off (key present) but Value Path empty → block save
+  const hasMissingValuePath = Object.values(variablesPath || {}).some((v) => !String(v ?? "").trim());
+
   return (
     <Modal
       MODAL_ID={Model_Name}
@@ -1365,7 +1376,7 @@ function FunctionParameterModal({
             data-testid="function-parameter-save-button"
             className="btn btn-sm btn-primary"
             onClick={handleSaveData}
-            disabled={!isModified || isLoading || isPublished}
+            disabled={!isModified || isLoading || isPublished || hasMissingValuePath}
           >
             {isLoading && <span className="loading loading-xs loading-spinner mr-1"></span>}
             Save
@@ -1398,7 +1409,7 @@ function FunctionParameterModal({
               id="function-param-mode-select"
               data-testid="function-parameter-mode-select"
               disabled={isReadOnly}
-              className="select select-xs select-bordered text-xs min-w-20"
+              className="select select-xs text-xs min-w-20"
               value={isTextareaVisible ? "advanced" : "simple"}
               onChange={(e) => {
                 const isAdvanced = e.target.value === "advanced";
@@ -1454,45 +1465,49 @@ function FunctionParameterModal({
                     />
                   </label>
                 </div>
-                <div id="function-param-environment-wrapper" className="flex flex-row ml-2">
-                  <div className="form-control flex flex-row w-full max-w-xs items-center">
-                    <label className="label flex items-center gap-1">
-                      <span className="label-text">Agent's Environment</span>
-                      <InfoTooltip
-                        id="function-param-environment-tooltip"
-                        tooltipContent="Select the environment of the agent you want to use."
-                      >
-                        <CircleQuestionMark
-                          id="function-param-environment-icon"
-                          size={14}
-                          className="text-gray-500 hover:text-gray-700 cursor-help"
-                        />
-                      </InfoTooltip>
-                    </label>
-                    <select
-                      id="function-param-environment-select"
-                      disabled={isReadOnly}
-                      className="select select-xs select-bordered ml-2"
-                      value={toolData?.environment || ""}
-                      onChange={(e) => {
-                        setToolData({ ...toolData, environment: e.target.value });
-                        setIsModified(true);
-                      }}
+                <div
+                  id="function-param-environment-wrapper"
+                  className="flex flex-row flex-nowrap items-center gap-1 ml-2"
+                >
+                  <label
+                    htmlFor="function-param-environment-select"
+                    className="flex flex-nowrap items-center gap-1 p-0 whitespace-nowrap"
+                  >
+                    <span className="whitespace-nowrap">Agent&apos;s Environment</span>
+                    <InfoTooltip
+                      id="function-param-environment-tooltip"
+                      tooltipContent="Select the environment of the agent you want to use."
                     >
-                      {Object.keys(environmentConfig || {}).length > 0 ? (
-                        <>
-                          <option value="">Published Version</option>
-                          {Object.keys(environmentConfig).map((env) => (
-                            <option key={env} value={env}>
-                              {env}
-                            </option>
-                          ))}
-                        </>
-                      ) : (
-                        <option value="">No environments configured</option>
-                      )}
-                    </select>
-                  </div>
+                      <CircleQuestionMark
+                        id="function-param-environment-icon"
+                        size={14}
+                        className="text-gray-500 hover:text-gray-700 cursor-help"
+                      />
+                    </InfoTooltip>
+                  </label>
+                  <select
+                    id="function-param-environment-select"
+                    disabled={isReadOnly}
+                    className="select select-xs w-auto min-w-[10rem] pr-7"
+                    value={toolData?.environment || ""}
+                    onChange={(e) => {
+                      setToolData({ ...toolData, environment: e.target.value });
+                      setIsModified(true);
+                    }}
+                  >
+                    {Object.keys(environmentConfig || {}).length > 0 ? (
+                      <>
+                        <option value="">Published Version</option>
+                        {Object.keys(environmentConfig).map((env) => (
+                          <option key={env} value={env}>
+                            {env}
+                          </option>
+                        ))}
+                      </>
+                    ) : (
+                      <option value="">No environments configured</option>
+                    )}
+                  </select>
                 </div>
               </div>
             </div>
@@ -1523,7 +1538,7 @@ function FunctionParameterModal({
             <div className="flex justify-between">
               <p
                 id="function-param-optimize-button"
-                className="cursor-pointer label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text text-[11px]"
+                className="cursor-pointer label capitalize font-medium text-primary text-[11px]"
                 onClick={handleOptimizeRawJson}
               >
                 Optimize Json Format
@@ -1563,7 +1578,7 @@ function FunctionParameterModal({
                           id="function-param-agent-name-input"
                           data-testid="function-parameter-name-input"
                           type="text"
-                          className="input input-sm text-xs input-bordered w-full"
+                          className="input input-sm text-xs w-full"
                           value={tool_name}
                           disabled
                         />
@@ -1572,7 +1587,7 @@ function FunctionParameterModal({
                           autoComplete="off"
                           id="function-param-name-input"
                           data-testid="function-parameter-name-input"
-                          className="input input-sm text-xs input-bordered w-full"
+                          className="input input-sm text-xs w-full"
                           value={toolName}
                           onChange={(e) => {
                             setToolName(e.target.value);
@@ -1593,7 +1608,7 @@ function FunctionParameterModal({
                         id="function-param-desc-textarea"
                         data-testid="function-parameter-desc-textarea"
                         disabled={isReadOnly}
-                        className="textarea bg-base-100 textarea-sm textarea-bordered w-full resize-y"
+                        className="textarea bg-base-100 textarea-sm w-full resize-y"
                         rows={2}
                         value={toolData?.description || ""}
                         onChange={(e) => {

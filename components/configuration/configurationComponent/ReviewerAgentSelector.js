@@ -344,7 +344,7 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                 <span className="text-[10px] text-base-content/50">Overrides or defines review guidelines</span>
               </div>
               <textarea
-                className="textarea textarea-bordered textarea-sm w-full text-xs font-mono leading-relaxed"
+                className="textarea textarea-sm w-full text-xs font-mono leading-relaxed"
                 placeholder="Enter custom prompt rules for reviewer agent evaluation..."
                 defaultValue={reviewerPrompt}
                 disabled={isReadOnly}

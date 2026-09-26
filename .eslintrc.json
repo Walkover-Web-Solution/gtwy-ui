@@ -10,7 +10,8 @@
         "map": [["@", "."]],
         "extensions": [".js", ".jsx", ".ts", ".tsx"]
       }
-    }
+    },
+    "import/parsers": {}
   },
   "rules": {
     "import/no-unresolved": [

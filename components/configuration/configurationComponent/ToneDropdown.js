@@ -83,7 +83,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
   return (
     <div className="flex flex-col gap-2 w-full">
       <div className="flex items-center gap-1">
-        <span className="label-text font-medium">Tone</span>
+        <span className="font-medium">Tone</span>
         <InfoTooltip tooltipContent="Select the tone of voice for your AI agent's responses. This affects how the agent communicates with users.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
@@ -96,7 +96,7 @@ const ToneDropdown = ({ params, searchParams, isPublished, isEditor = true }) =>
           disabled={isReadOnly}
           value={selectedTone}
           onChange={handleToneChange}
-          className={`select select-sm select-bordered capitalize w-full ${selectedTone === "custom" && !isReadOnly ? "pr-8" : ""}`}
+          className={`select select-sm capitalize w-full ${selectedTone === "custom" && !isReadOnly ? "pr-8" : ""}`}
         >
           <option value="" disabled>
             Select a tone

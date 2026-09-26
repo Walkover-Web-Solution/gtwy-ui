@@ -36,7 +36,7 @@ const DemoModal = ({ speakToUs }) => {
     >
       <div id="demo-modal-container" className="flex flex-col gap-6">
         {speakToUs ? (
-          <div id="demo-modal-speak-to-us-content" className="p-6 bg-base-200/60 rounded-xl">
+          <div id="demo-modal-speak-to-us-content" className="p-6 bg-base-200/60">
             <p className="text-base-content mb-4">
               Discover how GTWY AI can transform your workflow. With our <strong>"Speak to Us"</strong> option, you'll:
             </p>
@@ -66,10 +66,10 @@ const DemoModal = ({ speakToUs }) => {
         ) : (
           <div
             id="demo-modal-video-content"
-            className="relative group rounded-xl overflow-hidden border-2 border-base-content/10 shadow-xl hover:border-base-content/20 transition-all duration-300"
+            className="relative group overflow-hidden border-2 border-base-content/10 shadow-xl hover:border-base-content/20 transition-all duration-300"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 pointer-events-none" />
-            <div className="aspect-video w-full overflow-hidden rounded-lg">
+            <div className="aspect-video w-full overflow-hidden">
               <iframe
                 data-testid="demo-modal-video-iframe"
                 id="demo-modal-video-iframe"

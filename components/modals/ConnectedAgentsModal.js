@@ -94,7 +94,7 @@ const AgentCard = ({ agent }) => (
   <div
     data-testid={`connected-agent-card-${agent.bridgeId}`}
     id={`connected-agent-card-${agent.bridgeId}`}
-    className="mb-4 p-4 border rounded-lg bg-base-200"
+    className="mb-4 p-4 border bg-base-200"
     style={{
       transform: "translateZ(0)", // Force hardware acceleration
       backfaceVisibility: "hidden", // Prevent subpixel rendering issues
@@ -104,7 +104,7 @@ const AgentCard = ({ agent }) => (
     <div className="flex items-center gap-2 mb-2">
       <BotIcon className="text-primary" />
       <h4 className="font-semibold text-base-content">
-        {agent.name} <span className="inline text-xs font-mono bg-base-300 p-1 rounded w-fit">{agent.bridgeId}</span>
+        {agent.name} <span className="inline text-xs font-mono bg-base-300 p-1 w-fit">{agent.bridgeId}</span>
       </h4>
     </div>
     <div className="grid grid-cols-1 gap-2 text-sm text-base-content/80">
@@ -114,11 +114,11 @@ const AgentCard = ({ agent }) => (
           <div className="flex flex-col gap-1">
             {agent.versions.map((version) => (
               <div key={version.id} className="flex items-center gap-2">
-                <span className="inline text-xs font-mono bg-base-300 p-1 rounded w-fit">
+                <span className="inline text-xs font-mono bg-base-300 p-1 w-fit">
                   V{version.versionIndex + 1}:({version.id})
                 </span>
                 {version.isPublished && (
-                  <span className="inline text-xs font-semibold bg-green-500/20 text-green-600 px-2 py-0.5 rounded border border-green-500/30">
+                  <span className="inline text-xs font-semibold bg-green-500/20 text-green-600 px-2 py-0.5 border border-green-500/30">
                     Published
                   </span>
                 )}

@@ -16,6 +16,7 @@ import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import go from "react-syntax-highlighter/dist/esm/languages/prism/go";
 import markdown from "react-syntax-highlighter/dist/esm/languages/prism/markdown";
 import sql from "react-syntax-highlighter/dist/esm/languages/prism/sql";
+import php from "react-syntax-highlighter/dist/esm/languages/prism/php";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("js", js);
@@ -37,6 +38,7 @@ SyntaxHighlighter.registerLanguage("go", go);
 SyntaxHighlighter.registerLanguage("markdown", markdown);
 SyntaxHighlighter.registerLanguage("md", markdown);
 SyntaxHighlighter.registerLanguage("sql", sql);
+SyntaxHighlighter.registerLanguage("php", php);
 
 function useIsDark() {
   const [isDark, setIsDark] = useState(() => {
@@ -54,7 +56,7 @@ function useIsDark() {
   return isDark;
 }
 
-function CodeBlock({ inline, className, children, showCopy = true, plain = false, ...props }) {
+function CodeBlock({ inline, className, children, showCopy = true, plain = false, fromIntegration = false, ...props }) {
   const match = /language-(\w+)/.exec(className || "");
   const [copyStatus, setCopyStatus] = useState("Copy");
   const [viewMode, setViewMode] = useState("code");
@@ -151,6 +153,7 @@ function CodeBlock({ inline, className, children, showCopy = true, plain = false
     csharp: "C#",
     java: "Java",
     go: "Go",
+    php: "PHP",
   };
 
   const languageLabel = match
@@ -206,7 +209,7 @@ function CodeBlock({ inline, className, children, showCopy = true, plain = false
           {languageLabel || "Code"}
         </span>
         <div className="flex items-center gap-3">
-          {isHtml && (
+          {isHtml && !fromIntegration && (
             <div
               className={`flex items-center rounded-md p-0.5 gap-0.5 ${isDark ? "bg-base-300/50" : "bg-base-200/50"}`}
             >

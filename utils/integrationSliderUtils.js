@@ -44,14 +44,6 @@ export const CONFIG_SCHEMA = [
     section: "Interface Options",
   },
   {
-    key: "showCreateManuallyButton",
-    type: "toggle",
-    label: "Show Create Agent Manually Button",
-    description: "Display create agent manually button",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
     key: "showAdvancedConfigurations",
     type: "toggle",
     label: "Show Advanced Configurations",
@@ -104,6 +96,7 @@ export const CONFIG_SCHEMA = [
     description: "Show the full screen toggle button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showCloseButton",
@@ -112,6 +105,7 @@ export const CONFIG_SCHEMA = [
     description: "Show the close button",
     defaultValue: true,
     section: "Display Settings",
+    dependsOn: "showHeader",
   },
   {
     key: "showHeader",

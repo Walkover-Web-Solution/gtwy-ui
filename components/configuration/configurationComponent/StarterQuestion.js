@@ -110,7 +110,7 @@ const StarterQuestionToggle = ({ params, searchParams, isPublished, isEditor = t
                 onChange={(e) => handleQuestionChange(index, e.target.value)}
                 onBlur={handleBlur}
                 disabled={isReadOnly}
-                className="input input-bordered input-xs flex-1 text-sm focus:outline-none focus:border-primary"
+                className="input input-xs flex-1 text-sm focus:outline-none focus:border-primary"
               />
               {!isReadOnly && (
                 <button

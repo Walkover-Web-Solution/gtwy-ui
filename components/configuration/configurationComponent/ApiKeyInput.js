@@ -6,6 +6,8 @@ import { openModal } from "@/utils/utility";
 import React, { useCallback, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import Dropdown from "@/components/UI/Dropdown";
+import InfoTooltip from "@/components/InfoTooltip";
+import { KeyRound } from "lucide-react";
 
 const ApiKeyInput = ({
   params,
@@ -16,6 +18,7 @@ const ApiKeyInput = ({
   isPublished,
   isEditor = true,
   hasError = false,
+  compact = false,
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
@@ -49,7 +52,16 @@ const ApiKeyInput = ({
         openModal(MODAL_TYPE.API_KEY_MODAL);
       } else if (selectedApiKeyId !== "GPT5_NANO_DEFAULT_KEY") {
         const service = bridge?.service;
-        const updated = { ...bridgeApikey_object_id, [service]: selectedApiKeyId };
+        const rawCurrentId = bridgeApikey_object_id?.[service];
+        const currentId = rawCurrentId && typeof rawCurrentId === "object" ? rawCurrentId._id : rawCurrentId;
+
+        const updated = { ...bridgeApikey_object_id };
+        if (currentId && String(currentId) === String(selectedApiKeyId)) {
+          delete updated[service];
+        } else {
+          updated[service] = selectedApiKeyId;
+        }
+
         dispatch(
           updateBridgeVersionAction({
             bridgeId: params?.id,
@@ -81,9 +93,11 @@ const ApiKeyInput = ({
 
   // Determine the currently selected value
   const selectedValue = useMemo(() => {
-    const serviceApiKeyId =
+    const rawServiceApiKeyId =
       typeof bridgeApikey_object_id === "object" ? bridgeApikey_object_id?.[bridge?.service] : bridgeApikey_object_id;
-    const currentApiKey = apikeydata.find((apiKey) => apiKey?._id === serviceApiKeyId);
+    const serviceApiKeyId =
+      rawServiceApiKeyId && typeof rawServiceApiKeyId === "object" ? rawServiceApiKeyId._id : rawServiceApiKeyId;
+    const currentApiKey = apikeydata.find((apiKey) => String(apiKey?._id) === String(serviceApiKeyId));
 
     // Special handling for gpt-5-nano model - show default key if no API key is added and bridge type is chatbot
     if (bridge?.configuration?.model === "gpt-5-nano" && bridgeType === "chatbot" && !serviceApiKeyId) {
@@ -112,6 +126,49 @@ const ApiKeyInput = ({
     return opts;
   }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType]);
 
+  // Nothing to pick from (no keys saved for this service, no default-key
+  // fallback) — showing an always-empty selector just invites a dead click,
+  // so hide it entirely instead of a disabled/placeholder state.
+  if (dropdownOptions.length === 0) return null;
+
+  if (compact) {
+    return (
+      <div data-testid="apikey-input-compact-container" id="apikey-input-compact-container" className="relative">
+        <Dropdown
+          testId="apikey-input-compact-dropdown"
+          id="apikey-input-compact-dropdown"
+          disabled={isReadOnly}
+          options={dropdownOptions}
+          value={selectedValue || ""}
+          onChange={(val) => handleDropdownChange(val)}
+          placeholder={filteredApiKeys.length === 0 ? "No API keys for this service" : "Select API key"}
+          showSearch
+          searchPlaceholder="Search API keys..."
+          size="sm"
+          fullWidth={false}
+          placement="bottom-end"
+          menuClassName="w-[240px]"
+          hasError={hasError}
+          bottomOption={{ value: "add_new", label: "+  Add new API Key" }}
+          isEmbedUser={isEmbedUser}
+          className={`btn-ghost border border-base-300 px-2 ${selectedValue ? "" : "opacity-70"}`}
+          renderTriggerContent={() => (
+            <InfoTooltip tooltipContent={selectedValue ? "Update API Key" : "Configure API Key"}>
+              <KeyRound size={16} className={selectedValue ? "text-warning" : "text-gray-400"} />
+            </InfoTooltip>
+          )}
+        />
+
+        <ApiKeyModal
+          params={params}
+          searchParams={searchParams}
+          service={currentService}
+          bridgeApikey_object_id={bridgeApikey_object_id}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="apikey-input-container"
@@ -130,7 +187,7 @@ const ApiKeyInput = ({
         showSearch
         searchPlaceholder="Search API keys..."
         size="sm"
-        className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px]"
+        className="flex w-full items-center justify-between gap-2 rounded-none border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-300 text-base-content h-8 min-w-[150px]"
         style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
         maxLabelLength={20}
         menuClassName="w-full min-w-[200px]"

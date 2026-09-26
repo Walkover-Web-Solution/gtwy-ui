@@ -354,6 +354,17 @@ const InputConfigComponent = memo(
       [currentPromptValue, savedPromptSnapshot]
     );
 
+    // Expose the in-progress (unsaved) prompt values so the Prompt Helper can merge
+    // its result on top of them instead of on the last saved prompt — otherwise
+    // applying a helper result for one field wipes the unsaved edits of the others.
+    useEffect(() => {
+      setPromptState((prev) =>
+        JSON.stringify(prev.draftPromptValue) === JSON.stringify(currentPromptValue)
+          ? prev
+          : { ...prev, draftPromptValue: currentPromptValue }
+      );
+    }, [currentPromptValue, setPromptState]);
+
     // Keep the global guard in sync so navigation interceptors can check it
     useEffect(() => {
       unsavedPromptGuard.hasUnsavedChanges = hasPromptChanges;
@@ -434,7 +445,7 @@ const InputConfigComponent = memo(
               />
             </>
           ) : isEmbedCustomPrompt ? (
-            <div className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col gap-3">
               {isOldEmbedFormat && !isPublished && isEditor && (
                 <div className="alert alert-warning py-2 text-xs flex items-center justify-between gap-2">
                   <span>This prompt uses an older format. Save to migrate to the new format.</span>
@@ -447,7 +458,7 @@ const InputConfigComponent = memo(
                 <div key={field.name} className="form-control">
                   <div className="flex items-center justify-between mb-2">
                     <label className="label py-0">
-                      <span className="label-text text-xs font-medium capitalize text-base-content/70">
+                      <span className="text-xs font-medium capitalize text-base-content/70">
                         {field.displayValue || field.name}
                       </span>
                       {field.deprecated && (
@@ -544,9 +555,7 @@ const InputConfigComponent = memo(
                       <input
                         autoComplete="off"
                         type="text"
-                        className={`input input-bordered w-full text-sm input-sm pr-8 ${
-                          field.deprecated ? "opacity-60" : ""
-                        }`}
+                        className={`input w-full text-sm input-sm pr-8 ${field.deprecated ? "opacity-60" : ""}`}
                         value={activeEmbedFieldValues[field.name] || ""}
                         onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
                         readOnly={field.deprecated}
@@ -602,11 +611,11 @@ const InputConfigComponent = memo(
               ))}
             </div>
           ) : isStructuredPrompt ? (
-            <div className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col gap-3">
               {Object.entries(PROMPT_SECTION_CONFIG).map(([key, fieldConfig]) => (
                 <div key={key} className="form-control">
                   <label className="label py-0">
-                    <span className="label-text text-xs font-medium capitalize text-base-content/70 mb-1">
+                    <span className="text-xs font-medium capitalize text-base-content/70 mb-1">
                       {fieldConfig.label || key}
                     </span>
                   </label>
@@ -629,7 +638,7 @@ const InputConfigComponent = memo(
                       <input
                         autoComplete="off"
                         type="text"
-                        className="input input-bordered w-full text-sm input-sm pr-8"
+                        className="input w-full text-sm input-sm pr-8"
                         value={(structuredFields || {})[key] || ""}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         onFocus={handleTextareaFocus}

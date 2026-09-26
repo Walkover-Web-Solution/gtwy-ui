@@ -4,7 +4,7 @@ import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { sendDataToParent } from "@/utils/utility";
 import React, { useCallback } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 function VersionDescriptionInput({ params, searchParams, isEmbedUser }) {
   const dispatch = useDispatch();

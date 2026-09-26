@@ -5,9 +5,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { getServiceAction } from "@/store/action/serviceAction";
 import Protected from "@/components/Protected";
-import { getIconOfService, openModal, closeModal } from "@/utils/utility";
+import { getIconOfService, closeModal } from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
+import { toast } from "react-hot-toast";
 import { ChevronDownIcon, CircleAlert } from "lucide-react";
 import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
@@ -36,6 +37,7 @@ const ServiceDropdown = ({
     apiKeyObjectIdData,
     configuration,
     serviceModels,
+    planServices,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -64,8 +66,19 @@ const ServiceDropdown = ({
       showDefaultApikeys,
       configuration: activeData?.configuration,
       serviceModels: state?.modelReducer?.serviceModels,
+      planServices: state?.planReducer?.services,
     };
   });
+  const isServiceInPlan = useCallback(
+    (svcValue) => {
+      if (!svcValue || !planServices) return false;
+      if (planServices === "*") return true;
+      if (Array.isArray(planServices)) return planServices.includes(svcValue);
+      if (typeof planServices === "object") return Object.prototype.hasOwnProperty.call(planServices, svcValue);
+      return false;
+    },
+    [planServices]
+  );
 
   const [selectedService, setSelectedService] = useState(service);
   const dispatch = useDispatch();
@@ -127,24 +140,45 @@ const ServiceDropdown = ({
     if (!Array.isArray(availableServices)) {
       availableServices = [];
     }
+    // Free-plan services (or ones this bridge already has its own key for) are
+    // usable without upgrading — surface them first and leave the rest locked,
+    // same rule ModelDropdown applies to models within a service.
+    const isUnlocked = (svcValue) => isServiceInPlan(svcValue) || !!bridgeApikeyObjectId?.[svcValue];
+
     return availableServices
-      .map((svc) => {
-        // Sanity checks
-        if (!svc || typeof svc !== "object") return null;
-        if (!svc.value) return null;
+      .map((svc, index) => (svc && typeof svc === "object" && svc.value ? { svc, index } : null))
+      .filter(Boolean)
+      .sort((a, b) => {
+        const diff = Number(isUnlocked(b.svc.value)) - Number(isUnlocked(a.svc.value));
+        return diff !== 0 ? diff : a.index - b.index;
+      })
+      .map(({ svc }) => {
+        const needsByok = !isUnlocked(svc.value);
+
+        const content = (
+          <div className={`flex items-center gap-2 w-full ${needsByok ? "text-base-content/50" : ""}`}>
+            {getIconOfService(svc.value, 16, 16)}
+            <span className="flex-1">{svc.displayName || svc.value}</span>
+          </div>
+        );
 
         return {
           value: svc.value,
-          label: (
-            <div className="flex items-center gap-2">
-              {getIconOfService(svc.value, 16, 16)}
-              <span>{svc.displayName || svc.value}</span>
-            </div>
+          disabled: needsByok,
+          onDisabledClick: needsByok
+            ? () =>
+                toast.error(
+                  `${svc.displayName || svc.value} isn't available on your current plan. Upgrade to Pro to use it.`
+                )
+            : undefined,
+          label: needsByok ? (
+            <InfoTooltip tooltipContent="Upgrade to Pro to use this service.">{content}</InfoTooltip>
+          ) : (
+            content
           ),
         };
-      })
-      .filter(Boolean);
-  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData]);
+      });
+  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData, isServiceInPlan, bridgeApikeyObjectId]);
 
   const [pendingService, setPendingService] = useState(null);
 
@@ -179,34 +213,6 @@ const ServiceDropdown = ({
       const newService = serviceValue;
       const defaultModel = DEFAULT_MODEL?.[newService]?.model;
 
-      const hasJsonSchema =
-        configuration?.response_type?.type === "json_schema" ||
-        (configuration?.response_type?.json_schema && Object.keys(configuration.response_type.json_schema).length > 0);
-
-      // Find the group/type for defaultModel
-      let foundType = "chat";
-      const types = serviceModels?.[newService] || {};
-      for (const [type, models] of Object.entries(types)) {
-        if (models && models[defaultModel]) {
-          foundType = type;
-          break;
-        }
-      }
-
-      const modelInfo = serviceModels?.[newService]?.[foundType]?.[defaultModel];
-      const responseTypeParam = modelInfo?.configuration?.additional_parameters?.response_type;
-      const options = responseTypeParam?.options || [];
-      const supportsJsonSchema = options.some((opt) => {
-        const optVal = typeof opt === "object" ? opt.type || opt.value : opt;
-        return optVal === "json_schema";
-      });
-
-      if (hasJsonSchema && !supportsJsonSchema) {
-        setPendingService(newService);
-        openModal(MODAL_TYPE.JSON_SCHEMA_SERVICE_WARNING_MODAL);
-        return;
-      }
-
       const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
       setSelectedService(newService);
 
@@ -238,7 +244,7 @@ const ServiceDropdown = ({
       onChange={handleServiceChange}
       placeholder="Select service"
       size="sm"
-      className={`flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-200 text-base-content h-8 min-w-[150px] ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      className={`flex w-full items-center justify-between gap-2 rounded-none border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-300 text-base-content h-8 min-w-[150px] ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
       style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
       menuClassName="w-full min-w-[200px]"
       fullWidth={false}
@@ -303,7 +309,7 @@ const ServiceDropdown = ({
               The default model for the newly selected service does not support <strong>JSON Schema</strong> response
               format.
             </p>
-            <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg text-xs text-warning flex items-start gap-2.5">
+            <div className="p-3 bg-warning/10 border border-warning/40 text-xs text-warning flex items-start gap-2.5">
               <CircleAlert className="shrink-0 w-4 h-4 mt-0.5 text-warning" />
               <span className="leading-normal">
                 The JSON schema will be automatically removed from the configuration if you proceed.

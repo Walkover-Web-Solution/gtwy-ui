@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import Protected from "@/components/Protected";
 import { switchOrg, switchUser } from "@/config/index";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { setCurrentOrgIdAction } from "@/store/action/orgAction";
 import { createBridgeAction, createAgentFromTemplateAction } from "@/store/action/bridgeAction";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -34,8 +34,9 @@ function Page() {
   const [formState, setFormState] = useState(INITIAL_FORM_STATE);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
 
-  const { organizations } = useCustomSelector((state) => ({
+  const { organizations, isEmbedUser } = useCustomSelector((state) => ({
     organizations: state.userDetailsReducer.organizations,
+    isEmbedUser: state.appInfoReducer.embedUserDetails.isEmbedUser,
   }));
 
   const queryTemplateId = searchParams.get("template_id");
@@ -118,7 +119,8 @@ function Page() {
           const agentId = createdAgent?._id;
           const targetVersion = createdAgent?.published_version_id || createdAgent?.versions?.[0];
           if (agentId && targetVersion) {
-            route.push(`/org/${selectedOrg.id}/agents/configure/${agentId}?version=${targetVersion}`);
+            const tab = isEmbedUser || createdAgent?.published_version_id ? "prompt" : "integration";
+            route.push(`/org/${selectedOrg.id}/agents/configure/${agentId}?version=${targetVersion}&tab=${tab}`);
           } else {
             toast.error("Unable to open the newly created agent. Please try again.");
             updateFormState({ isLoading: false });
@@ -187,7 +189,7 @@ function Page() {
             <h2 className="text-lg font-semibold text-base-content">Organizations</h2>
             <div className="form-control mt-3">
               <label className="label">
-                <span className="label-text">Search organizations</span>
+                <span className="">Search organizations</span>
               </label>
               <input
                 autoComplete="off"
@@ -195,7 +197,7 @@ function Page() {
                 placeholder="Type a name"
                 value={formState.searchQuery}
                 onChange={handleChange("searchQuery")}
-                className="input input-bordered w-full"
+                className="input w-full"
               />
             </div>
             <div className="mt-4 space-y-2 max-h-[70vh] overflow-x-hidden overflow-y-auto pr-1">

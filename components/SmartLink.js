@@ -43,7 +43,7 @@ const SmartLink = ({ href, children, isEmbedUser }) => {
               <div
                 data-testid="smart-link-drawer-backdrop"
                 id="smart-link-drawer-backdrop"
-                className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+                className="fixed inset-0 bg-black/50 transition-opacity"
                 onClick={closeSlider}
               />
 

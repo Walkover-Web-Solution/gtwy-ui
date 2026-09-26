@@ -6,10 +6,11 @@ import { MODAL_TYPE, MIME_EXTENSION_MAP } from "@/utils/enums";
 import { closeModal, RequiredItem } from "@/utils/utility";
 import { createResourceAction, updateResourceAction } from "@/store/action/knowledgeBaseAction";
 import { uploadImage } from "@/config/utilityApi";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { FolderContext } from "@/components/folders/FolderContext";
 import { Database } from "lucide-react";
+import { useCustomSelector } from "@/customHooks/customSelector";
 const KnowledgeBaseModal = ({
   params,
   selectedResource,
@@ -21,6 +22,10 @@ const KnowledgeBaseModal = ({
   const dispatch = useDispatch();
   const folderContext = useContext(FolderContext);
   const activeFolderId = folderContext?.activeFolderId;
+
+  const { isOrgBlocked } = useCustomSelector((state) => ({
+    isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(params?.org_id) || false,
+  }));
 
   const [isCreatingResource, setIsCreatingResource] = useState(false);
   const [inputType, setInputType] = useState("url"); // 'url', 'file', 'content'
@@ -74,6 +79,12 @@ const KnowledgeBaseModal = ({
     const file = event.target.files[0];
     if (!file) return;
 
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot upload files. Contact support@gtwy.ai for assistance.");
+      event.target.value = "";
+      return;
+    }
+
     // ✅ Only PDF + TXT allowed
     if (!isAllowedFile(file)) {
       toast.error("Only PDF or TXT files are allowed.");
@@ -113,7 +124,7 @@ const KnowledgeBaseModal = ({
     const value = parseInt(e.target.value);
     if (value > 4000) {
       e.target.value = 4000;
-      toast.warning("Chunk size cannot exceed 4000");
+      toast("Chunk size cannot exceed 4000", { icon: "⚠️" });
     } else if (value < 1 && e.target.value !== "") {
       e.target.value = 1;
     }
@@ -123,7 +134,7 @@ const KnowledgeBaseModal = ({
     const value = parseInt(e.target.value);
     if (value > 200) {
       e.target.value = 200;
-      toast.warning("Chunk overlap cannot exceed 200");
+      toast("Chunk overlap cannot exceed 200", { icon: "⚠️" });
     } else if (value < 0 && e.target.value !== "") {
       e.target.value = 0;
     }
@@ -131,6 +142,10 @@ const KnowledgeBaseModal = ({
 
   const handleCreateResource = async (event) => {
     event.preventDefault();
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create knowledge bases. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     setIsCreatingResource(true);
     const formData = new FormData(event.target);
 
@@ -225,6 +240,10 @@ const KnowledgeBaseModal = ({
   const handleUpdateResource = async (event) => {
     event.preventDefault();
     if (!selectedResource?._id) return;
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot update knowledge bases. Contact support@gtwy.ai for assistance.");
+      return;
+    }
 
     setIsCreatingResource(true);
     const formData = new FormData(event.target);
@@ -281,7 +300,8 @@ const KnowledgeBaseModal = ({
         type="submit"
         form="knowledge-base-modal-form"
         className="btn btn-primary btn-sm"
-        disabled={isCreatingResource}
+        disabled={isCreatingResource || isOrgBlocked}
+        title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
       >
         {isCreatingResource
           ? selectedResource
@@ -311,7 +331,7 @@ const KnowledgeBaseModal = ({
         {/* Name Field */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text text-sm font-medium">
+            <span className="text-sm font-medium">
               Name <RequiredItem />
             </span>
           </label>
@@ -321,7 +341,7 @@ const KnowledgeBaseModal = ({
             id="knowledgebase-name-input"
             type="text"
             name="title"
-            className="input input-bordered input-sm"
+            className="input input-sm"
             placeholder="Knowledge Base name"
             defaultValue={selectedResource?.title || ""}
             key={selectedResource?._id || "new"}
@@ -333,7 +353,7 @@ const KnowledgeBaseModal = ({
         {/* Description Field */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text text-sm font-medium">
+            <span className="text-sm font-medium">
               Description <RequiredItem />
             </span>
           </label>
@@ -341,7 +361,7 @@ const KnowledgeBaseModal = ({
             data-testid="knowledgebase-description-textarea"
             id="knowledgebase-description-textarea"
             name="description"
-            className="textarea textarea-bordered textarea-sm"
+            className="textarea textarea-sm"
             placeholder="Brief description of the knowledge base content"
             defaultValue={selectedResource?.description || ""}
             key={`desc-${selectedResource?._id || "new"}`}
@@ -394,7 +414,7 @@ const KnowledgeBaseModal = ({
         {inputType === "file" && !selectedResource ? (
           <div className="form-control">
             <label className="label">
-              <span className="label-text text-sm font-medium">
+              <span className="text-sm font-medium">
                 File <RequiredItem />
               </span>
             </label>
@@ -407,8 +427,8 @@ const KnowledgeBaseModal = ({
                   id="knowledgebase-file-upload"
                   type="file"
                   onChange={handleFileUpload}
-                  className="file-input file-input-bordered file-input-sm w-full"
-                  disabled={isCreatingResource || isUploading}
+                  className="file-input file-input-sm w-full"
+                  disabled={isCreatingResource || isUploading || isOrgBlocked}
                   accept=".pdf,.txt,.md"
                 />
                 {isUploading && (
@@ -417,14 +437,14 @@ const KnowledgeBaseModal = ({
                     <span className="text-sm text-gray-600">Uploading file...</span>
                   </div>
                 )}
-                <span className="label-text-alt text-gray-400 mt-1">Supported formats: .pdf, .txt, .md</span>
+                <span className="text-gray-400 mt-1">Supported formats: .pdf, .txt, .md</span>
               </>
             )}
 
             {/* Display uploaded file only */}
             {uploadedFile && (
               <div className="mt-1">
-                <div className="flex items-center justify-between bg-base-200 p-3 rounded text-sm">
+                <div className="flex items-center justify-between bg-base-200 p-3 text-sm">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <span className="truncate font-medium">{uploadedFile.name}</span>
                     <span className="text-xs text-gray-500">({formatFileSize(uploadedFile.size)})</span>
@@ -447,7 +467,7 @@ const KnowledgeBaseModal = ({
         ) : inputType === "content" && !selectedResource ? (
           <div className="form-control">
             <label className="label">
-              <span className="label-text text-sm font-medium">
+              <span className="text-sm font-medium">
                 Content <RequiredItem />
               </span>
             </label>
@@ -455,7 +475,7 @@ const KnowledgeBaseModal = ({
               data-testid="knowledgebase-content-textarea-create"
               id="knowledgebase-content-textarea-create"
               name="content"
-              className="textarea textarea-bordered textarea-sm w-full h-32"
+              className="textarea textarea-sm w-full h-32"
               placeholder="Enter content here..."
               key={selectedResource?._id || "new-content"}
               required
@@ -467,7 +487,7 @@ const KnowledgeBaseModal = ({
           selectedResource?.content && !selectedResource?.url ? (
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-sm font-medium">
+                <span className="text-sm font-medium">
                   Content <RequiredItem />
                 </span>
               </label>
@@ -475,7 +495,7 @@ const KnowledgeBaseModal = ({
                 data-testid="knowledgebase-content-textarea-edit"
                 id="knowledgebase-content-textarea-edit"
                 name="content"
-                className="textarea textarea-bordered textarea-sm w-full h-32"
+                className="textarea textarea-sm w-full h-32"
                 placeholder="Enter content here..."
                 required
                 disabled={isCreatingResource}
@@ -486,28 +506,28 @@ const KnowledgeBaseModal = ({
           ) : selectedResource?.url ? (
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-sm font-medium">URL</span>
+                <span className="text-sm font-medium">URL</span>
               </label>
               <input
                 autoComplete="off"
                 id="knowledgebase-url-input-edit"
                 type="url"
                 name="url"
-                className="input input-bordered input-sm bg-gray-100"
+                className="input input-sm bg-gray-100"
                 placeholder="https://example.com/resource"
                 disabled={true}
                 defaultValue={selectedResource.url}
                 key={selectedResource._id}
                 readOnly
               />
-              <span className="label-text-alt text-gray-400 mt-1">URL cannot be edited</span>
+              <span className="text-gray-400 mt-1">URL cannot be edited</span>
             </div>
           ) : null
         ) : (
           // Create mode - URL input
           <div className="form-control">
             <label className="label">
-              <span className="label-text text-sm font-medium">
+              <span className="text-sm font-medium">
                 URL <RequiredItem />
               </span>
             </label>
@@ -517,7 +537,7 @@ const KnowledgeBaseModal = ({
               id="knowledgebase-url-input-create"
               type="url"
               name="url"
-              className="input input-bordered input-sm"
+              className="input input-sm"
               placeholder="https://example.com/resource"
               key={selectedResource?._id || "new-url"}
               required={inputType === "url"}
@@ -530,13 +550,13 @@ const KnowledgeBaseModal = ({
           <div className="space-y-4">
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-sm font-medium">Chunking Type</span>
+                <span className="text-sm font-medium">Chunking Type</span>
               </label>
               <select
                 data-testid="knowledgebase-chunking-type-select"
                 id="knowledgebase-chunking-type-select"
                 name="chunkingType"
-                className="select select-bordered select-sm"
+                className="select select-sm"
                 value={chunkingType}
                 onChange={(e) => setChunkingType(e.target.value)}
                 disabled={isCreatingResource}
@@ -551,14 +571,14 @@ const KnowledgeBaseModal = ({
             {chunkingType === "custom" ? (
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-sm font-medium">Chunking URL</span>
+                  <span className="text-sm font-medium">Chunking URL</span>
                 </label>
                 <input
                   autoComplete="off"
                   id="knowledgebase-chunking-url-input"
                   type="url"
                   name="chunkingUrl"
-                  className="input input-bordered input-sm"
+                  className="input input-sm"
                   placeholder="https://example.com/chunking-service"
                   disabled={isCreatingResource}
                   required
@@ -568,14 +588,14 @@ const KnowledgeBaseModal = ({
               <>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text text-sm font-medium">Chunk Size</span>
+                    <span className="text-sm font-medium">Chunk Size</span>
                   </label>
                   <input
                     autoComplete="off"
                     id="knowledgebase-chunk-size-input"
                     type="number"
                     name="chunkSize"
-                    className="input input-bordered input-sm"
+                    className="input input-sm"
                     min={1}
                     max={4000}
                     required
@@ -590,14 +610,14 @@ const KnowledgeBaseModal = ({
                 {chunkingType === "semantic" && (
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text text-sm font-medium">Chunk Overlap</span>
+                      <span className="text-sm font-medium">Chunk Overlap</span>
                     </label>
                     <input
                       autoComplete="off"
                       id="knowledgebase-chunk-overlap-input"
                       type="number"
                       name="chunkingOverlap"
-                      className="input input-bordered input-sm"
+                      className="input input-sm"
                       min={0}
                       max={200}
                       defaultValue={
@@ -631,7 +651,7 @@ const KnowledgeBaseModal = ({
               <div className="">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text text-sm font-medium">Query Access Type</span>
+                    <span className="text-sm font-medium">Query Access Type</span>
                   </label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">

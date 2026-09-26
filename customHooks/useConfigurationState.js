@@ -43,6 +43,7 @@ export const useConfigurationState = (params, searchParams) => {
       showMcp: state.appInfoReducer.embedUserDetails.showMcp,
       validationConfig: validationConfig, // Expose full validationConfig
       cacheOn: activeData?.cache_on ?? false,
+      configPanelLayout: state.appInfoReducer.embedUserDetails.layout || "tabs",
     };
   });
 };

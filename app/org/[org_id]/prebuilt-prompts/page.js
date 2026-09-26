@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { RefreshIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { SaveAllIcon } from "lucide-react";
@@ -111,7 +111,7 @@ export default function PrebuiltPromptsPage() {
     try {
       await resetPrebuiltPrompt(agentKey);
       setSavebtnEnabled(false);
-      toast.info((processedPrompts[agentKey]?.name || "Agent") + " prompt reset to default.");
+      toast((processedPrompts[agentKey]?.name || "Agent") + " prompt reset to default.", { icon: "ℹ️" });
     } catch (error) {
       toast.error("Failed to reset prompt. Please try again.");
       console.error("Reset error:", error);
@@ -232,7 +232,7 @@ export default function PrebuiltPromptsPage() {
               {/* Full Height Textarea */}
               <div className="flex-1 flex flex-col">
                 <textarea
-                  className="textarea bg-base-100 textarea-bordered flex-1 w-full font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="textarea bg-base-100 flex-1 w-full font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   value={prompts[selectedAgent] || ""}
                   onChange={(e) => handlePromptChange(selectedAgent, e.target.value)}
                   placeholder="Enter the system prompt that defines how this agent should behave and respond to user requests"
