@@ -36,9 +36,21 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     const modelTypeName = activeData?.configuration?.type?.toLowerCase();
     const modelName = activeData?.configuration?.model;
 
+    // Read from connected_tools array and filter by type "docs"
+    const connectedTools = activeData?.connected_tools || [];
+    const docEntries = connectedTools.filter((t) => t?.type === "docs");
+
+    // Transform to legacy format for compatibility
+    const knowbaseVersionData = docEntries.map((entry) => ({
+      resource_id: entry.id,
+      collection_id: entry.collection_id,
+      name: entry.name,
+      description: entry.description,
+    }));
+
     return {
       knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params?.org_id] || [],
-      knowbaseVersionData: isPublished ? bridgeDataFromState?.doc_ids || [] : versionData?.doc_ids || [],
+      knowbaseVersionData,
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
       isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(params?.org_id) || false,
     };
@@ -68,18 +80,20 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     );
     if (existingItem) return;
 
-    // Format the new item with collection_id and resource_id
-    const newDocItem = {
-      collection_id: knowledgeBaseItem.collectionId,
-      resource_id: id,
-      description: knowledgeBaseItem.description,
-      name: knowledgeBaseItem.title,
-    };
-
     dispatch(
       updateBridgeVersionAction({
+        bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: { doc_ids: [...(knowbaseVersionData || []), newDocItem] },
+        dataToSend: {
+          connected_tool: {
+            type: "docs",
+            id: id,
+            collection_id: knowledgeBaseItem.collectionId,
+            name: knowledgeBaseItem.title,
+            description: knowledgeBaseItem.description,
+          },
+          operation: 1,
+        },
       })
     );
     // Close dropdown after selection
@@ -93,16 +107,14 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     await executeDelete(async () => {
       return dispatch(
         updateBridgeVersionAction({
+          bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            doc_ids: knowbaseVersionData.filter((docItem) => {
-              // Handle both old format (string) and new format (object)
-              if (typeof docItem === "string") {
-                return docItem !== item?._id;
-              } else {
-                return docItem.resource_id !== item?._id;
-              }
-            }),
+            connected_tool: {
+              type: "docs",
+              id: item?._id,
+            },
+            operation: 0,
           },
         })
       );
@@ -231,16 +243,23 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     const knowledgebaseItems = (Array.isArray(knowbaseVersionData) ? knowbaseVersionData : [])
       ?.map((docItem, index) => {
         // Handle both old format (string) and new format (object)
-        let resourceId, _collectionId;
+        let resourceId, _collectionId, storedName, storedDescription;
         if (typeof docItem === "string") {
           resourceId = docItem;
           _collectionId = null;
         } else {
           resourceId = docItem.resource_id;
           _collectionId = docItem.collection_id;
+          storedName = docItem.name;
+          storedDescription = docItem.description;
         }
 
-        const item = knowledgeBaseData?.find((kb) => kb._id === resourceId);
+        // Prefer the name/description saved on the connected_tool entry itself so we
+        // don't need to depend on a full knowledgeBaseData fetch for display.
+        const matchedItem = knowledgeBaseData?.find((kb) => kb._id === resourceId);
+        const item = storedName
+          ? { ...matchedItem, _id: resourceId, title: storedName, description: storedDescription }
+          : matchedItem;
         return item ? (
           <div
             data-testid={`knowledgebase-card-${item._id}`}
