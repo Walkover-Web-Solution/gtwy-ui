@@ -237,7 +237,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
       variablesKeyValue: versionState?.variables || [],
-      variablesPath: versionData?.variables_path || {},
+      // Tool and agent variable paths are stored on their connected_tools entries; keep legacy variables_path as fallback
+      variablesPath: {
+        ...(versionData?.variables_path || {}),
+        ...Object.fromEntries(
+          connectedTools
+            .filter((t) => (t?.type === "tools" || t?.type === "agent") && t?.id && t?.variable_path)
+            .map((t) => [t.id, t.variable_path])
+        ),
+      },
       variable_state: versionData?.agent_info?.variables_state || {},
       post_tool: connectedTools.find((t) => t?.type === "post_tool") || null,
       connectedTools: connectedTools,

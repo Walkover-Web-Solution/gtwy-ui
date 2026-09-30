@@ -54,18 +54,18 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         bridge_id: bridgeId,
         thread_id: entry.thread_id ?? false,
         version_id: entry.version_id,
+        ...(entry.environment && { environment: entry.environment }),
         description: linked?.description,
         variables: entry.variable_path || {},
       };
     });
 
-    // Build variables_path from individual agent entries
+    // Build variables_path from individual agent entries, keyed by bridge id because
+    // FunctionParameterModal looks it up with functionName (= bridge id for agents)
     const variablesPathFromAgents = {};
     agentEntries.forEach((entry) => {
-      const linked = bridges.find((b) => b._id === entry.id);
-      const aliasName = linked?.name || entry.id;
-      if (entry.variable_path) {
-        variablesPathFromAgents[aliasName] = entry.variable_path;
+      if (entry.id && entry.variable_path) {
+        variablesPathFromAgents[entry.id] = entry.variable_path;
       }
     });
 
@@ -244,15 +244,6 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           },
         })
       );
-      if (!isEqual(variablesPath, variables_path[selectedBridge?.bridge_id])) {
-        await dispatch(
-          updateBridgeVersionAction({
-            bridgeId: params.id,
-            versionId: searchParams?.version,
-            dataToSend: { variables_path: { [selectedBridge?.bridge_id]: variablesPath } },
-          })
-        );
-      }
       closeModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
       setCurrentVariable(agentTools);
       setAgentTools(agentTools);
