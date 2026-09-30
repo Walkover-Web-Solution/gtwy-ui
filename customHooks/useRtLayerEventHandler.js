@@ -10,6 +10,7 @@ import {
   handleRtLayerFunctionCall,
 } from "@/store/action/chatAction";
 import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
+import { addNotificationReducer } from "@/store/reducer/notificationReducer";
 import {
   testRunStartedReducer,
   testRunResultReducer,
@@ -47,6 +48,22 @@ function handleOrgRtChannelMessage(parsedData, dispatch, orgId) {
     if (apikey_id && status) {
       dispatch(updateApiKeyStatusReducer({ org_id: orgId, apikey_id, status }));
     }
+  }
+  if (parsedData?.type === "notification" && parsedData.notification) {
+    const notification = parsedData.notification;
+    // Org channel only ever carries org-wide notifications (agent_id null) — store under the org bucket.
+    dispatch(addNotificationReducer({ agentId: null, notification }));
+    toast.info(
+      <div>
+        <div className="font-semibold">{notification.title}</div>
+        <div className="text-sm">{notification.message}</div>
+      </div>,
+      {
+        position: "top-right",
+        autoClose: 6000,
+        toastId: `notification-${notification._id}`,
+      }
+    );
   }
 }
 
@@ -148,6 +165,24 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
           parsedData.type === "cost_over_time"
         ) {
           dispatch(updateAnalyticsFromRtLayer(parsedData));
+          return;
+        }
+
+        if (parsedData.type === "notification" && parsedData.notification) {
+          const notification = parsedData.notification;
+          // This per-agent channel only ever carries this agent's own notifications.
+          dispatch(addNotificationReducer({ agentId: bridgeId, notification }));
+          toast.info(
+            <div>
+              <div className="font-semibold">{notification.title}</div>
+              <div className="text-sm">{notification.message}</div>
+            </div>,
+            {
+              position: "top-right",
+              autoClose: 6000,
+              toastId: `notification-${notification._id}`,
+            }
+          );
           return;
         }
 
@@ -608,16 +643,35 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
       setConnectionError(error.message);
     }
   }, [client, channelId]);
-  // Listen to global channel for model config updates
+  // Global channel — carries both broadcast notifications and model/service/plan
+  // registry updates; branch on the payload shape to route each to its handler.
   useEffect(() => {
     if (!client) return;
 
-    const globalListener = client.on("global_model_updates", (message) => {
+    const globalUpdatesListener = client.on("global_updates", (message) => {
       try {
-        // Parse the message
-        let parsedData = typeof message === "string" ? JSON.parse(message) : message;
+        const parsedData = parseRtMessage(message);
 
-        // Check if this is a model_config_updated event
+        if (parsedData?.type === "notification" && parsedData.notification) {
+          const notification = parsedData.notification;
+          // Broadcasts (org_id: null) are shown alongside org-wide notifications.
+          dispatch(addNotificationReducer({ agentId: null, notification }));
+          toast.info(
+            <div>
+              <div className="font-semibold">{notification.title}</div>
+              <div className="text-sm">{notification.message}</div>
+            </div>,
+            {
+              position: "top-right",
+              autoClose: 6000,
+              toastId: `notification-${notification._id}`,
+            }
+          );
+          return;
+        }
+
+        // Otherwise this is a registry change event (model_config_updated,
+        // service_registry_updated, billing_plans_updated, ...).
         if (parsedData?.event === "model_config_updated") {
           // Refresh only the specific service that was updated
           const serviceToRefresh = parsedData.service;
@@ -638,13 +692,13 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
           }
         }
       } catch (error) {
-        console.error("Error processing model config update:", error);
+        console.error("Error processing global update:", error);
       }
     });
 
     return () => {
-      if (globalListener && typeof globalListener.remove === "function") {
-        globalListener.remove();
+      if (globalUpdatesListener && typeof globalUpdatesListener.remove === "function") {
+        globalUpdatesListener.remove();
       }
     };
   }, [client, dispatch]);

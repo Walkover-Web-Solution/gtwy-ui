@@ -17,11 +17,13 @@ import {
   Settings,
   BarChart3,
   ArrowLeft,
+  Bell,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeAction, dicardBridgeVersionAction, deleteBridgeAction } from "@/store/action/bridgeAction";
+import { fetchOrgNotificationsAction, fetchAgentNotificationsAction } from "@/store/action/notificationAction";
 import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
@@ -29,6 +31,7 @@ import toast from "react-hot-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 const ChatBotSlider = dynamic(() => import("./sliders/ChatBotSlider"), { ssr: false });
 const ConfigHistorySlider = dynamic(() => import("./sliders/ConfigHistorySlider"), { ssr: false });
+const NotificationsSlider = dynamic(() => import("./sliders/NotificationsSlider"), { ssr: false });
 import Protected from "./Protected";
 const DeleteModal = dynamic(() => import("./UI/DeleteModal"), { ssr: false });
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
@@ -101,6 +104,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     publicAgentConfig,
     bridgeVersionsArray,
     showTestcases,
+    notificationUnreadCount,
   } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[orgId]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
@@ -141,6 +145,9 @@ const Navbar = ({ isEmbedUser, params }) => {
       publicAgentConfig: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.settings?.publicAgentConfig,
       bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.versions || [],
       showTestcases: state?.appInfoReducer?.embedUserDetails?.showTestcases !== false,
+      notificationUnreadCount:
+        (state?.notificationReducer?.org?.unreadCount || 0) +
+        (state?.notificationReducer?.byAgent?.[bridgeId]?.unreadCount || 0),
     };
   });
   // Define tabs based on user type
@@ -429,6 +436,19 @@ const Navbar = ({ isEmbedUser, params }) => {
   }, [router, publishedVersion, bridgeType]);
 
   const toggleConfigHistorySidebar = useCallback(() => toggleSidebar("default-config-history-slider", "right"), []);
+  const toggleNotificationsSidebar = useCallback(() => toggleSidebar("notifications-slider", "right"), []);
+
+  // Hydrate the unread badge count on load — independent of the slider ever being
+  // opened, so it's accurate as soon as the page mounts (not just after RTLayer events).
+  useEffect(() => {
+    if (isEmbedUser) return;
+    dispatch(fetchOrgNotificationsAction({ page: 1 }));
+  }, [isEmbedUser, dispatch]);
+
+  useEffect(() => {
+    if (isEmbedUser || !bridgeId) return;
+    dispatch(fetchAgentNotificationsAction({ agentId: bridgeId, page: 1 }));
+  }, [isEmbedUser, bridgeId, dispatch]);
   const handleHomeClick = useCallback(() => {
     if (unsavedPromptGuard.hasUnsavedChanges) {
       pendingNavRef.current = () => router.push(`/org/${orgId}/agents`);
@@ -776,6 +796,27 @@ const Navbar = ({ isEmbedUser, params }) => {
                 )}
               </div>
 
+              {/* Notifications button - Fixed Position */}
+              <div className="flex items-center">
+                {!isEmbedUser && (
+                  <div className="tooltip tooltip-bottom" data-tip="Notifications">
+                    <button
+                      data-testid="navbar-notifications-button"
+                      id="navbar-notifications-button"
+                      className="relative p-1 bg-base-300 rounded-md hover:bg-base-200 transition-colors"
+                      onClick={toggleNotificationsSidebar}
+                    >
+                      <Bell size={16} />
+                      {notificationUnreadCount > 0 && (
+                        <span className="badge badge-error badge-xs absolute -top-1 -right-1 px-1">
+                          {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Publish/Discard Dropdown - Fixed Position */}
               {activeTab == "configure" && (
                 <div className="flex items-center">
@@ -1037,6 +1078,7 @@ const Navbar = ({ isEmbedUser, params }) => {
         <>
           <ChatBotSlider />
           <ConfigHistorySlider versionId={versionId} />
+          <NotificationsSlider agentId={bridgeId} />
         </>
       )}
 
