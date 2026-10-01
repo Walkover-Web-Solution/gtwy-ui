@@ -35,6 +35,7 @@ import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
 import AgentEmptyState from "@/components/AgentEmptyState";
+import GtwySkillBanner from "@/components/gtwySkill/GtwySkillBanner";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import ConfigureEnvironmentModal from "@/components/modals/ConfigureEnvironmentModal";
@@ -1312,6 +1313,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                             isEmbedUser={isEmbedUser}
                           />
                         </div>
+                        {!isEmbedUser && <GtwySkillBanner orgId={resolvedParams.org_id} />}
                       </MainLayout>
 
                       <div className="flex flex-row flex-wrap gap-4 pb-3 items-center">

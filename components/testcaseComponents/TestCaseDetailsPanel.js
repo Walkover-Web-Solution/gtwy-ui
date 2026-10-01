@@ -35,7 +35,7 @@ import MockToolResponsesSection, {
 } from "@/components/testcaseComponents/MockToolResponsesSection";
 import { getMessageByIdApi } from "@/config/historyApi";
 import { promptObjectToString } from "@/utils/promptUtils";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
