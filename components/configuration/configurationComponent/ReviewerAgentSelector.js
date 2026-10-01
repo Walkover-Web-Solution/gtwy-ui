@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { getStatusClass } from "@/utils/utility";
-import { ShieldCheck, Edit2, Trash2 } from "lucide-react";
+import { ShieldCheck, Edit2, Trash2, CircleQuestionMark } from "lucide-react";
 import ConnectedAgentListSuggestion from "./ConnectAgentListSuggestion";
 import ReviewerToolSelector from "./ReviewerToolSelector";
 import { AddIcon } from "@/components/Icons";
 import { useConfigurationContext } from "../ConfigurationContext";
+import InfoTooltip from "@/components/InfoTooltip";
+
+const REVIEWER_AGENT_DOC_LINK = "https://gtwy.ai/resources/api-reference/reviewer-agent";
 
 function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) {
   const dispatch = useDispatch();
@@ -55,6 +58,19 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
   const reviewerAgent = useMemo(
     () => bridges.find((b) => b._id === reviewerAgentId && !b.deletedAt) || null,
     [bridges, reviewerAgentId]
+  );
+
+  // "orgs" holds every bridge ever created in the org, including soft-deleted
+  // and paused ones (deleteBridgeReducer only sets deletedAt, it never splices
+  // the array) — so a raw length check overcounts. Mirror the same
+  // active/non-deleted/not-self predicate ConnectAgentListSuggestion uses to
+  // decide what's actually selectable in the dropdown.
+  const hasOtherAgents = useMemo(
+    () =>
+      bridges.some(
+        (b) => b?._id !== params?.id && !b?.deletedAt && (b?.bridge_status === 1 || b?.bridge_status === undefined)
+      ),
+    [bridges, params?.id]
   );
 
   const handleToggleChange = (e) => {
@@ -120,7 +136,15 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
         <div className="flex items-start gap-1.5 min-w-0">
           <ShieldCheck size={14} className="text-base-content/60 mt-0.5" />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-base-content">Reviewer Validation</p>
+            <div className="flex items-center gap-1">
+              <p className="text-sm font-medium text-base-content">Reviewer Validation</p>
+              <InfoTooltip
+                tooltipContent="Validate and correct responses using an agent or custom prompt rules."
+                docLink={REVIEWER_AGENT_DOC_LINK}
+              >
+                <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
+              </InfoTooltip>
+            </div>
             <p className="text-xs text-base-content/60 break-words">
               Validate and correct responses using an agent or custom prompt rules.
             </p>
@@ -263,31 +287,36 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                     </div>
                     {!isReadOnly && (
                       <div className="flex items-center gap-1">
-                        <div className="dropdown dropdown-end">
-                          <button
-                            data-testid="reviewer-agent-change-button"
-                            id="reviewer-agent-change-button"
-                            tabIndex={0}
-                            className="btn btn-ghost btn-xs btn-circle"
-                            title="Change reviewer agent"
-                            onClick={() => {
-                              setTimeout(() => {
-                                document.getElementById("connect-agent-suggestion-search-input")?.focus();
-                              }, 50);
-                            }}
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                          <ConnectedAgentListSuggestion
-                            params={params}
-                            handleSelectAgents={handleSelect}
-                            connect_agents={{}}
-                            bridges={bridges}
-                            bridgeData={bridges}
-                            excludedAgentIds={[reviewerAgentId]}
-                            closeOnSelect
-                          />
-                        </div>
+                        {hasOtherAgents && (
+                          <div className="dropdown dropdown-end">
+                            <button
+                              data-testid="reviewer-agent-change-button"
+                              id="reviewer-agent-change-button"
+                              tabIndex={0}
+                              className="btn btn-ghost btn-xs btn-circle"
+                              title="Change reviewer agent"
+                              onClick={() => {
+                                setTimeout(() => {
+                                  (
+                                    document.getElementById("connect-agent-suggestion-search-input") ||
+                                    document.getElementById("connect-agent-suggestion-dropdown")
+                                  )?.focus();
+                                }, 50);
+                              }}
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <ConnectedAgentListSuggestion
+                              params={params}
+                              handleSelectAgents={handleSelect}
+                              connect_agents={{}}
+                              bridges={bridges}
+                              bridgeData={bridges}
+                              excludedAgentIds={[reviewerAgentId]}
+                              closeOnSelect
+                            />
+                          </div>
+                        )}
                         <button
                           data-testid="reviewer-agent-clear-button"
                           id="reviewer-agent-clear-button"
@@ -303,33 +332,44 @@ function ReviewerAgentSelector({ params, searchParams, isPublished, isEditor }) 
                 ) : (
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs text-base-content/50 italic p-1">No agent selected</span>
-                    {!isReadOnly && (
-                      <div className="dropdown dropdown-end shrink-0" data-testid="reviewer-agent-dropdown">
-                        <button
-                          data-testid="reviewer-agent-dropdown-toggle"
-                          id="reviewer-agent-dropdown-toggle"
-                          tabIndex={0}
-                          className="btn btn-xs btn-outline font-normal gap-1"
-                          onClick={() => {
-                            setTimeout(() => {
-                              document.getElementById("connect-agent-suggestion-search-input")?.focus();
-                            }, 50);
-                          }}
+                    {!isReadOnly &&
+                      (hasOtherAgents ? (
+                        <div className="dropdown dropdown-end shrink-0" data-testid="reviewer-agent-dropdown">
+                          <button
+                            data-testid="reviewer-agent-dropdown-toggle"
+                            id="reviewer-agent-dropdown-toggle"
+                            tabIndex={0}
+                            className="btn btn-xs btn-outline font-normal gap-1"
+                            onClick={() => {
+                              setTimeout(() => {
+                                (
+                                  document.getElementById("connect-agent-suggestion-search-input") ||
+                                  document.getElementById("connect-agent-suggestion-dropdown")
+                                )?.focus();
+                              }, 50);
+                            }}
+                          >
+                            <AddIcon size={12} />
+                            <span>Select Agent</span>
+                          </button>
+                          <ConnectedAgentListSuggestion
+                            params={params}
+                            handleSelectAgents={handleSelect}
+                            connect_agents={{}}
+                            bridges={bridges}
+                            bridgeData={bridges}
+                            excludedAgentIds={[reviewerAgentId]}
+                            closeOnSelect
+                          />
+                        </div>
+                      ) : (
+                        <span
+                          data-testid="reviewer-agent-no-other-agents-message"
+                          className="text-[10px] text-warning italic p-1 text-right"
                         >
-                          <AddIcon size={12} />
-                          <span>Select Agent</span>
-                        </button>
-                        <ConnectedAgentListSuggestion
-                          params={params}
-                          handleSelectAgents={handleSelect}
-                          connect_agents={{}}
-                          bridges={bridges}
-                          bridgeData={bridges}
-                          excludedAgentIds={[reviewerAgentId]}
-                          closeOnSelect
-                        />
-                      </div>
-                    )}
+                          Create another agent in this org to use as a reviewer agent.
+                        </span>
+                      ))}
                   </div>
                 )}
               </div>

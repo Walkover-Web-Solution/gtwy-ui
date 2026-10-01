@@ -10,6 +10,7 @@ const Modal = ({
   icon,
   widthClass = "w-[min(720px,92vw)]",
   footer,
+  titleActions,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const onCloseRef = React.useRef(onClose);
@@ -92,7 +93,10 @@ const Modal = ({
               <div className="flex items-center gap-2.5">
                 {icon}
                 <div className="flex flex-col text-left">
-                  <h3 className="text-base font-semibold text-base-content">{title}</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-base font-semibold text-base-content">{title}</h3>
+                    {titleActions}
+                  </div>
                   {description && <p className="text-xs text-base-content/70 mt-0.5">{description}</p>}
                 </div>
               </div>

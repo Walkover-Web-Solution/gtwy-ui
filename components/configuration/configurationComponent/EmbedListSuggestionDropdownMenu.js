@@ -72,6 +72,40 @@ function EmbedListSuggestionDropdownMenu({
     document.activeElement?.blur();
   };
 
+  const isFunctionAvailable = (value) => {
+    const fnName = value?.script_id;
+    const title = value?.title || integrationData?.[fnName]?.title;
+    return (
+      title !== undefined &&
+      !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id) &&
+      !(embedDefaultToolIds || []).includes(value?._id)
+    );
+  };
+
+  const availableFunctionsCount = useMemo(
+    () => Object.values(function_data || {}).filter(isFunctionAvailable).length,
+    [function_data, integrationData, connectedFunctions, embedDefaultToolIds]
+  );
+
+  const availablePrebuiltToolsCount = useMemo(() => {
+    const list = Array.isArray(prebuiltToolsData) ? prebuiltToolsData : [];
+    const selected = new Set(Array.isArray(toolsVersionData) ? toolsVersionData : []);
+    return list.filter((t) => !selected.has(t.value) && (t?.isGtwyTool || showInbuiltTools?.[t?.value])).length;
+  }, [prebuiltToolsData, toolsVersionData, showInbuiltTools]);
+
+  const builtInPreToolsCount = useMemo(
+    () =>
+      Object.keys(PRE_TOOL_TYPES)
+        .filter((k) => k !== "custom_function")
+        .filter((k) => !connectedPreToolTypes.includes(k)).length,
+    [connectedPreToolTypes]
+  );
+
+  const totalAvailableCount =
+    availableFunctionsCount +
+    (name === "preFunction" ? builtInPreToolsCount : name === "postFunction" ? 0 : availablePrebuiltToolsCount);
+  const shouldShowSearch = totalAvailableCount > 5;
+
   const renderEmbedSuggestions = useMemo(
     () =>
       function_data &&
@@ -79,12 +113,8 @@ function EmbedListSuggestionDropdownMenu({
         .filter((value) => {
           const fnName = value?.script_id;
           const title = value?.title || integrationData?.[fnName]?.title;
-          return (
-            title !== undefined &&
-            title?.toLowerCase()?.includes(normalizedSearchQuery) &&
-            !(connectedFunctions || [])?.some((f) => f === value?._id || f?.config?.function_id === value?._id) &&
-            !(embedDefaultToolIds || []).includes(value?._id)
-          );
+          const matchesSearch = !shouldShowSearch || title?.toLowerCase()?.includes(normalizedSearchQuery);
+          return matchesSearch && isFunctionAvailable(value);
         })
         .slice() // Create a copy of the array to avoid mutating the original
         .sort((a, b) => {
@@ -148,6 +178,7 @@ function EmbedListSuggestionDropdownMenu({
       connectedFunctions,
       embedDefaultToolIds,
       searchParams?.version,
+      shouldShowSearch,
     ]
   );
 
@@ -157,10 +188,10 @@ function EmbedListSuggestionDropdownMenu({
     return list.filter(
       (t) =>
         !selected.has(t.value) &&
-        t?.name?.toLowerCase()?.includes(normalizedSearchQuery) &&
+        (!shouldShowSearch || t?.name?.toLowerCase()?.includes(normalizedSearchQuery)) &&
         (t?.isGtwyTool || showInbuiltTools?.[t?.value])
     );
-  }, [prebuiltToolsData, toolsVersionData, normalizedSearchQuery, showInbuiltTools]);
+  }, [prebuiltToolsData, toolsVersionData, normalizedSearchQuery, showInbuiltTools, shouldShowSearch]);
 
   return (
     <>
@@ -194,16 +225,18 @@ function EmbedListSuggestionDropdownMenu({
             ) : (
               <li className="text-sm font-semibold disabled">Available Tools</li>
             )}
-            <input
-              autoComplete="off"
-              data-testid="embed-suggestion-search-input"
-              id="embed-suggestion-search-input"
-              type="text"
-              placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
-              value={searchQuery}
-              onChange={handleInputChange} // Update search query on input change
-              className="input w-full input-sm"
-            />
+            {shouldShowSearch && (
+              <input
+                autoComplete="off"
+                data-testid="embed-suggestion-search-input"
+                id="embed-suggestion-search-input"
+                type="text"
+                placeholder={`Search ${name === "preFunction" ? "Pre Function" : name === "postFunction" ? "Post Function" : "Tool"}`}
+                value={searchQuery}
+                onChange={handleInputChange} // Update search query on input change
+                className="input w-full input-sm"
+              />
+            )}
             {name === "preFunction" && (
               <>
                 <li className="text-sm font-semibold disabled mt-2">Built-in Pre Tools</li>

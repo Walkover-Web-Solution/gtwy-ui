@@ -156,6 +156,24 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
   }, [params.org_id]);
 
   const hasKnowledgebases = (Array.isArray(knowbaseVersionData) ? knowbaseVersionData : []).length > 0;
+
+  const isKnowledgebaseAvailable = (item) => {
+    const alreadyExists = knowbaseVersionData?.some((docItem) => {
+      if (typeof docItem === "string") {
+        return docItem === item?._id;
+      } else {
+        return docItem.resource_id === item?._id;
+      }
+    });
+    return !alreadyExists;
+  };
+
+  const availableKnowledgebaseCount = useMemo(
+    () => (Array.isArray(knowledgeBaseData) ? knowledgeBaseData : []).filter(isKnowledgebaseAvailable).length,
+    [knowledgeBaseData, knowbaseVersionData]
+  );
+  const shouldShowSearch = availableKnowledgebaseCount > 5;
+
   const knowledgebaseDropdownContent = !tutorialState?.showTutorial && (
     <ul
       data-testid="knowledgebase-dropdown"
@@ -165,28 +183,22 @@ const KnowledgebaseList = ({ params, searchParams, isPublished, isEditor = true 
     >
       <div className="flex flex-col gap-2 w-full">
         <li className="text-sm font-semibold disabled">Available Knowledge Bases</li>
-        <input
-          autoComplete="off"
-          data-testid="knowledgebase-search-input"
-          id="knowledgebase-search-input"
-          type="text"
-          placeholder="Search Knowledge Base"
-          value={searchQuery}
-          onChange={handleInputChange}
-          className="input w-full input-sm"
-        />
+        {shouldShowSearch && (
+          <input
+            autoComplete="off"
+            data-testid="knowledgebase-search-input"
+            id="knowledgebase-search-input"
+            type="text"
+            placeholder="Search Knowledge Base"
+            value={searchQuery}
+            onChange={handleInputChange}
+            className="input w-full input-sm"
+          />
+        )}
         {(Array.isArray(knowledgeBaseData) ? knowledgeBaseData : [])
           .filter((item) => {
-            const matchesSearch = item?.title?.toLowerCase()?.includes(normalizedSearchQuery);
-            // Check if item already exists in knowbaseVersionData (handle both old and new format)
-            const alreadyExists = knowbaseVersionData?.some((docItem) => {
-              if (typeof docItem === "string") {
-                return docItem === item?._id;
-              } else {
-                return docItem.resource_id === item?._id;
-              }
-            });
-            return matchesSearch && !alreadyExists;
+            const matchesSearch = !shouldShowSearch || item?.title?.toLowerCase()?.includes(normalizedSearchQuery);
+            return matchesSearch && isKnowledgebaseAvailable(item);
           })
           .map((item) => (
             <li
