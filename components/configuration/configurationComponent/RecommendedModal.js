@@ -1,5 +1,6 @@
 import { modelSuggestionApi } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { SparklesIcon } from "@/components/Icons";
 import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
 import { X } from "lucide-react";
 import React, { useState, useCallback, useEffect, useRef } from "react";
@@ -136,6 +137,7 @@ const RecommendedModal = ({
             onClick={handleGetRecommendations}
             disabled={isLoadingRecommendations || isPublished || !isEditor}
           >
+            <SparklesIcon className="h-3.5 w-3.5" />
             {isLoadingRecommendations ? "Loading..." : "Get Recommended Model"}
           </button>
 

@@ -132,7 +132,10 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                     title="Change reviewer tool"
                     onClick={() => {
                       setTimeout(() => {
-                        document.getElementById("embed-suggestion-search-input")?.focus();
+                        (
+                          document.getElementById("embed-suggestion-search-input") ||
+                          document.getElementById("embed-suggestion-dropdown-menu")
+                        )?.focus();
                       }, 50);
                     }}
                   >
@@ -173,7 +176,10 @@ function ReviewerToolSelector({ params, searchParams, isPublished, isEditor }) {
                   className="btn btn-xs btn-outline font-normal gap-1"
                   onClick={() => {
                     setTimeout(() => {
-                      document.getElementById("embed-suggestion-search-input")?.focus();
+                      (
+                        document.getElementById("embed-suggestion-search-input") ||
+                        document.getElementById("embed-suggestion-dropdown-menu")
+                      )?.focus();
                     }, 50);
                   }}
                 >
