@@ -143,8 +143,20 @@ const AdvancedParameters = ({
     const modelInfoData =
       state?.modelReducer?.serviceModels?.[service]?.[type]?.[model]?.configuration?.additional_parameters;
 
+    // Tools and agents live in connected_tools; fall back to the legacy fields for older data
+    const connectedTools = Array.isArray(activeData?.connected_tools) ? activeData.connected_tools : null;
+    const function_ids = connectedTools
+      ? connectedTools.filter((t) => t?.type === "tools" && t?.id).map((t) => t.id)
+      : activeData?.function_ids || [];
+    const connected_agents = connectedTools
+      ? Object.fromEntries(
+          connectedTools
+            .filter((t) => t?.type === "agent" && t?.id)
+            .map((t) => [t.id, { bridge_id: t.id, thread_id: t.thread_id ?? false, variables: t.variable_path || {} }])
+        )
+      : activeData?.connected_agents;
+
     // Reactively derive function data from function_ids and all organization functions
-    const function_ids = activeData?.function_ids || [];
     const functionData = state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {};
     const version_function_data = {};
     function_ids.forEach((id) => {
@@ -162,7 +174,7 @@ const AdvancedParameters = ({
       integrationData,
       service,
       configuration,
-      connected_agents: isPublished ? bridgeDataFromState?.connected_agents : versionData?.connected_agents,
+      connected_agents,
       modelInfoData,
       bridge: activeData,
       bridgeType: bridgeDataFromState?.bridgeType || "",

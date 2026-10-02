@@ -155,9 +155,30 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
 
       // Get connected agents from the current agent
       // For bridge data, connected_agents might be in different locations
-      let connectedAgents = agent?.connected_agents || {};
+      let connectedAgents = {};
 
-      // If no connected_agents found, try other possible locations
+      // Current shape: agents are stored in connected_tools with type "agent" (holds variable_path)
+      if (Array.isArray(agent?.connected_tools)) {
+        connectedAgents = Object.fromEntries(
+          agent.connected_tools
+            .filter((t) => t?.type === "agent" && t?.id)
+            .map((t) => [
+              t.id,
+              {
+                bridge_id: t.id,
+                version_id: t.version_id,
+                environment: t.environment,
+                thread_id: t.thread_id,
+                variable_path: t.variable_path,
+              },
+            ])
+        );
+      }
+
+      // Legacy shape fallbacks
+      if (Object.keys(connectedAgents).length === 0) {
+        connectedAgents = agent?.connected_agents || {};
+      }
       if (Object.keys(connectedAgents).length === 0) {
         // Try page_config.connected_agents for bridge data
         connectedAgents = agent?.page_config?.connected_agents || {};
@@ -232,6 +253,15 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
           level + 1,
           allBridgesMap // Pass allBridgesMap to recursive calls
         );
+
+        // Keep how this agent is connected (variables, thread) so the card can show it
+        if (childAgents[0]) {
+          childAgents[0].connectionInfo = {
+            thread_id: agentInfo?.thread_id ?? false,
+            environment: agentInfo?.environment,
+            variable_path: agentInfo?.variable_path || agentInfo?.variables || {},
+          };
+        }
 
         // Add children to current agent
         if (childAgents.length > 0) {
@@ -321,13 +351,73 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
   }, [fetchConnectedAgents]);
 
   const { filteredBridgeData, filteredVersionData } = useMemo(() => {
+    const byId = (a, b) => String(a?.id ?? "").localeCompare(String(b?.id ?? ""));
+
+    // Compare connected agents as one list (like tools) instead of field-by-field nested diffs.
+    const toAgentItem = (id, entry) => ({
+      id,
+      thread_id: entry?.thread_id ?? false,
+      ...(entry?.version_id && { version_id: entry.version_id }),
+      ...(entry?.environment && { environment: entry.environment }),
+      variable_path: entry?.variable_path || entry?.variables || {},
+    });
+
     const normalizeConnectedAgents = (data) => {
-      if (!data || typeof data !== "object") return {};
-      return data.connected_agents || data.page_config?.connected_agents || data.configuration?.connected_agents || {};
+      if (!data || typeof data !== "object") return [];
+      const legacyAgents =
+        data.connected_agents || data.page_config?.connected_agents || data.configuration?.connected_agents || {};
+      return Object.values(legacyAgents)
+        .filter((entry) => entry?.bridge_id)
+        .map((entry) => toAgentItem(entry.bridge_id, entry))
+        .sort(byId);
+    };
+
+    // Split the connected_tools array into per-type keys so each tool type gets its own diff section.
+    const normalizeConnectedTools = (connectedTools) => {
+      const ofType = (type) => connectedTools.filter((t) => t?.type === type);
+
+      const builtInEntry = ofType("built_in_tools")[0];
+
+      return {
+        function_ids: ofType("tools")
+          .map((entry) => ({ id: entry.id, variable_path: entry.variable_path || {} }))
+          .sort(byId),
+        pre_tools: ofType("pre_tool").map((entry) => ({
+          type: entry.pre_tool_type,
+          id: entry.id,
+          variable_path: entry.variable_path || {},
+          ...(entry.prompt && { prompt: entry.prompt }),
+          ...(entry.formats && { formats: entry.formats }),
+          ...(entry.url && { url: entry.url }),
+        })),
+        post_tool: ofType("post_tool").map((entry) => ({ id: entry.id, args: entry.args || {} })),
+        built_in_tools: builtInEntry
+          ? {
+              built_in_tools: builtInEntry.built_in_tools || [],
+              web_search_filters: builtInEntry.web_search_filters || [],
+              gtwy_web_search_filters: builtInEntry.gtwy_web_search_filters || [],
+            }
+          : {},
+        doc_ids: ofType("docs")
+          .map((entry) => ({
+            id: entry.id,
+            collection_id: entry.collection_id,
+            name: entry.name,
+            description: entry.description,
+          }))
+          .sort(byId),
+        connected_agents: ofType("agent")
+          .filter((entry) => entry?.id)
+          .map((entry) => toAgentItem(entry.id, entry))
+          .sort(byId),
+      };
     };
 
     const normalizeForComparison = (data) => {
       if (!data || typeof data !== "object") return data;
+      if (Array.isArray(data.connected_tools)) {
+        return { ...data, ...normalizeConnectedTools(data.connected_tools) };
+      }
       return {
         ...data,
         // Normalize source shape so connected agent diffs are consistently detected.
@@ -598,6 +688,29 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
                         </p>
                         {agent.url_slugname && (
                           <p className="text-xs text-base-content/50">Slug: {agent.url_slugname}</p>
+                        )}
+                        {agent.connectionInfo && (
+                          <p className="text-xs text-base-content/70 mt-1">
+                            Thread: {agent.connectionInfo.thread_id ? "On" : "Off"}
+                            {agent.connectionInfo.environment ? ` | Env: ${agent.connectionInfo.environment}` : ""}
+                          </p>
+                        )}
+                        {Object.keys(agent.connectionInfo?.variable_path || {}).length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-[10px] uppercase tracking-wide text-base-content/50">Variables</p>
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              {Object.entries(agent.connectionInfo.variable_path).map(
+                                ([variableKey, variableValue]) => (
+                                  <span key={variableKey} className="text-xs font-mono break-all text-base-content/70">
+                                    {variableKey} →{" "}
+                                    {variableValue !== null && typeof variableValue === "object"
+                                      ? JSON.stringify(variableValue)
+                                      : String(variableValue)}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
