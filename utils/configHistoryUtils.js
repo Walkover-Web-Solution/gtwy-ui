@@ -1,7 +1,28 @@
 import { isEqual } from "lodash";
 import { DIFFERNCE_DATA_DISPLAY_NAME } from "@/jsonFiles/bridgeParameter";
 
-const SYSTEM_HISTORY_TYPES = new Set(["Version created", "Agent created", "Version deleted"]);
+const SYSTEM_HISTORY_TYPES = new Set([
+  "Version created",
+  "Agent created",
+  "Version deleted",
+  "Tool created",
+  "Tool deleted",
+  "Tool removed",
+]);
+// Mirrors gtwy-node's `simpleAgentFields` (agentConfig.controller.js) — fields that live on
+// the agent document itself, not on any one version's configuration. Every version's history
+// feed includes these rows too, but reverting one has to go through the agent endpoint
+// (PUT /api/agent/:agent_id), not the version endpoint, or the request fails validation.
+const AGENT_LEVEL_HISTORY_TYPES = new Set([
+  "name",
+  "slugName",
+  "meta",
+  "bridge_summary",
+  "bridge_usage",
+  "bridge_limit",
+  "bridgeType",
+  "folder_id",
+]);
 const CONFIG_KEYS = new Set([
   "prompt",
   "model",
@@ -154,6 +175,29 @@ export function getHistoryDiff(item) {
   };
 }
 
+function diffToolIds(item) {
+  const before = readHistoryValue(item?.previous_value, "functionData");
+  const after = readHistoryValue(item?.current_value, "functionData");
+  const beforeIds = Array.isArray(before) ? before : [];
+  const afterIds = Array.isArray(after) ? after : [];
+  return {
+    removedIds: beforeIds.filter((id) => !afterIds.includes(id)),
+    addedIds: afterIds.filter((id) => !beforeIds.includes(id)),
+  };
+}
+
+/** One line per tool that actually joined or left the agent — "connected" reads
+ * from the row itself, not from comparing two full before/after lists. */
+export function getConnectionChanges(item, resolveToolName) {
+  const { removedIds, addedIds } = diffToolIds(item);
+  const nameOf = (id) => resolveToolName?.(id) || `Unknown tool (${String(id).slice(0, 8)}…)`;
+
+  return [
+    ...addedIds.map((id) => ({ tone: "added", text: `${nameOf(id)} was connected to this agent.` })),
+    ...removedIds.map((id) => ({ tone: "removed", text: `${nameOf(id)} was removed from this agent.` })),
+  ];
+}
+
 function normalizeRevertValue(value, currentConfigValue) {
   if (!isModeValue(currentConfigValue)) {
     if (isModeValue(value)) {
@@ -174,6 +218,10 @@ function normalizeRevertValue(value, currentConfigValue) {
 
 export function buildRevertPayload(item, currentVersion = null) {
   const type = item?.type;
+  // Lives on GtwyEmbed, not on the agent or version document — neither update endpoint
+  // accepts it, so there is no request that could revert it yet.
+  if (type === "variables_path") return null;
+
   const raw = readHistoryValue(item?.previous_value, type);
   if (raw === undefined) return null;
 
@@ -216,12 +264,25 @@ export function isSystemHistoryType(type) {
   return SYSTEM_HISTORY_TYPES.has(type);
 }
 
+export function isAgentLevelHistoryType(type) {
+  return AGENT_LEVEL_HISTORY_TYPES.has(type);
+}
+
 export function getTypeLabel(type, labels = {}, item = null) {
   if (!type) return "Change";
   if (type === "Version published") return "Version published";
   if (type === "Version created") return "Version created";
   if (type === "Version deleted") return "Version deleted";
   if (type === "Agent created") return "Agent created";
+  if (type === "Tool created") return "Tool created";
+  if (type === "Tool deleted") return "Tool deleted";
+  if (type === "Tool removed") return "Tool removed";
+  if (type === "functionData") {
+    const { removedIds, addedIds } = diffToolIds(item);
+    if (addedIds.length && !removedIds.length) return "Tool connected";
+    if (removedIds.length && !addedIds.length) return "Tool removed";
+    return "Tools updated";
+  }
 
   let base;
   if (PROMPT_TYPES.has(type)) base = labels.prompt || "Prompt";

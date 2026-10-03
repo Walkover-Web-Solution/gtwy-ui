@@ -3,6 +3,7 @@ import React from "react";
 import { ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
 import {
   getHistoryDiff,
+  getConnectionChanges,
   formatTime,
   getTypeLabel,
   getChangesForPublish,
@@ -22,7 +23,7 @@ function DiffBlock({ title, lines, tone }) {
         <div className="space-y-1">
           {lines.map((line, i) => (
             <p key={i} className={`text-xs font-mono break-words ${color}`}>
-              <span className="text-base-content/70">{line.key}: </span>
+              {line.key && <span className="text-base-content/70">{line.key}: </span>}
               {line.text}
             </p>
           ))}
@@ -32,14 +33,43 @@ function DiffBlock({ title, lines, tone }) {
   );
 }
 
-export function HistoryDiffPanel({ item, showRevert, onRevert, isReverting }) {
-  const { beforeLines, afterLines } = getHistoryDiff(item);
+export function HistoryDiffPanel({ item, showRevert, onRevert, isReverting, resolveToolName }) {
+  const { beforeLines, afterLines } = getHistoryDiff(item, resolveToolName);
 
   return (
     <div className="space-y-2.5">
       <DiffBlock title="Before" lines={beforeLines} tone="before" />
       <DiffBlock title="After" lines={afterLines} tone="after" />
       {showRevert && beforeLines.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onRevert?.(item)}
+          disabled={isReverting}
+          className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 disabled:opacity-50"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          {isReverting ? "Reverting..." : "Revert this change"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ConnectionChangePanel({ item, resolveToolName, showRevert, onRevert, isReverting }) {
+  const changes = getConnectionChanges(item, resolveToolName);
+
+  return (
+    <div className="space-y-2">
+      {!changes.length ? (
+        <p className="text-xs text-base-content/40 italic">No data</p>
+      ) : (
+        changes.map((c, i) => (
+          <p key={i} className={`text-xs ${c.tone === "removed" ? "text-error" : "text-success"}`}>
+            {c.text}
+          </p>
+        ))
+      )}
+      {showRevert && (
         <button
           type="button"
           onClick={() => onRevert?.(item)}
@@ -62,12 +92,19 @@ function SystemEventPanel({ type, item }) {
         ? "A new version was created for this agent."
         : type === "Version deleted"
           ? `Version ${item?.version_id ? String(item.version_id).slice(0, 8) + "…" : ""} was deleted.`
-          : "System event.";
+          : type === "Tool created"
+            ? "This tool was created."
+            : type === "Tool deleted"
+              ? "This tool was deleted."
+              : type === "Tool removed"
+                ? "This tool was deleted and removed from this agent."
+                : "System event.";
+  const showSnapshot = ["Version deleted", "Tool deleted", "Tool removed"].includes(type);
 
   return (
     <div className="border-t border-base-300/70 pt-3">
       <p className="text-xs text-base-content/55">{message}</p>
-      {type === "Version deleted" && item?.previous_value && (
+      {showSnapshot && item?.previous_value && (
         <p className="text-[11px] text-base-content/40 mt-1.5 font-mono break-words">
           {typeof item.previous_value === "string" ? item.previous_value : JSON.stringify(item.previous_value)}
         </p>
@@ -76,7 +113,7 @@ function SystemEventPanel({ type, item }) {
   );
 }
 
-function PublishPanel({ item, labels, allHistory, onRevert, revertingId }) {
+function PublishPanel({ item, labels, allHistory, onRevert, revertingId, resolveToolName }) {
   const entries = getChangesForPublish(item, allHistory);
 
   return (
@@ -100,6 +137,7 @@ function PublishPanel({ item, labels, allHistory, onRevert, revertingId }) {
               showRevert
               onRevert={onRevert}
               isReverting={revertingId === changeItem.id}
+              resolveToolName={resolveToolName}
             />
           </div>
         ))
@@ -120,11 +158,18 @@ export function HistoryRow({
   allHistory,
   revertingId,
   showVersionMeta = false,
+  resolveToolName,
 }) {
   const isPublish = item?.type === "Version published";
   const isSystemEvent = isSystemHistoryType(item?.type);
-  const isDeleted = item?.type === "Version deleted";
-  const canRevert = showRevert && !isPublish && !isSystemEvent;
+  const isDeleted = item?.type === "Version deleted" || item?.type === "Tool deleted" || item?.type === "Tool removed";
+  const isConnectionEvent = item?.type === "functionData";
+  const connectionChanges = isConnectionEvent ? getConnectionChanges(item, resolveToolName) : [];
+  const isOnlyConnected =
+    isConnectionEvent && connectionChanges.length > 0 && connectionChanges.every((c) => c.tone === "added");
+  const isOnlyRemoved =
+    isConnectionEvent && connectionChanges.length > 0 && connectionChanges.every((c) => c.tone === "removed");
+  const canRevert = showRevert && !isPublish && !isSystemEvent && !isConnectionEvent;
   const label = getTypeLabel(item?.type, labels, item);
   const versionHint = showVersionMeta && item?.version_id ? ` · v${String(item.version_id).slice(0, 8)}` : "";
 
@@ -147,6 +192,14 @@ export function HistoryRow({
               ) : isDeleted ? (
                 <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-error/15 text-error border border-error/30">
                   DELETED
+                </span>
+              ) : isOnlyRemoved ? (
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-error/15 text-error border border-error/30">
+                  REMOVED
+                </span>
+              ) : isOnlyConnected ? (
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-success/15 text-success border border-success/30">
+                  CONNECTED
                 </span>
               ) : isSystemEvent ? (
                 <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-info/20 text-info border border-info/30">
@@ -175,11 +228,26 @@ export function HistoryRow({
               allHistory={allHistory}
               onRevert={onRevert}
               revertingId={revertingId}
+              resolveToolName={resolveToolName}
             />
           ) : isSystemEvent ? (
             <SystemEventPanel type={item?.type} item={item} />
+          ) : isConnectionEvent ? (
+            <ConnectionChangePanel
+              item={item}
+              resolveToolName={resolveToolName}
+              showRevert={canRevert}
+              onRevert={onRevert}
+              isReverting={isReverting}
+            />
           ) : (
-            <HistoryDiffPanel item={item} showRevert={canRevert} onRevert={onRevert} isReverting={isReverting} />
+            <HistoryDiffPanel
+              item={item}
+              showRevert={canRevert}
+              onRevert={onRevert}
+              isReverting={isReverting}
+              resolveToolName={resolveToolName}
+            />
           )}
         </div>
       )}

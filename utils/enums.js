@@ -1,5 +1,6 @@
 import { BookIcon, BotIcon, KeyIcon, SettingsIcon, TestTubeDiagonalIcon, WrenchIcon } from "@/components/Icons";
 import { DollarSign, Star, Gauge, Activity, CheckCircle2, Timer, X, Cpu, ThumbsUp, ThumbsDown } from "lucide-react";
+import { CONFIG_SCHEMA } from "@/jsonFiles/embedConfigSchema";
 export const PAUTH_KEY_COLUMNS = ["name", "authkey", "created_at"];
 export const API_KEY_COLUMNS = ["name", "apikey", "apikey_usage", "last_used", "last_used_status"];
 export const WEBHOOKALERT_COLUMNS = ["name", "url", "headers", "alertType", "bridges"];
@@ -145,6 +146,11 @@ export const CONFIG_HISTORY_SCOPE = {
   BRIDGE: "bridge",
 };
 
+export const CONFIG_HISTORY_SLIDER_IDS = {
+  CHATBOT: "chatbot-config-history-slider",
+  TOOL: "tool-config-history-slider",
+};
+
 export const CONFIG_HISTORY_FEATURE_OPTIONS = [
   { value: "name", label: "Agent Name" },
   { value: "prompt", label: "Prompt" },
@@ -163,6 +169,7 @@ export const CONFIG_HISTORY_FEATURE_OPTIONS = [
   { value: "apikey_object_id", label: "API Keys" },
   { value: "response_type", label: "Response Type" },
   { value: "agent_info", label: "Agent Info" },
+  { value: "description", label: "Agent Description" },
   { value: "settings", label: "Settings" },
   { value: "Version published", label: "Version Published" },
   { value: "Version created", label: "Version Created" },
@@ -172,12 +179,70 @@ export const CONFIG_HISTORY_FEATURE_OPTIONS = [
 
 export const CONFIG_HISTORY_BRIDGE_FEATURE_OPTIONS = [
   { value: "name", label: "Agent Name" },
+  // agent_info logs its fields by name, so this type reaches the agent scope too
+  { value: "description", label: "Agent Description" },
   { value: "bridge_summary", label: "Bridge Summary" },
   { value: "editAccess", label: "Edit Access" },
   { value: "Version published", label: "Version Published" },
   { value: "Version created", label: "Version Created" },
   { value: "Version deleted", label: "Version Deleted" },
   { value: "Agent created", label: "Agent Created" },
+];
+
+// A tool logs one type per changed field, the same way an agent does.
+export const CONFIG_HISTORY_TOOL_FEATURE_OPTIONS = [
+  { value: "title", label: "Tool Name" },
+  { value: "description", label: "Description" },
+  { value: "fields", label: "Parameters" },
+  { value: "required", label: "Required Parameters" },
+];
+
+// Embed fields that sit on the folder document rather than inside `config`.
+// A revert sends these at the top level; everything else goes inside `config`.
+export const EMBED_FOLDER_HISTORY_FIELDS = ["name", "apikey_object_id", "folder_limit", "folder_limit_reset_period"];
+
+// The config panel's own toggles carry their labels, so they are reused rather than
+// restated — a new toggle then shows up here named correctly without any edit.
+// Listed after them are the keys the panel saves but does not render as a toggle.
+export const CONFIG_HISTORY_EMBED_FEATURE_OPTIONS = [
+  ...CONFIG_SCHEMA.map((c) => ({ value: c.key, label: c.label })),
+  { value: "theme_config", label: "Theme" },
+  { value: "tools_id", label: "Tools" },
+  { value: "pre_tool_id", label: "Pre Tool" },
+  { value: "post_tool", label: "Post Tool" },
+  { value: "variables_path", label: "Variables Path" },
+  { value: "models", label: "Models" },
+  { value: "prompt", label: "Prompt" },
+  { value: "response_type", label: "Response Type" },
+  { value: "name", label: "Embed Name" },
+  { value: "apikey_object_id", label: "API Keys" },
+  { value: "folder_limit", label: "Usage Limit" },
+  { value: "folder_limit_reset_period", label: "Limit Reset Period" },
+];
+
+// The chatbot's form is hand-written JSX with no schema to read labels from, so
+// unlike the embed these are restated here. A new field added to that form needs a
+// line here too, or its history rows fall back to showing the raw key.
+export const CONFIG_HISTORY_CHATBOT_FEATURE_OPTIONS = [
+  { value: "chatbotTitle", label: "Chatbot Title" },
+  { value: "chatbotSubtitle", label: "Chatbot Subtitle" },
+  { value: "buttonName", label: "Button Title" },
+  { value: "iconUrl", label: "Button Icon URL" },
+  { value: "defaultMessage", label: "Default Message" },
+  { value: "defaultErrorMessage", label: "Default Error Message" },
+  { value: "hide_tool", label: "Hide Tool Calls" },
+  { value: "allowModalSwitch", label: "Allow Model Switch" },
+  { value: "allowBridgeSwitch", label: "Allow Agent Switch" },
+  { value: "models", label: "Models Shown In Switch" },
+  { value: "mcpConfig", label: "MCP Configuration" },
+  { value: "height", label: "Height" },
+  { value: "heightUnit", label: "Height Unit" },
+  { value: "width", label: "Width" },
+  { value: "widthUnit", label: "Width Unit" },
+  { value: "type", label: "Position" },
+  { value: "side", label: "Popup Side" },
+  { value: "themeColor", label: "Theme Color" },
+  { value: "theme", label: "Theme" },
 ];
 
 export const CONFIG_HISTORY_HIDDEN_TYPES = ["system_prompt_version_id", "variables_state"];
