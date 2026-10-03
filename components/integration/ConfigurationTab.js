@@ -8,15 +8,17 @@ import { updateIntegrationDataAction } from "@/store/action/integrationAction";
 import { createApiAction, integrationAction, deleteFunctionAction } from "@/store/action/bridgeAction";
 import { setEmbedUserDetailsAction } from "@/store/action/appInfoAction";
 import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
 import { RefreshCw, Save } from "lucide-react";
+import { HistoryIcon } from "@/components/Icons";
 import ThemePaletteEditor, { hexToOklchString } from "./ThemePaletteEditor";
 import EmbedPromptBuilder from "../gtwy_embed/EmbedPromptBuilder";
 import ToolsConfiguration from "../gtwy_embed/ToolsConfiguration";
 import ApiKeysInput from "../sliders/ApiKeysInput";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import EmbedPreview from "./EmbedPreview";
-import { MODAL_TYPE } from "@/utils/enums";
-import { getServiceDisplayName, openModal, generateRandomID } from "@/utils/utility";
+import { MODAL_TYPE, EMBED_FOLDER_HISTORY_FIELDS } from "@/utils/enums";
+import { getServiceDisplayName, openModal, generateRandomID, toggleSidebar } from "@/utils/utility";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
@@ -25,220 +27,11 @@ import JsonSchemaBuilderModal from "@/components/modals/JsonSchemaBuilderModal";
 import JsonSchemaModal from "@/components/modals/JsonSchemaModal";
 import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
 import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
+import { CONFIG_SCHEMA } from "@/jsonFiles/embedConfigSchema";
 
-// Configuration Schema
-const CONFIG_SCHEMA = [
-  {
-    key: "showHomeButton",
-    type: "toggle",
-    label: "Show Home Button",
-    description: "Show the home navigation button",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showHistory",
-    type: "toggle",
-    label: "Show History",
-    description: "Display conversation history",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showConfigType",
-    type: "toggle",
-    label: "Show Config Type",
-    description: "Show configuration type indicators",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showAdvancedParameters",
-    type: "toggle",
-    label: "Show Advanced Parameters",
-    description: "Display advanced parameters",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showAdvancedConfigurations",
-    type: "toggle",
-    label: "Show Advanced Configurations",
-    description: "Display advanced configurations",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showFallbackModel",
-    type: "toggle",
-    label: "Show Fallback Model",
-    description: "Display the fallback model section",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showPreTool",
-    type: "toggle",
-    label: "Show Pre Tool",
-    description: "Display pre tool",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showPromptHelper",
-    type: "toggle",
-    label: "Show Prompt Helper",
-    description: "Show prompt helper button",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showResponseType",
-    type: "toggle",
-    label: "Show Response Type",
-    description: "Show response type",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showVariables",
-    type: "toggle",
-    label: "Show Variables",
-    description: "Show variables",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showAgentName",
-    type: "toggle",
-    label: "Show Agent Name",
-    description: "Show agent name",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showPlayground",
-    type: "toggle",
-    label: "Show Playground",
-    description: "Show the playground",
-    defaultValue: true,
-    section: "Interface Options",
-  },
-  {
-    key: "showTestcases",
-    type: "toggle",
-    label: "Show Test Cases",
-    description: "Display test cases tab in the embedded interface",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "slide",
-    type: "select",
-    label: "Slide Position",
-    description: "Choose where GTWY appears on screen",
-    defaultValue: "right",
-    options: [
-      { value: "left", label: "Left" },
-      { value: "right", label: "Right" },
-      { value: "full", label: "Full" },
-    ],
-    section: "Display Settings",
-  },
-  {
-    key: "defaultOpen",
-    type: "toggle",
-    label: "Default Open",
-    description: "Open GTWY automatically on page load",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "showFullScreenButton",
-    type: "toggle",
-    label: "Show Full Screen",
-    description: "Show the full screen toggle button",
-    defaultValue: true,
-    section: "Display Settings",
-    dependsOn: "showHeader",
-  },
-  {
-    key: "showCloseButton",
-    type: "toggle",
-    label: "Show Close Button",
-    description: "Show the close button",
-    defaultValue: true,
-    section: "Display Settings",
-    dependsOn: "showHeader",
-  },
-  {
-    key: "showHeader",
-    type: "toggle",
-    label: "Show Header",
-    description: "Show the header section",
-    defaultValue: true,
-    section: "Display Settings",
-  },
-  {
-    key: "addDefaultApiKeys",
-    type: "toggle",
-    label: "Add Default ApiKeys",
-    description: "Add default api keys",
-    defaultValue: false,
-    section: "Display Settings",
-  },
-  {
-    key: "layout",
-    type: "select",
-    label: "Config Panel Layout",
-    description: "Choose how the Prompt/Model/Connectors/Memory/Settings panel is arranged for embed users",
-    defaultValue: "tabs",
-    options: [
-      { value: "tabs", label: "Tabs" },
-      { value: "single", label: "Single Page" },
-      { value: "accordion", label: "Accordion" },
-      { value: "stepper", label: "Guided Steps" },
-    ],
-    section: "Display Settings",
-  },
-  {
-    key: "themeMode",
-    type: "select",
-    label: "Theme Mode",
-    description: "Choose the color theme for the embedded GTWY interface",
-    defaultValue: "system",
-    options: [
-      { value: "system", label: "System" },
-      { value: "light", label: "Light" },
-      { value: "dark", label: "Dark" },
-    ],
-    section: "Display Settings",
-  },
-  {
-    key: "showDeleteAgentOption",
-    type: "toggle",
-    label: "Show Delete Agent Option",
-    description: "Show the delete agent option in the agent action menu",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showReviewAgent",
-    type: "toggle",
-    label: "Show Review Agent",
-    description: "Display review agent settings",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-  {
-    key: "showMcp",
-    type: "toggle",
-    label: "Show MCP Servers",
-    description: "Display MCP server configuration in the Connectors tab",
-    defaultValue: false,
-    section: "Interface Options",
-  },
-];
+const ConfigHistorySlider = dynamic(() => import("@/components/sliders/ConfigHistorySlider"), { ssr: false });
+
+const EMBED_HISTORY_SLIDER_ID = "embed-config-history-slider";
 
 // Model Customization Component
 const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
@@ -402,7 +195,9 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
 
   // Save to backend
   const handleSave = useCallback(
-    async (configToSave, themeToSave) => {
+    // `extra` carries anything sent outside `config` — a reverted_from_id, or a
+    // folder-level field like name that is not part of the config panel's state.
+    async (configToSave, themeToSave, extra = {}) => {
       try {
         setIsSaving(true);
         const { apikey_object_id, ...restConfig } = configToSave;
@@ -425,19 +220,52 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
             ...configForSend,
             theme_config: themeToSave,
           },
+          ...extra,
         };
         await dispatch(updateIntegrationDataAction(data?.org_id, dataToSend));
         setHasUnsavedChanges(false);
         setReloadTrigger((prev) => prev + 1);
         toast.success("Configuration saved");
+        return true;
       } catch (error) {
         console.error(error);
+        return false;
       } finally {
         setIsSaving(false);
       }
     },
     [data?.folder_id, data?.org_id, dispatch]
   );
+
+  // Revert one history entry. The embed is saved whole, so a revert is an ordinary
+  // save of the current config with a single key put back to its previous value —
+  // sending only that key would wipe everything else.
+  const handleRevertHistory = useCallback(
+    async (item) => {
+      const type = item?.type;
+      if (!type) return false;
+      const previous = item?.previous_value ?? null;
+      const extra = { ...(item?.id != null && { reverted_from_id: item.id }) };
+
+      if (type === "theme_config") {
+        const revertedTheme = previous || defaultUserTheme;
+        setTheme(revertedTheme);
+        return handleSave(configuration, revertedTheme, extra);
+      }
+      // apikey_object_id is folder-level on the server but is held in `configuration`
+      // here, so it reverts through the config branch like every toggle does.
+      if (EMBED_FOLDER_HISTORY_FIELDS.includes(type) && type !== "apikey_object_id") {
+        return handleSave(configuration, theme, { ...extra, [type]: previous });
+      }
+
+      const reverted = { ...configuration, [type]: previous };
+      setConfiguration(reverted);
+      return handleSave(reverted, theme, extra);
+    },
+    [configuration, theme, handleSave]
+  );
+
+  const openHistory = () => toggleSidebar(EMBED_HISTORY_SLIDER_ID, "right");
 
   // For toggles/selects — update state + send preview immediately
   const handleConfigChange = (key, value) => {
@@ -702,15 +530,30 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
               <span className="text-xs text-base-content/60">
                 {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
               </span>
-              <button
-                data-testid="embed-config-save-button"
-                className="btn btn-primary btn-xs gap-1"
-                onClick={() => handleSave(configuration, theme)}
-                disabled={isSaving || !hasUnsavedChanges}
-              >
-                {isSaving ? <span className="loading loading-spinner loading-xs"></span> : <Save className="h-3 w-3" />}
-                Save
-              </button>
+              <div className="flex items-center gap-1">
+                {/* History is read-only, so it stays reachable even with nothing to save. */}
+                <button
+                  data-testid="embed-config-history-button"
+                  className="btn btn-ghost btn-xs p-1"
+                  onClick={openHistory}
+                  title="Updates History"
+                >
+                  <HistoryIcon size={14} />
+                </button>
+                <button
+                  data-testid="embed-config-save-button"
+                  className="btn btn-primary btn-xs gap-1"
+                  onClick={() => handleSave(configuration, theme)}
+                  disabled={isSaving || !hasUnsavedChanges}
+                >
+                  {isSaving ? (
+                    <span className="loading loading-spinner loading-xs"></span>
+                  ) : (
+                    <Save className="h-3 w-3" />
+                  )}
+                  Save
+                </button>
+              </div>
             </div>
             {Object.entries(groupedConfigs).map(([sectionName, configs]) => (
               <div key={sectionName}>
@@ -1051,6 +894,15 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
           </div>,
           portalTarget
         )}
+
+      {/* An embed is its own config, so it is read with no version and no agent scope. */}
+      <ConfigHistorySlider
+        sliderId={EMBED_HISTORY_SLIDER_ID}
+        variant="embed"
+        configId={data?.folder_id}
+        subtitle={integrationData?.name || data?.name}
+        onRevert={handleRevertHistory}
+      />
     </div>
   );
 };

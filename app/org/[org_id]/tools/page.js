@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, ChevronRight, Wrench, Bot, Settings, Funnel, Clock, Layers, Link2, Folder } from "lucide-react";
 import toast from "react-hot-toast";
+import dynamic from "next/dynamic";
 import PageHeader from "@/components/Pageheader";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import SearchItems from "@/components/UI/SearchItems";
@@ -13,8 +14,9 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { updateFuntionApiAction, getAgentsVersionsDataAction } from "@/store/action/bridgeAction";
 import { isEqual } from "lodash";
 import FunctionParameterModal from "@/components/configuration/configurationComponent/FunctionParameterModal";
-import { MODAL_TYPE } from "@/utils/enums";
-import { openModal, formatRelativeTime, formatDate, getStatusClass } from "@/utils/utility";
+import { HistoryIcon } from "@/components/Icons";
+import { MODAL_TYPE, CONFIG_HISTORY_SLIDER_IDS } from "@/utils/enums";
+import { openModal, formatRelativeTime, formatDate, getStatusClass, toggleSidebar } from "@/utils/utility";
 import CustomTable from "@/components/customTable/CustomTable";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import ResourcePage from "@/components/folders/ResourcePage";
@@ -23,6 +25,8 @@ import MoveToFolderMenu from "@/components/folders/MoveToFolderMenu";
 import useFolders from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
 import Protected from "@/components/Protected";
+
+const ConfigHistorySlider = dynamic(() => import("@/components/sliders/ConfigHistorySlider"), { ssr: false });
 
 export const runtime = "edge";
 
@@ -170,6 +174,17 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
   const [openDropdownToolId, setOpenDropdownToolId] = useState(null);
   const [agentsDropdownPlacement, setAgentsDropdownPlacement] = useState("down");
   const [expandedAgentId, setExpandedAgentId] = useState(null);
+  const [historyTool, setHistoryTool] = useState(null);
+
+  const handleOpenToolHistory = useCallback((toolId, toolName) => {
+    setHistoryTool({ id: toolId, name: toolName });
+    // Already open means the user is switching tools — the slider refetches on its
+    // own when config_id changes, and toggling here would just close it.
+    const slider = document.getElementById(CONFIG_HISTORY_SLIDER_IDS.TOOL);
+    if (slider?.classList.contains("translate-x-full")) {
+      toggleSidebar(CONFIG_HISTORY_SLIDER_IDS.TOOL, "right");
+    }
+  }, []);
 
   const { handlePortalOpen, handlePortalCloseImmediate, PortalDropdown, PortalStyles } = usePortalDropdown({
     offsetX: -100,
@@ -674,6 +689,19 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-testid={`tools-history-button-${row._id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleOpenToolHistory(row._id, row.title);
+            }}
+            className="btn btn-outline-none btn-ghost btn-sm"
+            title="Updates History"
+          >
+            <HistoryIcon size={14} />
+          </button>
+          <button
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -695,7 +723,7 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
         </div>
       );
     },
-    [handleConfigTool, folders, moveResource]
+    [handleConfigTool, handleOpenToolHistory, folders, moveResource]
   );
 
   return (
@@ -819,6 +847,14 @@ const ToolsPage = ({ params, isEmbedUser = false }) => {
           variablesPath={{}}
           disableValuePath={true}
           connectedAgents={selectedToolAgents}
+        />
+
+        {/* A tool is its own config, so it is read with no version and no agent scope. */}
+        <ConfigHistorySlider
+          sliderId={CONFIG_HISTORY_SLIDER_IDS.TOOL}
+          variant="tool"
+          configId={historyTool?.id}
+          subtitle={historyTool?.name}
         />
 
         <PortalDropdown />
