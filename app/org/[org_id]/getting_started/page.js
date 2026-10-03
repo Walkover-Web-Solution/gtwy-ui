@@ -27,16 +27,21 @@ import {
 import Protected from "@/components/Protected";
 import { dryRun } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { MODAL_TYPE } from "@/utils/enums";
-import { copyToClipboard, getIconOfService, getServiceDisplayName, openModal } from "@/utils/utility";
-import { BookOpen, Eye, EyeOff, MessagesSquare } from "lucide-react";
+import { copyToClipboard, getIconOfService, getServiceDisplayName } from "@/utils/utility";
+import { getCalApi } from "@calcom/embed-react";
+import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { use, useEffect, useMemo, useState } from "react";
 
 export const runtime = "edge";
 
 const DOCS_LINK = "https://gtwy.ai/resources";
-const DISCORD_LINK = "https://discord.com/invite/udkaC4WsP";
+
+// Cal.id booking embed, same event type as the gtwy.ai portal's "Book a demo".
+const CAL_NAMESPACE = "book-a-demo";
+const CAL_EMBED_JS_URL = "https://cal.id/embed-link/embed.js";
+const CAL_ORIGIN = "https://cal.id";
+const CAL_LINK = "team/gtwy/book-a-demo-with-gtwy.ai";
 
 const MODES = [
   { id: "default", label: "Default" },
@@ -251,6 +256,18 @@ function Page({ params, isEmbedUser }) {
     return `language-${format === "gtwy" ? activeGtwyLang.prism : activeOpenaiLang.prism}`;
   }, [isChatbotAgent, isCustom, format, activeGtwyLang, activeOpenaiLang]);
 
+  /* Load and configure the Cal.id embed that powers the "Book a demo" button */
+  useEffect(() => {
+    (async () => {
+      const cal = await getCalApi({ namespace: CAL_NAMESPACE, embedJsUrl: CAL_EMBED_JS_URL });
+      cal("ui", {
+        cssVarsPerTheme: { light: { "cal-brand": "#007ee5" }, dark: { "cal-brand": "#fafafa" } },
+        hideEventTypeDetails: false,
+        layout: "month_view",
+      });
+    })();
+  }, []);
+
   /* A result belongs to one org + agent, so drop it the moment either changes */
   useEffect(() => {
     setTryItQuestion("");
@@ -290,10 +307,7 @@ function Page({ params, isEmbedUser }) {
     }
   };
 
-  const quickLinks = [
-    { label: "Developer Docs", icon: <BookOpen size={14} />, href: DOCS_LINK },
-    { label: "Join Our Discord", icon: <MessagesSquare size={14} />, href: DISCORD_LINK },
-  ];
+  const quickLinks = [{ label: "Developer Docs", icon: <BookOpen size={14} />, href: DOCS_LINK }];
 
   const exploreCards = [
     {
@@ -366,7 +380,10 @@ function Page({ params, isEmbedUser }) {
                 data-testid="getting-started-talk-to-us-button"
                 id="getting-started-talk-to-us-button"
                 type="button"
-                onClick={() => openModal(MODAL_TYPE.DEMO_MODAL)}
+                data-cal-namespace={CAL_NAMESPACE}
+                data-cal-link={CAL_LINK}
+                data-cal-origin={CAL_ORIGIN}
+                data-cal-config='{"layout":"month_view"}'
                 className="flex items-center gap-2 text-sm text-white/80 transition-colors hover:text-white"
               >
                 <MessageCircleMoreIcon size={14} />
