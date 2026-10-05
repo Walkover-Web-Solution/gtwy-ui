@@ -239,7 +239,7 @@ function Page({ params, searchParams }) {
     <BatchSubthreadPanel
       thread={thread}
       subThreadIdFromURL={search.get("subThread_id")}
-      parentThreadId={resolvedSearchParams?.thread_id}
+      parentThreadId={search.get("thread_id")}
       selectedBatchMessageId={selectedBatchMessageId}
       onSelectBatch={(messageId) => setSelectedBatchMessageId((prev) => (prev === messageId ? null : messageId))}
       onSelectSubThread={(subThreadId) => {
