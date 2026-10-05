@@ -411,7 +411,10 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                           disabled={isReadOnly}
                           onClick={() => {
                             setTimeout(() => {
-                              document.getElementById("embed-suggestion-search-input")?.focus();
+                              (
+                                document.getElementById("embed-suggestion-search-input") ||
+                                document.getElementById("embed-suggestion-dropdown-menu")
+                              )?.focus();
                             }, 50);
                           }}
                         >
@@ -568,7 +571,10 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                             disabled={isReadOnly}
                             onClick={() => {
                               setTimeout(() => {
-                                document.getElementById("embed-suggestion-search-input")?.focus();
+                                (
+                                  document.getElementById("embed-suggestion-search-input") ||
+                                  document.getElementById("embed-suggestion-dropdown-menu")
+                                )?.focus();
                               }, 50);
                             }}
                           >

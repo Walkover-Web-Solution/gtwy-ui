@@ -4,7 +4,7 @@ import { CopyIcon } from "@/components/Icons";
 import React, { useMemo, useState } from "react";
 import Modal from "../UI/Modal";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
-import { SlidersHorizontal, Brain } from "lucide-react";
+import { SlidersHorizontal, Brain, Maximize2, Minimize2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Helpers (used by the generic fallback modal path)
@@ -53,9 +53,15 @@ const renderFlattenedMessage = (message) => {
 // JsonSection — one collapsible code block
 // ---------------------------------------------------------------------------
 
+const WORD_LIMIT_FOR_EXPAND = 200;
+
 function JsonSection({ label, data, count, fullHeight = false }) {
   const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const wordCount = useMemo(() => jsonString.trim().split(/\s+/).filter(Boolean).length, [jsonString]);
+  const expandable = wordCount > WORD_LIMIT_FOR_EXPAND;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(jsonString);
@@ -77,18 +83,31 @@ function JsonSection({ label, data, count, fullHeight = false }) {
             </span>
           )}
         </div>
-        <button
-          type="button"
-          data-testid="ai-config-section-copy-button"
-          onClick={handleCopy}
-          className="btn btn-ghost btn-xs text-[10px] px-2 py-0.5 h-auto min-h-0 font-medium text-base-content/75 hover:bg-base-content/10 flex items-center gap-1"
-        >
-          <CopyIcon size={11} />
-          {copied ? "Copied!" : "Copy"}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            data-testid="ai-config-section-copy-button"
+            onClick={handleCopy}
+            className="btn btn-ghost btn-xs text-[10px] px-2 py-0.5 h-auto min-h-0 font-medium text-base-content/75 hover:bg-base-content/10 flex items-center gap-1"
+          >
+            <CopyIcon size={11} />
+            {copied ? "Copied!" : "Copy"}
+          </button>
+          {expandable && (
+            <button
+              type="button"
+              data-testid="ai-config-section-expand-button"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="btn btn-ghost btn-xs text-[10px] px-2 py-0.5 h-auto min-h-0 font-medium text-base-content/75 hover:bg-base-content/10 flex items-center gap-1"
+            >
+              {expanded ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+              {expanded ? "Collapse" : "Expand"}
+            </button>
+          )}
+        </div>
       </div>
       <div
-        className={`${fullHeight ? "h-auto" : "max-h-64"} overflow-auto`}
+        className={`${fullHeight || expanded ? "h-auto max-h-[70vh]" : "max-h-64"} overflow-auto`}
         style={{ background: "var(--ai-config-section-bg)" }}
       >
         <CodeBlock plain className="language-json">
@@ -202,6 +221,17 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
         title={modalTitle || "AI Configuration"}
         icon={<SlidersHorizontal size={16} className="text-trace-gold" />}
         widthClass="w-[min(720px,92vw)]"
+        titleActions={
+          <button
+            type="button"
+            data-testid="ai-config-copy-all-button"
+            onClick={() => handleCopy(copyData)}
+            className="btn btn-xs btn-ghost text-warning gap-1 flex items-center"
+          >
+            <CopyIcon size={12} />
+            {copied ? "Copied!" : "Copy Full Configuration"}
+          </button>
+        }
       >
         <AiConfigPanel config={modalContent} />
       </Modal>

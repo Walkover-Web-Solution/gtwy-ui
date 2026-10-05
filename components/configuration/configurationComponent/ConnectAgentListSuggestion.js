@@ -27,18 +27,28 @@ function ConnectedAgentListSuggestion({
     }
   };
 
+  const isAgentSelectable = (bridge) => {
+    const isActive = bridge?.bridge_status === 1 || bridge?.bridge_status === undefined;
+    const isNotConnected =
+      connect_agents && Object.values(connect_agents).some((agent) => agent?.bridge_id === bridge?._id);
+    const notSameBridge = bridge?._id !== params?.id;
+    const isNotDeleted = !bridge?.deletedAt;
+    const isNotExcluded = !excludedAgentIdSet.has(bridge?._id);
+    return isActive && !isNotConnected && notSameBridge && isNotDeleted && isNotExcluded;
+  };
+
+  const availableAgentsCount = useMemo(
+    () => Object.values(bridges).filter(isAgentSelectable).length,
+    [bridges, connect_agents, params?.id, excludedAgentIdSet]
+  );
+  const shouldShowSearch = availableAgentsCount > 5;
+
   const renderBridgeSuggestions = useMemo(
     () =>
       Object.values(bridges)
         .filter((bridge) => {
-          const isActive = bridge?.bridge_status === 1 || bridge?.bridge_status === undefined;
-          const matchesSearch = bridge?.name?.toLowerCase()?.includes(normalizedSearchQuery);
-          const isNotConnected =
-            connect_agents && Object.values(connect_agents).some((agent) => agent?.bridge_id === bridge?._id);
-          const notSameBridge = bridge?._id !== params?.id;
-          const isNotDeleted = !bridge?.deletedAt;
-          const isNotExcluded = !excludedAgentIdSet.has(bridge?._id);
-          return isActive && matchesSearch && !isNotConnected && notSameBridge && isNotDeleted && isNotExcluded;
+          const matchesSearch = !shouldShowSearch || bridge?.name?.toLowerCase()?.includes(normalizedSearchQuery);
+          return isAgentSelectable(bridge) && matchesSearch;
         })
         .slice()
         .sort((a, b) => {
@@ -87,7 +97,7 @@ function ConnectedAgentListSuggestion({
             </li>
           );
         }),
-    [bridges, normalizedSearchQuery, connect_agents, bridgeData, params?.id, excludedAgentIdSet]
+    [bridges, normalizedSearchQuery, connect_agents, bridgeData, params?.id, excludedAgentIdSet, shouldShowSearch]
   );
 
   return (
@@ -99,16 +109,18 @@ function ConnectedAgentListSuggestion({
     >
       <div className="flex flex-col gap-2 w-full">
         <li className="text-sm font-semibold disabled">Available Agents</li>
-        <input
-          autoComplete="off"
-          data-testid="connect-agent-suggestion-search-input"
-          id="connect-agent-suggestion-search-input"
-          type="text"
-          placeholder="Search Agent"
-          value={searchQuery}
-          onChange={handleInputChange}
-          className="input w-full input-sm"
-        />
+        {shouldShowSearch && (
+          <input
+            autoComplete="off"
+            data-testid="connect-agent-suggestion-search-input"
+            id="connect-agent-suggestion-search-input"
+            type="text"
+            placeholder="Search Agent"
+            value={searchQuery}
+            onChange={handleInputChange}
+            className="input w-full input-sm"
+          />
+        )}
         {renderBridgeSuggestions}
       </div>
     </ul>
