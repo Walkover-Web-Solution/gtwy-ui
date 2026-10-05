@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import { useDispatch } from "react-redux";
+import toast from "react-hot-toast";
 import { Loader2, ScrollText } from "lucide-react";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
+import { getSkillByIdAction } from "@/store/action/skillsAction";
 
 // Upstream rejects names over 45 chars or with spaces or special characters.
 const EMPTY_FORM = { name: "", description: "", content: "" };
@@ -16,20 +18,42 @@ const SKILL_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const SKILL_NAME_MAX = 45;
 
 const SkillCreateModal = ({ onSuccess, orgId, userId, editingSkill }) => {
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+  // Holds the record the form was last filled from, so closing restores the fetched content.
+  const [loadedSkill, setLoadedSkill] = useState(null);
 
   const { isDeleting: isSaving, executeDelete } = useDeleteOperation(MODAL_TYPE.CREATE_SKILL_MODAL, {
     closeOnSuccess: false,
   });
 
-  // Populate form when editing
+  // Populate form when editing; callers pass a list row, which has no content, so fetch it.
   useEffect(() => {
+    setLoadedSkill(editingSkill);
     setFormData(formFromSkill(editingSkill));
-  }, [editingSkill]);
+    if (!editingSkill?._id || editingSkill.content) return;
+
+    let cancelled = false;
+    setIsLoadingContent(true);
+    dispatch(getSkillByIdAction(editingSkill._id)).then((result) => {
+      if (cancelled) return;
+      setIsLoadingContent(false);
+      if (result?.success && result.data) {
+        setLoadedSkill(result.data);
+        setFormData(formFromSkill(result.data));
+      } else {
+        toast.error("Could not load the skill's content. Close and try again.");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingSkill, dispatch]);
 
   // The effect misses create-then-create and edit-same-skill, so reset on close too.
   const handleClose = () => {
-    setFormData(formFromSkill(editingSkill));
+    setFormData(formFromSkill(loadedSkill));
     closeModal(MODAL_TYPE.CREATE_SKILL_MODAL);
   };
 
@@ -98,9 +122,15 @@ const SkillCreateModal = ({ onSuccess, orgId, userId, editingSkill }) => {
         data-testid="skill-modal-save-button"
         className="btn btn-sm btn-primary"
         onClick={handleSubmit}
-        disabled={isSaving || !formData.name.trim() || !formData.description.trim() || !formData.content.trim()}
+        disabled={
+          isSaving ||
+          isLoadingContent ||
+          !formData.name.trim() ||
+          !formData.description.trim() ||
+          !formData.content.trim()
+        }
       >
-        {isSaving && <Loader2 size={14} className="animate-spin" />}
+        {(isSaving || isLoadingContent) && <Loader2 size={14} className="animate-spin" />}
         {editingSkill ? "Update Skill" : "Create Skill"}
       </button>
     </div>
@@ -159,8 +189,10 @@ const SkillCreateModal = ({ onSuccess, orgId, userId, editingSkill }) => {
             value={formData.content}
             onChange={(e) => handleInputChange("content", e.target.value)}
             className="textarea textarea-bordered min-h-[200px]"
-            placeholder="Full skill instructions and procedures go here..."
-            disabled={isSaving}
+            placeholder={
+              isLoadingContent ? "Loading skill content..." : "Full skill instructions and procedures go here..."
+            }
+            disabled={isSaving || isLoadingContent}
             required
           />
           <label className="label">

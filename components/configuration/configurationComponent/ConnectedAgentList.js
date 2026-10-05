@@ -195,7 +195,6 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
   };
 
   const handleSaveAgentVariable = async () => {
-  const handleSaveAgentVariable = async () => {
     try {
       const dataToSend = {
         agents: {
