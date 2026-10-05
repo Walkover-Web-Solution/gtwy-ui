@@ -7,6 +7,7 @@ import IntegrationGuideOnboarding from "../configurationComponent/IntegrationGui
 import SecondStep from "../../chatbotConfiguration/SecondStep";
 import PrivateFormSection from "../../chatbotConfiguration/FirstStep";
 import SlugNameInput from "../configurationComponent/SlugNameInput";
+import GtwySkillBanner from "../../gtwySkill/GtwySkillBanner";
 import { AlertTriangle, Zap, Settings2 } from "lucide-react";
 
 const IntegrationGuideTab = ({ isPublished }) => {
@@ -35,7 +36,12 @@ const IntegrationGuideTab = ({ isPublished }) => {
         </div>
       );
     }
-    return <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} />;
+    return (
+      <>
+        {!isEmbedUser && <GtwySkillBanner orgId={params?.org_id} agentId={params?.id} />}
+        <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} />
+      </>
+    );
   };
 
   // Treat route state and persisted state as published signals.

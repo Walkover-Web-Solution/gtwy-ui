@@ -1,26 +1,13 @@
 "use client";
-import { useMemo } from "react";
 import { Copy, Terminal } from "lucide-react";
-import { useCustomSelector } from "@/customHooks/customSelector";
-import { buildGtwySkillPrompt, selectActiveAgents } from "@/utils/gtwySkill";
-import toast from "react-hot-toast";
+import useGtwySkillPrompt from "@/customHooks/useGtwySkillPrompt";
 
-/** "Integrate GTWY with your coding agent" banner shown above the agents table. */
-export default function GtwySkillBanner({ orgId }) {
-  const { bridges, orgName } = useCustomSelector((state) => ({
-    bridges: state.bridgeReducer.org?.[orgId]?.orgs || [],
-    orgName: state.userDetailsReducer.organizations?.[orgId]?.name || "",
-  }));
-  const agents = useMemo(() => selectActiveAgents(bridges), [bridges]);
-
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(buildGtwySkillPrompt({ orgId, orgName, agents }));
-      toast.success("Prompt copied. Paste it into your coding agent.");
-    } catch {
-      toast.error("Couldn't copy the prompt. Check your browser's clipboard permissions.");
-    }
-  };
+/**
+ * "Integrate GTWY with your coding agent" banner. Above the agents table it
+ * lists every agent; in an agent's Integration Guide, pass agentId to list only that one.
+ */
+export default function GtwySkillBanner({ orgId, agentId }) {
+  const { copyPrompt, isCopying } = useGtwySkillPrompt(orgId, agentId);
 
   return (
     <section
@@ -38,14 +25,21 @@ export default function GtwySkillBanner({ orgId }) {
             <span className="badge badge-warning badge-sm font-medium">New</span>
           </div>
           <p className="mt-0.5 text-sm text-base-content/70">
-            Copy one prompt into Claude Code, Cursor, Codex, Windsurf or Copilot. It installs the GTWY skill and wires
-            your agents into your codebase.
+            {agentId
+              ? "Copy one prompt into Claude Code, Cursor, Codex, Windsurf or Copilot. It installs the GTWY skill and wires this agent into your codebase."
+              : "Copy one prompt into Claude Code, Cursor, Codex, Windsurf or Copilot. It installs the GTWY skill and wires your agents into your codebase."}
           </p>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2 pl-14 sm:pl-0">
-        <button type="button" data-testid="gtwy-skill-banner-copy" className="btn btn-sm btn-primary" onClick={onCopy}>
+        <button
+          type="button"
+          data-testid="gtwy-skill-banner-copy"
+          className="btn btn-sm btn-primary"
+          onClick={copyPrompt}
+          disabled={isCopying}
+        >
           <Copy size={14} />
           Copy prompt
         </button>
