@@ -25,6 +25,8 @@ import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { buildVariablesObject } from "@/utils/variableValidation";
 import { buildUserUrls, isWordFileUrl } from "@/utils/attachmentUtils";
+import { isJevService } from "@/utils/jevQuestions";
+import JevQuestionsPanel from "./JevQuestionsPanel";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
 
@@ -160,6 +162,11 @@ function ChatTextInput({
   const [localDataToSend, setLocalDataToSend] = useState(dataToSend);
 
   const activePrompt = draftPrompt !== undefined ? draftPrompt : prompt;
+
+  const isJev = isJevService(service);
+  // { questions, error } reported by JevQuestionsPanel; null until it has loaded.
+  const [jevQuestionsState, setJevQuestionsState] = useState(null);
+  const [jevEditorRequest, setJevEditorRequest] = useState(0);
 
   const { isVision, isFileSupported, isVideoSupported } = useMemo(() => {
     const validationConfig =
@@ -305,6 +312,17 @@ function ChatTextInput({
         return;
       }
     }
+    let jevQuestions = null;
+    if (isJev) {
+      if (!jevQuestionsState?.questions) {
+        const reason = jevQuestionsState?.error || "Add at least one question for Jev to answer.";
+        dispatch(setChatError(channelIdentifier, `Jev questions: ${reason}`));
+        setJevEditorRequest((n) => n + 1);
+        return;
+      }
+      jevQuestions = jevQuestionsState.questions;
+    }
+
     dispatch(setChatError(channelIdentifier, ""));
     if (modelType !== "completion") {
       inputRef.current.value = "";
@@ -338,6 +356,7 @@ function ChatTextInput({
               configuration: {
                 type: modelType,
                 ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
+                ...(jevQuestions ? { questions: jevQuestions } : {}),
               },
               thread_id: threadId,
               user: data.content,
@@ -345,8 +364,11 @@ function ChatTextInput({
               variables,
               is_playground: true,
               orchestrator_flag: isOrchestralModel,
+              // TypeSafe has no streaming endpoint.
               is_stream:
-                bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image" ? false : true,
+                isJev || bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image"
+                  ? false
+                  : true,
             },
             bridge_id: params?.id,
           });
@@ -742,8 +764,11 @@ function ChatTextInput({
     <div
       data-testid="chat-text-input-container"
       id="chat-text-input-container"
-      className="flex justify-end items-end gap-2 w-full relative"
+      className={`flex justify-end items-end gap-2 w-full relative ${isJev ? "flex-wrap" : ""}`}
     >
+      {isJev && (
+        <JevQuestionsPanel agentId={params?.id} onChange={setJevQuestionsState} openRequest={jevEditorRequest} />
+      )}
       {/* Unsaved prompt changes modal */}
       <ConfirmationModal
         modalType={MODAL_TYPE.UNSAVED_PROMPT_CHAT_MODAL}
@@ -943,7 +968,7 @@ function ChatTextInput({
             data-testid="chat-message-textarea"
             id="chat-message-textarea"
             ref={inputRef}
-            placeholder="Type here"
+            placeholder={isJev ? "Paste or type the text for Jev to evaluate…" : "Type here"}
             className={`textarea bg-base-100 w-full max-h-[200px] resize-none overflow-y-auto h-auto ${
               validationError || attachmentError
                 ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
@@ -1086,8 +1111,6 @@ function ChatTextInput({
                       <LinkIcon size={16} className="text-base-content" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      The above content does NOT show the entire file contents. If you need to view any lines of the
-                      file which were not shown to complete your task, call this tool again to view those lines.
                       <div className="text-sm font-medium">Add URL</div>
                       <div className="text-xs text-base-content/60">Youtube URL</div>
                     </div>
