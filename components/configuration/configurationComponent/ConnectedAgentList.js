@@ -196,7 +196,6 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
 
   const handleSaveAgentVariable = async () => {
     try {
-      // Update agent connection with new connected_tool format
       const dataToSend = {
         agents: {
           connected_agents: {
@@ -212,7 +211,7 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         dataToSend.agents.connected_agents[selectedBridge?.name].environment = agentTools?.environment;
       }
       // on Save the bridge and thread id in version only
-      await dispatch(
+      dispatch(
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,

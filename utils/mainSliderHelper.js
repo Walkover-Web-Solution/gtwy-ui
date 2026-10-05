@@ -20,6 +20,7 @@ import {
   Sparkles,
   Wrench,
   Key,
+  ScrollText,
   Rocket,
 } from "lucide-react";
 import { AddIcon, KeyIcon } from "@/components/Icons";
@@ -57,6 +58,7 @@ export const ITEM_ICONS = {
   widgets: <LayoutTemplate size={15} />,
   "model-garden": <Sparkles size={15} />,
   tools: <Wrench size={15} />,
+  skills: <ScrollText size={15} />,
 };
 
 export const DISPLAY_NAMES = (key) => {
@@ -101,6 +103,8 @@ export const DISPLAY_NAMES = (key) => {
       return "Model Garden";
     case "tools":
       return "Tools";
+    case "skills":
+      return "Skills";
     default:
       return key;
   }
@@ -109,7 +113,7 @@ export const DISPLAY_NAMES = (key) => {
 export const NAV_SECTIONS = [
   { title: "", items: ["getting_started"] },
   { title: "AGENT TYPES", items: ["api", "chatbot"] },
-  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets", "model-garden", "tools"] },
+  { title: "CONFIGURATION", items: ["chatbotConfig", "knowledge_base", "widgets", "model-garden", "tools", "skills"] },
   { title: "SECURITY & ACCESS", items: ["pauthkey", "apikeys"] },
   { title: "MONITORING & SUPPORT", items: ["alerts", "metrics"] },
   { title: "Developer", items: ["integration", "RAG_embed"] },

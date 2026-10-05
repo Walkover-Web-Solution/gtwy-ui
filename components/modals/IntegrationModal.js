@@ -45,6 +45,7 @@ const IntegrationModal = ({ params, type = "embed" }) => {
         showPreTool: true,
         showPromptHelper: true,
         showMcp: false,
+        showSkills: false,
         prompt: {
           useDefaultPrompt: true,
           customPrompt: "",
