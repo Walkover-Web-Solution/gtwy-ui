@@ -15,7 +15,7 @@ import { ClockFading, Pencil } from "lucide-react";
 import Modal from "@/components/UI/Modal";
 import UsageLimitModal from "@/components/modals/UsageLimitModal";
 import { updateIntegrationDataAction } from "@/store/action/integrationAction";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 
 export const runtime = "edge";
@@ -313,7 +313,7 @@ const Page = ({ params }) => {
             <input
               key={renameIntegration?._id || "none"}
               type="text"
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
               value={currentName}
               onChange={(e) => setCurrentName(e.target.value)}
               maxLength={50}

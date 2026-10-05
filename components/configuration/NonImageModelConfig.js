@@ -3,6 +3,9 @@
 import React, { memo, useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import TabsLayout from "./sections/TabsLayout";
+import StackedLayout from "./sections/layouts/StackedLayout";
+import AccordionSectionsLayout from "./sections/layouts/AccordionSectionsLayout";
+import StepperSectionsLayout from "./sections/layouts/StepperSectionsLayout";
 import PromptTab from "./sections/PromptTab";
 import ModelTab from "./sections/ModelTab";
 import ConnectorsTab from "./sections/ConnectorsTab";
@@ -14,7 +17,7 @@ import { BookOpen } from "lucide-react";
 import { useConfigurationContext } from "./ConfigurationContext";
 
 const NonImageModelConfig = memo(() => {
-  const { isPublished, uiState, currentView, isEmbedUser, modelType } = useConfigurationContext();
+  const { isPublished, uiState, currentView, isEmbedUser, modelType, configPanelLayout } = useConfigurationContext();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || (modelType === "image" ? "model" : "prompt"));
@@ -63,7 +66,27 @@ const NonImageModelConfig = memo(() => {
   // Hide tabs when prompt helper is open
   const shouldHideTabs = uiState?.isPromptHelperOpen;
 
-  return <TabsLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} hideTabs={shouldHideTabs} />;
+  // Prompt helper needs a single focused section regardless of the chosen
+  // layout, so fall back to the tab strip (just hidden) while it's open.
+  if (shouldHideTabs) {
+    return <TabsLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} hideTabs />;
+  }
+
+  // The layout picker only affects the embed end-user's view — the agent
+  // owner always sees the default tab strip in the main app.
+  if (isEmbedUser) {
+    if (configPanelLayout === "accordion") {
+      return <AccordionSectionsLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />;
+    }
+    if (configPanelLayout === "stepper") {
+      return <StepperSectionsLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />;
+    }
+    if (configPanelLayout === "single") {
+      return <StackedLayout tabs={tabs} />;
+    }
+  }
+
+  return <TabsLayout tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />;
 });
 
 NonImageModelConfig.displayName = "NonImageModelConfig";

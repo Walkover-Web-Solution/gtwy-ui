@@ -7,7 +7,7 @@ import {
   updateFolderReducer,
   deleteFolderReducer,
 } from "../reducer/folderReducer";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 
 export const getAllFoldersAction =

@@ -1167,7 +1167,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             </p>
             {/* Show missing variables warning without button */}
             {missingVariables.length > 0 && (
-              <div className="mt-3 p-3 bg-warning/10 border border-warning/20 rounded-lg">
+              <div className="mt-3 p-3 bg-warning/10 border border-warning/40">
                 <p className="text-sm text-warning">Missing values for: {missingVariables.join(", ")}</p>
                 <p className="text-xs text-warning/70 mt-1">
                   Fill in the missing variables below or use "Run Anyway" button at the bottom.
@@ -1230,7 +1230,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
           {!bulkEditMode && (
             <div className="mt-4 overflow-hidden rounded-lg border border-base-200 bg-base-100">
-              <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 border-b border-base-200 bg-base-200/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
+              <div className="grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_auto] gap-2 border-b border-base-200 bg-base-200/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
                 <span>Key</span>
                 <span>Value</span>
                 <span>Default Value</span>
@@ -1255,12 +1255,12 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                         key={variable.id || `${variable.key}-${index}`}
                         className="px-3 py-3 text-sm border-b border-base-200 hover:bg-base-200/30 transition-colors"
                       >
-                        <div className="grid grid-cols-[1fr,1.2fr,1fr,0.8fr,0.6fr,auto] gap-2 items-center">
+                        <div className="grid grid-cols-[1fr_1.2fr_1fr_0.8fr_0.6fr_auto] gap-2 items-center">
                           <input
                             autoComplete="off"
                             id={`variable-key-input-${index}`}
                             type="text"
-                            className={`input input-xs input-bordered w-full ${
+                            className={`input input-xs w-full ${
                               missingVariables.includes(variable.key)
                                 ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                 : ""
@@ -1275,7 +1275,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           {variable.type === "boolean" ? (
                             <select
                               id={`variable-value-select-${index}`}
-                              className={`select select-xs select-bordered w-full ${
+                              className={`select select-xs w-full ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1297,7 +1297,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               id={`variable-value-number-${index}`}
                               type="number"
                               step="any"
-                              className={`input input-xs input-bordered w-full ${
+                              className={`input input-xs w-full ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1313,7 +1313,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               autoComplete="off"
                               id={`variable-value-text-${index}`}
                               type="text"
-                              className={`input input-xs input-bordered w-full ${
+                              className={`input input-xs w-full ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1326,7 +1326,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                             />
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
-                              className={`textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs ${
+                              className={`textarea textarea-xs w-full min-h-[90px] font-mono text-xs ${
                                 missingVariables.includes(variable.key)
                                   ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                                   : ""
@@ -1340,7 +1340,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           ) : (
                             <textarea
                               id={`variable-value-textarea-${index}`}
-                              className="textarea textarea-xs textarea-bordered w-full min-h-[60px]"
+                              className="textarea textarea-xs w-full min-h-[60px]"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.value}
                               onChange={(event) => handleFieldChange(index, "value", event.target.value)}
@@ -1352,7 +1352,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           {variable.type === "boolean" ? (
                             <select
                               id={`variable-default-select-${index}`}
-                              className="select select-xs select-bordered w-full"
+                              className="select select-xs w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={
                                 variable.defaultValue === "false"
@@ -1376,7 +1376,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               id={`variable-default-number-${index}`}
                               type="number"
                               step="any"
-                              className="input input-xs input-bordered w-full"
+                              className="input input-xs w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
@@ -1386,7 +1386,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                           ) : variable.type === "object" || variable.type === "array" ? (
                             <textarea
                               id={`variable-default-textarea-${index}`}
-                              className="textarea textarea-xs textarea-bordered w-full min-h-[90px] font-mono text-xs"
+                              className="textarea textarea-xs w-full min-h-[90px] font-mono text-xs"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
@@ -1398,7 +1398,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
                               autoComplete="off"
                               id={`variable-default-text-${index}`}
                               type="text"
-                              className="input input-xs input-bordered w-full"
+                              className="input input-xs w-full"
                               disabled={!isCurrentRowEnabled || !variable.key.trim()}
                               value={variable.defaultValue}
                               onChange={(event) => handleFieldChange(index, "defaultValue", event.target.value)}
@@ -1409,7 +1409,7 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
 
                           <select
                             id={`variable-type-select-${index}`}
-                            className="select select-xs select-bordered w-full"
+                            className="select select-xs w-full"
                             disabled={!isCurrentRowEnabled || !variable.key.trim()}
                             value={variable.type}
                             onChange={(event) => {
@@ -1479,13 +1479,11 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
             <div className="mt-4 space-y-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-sm font-medium">Bulk Edit Variables</span>
-                  <span className="label-text-alt text-xs text-base-content/60">
-                    Paste key-value pairs or JSON object
-                  </span>
+                  <span className="text-sm font-medium">Bulk Edit Variables</span>
+                  <span className="text-xs text-base-content/60">Paste key-value pairs or JSON object</span>
                 </label>
                 <textarea
-                  className="textarea textarea-bordered textarea-sm w-full resize-y min-h-[280px] font-mono text-xs"
+                  className="textarea textarea-sm w-full resize-y min-h-[280px] font-mono text-xs"
                   placeholder={`Option 1 - Key-value pairs:
 customer_email,user@example.com
 attempts,3
@@ -1499,9 +1497,7 @@ Option 2 - JSON object:
                   onChange={(event) => setBulkEditText(event.target.value)}
                 />
                 <div className="label">
-                  <span className="label-text-alt text-xs text-base-content/50">
-                    Format: key,value per line OR valid JSON object
-                  </span>
+                  <span className="text-xs text-base-content/50">Format: key,value per line OR valid JSON object</span>
                 </div>
               </div>
             </div>

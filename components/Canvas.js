@@ -306,7 +306,7 @@ function Canvas({
                 data-testid="canvas-instruction-textarea"
                 id="canvas-instruction-textarea"
                 ref={textareaRef}
-                className="w-full textarea textarea-bordered"
+                className="w-full textarea"
                 placeholder={` how you'd like to improve your ${label}...`}
                 value={instruction}
                 rows={1}

@@ -1,139 +1,212 @@
-import { memo, useMemo } from "react";
-import TimeRangeFilter from "@/components/metrics/TimeRangeFilter";
-import MultiSelectFilterDropdown from "@/components/metrics/MultiSelectFilterDropdown";
-import ExportMetricsButton from "@/components/metrics/ExportMetricsButton";
-import { RefreshIcon, LayoutGridIcon, BlocksIcon, SparklesIcon, KeyRoundIcon } from "@/components/Icons";
-import { getApiKeyStatusClass, getIconOfService } from "@/utils/utility";
+import { memo } from "react";
+import { Calendar } from "lucide-react";
+import { TIME_RANGE_OPTIONS } from "@/utils/enums";
+import { ChevronDownIcon } from "@/components/Icons";
+import SearchItems from "@/components/UI/SearchItems";
 
-// Which agents use a given API key isn't a direct field on either object -
-// both only carry it indirectly via version ids (same join ConnectedAgentsModal
-// uses for the "connected agents" list on the API Keys settings page).
-const countConnectedAgents = (apikey, allBridges) => {
-  const versionIdSet = new Set(apikey.version_ids || []);
-  if (!versionIdSet.size) return 0;
-  return allBridges.reduce((count, bridge) => {
-    const usesThisKey = (bridge.versions || []).some((versionId) => versionIdSet.has(versionId));
-    return usesThisKey ? count + 1 : count;
-  }, 0);
-};
-
-// Flat pill toolbar - matches the demo's filterbar: one row of pill buttons
-// (icon + "Label: value" + chevron) instead of the old label-above/select-box
-// grid. Group By now lives in the chart card header instead of here.
 const MetricsFilters = memo(
   ({
+    factor,
     range,
+    bridge,
+    loading,
+    filterBridges,
+    setFilterBridges,
+    allBridges,
     customStartDate,
     customEndDate,
-    selectedBridgeIds = [],
-    selectedApikeyIds = [],
-    selectedModels = [],
-    selectedServices = [],
-    allBridges = [],
-    apikeyData = [],
-    modelOptions = [],
-    services = [],
-    loading,
-    onBridgeChange,
-    onApikeyChange,
-    onModelChange,
-    onServiceChange,
+    onFactorChange,
     onTimeRangeChange,
-    onCustomRangeApply,
-    onRefresh,
-    exportProps,
+    onBridgeChange,
+    getDisplayRangeText,
   }) => {
-    // Same provider icon the real Agents list page shows next to each agent's
-    // name (getIconOfService, keyed off the agent's configured `service` -
-    // openai/anthropic/google/etc.) - not a dedicated icon/avatar field.
-    const bridgeOptions = allBridges.map((item) => ({
-      id: item._id,
-      name: item.name,
-      iconNode: getIconOfService(item.service, 16, 16),
-    }));
-    // API keys shown by name + status only (never the masked key value), with
-    // how many agents actually use each one - not just a flat name list.
-    const apikeyOptions = useMemo(
-      () =>
-        apikeyData.map((item) => {
-          const agentCount = countConnectedAgents(item, allBridges);
-          return {
-            id: item._id,
-            name: item.name,
-            dotClass: item.status ? getApiKeyStatusClass(item.status, "dot") : null,
-            meta: `${item.status || "unknown"} - ${agentCount} agent${agentCount === 1 ? "" : "s"}`,
-          };
-        }),
-      [apikeyData, allBridges]
-    );
-    const modelOptionsList = modelOptions.map((item) => ({ id: item.id, name: item.name }));
-    const serviceOptions = services.map((item) => ({
-      id: item.value,
-      name: item.displayName || item.value,
-      iconNode: getIconOfService(item.value, 16, 16),
-    }));
+    const FACTOR_OPTIONS = ["Agents", "API Keys", "Models"];
 
     return (
-      <div
-        className="flex items-center gap-2 flex-wrap bg-base-100 border border-base-300 rounded-lg p-2 mb-6"
-        data-testid="metrics-filterbar"
-      >
-        <TimeRangeFilter
-          range={range}
-          customStartDate={customStartDate}
-          customEndDate={customEndDate}
-          onPresetChange={onTimeRangeChange}
-          onCustomRangeApply={onCustomRangeApply}
-        />
-        <MultiSelectFilterDropdown
-          id="metrics-filter-agent"
-          label="Agent"
-          icon={<LayoutGridIcon className="w-3.5 h-3.5" />}
-          options={bridgeOptions}
-          selectedIds={selectedBridgeIds}
-          onChange={onBridgeChange}
-          searchable
-        />
-        <MultiSelectFilterDropdown
-          id="metrics-filter-service"
-          label="Service"
-          icon={<BlocksIcon className="w-3.5 h-3.5" />}
-          options={serviceOptions}
-          selectedIds={selectedServices}
-          onChange={onServiceChange}
-          searchable
-        />
-        <MultiSelectFilterDropdown
-          id="metrics-filter-model"
-          label="Model"
-          icon={<SparklesIcon className="w-3.5 h-3.5" />}
-          options={modelOptionsList}
-          selectedIds={selectedModels}
-          onChange={onModelChange}
-          searchable
-        />
-        <MultiSelectFilterDropdown
-          id="metrics-filter-apikey"
-          label="API Key"
-          icon={<KeyRoundIcon className="w-3.5 h-3.5" />}
-          options={apikeyOptions}
-          selectedIds={selectedApikeyIds}
-          onChange={onApikeyChange}
-          searchable
-        />
+      <div className="bg-base-100 shadow-md rounded-lg p-6 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Group By Dropdown */}
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Group by:</span>
+            <details
+              id="metrics-filter-group-by-dropdown"
+              data-testid="metrics-filter-group-by"
+              className="dropdown dropdown-end"
+              tabIndex={0}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  e.currentTarget.removeAttribute("open");
+                }
+              }}
+            >
+              <summary
+                id="metrics-filter-group-by-button"
+                data-testid="metrics-filter-group-by-button"
+                className="btn btn-sm m-1"
+              >
+                {FACTOR_OPTIONS[factor]}
+                <ChevronDownIcon className="w-3 h-3 ml-2" />
+              </summary>
+              <ul tabIndex="0" className="dropdown-content menu p-1 shadow bg-base-100 rounded-box w-52 z-high">
+                {FACTOR_OPTIONS.map((item, index) => (
+                  <li key={index}>
+                    <a
+                      id={`metrics-filter-group-by-option-${index}`}
+                      data-testid={`metrics-filter-group-by-option-${index}`}
+                      className={`${factor === index ? "active" : ""}`}
+                      onClick={(e) => {
+                        onFactorChange(index);
+                        const details = e.currentTarget.closest("details");
+                        if (details) details.removeAttribute("open");
+                      }}
+                    >
+                      {item}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
 
-        <div className="flex-1" />
+          {/* Agent Selection */}
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Agent:</span>
+            <details
+              id="metrics-filter-agent-dropdown"
+              data-testid="metrics-filter-agent-select"
+              className="dropdown dropdown-end z-high"
+              ref={(node) => {
+                if (node) {
+                  const handleClickOutside = (event) => {
+                    const isClickInsideSearch = event.target.closest(".search-container");
+                    const isClickInsideItem = event.target.closest(".dropdown-item");
+                    if (!node.contains(event.target) && !isClickInsideSearch && !isClickInsideItem) {
+                      node.removeAttribute("open");
+                    }
+                  };
+                  document.addEventListener("mousedown", handleClickOutside);
+                  node._clickOutsideHandler = handleClickOutside;
+                }
+              }}
+            >
+              <summary
+                id="metrics-filter-agent-button"
+                data-testid="metrics-filter-agent-button"
+                className="btn btn-sm m-1"
+              >
+                {bridge?.["bridge_name"]
+                  ? bridge?.["bridge_name"].length > 15
+                    ? bridge?.["bridge_name"].substring(0, 15) + "..."
+                    : bridge?.["bridge_name"]
+                  : "All Agents"}
+                <ChevronDownIcon className="w-3 h-3 ml-2" />
+              </summary>
 
-        <button
-          type="button"
-          title="Refresh"
-          onClick={onRefresh}
-          disabled={loading}
-          className="w-9 h-9 rounded-lg border border-base-300 bg-base-100 flex items-center justify-center text-base-content/70 hover:bg-base-200 hover:text-base-content transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshIcon className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-        </button>
-        {exportProps && <ExportMetricsButton {...exportProps} />}
+              <ul className="menu dropdown-content bg-base-100 rounded-box z-high w-52 p-2 shadow-sm flex-row overflow-y-auto overflow-x-hidden min-w-72 max-w-72 scrollbar-hide max-h-[70vh]">
+                <div className="search-container">
+                  <SearchItems setFilterItems={setFilterBridges} data={allBridges} item="metrics" />
+                </div>
+
+                <li>
+                  <a
+                    id="metrics-filter-agent-all"
+                    data-testid="metrics-filter-agent-all"
+                    onClick={(e) => {
+                      onBridgeChange(null, null);
+                      const details = e.currentTarget.closest("details");
+                      if (details) details.removeAttribute("open");
+                    }}
+                    className={`w-72 mb-1 dropdown-item ${!bridge ? "active" : ""}`}
+                  >
+                    All Agents
+                  </a>
+                </li>
+
+                {filterBridges.map((item, index) => (
+                  <li key={index}>
+                    <a
+                      id={`metrics-filter-agent-${item?._id}`}
+                      data-testid={`metrics-filter-agent-option-${item?._id}`}
+                      onClick={(e) => {
+                        onBridgeChange(item?._id, item?.name);
+                        const details = e.currentTarget.closest("details");
+                        if (details) details.removeAttribute("open");
+                      }}
+                      className={`w-72 mb-1 dropdown-item ${bridge?.["bridge_id"] === item?._id ? "active" : ""}`}
+                    >
+                      {item.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
+
+          {/* Time Range */}
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Time Range:</span>
+            <details
+              id="metrics-filter-time-range-dropdown"
+              data-testid="metrics-filter-time-range"
+              className="dropdown dropdown-end"
+              tabIndex={0}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  e.currentTarget.removeAttribute("open");
+                }
+              }}
+            >
+              <summary
+                id="metrics-filter-time-range-button"
+                data-testid="metrics-filter-time-range-button"
+                className="btn btn-sm m-1"
+              >
+                {range === 10 ? getDisplayRangeText() : TIME_RANGE_OPTIONS?.[range]}
+                <ChevronDownIcon className="w-3 h-3 ml-2" />
+              </summary>
+              <ul tabIndex="0" className="z-high dropdown-content menu p-1 shadow bg-base-100 rounded-box w-52">
+                {TIME_RANGE_OPTIONS.map((item, index) => (
+                  <li key={index}>
+                    <a
+                      id={`metrics-filter-time-range-option-${index}`}
+                      data-testid={`metrics-filter-time-range-option-${index}`}
+                      className={`${index === range && range !== 10 ? "active" : ""}`}
+                      onClick={(e) => {
+                        onTimeRangeChange(index);
+                        const details = e.currentTarget.closest("details");
+                        if (details) details.removeAttribute("open");
+                      }}
+                    >
+                      {item}
+                    </a>
+                  </li>
+                ))}
+                {/* Custom Range Option */}
+                <li>
+                  <a
+                    id="metrics-filter-time-range-custom"
+                    data-testid="metrics-filter-custom-range"
+                    className={`${range === 10 ? "active" : ""} flex items-center gap-2`}
+                    onClick={(e) => {
+                      onTimeRangeChange(TIME_RANGE_OPTIONS.length);
+                      const details = e.currentTarget.closest("details");
+                      if (details) details.removeAttribute("open");
+                    }}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Custom Range
+                  </a>
+                </li>
+              </ul>
+            </details>
+          </div>
+
+          {/* Loading indicator */}
+          <div className="flex items-center">
+            <span className={`${loading ? "loading loading-ring loading-md" : ""}`}></span>
+            {loading && <span className="text-gray-600 ml-2">Loading...</span>}
+          </div>
+        </div>
       </div>
     );
   }

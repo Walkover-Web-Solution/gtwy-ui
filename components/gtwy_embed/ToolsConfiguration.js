@@ -27,7 +27,6 @@ const ToolsConfiguration = ({
 }) => {
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedFunctionId, setSelectedFunctionId] = useState(null);
   const [selectedFunctionData, setSelectedFunctionData] = useState({});
   const [toolData, setToolData] = useState({});
@@ -65,7 +64,7 @@ const ToolsConfiguration = ({
         onToolsChange([...selectedTools, functionId]);
       }
     }
-    setIsDropdownOpen(false);
+    document.activeElement?.blur?.();
   };
 
   const handleRemoveFunction = (functionId) => {
@@ -171,37 +170,34 @@ const ToolsConfiguration = ({
             type="button"
             tabIndex={0}
             className={`btn btn-xs gap-1 ${singleToolMode && selectedToolId ? "btn-primary" : "btn-outline"}`}
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
             {singleToolMode && selectedToolId ? <RefreshCw size={12} /> : <Plus size={12} />}
             {singleToolMode && selectedToolId ? "Change" : "Add"}
           </button>
-          {isDropdownOpen && (
-            <EmbedListSuggestionDropdownMenu
-              params={params}
-              searchParams={{}}
-              name={
-                singleToolMode
-                  ? modalType === MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL
-                    ? "postFunction"
-                    : "preFunction"
-                  : "tool"
-              }
-              hideCreateFunction={false}
-              onSelect={handleSelectFunction}
-              onSelectPrebuiltTool={() => {}}
-              connectedFunctions={singleToolMode ? (selectedToolId ? [selectedToolId] : []) : selectedTools}
-              shouldToolsShow={true}
-              modelName=""
-              prebuiltToolsData={[]}
-              toolsVersionData={[]}
-              showInbuiltTools={{}}
-              tutorialState={{ showSuggestion: false, showTutorial: false }}
-              setTutorialState={() => {}}
-              isPublished={false}
-              isEditor={true}
-            />
-          )}
+          <EmbedListSuggestionDropdownMenu
+            params={params}
+            searchParams={{}}
+            name={
+              singleToolMode
+                ? modalType === MODAL_TYPE.POST_FUNCTION_PARAMETER_MODAL
+                  ? "postFunction"
+                  : "preFunction"
+                : "tool"
+            }
+            hideCreateFunction={false}
+            onSelect={handleSelectFunction}
+            onSelectPrebuiltTool={() => {}}
+            connectedFunctions={singleToolMode ? (selectedToolId ? [selectedToolId] : []) : selectedTools}
+            shouldToolsShow={true}
+            modelName=""
+            prebuiltToolsData={[]}
+            toolsVersionData={[]}
+            showInbuiltTools={{}}
+            tutorialState={{ showSuggestion: false, showTutorial: false }}
+            setTutorialState={() => {}}
+            isPublished={false}
+            isEditor={true}
+          />
         </div>
       </div>
 

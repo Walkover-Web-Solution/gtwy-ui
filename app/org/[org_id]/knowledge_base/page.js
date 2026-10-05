@@ -20,7 +20,7 @@ import { FileSearch, Folder } from "lucide-react";
 import ResourcePage from "@/components/folders/ResourcePage";
 import useFolders from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 export const runtime = "edge";
 

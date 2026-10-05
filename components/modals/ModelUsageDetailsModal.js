@@ -28,11 +28,7 @@ const ModelUsageDetailsModal = ({ usageDetailsData, params }) => {
           {usageDetailsData?.agents?.length > 0 && (
             <div>
               <h3 className="font-medium text-base-content mb-2">Agents ({usageDetailsData.agents.length})</h3>
-              <div
-                id="model-usage-agents-list"
-                data-testid="model-usage-agents-list"
-                className="bg-base-200 p-3 rounded"
-              >
+              <div id="model-usage-agents-list" data-testid="model-usage-agents-list" className="bg-base-200 p-3">
                 <ul className="list-disc pl-5">
                   {usageDetailsData.agents.map((agent, index) => (
                     <li
@@ -52,11 +48,7 @@ const ModelUsageDetailsModal = ({ usageDetailsData, params }) => {
           {usageDetailsData?.versions?.length > 0 && (
             <div>
               <h3 className="font-medium text-base-content mb-2">Versions ({usageDetailsData.versions.length})</h3>
-              <div
-                id="model-usage-versions-list"
-                data-testid="model-usage-versions-list"
-                className="bg-base-200 p-3 rounded"
-              >
+              <div id="model-usage-versions-list" data-testid="model-usage-versions-list" className="bg-base-200 p-3">
                 <ul className="list-disc pl-5">
                   {usageDetailsData.versions.map((version, index) => {
                     const bridge = Object.values(allBridgesMap).find((bridge) =>

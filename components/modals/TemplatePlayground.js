@@ -49,11 +49,11 @@ const TemplatePlayground = ({ template, setTemplate = () => {} }) => {
         {/* Template Preview */}
         <div>
           {templateFormat ? (
-            <div className="border border-base-300 rounded-lg p-6 bg-base-100">
+            <div className="border border-base-300 p-6 bg-base-100">
               <RenderNode node={templateFormat} actionDefs={actionDefs} />
             </div>
           ) : (
-            <div className="border border-base-300 rounded-lg p-6 bg-base-200 flex items-center justify-center min-h-[200px]">
+            <div className="border border-base-300 p-6 bg-base-200 flex items-center justify-center min-h-[200px]">
               <div className="text-center text-base-content/60">
                 <div className="text-4xl mb-2">📄</div>
                 <p className="text-lg">No preview available</p>

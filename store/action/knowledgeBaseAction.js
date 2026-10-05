@@ -9,7 +9,7 @@ import {
   updateResource,
 } from "@/config/index";
 
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 import {
   addKnowbaseDataReducer,

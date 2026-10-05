@@ -74,10 +74,7 @@ const DefaultVariablesSection = memo(
             {usedVariables.length > 0 && (
               <div className="flex items-center gap-1">
                 <span className="text-xs text-base-content/60">Used:</span>
-                <p
-                  role="alert"
-                  className="label-text-alt p-1 bg-success/20 text-success inline-block w-fit text-xs rounded"
-                >
+                <p role="alert" className="label p-1 bg-success/20 text-success inline-block w-fit text-xs rounded">
                   &#123;&#123;{usedVariables[0]}&#125;&#125;
                   {usedVariables.length > 1 && <>...</>}
                 </p>

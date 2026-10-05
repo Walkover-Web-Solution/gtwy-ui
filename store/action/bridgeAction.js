@@ -29,8 +29,9 @@ import {
   updateFunctionApi,
   updateapi,
   uploadImage,
+  uploadMultipleImages,
 } from "@/config/index";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import posthog, { trackAgentEvent } from "@/utils/posthog";
 import { handleApiError, isNetworkError } from "@/utils/errorHandler";
 import {
@@ -120,10 +121,10 @@ export const getBridgeVersionAction =
   ({ versionId }) =>
   async (dispatch) => {
     try {
-      dispatch(isPending());
       if (!versionId || versionId === "null") {
         return;
       }
+      dispatch(isPending());
       const data = await getBridgeVersionApi({ bridgeVersionId: versionId });
       dispatch(fetchSingleBridgeVersionReducer({ bridge: data?.agent }));
       return data?.agent;
@@ -209,7 +210,7 @@ export const createBridgeAction = (dataToSend, onSuccess) => async (dispatch, ge
     if (error?.response?.data?.message?.includes("duplicate key")) {
       toast.error("Agent Name can't be duplicate");
     } else {
-      toast.error("Something went wrong");
+      toast.error(error?.response?.data?.message || error?.message || "Something went wrong");
     }
     console.error(error);
     throw error;
@@ -239,8 +240,6 @@ export const createBridgeWithAiAction =
     } catch (error) {
       if (error?.response?.data?.message?.includes("duplicate key")) {
         console.error("Agent Name can't be duplicate fallBack to manual bridge creation");
-      } else {
-        toast.error("Something went wrong");
       }
       console.error(error);
       throw error;
@@ -294,7 +293,6 @@ export const createEmbedAgentAction =
         name: agent_name?.trim() || null,
         bridgeType: "api",
         type: "chat",
-        flag: true,
       };
       if (meta) {
         fallbackDataToSend.meta = meta;
@@ -398,6 +396,7 @@ export const getAllBridgesAction = (onSuccess) => async (dispatch) => {
     const triggerEmbedToken = response?.data?.trigger_embed_token;
     const average_response_time = response?.data?.avg_response_time;
     const doctstar_embed_token = response?.data?.doctstar_embed_token;
+    const default_agent = response?.data?.default_agent || null;
     const bridgesPayload = response?.data?.agent || [];
 
     if (onSuccess) onSuccess(bridgesPayload);
@@ -405,6 +404,7 @@ export const getAllBridgesAction = (onSuccess) => async (dispatch) => {
       fetchAllBridgeReducer({
         bridges: bridgesPayload,
         orgId: response?.data?.org_id,
+        default_agent,
         embed_token,
         doctstar_embed_token,
         alerting_embed_token,
@@ -519,7 +519,7 @@ export const updateBridgeVersionAction =
     try {
       if (!versionId) {
         toast.error("You cannot update published data");
-        return;
+        return { success: false, error: "You cannot update published data", notified: true };
       }
 
       // Step 1: Find the parent bridge ID if not provided
@@ -536,7 +536,7 @@ export const updateBridgeVersionAction =
 
       if (!parentBridgeId) {
         console.error("Could not find parent bridge ID for version:", versionId);
-        return;
+        return { success: false, error: "Could not find the agent this version belongs to." };
       }
 
       if (!localOnly) {
@@ -712,7 +712,7 @@ export const updateBridgeVersionAction =
       );
 
       if (localOnly) {
-        return;
+        return { success: true, localOnly: true };
       }
 
       // Show saving indi\ation in navbar
@@ -749,6 +749,7 @@ export const updateBridgeVersionAction =
         }
         // Update status to show warning
         dispatch(setSavingStatus({ status: "failed" }));
+        toast.error(data?.message || data?.error || "Failed to update version", { id: "update-bridge-version-error" });
 
         // Clear the status after 3 seconds
         setTimeout(() => {
@@ -759,23 +760,23 @@ export const updateBridgeVersionAction =
     } catch (error) {
       console.error(error);
 
-      if (versionId) {
-        let parentBridgeId = bridgeId;
-        if (!parentBridgeId) {
-          const state = getState().bridgeReducer;
-          for (const bId in state.bridgeVersionMapping) {
-            if (state.bridgeVersionMapping[bId][versionId]) {
-              parentBridgeId = bId;
-              break;
-            }
+      let notified = false;
+      let parentBridgeId = bridgeId;
+      if (versionId && !parentBridgeId) {
+        const state = getState().bridgeReducer;
+        for (const bId in state.bridgeVersionMapping) {
+          if (state.bridgeVersionMapping[bId][versionId]) {
+            parentBridgeId = bId;
+            break;
           }
         }
-
-        if (parentBridgeId && !skipRollback) {
-          dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
-          toast.error(error?.response?.data?.message || "Failed to update version. Changes have been reverted.");
-        }
       }
+
+      if (versionId && parentBridgeId && !skipRollback) {
+        dispatch(bridgeVersionRollBackReducer({ bridgeId: parentBridgeId, versionId }));
+      }
+      toast.error(error?.response?.data?.message || "Failed to update version. Changes have been reverted.");
+      notified = true;
 
       dispatch(isError());
       // Show error status
@@ -783,7 +784,7 @@ export const updateBridgeVersionAction =
 
       // Clear the status after 3 seconds
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to update version";
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage, notified };
     }
   };
 
@@ -798,10 +799,16 @@ export const deleteBridgeAction =
           agent_id: bridgeId,
           org_id: org_id,
         });
+        return response;
       }
-      return response;
+      const errorMessage = response?.data?.error;
+      toast.error(errorMessage);
+      throw new Error(errorMessage);
     } catch (error) {
-      toast.error(error?.response?.data?.error || error?.message || error || "Failed to delete agent");
+      // Avoid double-toast when we already toasted for success:false above
+      if (error?.response) {
+        toast.error(error?.response?.data?.error);
+      }
       console.error("Failed to delete bridge:", error);
       throw error;
     }
@@ -849,10 +856,13 @@ export const publishBridgeVersionAction =
       if (data?.success) {
         dispatch(publishBrigeVersionReducer({ versionId: data?.version_id, bridgeId, orgId }));
         toast.success("Agent Version published successfully");
+      } else {
+        toast.error(data?.message || data?.error || "Failed to publish agent version");
       }
       return data;
     } catch (error) {
       console.error(error);
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to publish agent version");
     }
   };
 
@@ -923,6 +933,16 @@ export const uploadImageAction = (formData, isVedioOrPdf) => async (dispatch) =>
   }
 };
 
+export const uploadMultipleImagesAction = (files) => async (dispatch) => {
+  try {
+    const response = await uploadMultipleImages(files);
+    return response;
+  } catch (error) {
+    console.error("Error uploading files:", error);
+    throw error;
+  }
+};
+
 export const genrateSummaryAction =
   ({ bridgeId, versionId, orgId }) =>
   async (dispatch) => {
@@ -931,6 +951,7 @@ export const genrateSummaryAction =
       return response;
     } catch (error) {
       dispatch(isError());
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || "Failed to generate summary");
       console.error("Failed to update summary: ", error);
     }
   };

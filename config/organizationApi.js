@@ -1,6 +1,6 @@
 import axios from "@/utils/interceptor";
-import { setInCookies } from "@/utils/utility";
-import { toast } from "react-toastify";
+import { getFromCookies, setInCookies } from "@/utils/utility";
+import toast from "react-hot-toast";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL;
@@ -9,10 +9,13 @@ const NEXT_PUBLIC_REFERENCEID = process.env.NEXT_PUBLIC_REFERENCEID;
 // Organization Management APIs
 export const createOrg = async (dataToSend) => {
   try {
-    const data = await axios.post(`${PROXY_URL}/api/c/createCompany`, dataToSend);
+    const proxyToken = sessionStorage.getItem("proxy_token") || getFromCookies("proxy_token");
+    const data = await axios.post(`${URL}/api/organization`, dataToSend, {
+      headers: { proxy_auth_token: proxyToken },
+    });
     return data;
   } catch (error) {
-    toast.error(error.response.data.message || "Failed to create new organization");
+    toast.error(error?.response?.data?.message || "Failed to create new organization");
     return error;
   }
 };

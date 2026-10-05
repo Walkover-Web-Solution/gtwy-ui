@@ -28,6 +28,8 @@ import richUiTemplateSliceReducer from "./reducer/richUiTemplateReducer";
 import folderSliceReducer from "./reducer/folderReducer";
 import testCaseConfigSliceReducer from "./reducer/testCaseConfigReducer";
 import analyticsSliceReducer from "./reducer/analyticsReducer";
+import planSliceReducer from "./reducer/planReducer";
+import walletSliceReducer from "./reducer/walletReducer";
 const createNoopStorage = () => {
   return {
     getItem(_key) {
@@ -95,6 +97,8 @@ const rootReducer = combineReducers({
   folderReducer: folderSliceReducer,
   testCaseConfigReducer: testCaseConfigSliceReducer,
   analyticsReducer: analyticsSliceReducer,
+  planReducer: planSliceReducer,
+  walletReducer: walletSliceReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

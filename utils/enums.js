@@ -89,6 +89,7 @@ export const MODAL_TYPE = {
   INVITE_USER: "INVITE_USER",
   ORCHESTRAL_DELETE_MODAL: "ORCHESTRAL_DELETE_MODAL",
   ACCESS_MANAGEMENT_MODAL: "ACCESS_MANAGEMENT_MODAL",
+  BUY_CREDITS_MODAL: "BUY_CREDITS_MODAL",
   UNSAVED_CHANGES_MODAL: "UNSAVED_CHANGES_MODAL",
   UNSAVED_CHANGES_INTEGRATION_MODAL: "UNSAVED_CHANGES_INTEGRATION_MODAL", // IntegrationDetailView config guard
   UNSAVED_CHANGES_PUBLISH_MODAL: "UNSAVED_CHANGES_PUBLISH_MODAL", // Publish button guard
@@ -123,6 +124,8 @@ export const MODAL_TYPE = {
   JSON_SCHEMA_VISUAL_BUILDER: "json-schema-visual-builder",
   JSON_SCHEMA_AI_BUILDER: "json-schema-ai-builder",
   JSON_SCHEMA_FULLSCREEN: "json-schema-fullscreen",
+  MCP_SERVER_MODAL: "MCP_SERVER_MODAL",
+  DELETE_MCP_SERVER_MODAL: "DELETE_MCP_SERVER_MODAL",
 };
 
 export const API_KEY_MODAL_INPUT = ["name", "apikey", "apikey_limit"];
@@ -169,27 +172,7 @@ export const TIME_RANGE_OPTIONS = [
   "30 days",
 ];
 
-export const METRICS_FACTOR_OPTIONS = ["bridge_id", "apikey_id", "model", "service"];
-export const METRICS_FACTOR_LABELS = ["Agents", "API Keys", "Models", "Services"];
-
-// Metrics dashboard time range presets. The range value here is the same
-// 0-indexed value convertApiData's bucketing switch already expects (it
-// mirrors TIME_RANGE_OPTIONS' index order: 0 is 1 hour, 1 is 3 hours, 2 is 6
-// hours, 3 is 12 hours, 4 is 1 day, 5 is 2 days, 6 is 7 days, 7 is 14 days, 8
-// is 30 days) - useMetricsData translates it to the real /api/metrics backend
-// code by adding one before sending the request, so adding presets here only
-// means picking the right existing index, not inventing a new mapping. The
-// value 10 is a separate, pre-existing special case for a custom start/end
-// date range (see convertApiData's handling of that same value).
-export const METRICS_TIME_RANGE_OPTIONS = [
-  { label: "Last 1 Hour", range: 0 },
-  { label: "Last 6 Hours", range: 2 },
-  { label: "Last 24 Hours", range: 4 },
-  { label: "Last 7 Days", range: 6 },
-  { label: "Last 30 Days", range: 8 },
-  { label: "Custom Range", range: 10 },
-];
-
+export const METRICS_FACTOR_OPTIONS = ["bridge_id", "apikey_id", "model"];
 export const KNOWLEDGE_BASE_COLUMNS = ["name", "description", "created", "strategy", "chunk"];
 export const KNOWLEDGE_BASE_SECTION_TYPES = [
   { value: "default", label: "Default" },
@@ -337,7 +320,7 @@ export const HISTORY_FILTER_BY_FIELDS = {
 
 export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id", "tools_id"]);
 export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
-export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide"]);
+export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide", "layout"]);
 export const EMBED_SKIP_KEYS = new Set([
   "agent_name",
   "agent_id",
@@ -367,6 +350,11 @@ export const PRE_TOOL_TOOLTIPS = {
   rag_knowledgebase: "Searches a knowledge base and injects relevant context into the prompt before the AI call.",
   gtwy_web_search: "Scrapes a specified domain and passes the content as context to the AI.",
 };
+
+export const PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD = new Set([
+  PRE_TOOL_TYPES.rag_knowledgebase,
+  PRE_TOOL_TYPES.gtwy_web_search,
+]);
 
 export const PRE_TOOL_CONFIG_SCHEMA = {
   query_refiner: {

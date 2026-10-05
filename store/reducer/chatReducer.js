@@ -327,6 +327,24 @@ export const chatReducer = createSlice({
       }
     },
 
+    // Attach a live browser handoff (live_url) to a tool call, e.g. for Gtwy_Browser
+    setToolCallHandoff: (state, action) => {
+      const { channelId, messageId, callId, name, liveUrl, message } = action.payload;
+      const messages = state.messagesByChannel[channelId];
+      if (!messages) return;
+      const msgIdx = messages.findIndex((m) => m.id === messageId);
+      if (msgIdx === -1) return;
+      const toolCalls = messages[msgIdx].toolCalls;
+      if (!toolCalls) return;
+      let tcIdx = toolCalls.findIndex((tc) => tc.call_id === callId);
+      if (tcIdx === -1 && name) {
+        tcIdx = toolCalls.findIndex((tc) => tc.name === name && tc.status === "calling");
+      }
+      if (tcIdx !== -1) {
+        toolCalls[tcIdx].handoff = { liveUrl, message };
+      }
+    },
+
     // Review phase: handle phase events (reviewer_start, reviewer_done, main_rerun_start)
     setReviewData: (state, action) => {
       const { channelId, messageId, phase, round = 1, passed, reason } = action.payload;
@@ -492,6 +510,7 @@ export const {
   addToolCallToMessage,
   appendToolCallDelta,
   updateToolCallResult,
+  setToolCallHandoff,
   appendReasoningChunk,
   setReviewData,
   appendReviewDelta,

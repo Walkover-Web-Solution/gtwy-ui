@@ -22,6 +22,7 @@ import {
   addToolCallToMessage,
   appendToolCallDelta,
   updateToolCallResult,
+  setToolCallHandoff,
   appendReasoningChunk,
   setReviewData,
   appendReviewDelta,
@@ -29,6 +30,7 @@ import {
   setFallbackData,
 } from "../reducer/chatReducer";
 import { haveSameItems, buildUserUrls, buildLlmUrls, extractImageUrlsFromResponse } from "@/utils/attachmentUtils";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 const getVideoIdentifier = (video) => {
   if (!video) return null;
@@ -403,7 +405,7 @@ export const sendMessageWithRtLayer =
         dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
       }
 
-      dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
+      dispatch(setChatError(channelId, getErrorMessage(error)));
       dispatch(setChatLoading(channelId, false)); // Clear loading on error
       throw error;
     }
@@ -588,6 +590,17 @@ export const sendMessageWithApiStreaming =
                   result: parsed.content,
                 })
               );
+            } else if (parsed.event === "browser_handoff") {
+              dispatch(
+                setToolCallHandoff({
+                  channelId,
+                  messageId: streamingState.messageId,
+                  callId: parsed.call_id,
+                  name: parsed.name,
+                  liveUrl: parsed.live_url,
+                  message: parsed.message,
+                })
+              );
             } else if (parsed.event === "template_response") {
               // Handle template response with rich UI content
               if (rafId) {
@@ -670,7 +683,7 @@ export const sendMessageWithApiStreaming =
       }
       if (userMessage) dispatch(removeMessage({ channelId, messageId: userMessage.id }));
       if (loadingMessage) dispatch(removeMessage({ channelId, messageId: loadingMessage.id }));
-      dispatch(setChatError(channelId, error.message || "Something went wrong. Please try again."));
+      dispatch(setChatError(channelId, getErrorMessage(error)));
       dispatch(setChatLoading(channelId, false));
       throw error;
     }

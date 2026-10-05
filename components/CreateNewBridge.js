@@ -11,7 +11,7 @@ import Protected from "./Protected";
 import { BotIcon, Info, Plus, AlertCircle } from "lucide-react";
 import { CloseIcon } from "./Icons";
 import { FolderContext } from "@/components/folders/FolderContext";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const buildInitialState = () => ({
   selectedService: "openai",
@@ -232,6 +232,9 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
       toast.error("Your org is blocked. You cannot create agents. Contact support@gtwy.ai for assistance.");
       return;
     }
+    if (state.isLoading || state.isAiLoading) {
+      return;
+    }
     const purpose = textAreaPurposeRef?.current?.value?.trim();
     const resolvedFolderId = getResolvedFolderId();
     updateState({
@@ -359,6 +362,8 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
     state.selectedModel,
     state.selectedService,
     state.selectedType,
+    state.isLoading,
+    state.isAiLoading,
     updateState,
     dispatch,
     orgid,
@@ -445,7 +450,7 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
                         autoFocus
                         onChange={handlePurposeInput}
                         disabled={state.isAiLoading || state.isLoading}
-                        className={`textarea textarea-bordered w-full min-h-[150px] max-h-[150px] bg-base-100 transition-all duration-300 text-base resize-none placeholder:text-base-content/40 ${
+                        className={`textarea w-full min-h-[150px] max-h-[150px] bg-base-100 transition-all duration-300 text-base resize-none placeholder:text-base-content/40 ${
                           state.validationErrors.purpose
                             ? "border-error focus:border-error focus:ring-2 focus:ring-error/20"
                             : "border-base-300 focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -498,10 +503,10 @@ function CreateNewBridge({ orgid, isEmbedUser, defaultBridgeType = "api" }) {
                   id="create-new-bridge-submit-button"
                   className="btn btn-sm btn-primary min-w-[8.5rem]"
                   onClick={handleCreateAgent}
-                  disabled={state.isLoading || isOrgBlocked}
+                  disabled={state.isLoading || state.isAiLoading || isOrgBlocked}
                   title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
                 >
-                  {state.isLoading ? (
+                  {state.isLoading || state.isAiLoading ? (
                     <>
                       <span className="loading loading-spinner loading-sm" />
                       Creating...

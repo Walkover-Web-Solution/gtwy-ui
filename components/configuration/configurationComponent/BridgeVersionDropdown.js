@@ -10,6 +10,7 @@ import {
   deleteBridgeVersionAction,
   getBridgeVersionAction,
 } from "@/store/action/bridgeAction";
+import { setVersionSwitchingReducer } from "@/store/reducer/bridgeReducer";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, sendDataToParent, closeSidebar } from "@/utils/utility";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,12 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
+
+// Minimum time the configuration skeleton stays up when moving between versions.
+// A new version is cloned from its parent straight into the store, so a switch can
+// finish with no fetch at all - without a deliberate pause the swap is invisible and
+// users keep editing a draft believing they are still on the published version.
+const VERSION_SWITCH_MIN_MS = 600;
 
 function BridgeVersionDropdown({
   params,
@@ -211,11 +218,31 @@ function BridgeVersionDropdown({
     shouldFetch,
   ]);
 
+  // Flag the switch in redux: the page remounts on a version change, so a flag held in
+  // page state would be reset before it could ever render.
+  const versionSwitchTimerRef = useRef(null);
+  const beginVersionSwitch = useCallback(() => {
+    dispatch(setVersionSwitchingReducer(true));
+    if (versionSwitchTimerRef.current) clearTimeout(versionSwitchTimerRef.current);
+    versionSwitchTimerRef.current = setTimeout(() => {
+      dispatch(setVersionSwitchingReducer(false));
+      versionSwitchTimerRef.current = null;
+    }, VERSION_SWITCH_MIN_MS);
+  }, [dispatch]);
+
+  useEffect(
+    () => () => {
+      if (versionSwitchTimerRef.current) clearTimeout(versionSwitchTimerRef.current);
+    },
+    []
+  );
+
   const handleVersionChange = useCallback(
     (version) => {
       if (currentVersion === version) return;
 
       const doChange = () => {
+        beginVersionSwitch();
         closeSidebar("default-config-history-slider", "right");
         router.push(`/org/${params.org_id}/agents/configure/${params.id}?version=${version}`);
         fetchVersionData(version);
@@ -241,7 +268,16 @@ function BridgeVersionDropdown({
 
       doChange();
     },
-    [currentVersion, params.org_id, params.id, router, fetchVersionData, bridgeVersionMapping, isEmbedUser]
+    [
+      currentVersion,
+      params.org_id,
+      params.id,
+      router,
+      fetchVersionData,
+      bridgeVersionMapping,
+      isEmbedUser,
+      beginVersionSwitch,
+    ]
   );
 
   const handleCreateNewVersion = () => {
@@ -297,6 +333,7 @@ function BridgeVersionDropdown({
                 "Version changed successfully"
               );
             }
+            beginVersionSwitch();
             router.push(`/org/${params.org_id}/agents/configure/${params.id}?version=${data.version_id}`);
           } else {
             console.error("Version creation failed - no version_id returned:", data);

@@ -21,6 +21,7 @@ const PromptHelper = ({
   savePrompt,
   isEmbedUser,
   variable_key,
+  draftPrompt,
 }) => {
   const { embedPromptConfig, reduxPrompt } = useCustomSelector((state) => {
     const eu = state.appInfoReducer.embedUserDetails;
@@ -119,6 +120,12 @@ const PromptHelper = ({
     const promptContent = promptToApply || optimizedPrompt;
     if (!promptContent) return;
 
+    // Merge on top of the values currently in the editor (including edits the user
+    // has typed but not saved yet) rather than the last saved prompt, so applying a
+    // result for one field does not discard the other fields' unsaved values.
+    const basePrompt =
+      draftPrompt && typeof draftPrompt === "object" && !Array.isArray(draftPrompt) ? draftPrompt : reduxPrompt;
+
     // Per-field apply: if a variable_key is targeted and we got a plain string
     // value (from the normalized per-field response), update only that field.
     if (variable_key && typeof promptContent === "string") {
@@ -132,16 +139,14 @@ const PromptHelper = ({
 
       if (isEmbedCustomPromptField) {
         const currentEmbedValues =
-          typeof reduxPrompt === "object" && reduxPrompt !== null && !Array.isArray(reduxPrompt)
-            ? { ...reduxPrompt }
-            : {};
+          typeof basePrompt === "object" && basePrompt !== null && !Array.isArray(basePrompt) ? { ...basePrompt } : {};
         const merged = { ...currentEmbedValues, [variable_key]: promptContent };
         if (savePrompt) savePrompt(merged);
         if (setNewContent) setNewContent(merged);
       } else {
         let toSave;
-        if (reduxPrompt && typeof reduxPrompt === "object" && !Array.isArray(reduxPrompt)) {
-          toSave = { ...reduxPrompt, [variable_key]: promptContent };
+        if (basePrompt && typeof basePrompt === "object" && !Array.isArray(basePrompt)) {
+          toSave = { ...basePrompt, [variable_key]: promptContent };
         } else {
           toSave = { [variable_key]: promptContent };
         }
@@ -196,9 +201,7 @@ const PromptHelper = ({
     if (parsedOptimized && isEmbedCustomPrompt) {
       // Embed user: merge optimized fields into existing embed prompt object
       const currentEmbedValues =
-        typeof reduxPrompt === "object" && reduxPrompt !== null && !Array.isArray(reduxPrompt)
-          ? { ...reduxPrompt }
-          : {};
+        typeof basePrompt === "object" && basePrompt !== null && !Array.isArray(basePrompt) ? { ...basePrompt } : {};
       const visibleFieldNames = embedPromptConfig.embedFields.filter((f) => !f.hidden).map((f) => f.name);
       // Build a normalized -> canonical name map (handles case + trailing `s` mismatch).
       const embedFieldLookup = {};
@@ -218,10 +221,10 @@ const PromptHelper = ({
     } else if (parsedOptimized) {
       // Non-embed: merge into existing reduxPrompt if it's an object, else save parsedOptimized directly
       let toSave;
-      if (reduxPrompt && typeof reduxPrompt === "object" && !Array.isArray(reduxPrompt)) {
+      if (basePrompt && typeof basePrompt === "object" && !Array.isArray(basePrompt)) {
         // Merge matching keys from optimized into existing object. Loose matching
         // so responses like "Instructions" map to the local "instruction" key.
-        toSave = { ...reduxPrompt };
+        toSave = { ...basePrompt };
         const keyLookup = {};
         Object.keys(toSave).forEach((k) => {
           keyLookup[normalizeKey(k)] = k;

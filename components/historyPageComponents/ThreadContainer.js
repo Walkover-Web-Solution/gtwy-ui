@@ -490,15 +490,15 @@ const ThreadContainer = ({
     <div
       data-testid="thread-container"
       id="thread-container"
-      className={`flex-1 flex flex-col overflow-hidden bg-history-page ${fillParent ? "h-full min-h-0" : "h-[calc(100vh-2.5rem)]"}`}
+      className={`flex-1 flex flex-col overflow-hidden bg-base-100 ${fillParent ? "h-full min-h-0" : "h-[calc(100vh-2.5rem)]"}`}
     >
-      <div className="w-full flex-1 flex flex-col min-h-0 relative bg-history-page">
+      <div className="w-full flex-1 flex flex-col min-h-0 relative bg-base-100">
         <div
           data-testid="thread-container-scrollable-div"
           id="scrollableDiv"
           ref={historyRef}
           onScroll={onScroll}
-          className="w-full text-start flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-history-page"
+          className="w-full text-start flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-base-100"
           style={{
             overflowY: "auto",
             overflowX: "hidden",
@@ -510,7 +510,7 @@ const ThreadContainer = ({
           {loadingData ? (
             <ChatLoadingSkeleton />
           ) : !thread || thread.length === 0 ? (
-            <div className="flex items-center justify-center h-full bg-history-page">
+            <div className="flex items-center justify-center h-full bg-base-100">
               <p className="text-gray-500 text-lg">No history present</p>
             </div>
           ) : (

@@ -101,7 +101,7 @@ function FullscreenEditorModal({
         style={{ height: "calc(100dvh - 16rem)", minHeight: "300px" }}
       >
         {errorMsg && (
-          <div className="alert alert-error text-sm py-2 mb-4 rounded-md flex-shrink-0">
+          <div className="alert alert-error text-sm py-2 mb-4 flex-shrink-0">
             <span>{errorMsg}</span>
           </div>
         )}
@@ -128,7 +128,7 @@ function FullscreenEditorModal({
                   setLocalValue(val);
                   if (errorMsg) setErrorMsg("");
                 }}
-                className="h-full border border-base-300 rounded overflow-hidden text-sm"
+                className="h-full border border-base-300 overflow-hidden text-sm"
               />
             </div>
           ) : (
@@ -142,7 +142,7 @@ function FullscreenEditorModal({
               }}
               placeholder={placeholder}
               disabled={disabled}
-              className={`w-full h-full resize-none textarea textarea-bordered p-4 min-h-[200px] outline-none ${mono ? "font-mono text-sm" : ""} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+              className={`w-full h-full resize-none textarea p-4 min-h-[200px] outline-none ${mono ? "font-mono text-sm" : ""} ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
             />
           )}
         </div>

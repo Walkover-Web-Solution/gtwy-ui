@@ -7,7 +7,7 @@ import Modal from "../UI/Modal";
 
 const KeyboardShortcut = ({ keys, description }) => {
   return (
-    <div className="flex items-center justify-between py-2 px-3 hover:bg-base-200 rounded-lg transition-colors duration-200">
+    <div className="flex items-center justify-between py-2 px-3 hover:bg-base-200 transition-colors duration-200">
       <span className="text-xs text-base-content">{description}</span>
       <div className="flex items-center gap-1">
         {keys.map((key, index) => (

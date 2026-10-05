@@ -19,7 +19,7 @@ const SlugNameInput = ({ params }) => {
   return (
     <label data-testid="slug-name-input-container" id="slug-name-input-container" className="form-control max-w-xs">
       <div className="label">
-        <span className="label-text font-medium">Enter Slugname</span>
+        <span className="font-medium">Enter Slugname</span>
       </div>
       <input
         autoComplete="off"
@@ -29,12 +29,12 @@ const SlugNameInput = ({ params }) => {
         key={slugName}
         maxLength={30}
         placeholder="Type here"
-        className="input input-bordered w-full max-w-xs input-sm"
+        className="input w-full max-w-xs input-sm"
         defaultValue={slugName}
         onBlur={handleSlugNameChange}
       />
       <div className="label">
-        <span className="label-text-alt text-gray-500">Slugname must be unique</span>
+        <span className="text-gray-500">Slugname must be unique</span>
       </div>
     </label>
   );

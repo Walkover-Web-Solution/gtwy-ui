@@ -61,13 +61,13 @@ function CreateVariableModal({ keyName, setKeyName, params, searchParams }) {
     >
       <div id="create-variable-modal-container" className="flex flex-col gap-4" key={keyName}>
         <div className="flex flex-col gap-1">
-          <label className="label-text text-sm font-medium">Key</label>
+          <label className="label text-sm font-medium">Key</label>
           <input
             autoComplete="off"
             data-testid="create-variable-key-input"
             id="create-variable-key-input"
             type="text"
-            className="input input-bordered input-md w-full"
+            className="input input-md w-full"
             placeholder="Enter key"
             defaultValue={keyName}
             key={keyName}
@@ -77,14 +77,14 @@ function CreateVariableModal({ keyName, setKeyName, params, searchParams }) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="label-text text-sm font-medium">Value</label>
+          <label className="label text-sm font-medium">Value</label>
           <input
             autoComplete="off"
             data-testid="create-variable-value-input"
             id="create-variable-value-input"
             defaultValue={valueValue}
             type="text"
-            className="input input-bordered input-md w-full"
+            className="input input-md w-full"
             placeholder="Enter value"
             onChange={(e) => handleKeyValueChange("value", e.target.value)}
             onBlur={(e) => handleKeyValueChange("value", e.target.value)}

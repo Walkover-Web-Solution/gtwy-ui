@@ -20,6 +20,10 @@ const initialState = {
     loading: false, // Track loading state for metrics API
   },
   agentsVersionsData: {},
+  // True while the UI is moving between agent versions, so the page can show its
+  // skeleton. Lives here because the page remounts on a version switch while the
+  // version dropdown (mounted in the layout) does not.
+  versionSwitching: false,
 };
 
 export const bridgeReducer = createSlice({
@@ -91,6 +95,9 @@ export const bridgeReducer = createSlice({
     },
     createBridgeReducer: (state, action) => {
       state.org[action.payload.orgId]?.orgs?.push(action.payload.data.data.agent);
+    },
+    setVersionSwitchingReducer: (state, action) => {
+      state.versionSwitching = action.payload;
     },
     createBridgeVersionReducer: (state, action) => {
       const { newVersionId, parentVersionId, bridgeId, version_description, orgId } = action.payload;
@@ -247,6 +254,23 @@ export const bridgeReducer = createSlice({
       if (state.org[orgId]?.functionData?.[functionId]) {
         delete state.org[orgId].functionData[functionId];
       }
+
+      // Keep version config in sync when a tool used as reviewer_tool / post_tool is deleted
+      const scrubVersionConfig = (version) => {
+        if (!version) return;
+        if (version.post_tool?.id === functionId) {
+          version.post_tool = null;
+        }
+        const reviewerTools = version.settings?.review_agent?.reviewer_tools;
+        if (Array.isArray(reviewerTools) && reviewerTools.includes(functionId)) {
+          version.settings.review_agent.reviewer_tools = reviewerTools.filter((id) => id !== functionId);
+        }
+      };
+
+      Object.values(state.bridgeVersionMapping || {}).forEach((versionsByBridge) => {
+        Object.values(versionsByBridge || {}).forEach(scrubVersionConfig);
+      });
+      Object.values(state.allBridgesMap || {}).forEach(scrubVersionConfig);
     },
 
     // Skills Management Reducers
@@ -391,6 +415,7 @@ export const {
   fetchSingleBridgeVersionReducer,
   fetchAllBridgeReducer,
   fetchAllFunctionsReducer,
+  setVersionSwitchingReducer,
   createBridgeVersionReducer,
   deleteBridgeVersionReducer,
   createBridgeReducer,

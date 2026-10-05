@@ -1,5 +1,27 @@
 /* eslint-disable */
 (function () {
+    const KEY_ALIASES = {
+        embed_token: 'embedToken',
+        parent_id: 'parentId'
+    };
+
+    const SNAKE_ALIASES = Object.keys(KEY_ALIASES).reduce((map, snakeKey) => {
+        map[KEY_ALIASES[snakeKey]] = snakeKey;
+        return map;
+    }, {});
+
+    const normalizeKeys = (data) => {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+        const normalized = {};
+        Object.keys(data).forEach(key => {
+            const internalKey = KEY_ALIASES[key];
+            // skip a snake_case alias when the internal spelling is also passed
+            if (internalKey && internalKey in data) return;
+            normalized[internalKey || key] = data[key];
+        });
+        return normalized;
+    };
+
     class GtwyEmbedManager {
         constructor() {
             this.props = {};
@@ -38,8 +60,12 @@
 
             const attrs = ['embedToken', 'showCloseButton', 'parentId', 'showFullScreenButton', 'showHeader', 'defaultOpen', 'slide', 'agent_id', 'token', 'gtwy_user', 'org_id', 'skipLoadGtwy', 'customIframeId', 'historyEmbed','message_id'];
             return attrs.reduce((props, attr) => {
-                if (script.hasAttribute(attr)) {
-                    const value = script.getAttribute(attr);
+                // snake_case is the documented spelling; the camelCase attribute is
+                // still read for embeds written before the rename
+                const alias = SNAKE_ALIASES[attr];
+                const attrName = script.hasAttribute(attr) ? attr : (alias && script.hasAttribute(alias) ? alias : null);
+                if (attrName) {
+                    const value = script.getAttribute(attrName);
 
                     if (attr === 'defaultOpen') this.config.defaultOpen = value || false;
                     if (attr === 'slide' && ['full', 'left', 'right'].includes(value)) this.config.slide = value;
@@ -401,7 +427,7 @@
 
         async fetchGtwyDetails() {
             try {
-                const embedToken = document.getElementById('gtwy-main-script')?.getAttribute('embedToken');
+                const embedToken = document.getElementById('gtwy-main-script')?.getAttribute('embedToken') || document.getElementById('gtwy-main-script')?.getAttribute('embed_token');
                 const options = embedToken ? {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: embedToken }
@@ -505,6 +531,7 @@
                 return;
             }
         }
+        dataToSend = normalizeKeys(dataToSend);
         if ('parentId' in dataToSend) {
             const prevParentId = gtwyEmbedManager.props['parentId'];
             const existingParent = document.getElementById(prevParentId);
@@ -541,7 +568,8 @@
     };
 
     // Global API
-    window.openGtwy = ({ agent_id = "", meta = {}, agent_name = "", agent_purpose = "", history = null, replaceMeta = null, historyEmbed = null, message_id = null } = {}) => {
+    window.openGtwy = (data = {}) => {
+        const { agent_id = "", meta = {}, agent_name = "", agent_purpose = "", history = null, replaceMeta = null, historyEmbed = null, message_id = null } = normalizeKeys(data) || {};
         gtwyEmbedManager.openGtwy(agent_id, meta, agent_name, agent_purpose, history, replaceMeta, historyEmbed, message_id);
     };
     window.closeGtwy = () => gtwyEmbedManager.closeGtwy();

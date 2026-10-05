@@ -13,7 +13,6 @@ import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { useRouter } from "next/navigation";
 import { useQueryParams } from "@/customHooks/useQueryParams";
-import AgentSetupGuide from "@/components/AgentSetupGuide";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { RefreshIcon } from "@/components/Icons";
 import { CircleAlert } from "lucide-react";
@@ -142,6 +141,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     isNotesCollapsed: false,
   }));
 
+  // setIsGuideVisible is wired to AgentSetupGuide, temporarily commented out below.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const [isGuideVisible, setIsGuideVisible] = useState(false);
   const [apiKeyError, setApiKeyError] = useState(false);
 
@@ -151,6 +152,10 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
   // Optimized selector with better memoization
   const { bridgeType, bridgeName, isFocus, reduxPrompt, bridge, isLoading, hasError, hasData } =
     useConfigurationSelector(resolvedParams, resolvedSearchParams);
+
+  // Set by BridgeVersionDropdown, which lives in the layout and survives the remount
+  // this page goes through on a version change.
+  const isVersionSwitching = useCustomSelector((state) => state?.bridgeReducer?.versionSwitching);
 
   const currentVariablesState = useCustomSelector(
     (state) =>
@@ -365,14 +370,17 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [uiState.isConfigCollapsed, uiState.isPromptHelperCollapsed, uiState.isPromptHelperOpen]);
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleSwitchToModelTab = useCallback(() => {
     setParam("tab", "model");
   }, [setParam]);
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleSwitchToPromptTab = useCallback(() => {
     setParam("tab", "prompt");
   }, [setParam]);
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleSwitchToConnectorsTab = useCallback(() => {
     setParam("tab", "connectors");
   }, [setParam]);
@@ -610,8 +618,9 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
     }
   }, [bridgeType]);
 
-  // Show skeleton loading state only for initial load (when no data exists)
-  if (isLoading && !hasData && !hasError) {
+  // Skeleton covers the initial load and every version switch. It stays up past
+  // VERSION_SWITCH_MIN_MS while the newly selected version is still being fetched.
+  if ((isVersionSwitching || (isLoading && !hasData)) && !hasError) {
     return (
       <div className="w-full h-full">
         <ConfigurationSkeleton />
@@ -790,7 +799,8 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                         className={`flex-1 overflow-x-hidden ${isGuideVisible ? "overflow-y-hidden" : "overflow-y-auto"}`}
                       >
                         <div id="chat-container" className="h-full flex flex-col">
-                          <AgentSetupGuide
+                          {/* eslint-disable-next-line no-commented-code/no-commented-code -- AgentSetupGuide temporarily disabled, kept for quick re-enable */}
+                          {/* <AgentSetupGuide
                             id="agent-setup-guide"
                             promptTextAreaRef={promptTextAreaRef}
                             apiKeySectionRef={apiKeySectionRef}
@@ -802,7 +812,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                             onSwitchToPromptTab={handleSwitchToPromptTab}
                             onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                             setApiKeyError={setApiKeyError}
-                          />
+                          /> */}
                           {!isGuideVisible && (
                             <>
                               {!sessionStorage.getItem("orchestralUser") ? (
@@ -866,6 +876,7 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
                       savePrompt={savePrompt}
                       isEmbedUser={isEmbedUser}
                       variable_key={promptState.activeHelperField || null}
+                      draftPrompt={promptState.draftPromptValue}
                       setPrompt={(value) => {
                         // Update prompt state for diff/summary
                         setPromptState((prev) => ({ ...prev, newContent: value }));
@@ -1015,22 +1026,24 @@ const Page = ({ params, searchParams, isEmbedUser }) => {
 
           {/* Chat Panel */}
           {(!isEmbedUser || (isEmbedUser && showPlayground)) && (
-            <div id="parentChatbot" className="min-h-screen">
-              <div id="mobile-chat-container" className="h-full flex flex-col">
-                <AgentSetupGuide
+            <div id="parentChatbot" className="h-[100dvh] flex flex-col">
+              <div id="mobile-chat-container" className="flex-1 min-h-0 flex flex-col">
+                {/* eslint-disable-next-line no-commented-code/no-commented-code -- AgentSetupGuide temporarily disabled, kept for quick re-enable */}
+                {/* <AgentSetupGuide
                   id="mobile-agent-setup-guide"
                   promptTextAreaRef={promptTextAreaRef}
                   apiKeySectionRef={apiKeySectionRef}
                   params={resolvedParams}
                   searchParams={resolvedSearchParams}
                   draftPrompt={promptState.newContent}
+                  onVisibilityChange={setIsGuideVisible}
                   onSwitchToModelTab={handleSwitchToModelTab}
                   onSwitchToPromptTab={handleSwitchToPromptTab}
                   onSwitchToConnectorsTab={handleSwitchToConnectorsTab}
                   setApiKeyError={setApiKeyError}
-                />
+                /> */}
 
-                {!isGuideVisible && (
+                {isGuideVisible && (
                   <>
                     {!sessionStorage.getItem("orchestralUser") ? (
                       <div id="mobile-chat-content-container" className="flex-1 min-h-0">

@@ -6,7 +6,7 @@ import { useConfigurationContext } from "../ConfigurationContext";
 import { useDispatch } from "react-redux";
 import EmbedListSuggestionDropdownMenu from "./EmbedListSuggestionDropdownMenu";
 import FunctionParameterModal from "./FunctionParameterModal";
-import { MODAL_TYPE, PRE_TOOL_TYPES, PRE_TOOL_LABELS } from "@/utils/enums";
+import { MODAL_TYPE, PRE_TOOL_TYPES, PRE_TOOL_LABELS, PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD } from "@/utils/enums";
 import RenderEmbed from "./RenderEmbed";
 import InfoTooltip from "@/components/InfoTooltip";
 import { isEqual } from "lodash";
@@ -29,6 +29,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
   const [showChangePicker, setShowChangePicker] = useState(false);
   const [isAddPreToolDropdownFocused, setIsAddPreToolDropdownFocused] = useState(false);
   const [selectedPreTool, setSelectedPreTool] = useState(null); // for built-in modal
+  const [isPendingPreToolAdd, setIsPendingPreToolAdd] = useState(false);
   const [deleteWarning, setDeleteWarning] = useState(null); // Warning message for delete modal
 
   // Pending action to run after the user confirms leaving unsaved prompt changes
@@ -129,6 +130,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         setVariablesPath(toolItem._toolEntry?.variable_path || {});
         openModal(MODAL_TYPE.PRE_FUNCTION_PARAMETER_MODAL);
       } else {
+        setIsPendingPreToolAdd(false);
         setSelectedPreTool(toolItem._toolEntry);
         openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
       }
@@ -177,6 +179,15 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         })
       );
     });
+  };
+
+  const openBuiltInPreToolConfig = (type, { pendingAdd = false } = {}) => {
+    setIsPendingPreToolAdd(pendingAdd);
+    setSelectedPreTool({ type, config: {}, args: {} });
+    openModal(MODAL_TYPE.PREBUILT_PRE_TOOL_CONFIG_MODAL);
+    setTimeout(() => {
+      if (typeof document !== "undefined") document.activeElement?.blur?.();
+    }, 0);
   };
 
   const onBuiltInPreToolSelect = (type) => {
@@ -253,6 +264,10 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
 
   const onChangeBuiltInPreToolSelect = async (type) => {
     guardedAction(async () => {
+      if (PRE_TOOLS_REQUIRING_CONFIG_BEFORE_ADD.has(type)) {
+        openBuiltInPreToolConfig(type, { pendingAdd: true });
+        return;
+      }
       await disableAllPreTools();
       // For gtwy_web_search and query_refiner, call API on selection then open modal
       // For rag_knowledgebase, don't call API until user selects KB in modal
@@ -407,6 +422,7 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
           variablesPath={variablesPath}
           setVariablesPath={setVariablesPath}
           variables_path={variables_path}
+          originalArgs={bridgePreFunctions.find((t) => t._id === preFunctionId)?._toolEntry?.args || {}}
         />
         <DeleteModal
           onConfirm={removePreFunction}
@@ -424,6 +440,8 @@ const PreEmbedList = ({ params, searchParams, isPublished, isEditor = true, isEm
         <PrebuiltPreToolConfigModal
           toolEntry={selectedPreTool}
           onSave={handleSaveBuiltInPreTool}
+          onClose={handleCloseBuiltInPreToolConfig}
+          isPendingAdd={isPendingPreToolAdd}
           orgId={params?.org_id}
         />
 

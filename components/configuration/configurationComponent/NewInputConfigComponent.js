@@ -89,13 +89,13 @@ const NewInputConfigComponent = ({ params }) => {
     <div data-testid="prompt-config-container" id="prompt-config-container">
       <div className="flex justify-between items-center">
         <div className="label flex items-center gap-2">
-          <span className="label-text capitalize font-medium">Prompt</span>
+          <span className="capitalize font-medium">Prompt</span>
           <div className="h-4 w-px bg-gray-300 mx-2"></div>
           <div className="flex items-center justify-center">
             <button
               data-testid="prompt-summary-button"
               id="prompt-summary-button"
-              className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text"
+              className="label capitalize font-medium text-primary"
               onClick={() => {
                 openModal(MODAL_TYPE?.PROMPT_SUMMARY);
               }}
@@ -117,9 +117,7 @@ const NewInputConfigComponent = ({ params }) => {
             className="label cursor-pointer"
             onClick={() => openModal(MODAL_TYPE.OPTIMIZE_PROMPT)}
           >
-            <span className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text">
-              Optimize Prompt
-            </span>
+            <span className="capitalize font-medium text-primary">Optimize Prompt</span>
           </div>
         </div>
       </div>
@@ -178,7 +176,7 @@ const NewInputConfigComponent = ({ params }) => {
           <div className="collapse-title min-h-[0.75rem] text-xs font-medium flex items-center gap-1 p-2">
             <div className="flex items-center gap-2">
               <span className="text-nowrap">Default Variables</span>
-              <p role="alert" className="label-text-alt alert p-2">
+              <p role="alert" className="label alert p-2">
                 <Info size={16} className="" />
                 Use these variables in prompt to get their functionality
               </p>

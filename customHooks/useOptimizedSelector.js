@@ -17,6 +17,11 @@ export const useConfigurationSelector = (params, searchParams) => {
         // Use bridgeData when isPublished=true, otherwise use versionData
         const activeData = isPublished ? bridgeData : versionData;
 
+        // When a specific version is selected, only that version's data counts as "loaded".
+        // Falling back to bridgeData here would keep the previous version's config on screen
+        // during a version switch instead of letting the page show its skeleton.
+        const hasVersionSelected = !isPublished && !!version;
+
         return {
           bridgeType: bridgeData?.bridgeType,
           versionService: isPublished ? bridgeData?.service : versionData?.service,
@@ -30,7 +35,7 @@ export const useConfigurationSelector = (params, searchParams) => {
           modelName: isPublished ? bridgeData?.configuration?.model : versionData?.configuration?.model,
           isLoading: state?.bridgeReducer?.loading,
           hasError: state?.bridgeReducer?.error,
-          hasData: !!(bridgeData || versionData),
+          hasData: hasVersionSelected ? !!versionData : !!bridgeData,
           oldContent: bridgeData?.configuration?.prompt || "",
         };
       },

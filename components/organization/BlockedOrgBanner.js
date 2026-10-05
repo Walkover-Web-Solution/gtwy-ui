@@ -1,8 +1,11 @@
 "use client";
 
-function BlockedOrgBanner() {
+function BlockedOrgBanner({ className = "" }) {
   return (
-    <div className="alert alert-error rounded-none border-0 py-2 px-4 justify-center" data-testid="blocked-org-banner">
+    <div
+      className={`alert alert-error rounded-none border-0 py-2 px-4 justify-center ${className}`}
+      data-testid="blocked-org-banner"
+    >
       <span className="text-sm font-medium">
         Your org is blocked. You cannot create agents, API keys, or knowledge bases until it is unblocked. Please
         contact{" "}

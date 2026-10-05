@@ -6,10 +6,11 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "
 import { useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
 import Dropdown from "@/components/UI/Dropdown";
-import { CircleQuestionMark, Sparkles, CircleAlert, Plus } from "lucide-react";
+import { CircleQuestionMark, Sparkles, CircleAlert, Plus, Lock } from "lucide-react";
 import InfoTooltip from "@/components/InfoTooltip";
 import AddNewModelModal from "@/components/modals/AddNewModal";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
+import { toast } from "react-hot-toast";
 
 // Model Preview component to display model specifications
 export const ModelPreview = memo(({ hoveredModel, modelSpecs, dropdownRef }) => {
@@ -140,6 +141,7 @@ const ModelDropdown = ({
   isEditor = true,
   isEmbedUser = false,
   showAdvancedConfigurations = false,
+  apiKeyActionButton = null,
 }) => {
   // Determine if content is read-only (either published or user is not an editor)
   const isReadOnly = isPublished || !isEditor;
@@ -158,6 +160,8 @@ const ModelDropdown = ({
     fallbackModel,
     configuration,
     serviceModels,
+    planServices,
+    bridgeApikeyObjectId,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -183,8 +187,20 @@ const ModelDropdown = ({
       fallbackModel: activeData?.settings?.fall_back,
       configuration: activeData?.configuration,
       serviceModels: state?.modelReducer?.serviceModels,
+      planServices: state?.planReducer?.services,
+      bridgeApikeyObjectId: activeData?.apikey_object_id || {},
     };
   });
+
+  const planEntryForService = useMemo(() => {
+    if (planServices === "*") return "*";
+    if (planServices && typeof planServices === "object") return planServices[service];
+    return undefined;
+  }, [planServices, service]);
+
+  const isServiceFullyInPlan = planEntryForService === "*";
+  const planAllowedModels = Array.isArray(planEntryForService) ? planEntryForService : null;
+  const hasOwnApiKey = !!bridgeApikeyObjectId?.[service];
 
   const isFallbackEnabled = !!fallbackModel?.is_enable;
   const fallbackServiceName = fallbackModel?.service || service || "Not set";
@@ -262,11 +278,21 @@ const ModelDropdown = ({
 
         const displayName = modelConfig?.value || modelName;
 
+        const isAllowedByPlan = isServiceFullyInPlan || !!planAllowedModels?.includes(modelName);
+        const needsByok = !hasOwnApiKey && !isAllowedByPlan;
+
         const displayLabel =
           modelName === "gpt-5-nano" && bridgeType === "chatbot" ? (
             <div className="flex items-center gap-2">
               <span>{displayName}</span>
               <span className="badge badge-success badge-sm text-xs">FREE</span>
+            </div>
+          ) : needsByok ? (
+            <div className="flex items-center gap-2 w-full text-base-content/50">
+              <span className="flex-1">{displayName}</span>
+              <InfoTooltip tooltipContent="Upgrade your plan to unlock it.">
+                <Lock size={11} className="shrink-0" />
+              </InfoTooltip>
             </div>
           ) : (
             displayName
@@ -275,13 +301,17 @@ const ModelDropdown = ({
         opts.push({
           value: modelName,
           label: displayLabel,
+          disabled: needsByok,
+          onDisabledClick: needsByok
+            ? () => toast.error(`${displayName} isn't available on your current plan. Upgrade to Pro to use it.`)
+            : undefined,
           // pass meta to use in onChange and onOptionHover
           meta: { group, modelName, specs },
         });
       });
     });
     return opts;
-  }, [modelsList, bridgeType, modelsConfig, service]);
+  }, [modelsList, bridgeType, modelsConfig, service, isServiceFullyInPlan, planAllowedModels, hasOwnApiKey]);
   const [pendingSelection, setPendingSelection] = useState(null);
 
   const confirmModelChange = useCallback(() => {
@@ -413,7 +443,7 @@ const ModelDropdown = ({
                 options={autoModelBasedOnOptions}
                 value={selectedAutoModelBasedOn}
                 onChange={handleAutoSelectModelChange}
-                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-content/20 text-base-content h-8 min-w-[150px]"
+                className="flex w-full items-center justify-between gap-2 rounded-none border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-300 text-base-content h-8 min-w-[150px]"
                 placeholder="Select basis"
                 size="sm"
                 key={selectedAutoModelBasedOn}
@@ -437,13 +467,14 @@ const ModelDropdown = ({
                 }}
                 placeholder="Select model"
                 size="sm"
-                className="flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-content/20 text-base-content h-8 min-w-[150px]"
+                className="flex w-full items-center justify-between gap-2 rounded-none border px-3 py-2 text-sm whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 border-base-300 text-base-content h-8 min-w-[150px]"
                 style={{ backgroundColor: "color-mix(in oklab, var(--color-white) 3%, transparent)" }}
                 menuClassName="w-full sm:w-[260px] max-h-[500px] min-w-[200px]"
                 maxLabelLength={20}
               />
             )}
           </div>
+          {apiKeyActionButton}
           {showFallbackModelHint && (
             <InfoTooltip
               tooltipContent={
@@ -469,7 +500,7 @@ const ModelDropdown = ({
             >
               <button
                 type="button"
-                className={`btn btn-sm btn-ghost border rounded border-base-200 px-2 ${isFallbackEnabled ? "" : "opacity-70"}`}
+                className={`btn btn-sm border border-base-300 px-2 ${isFallbackEnabled ? "" : "opacity-70"}`}
               >
                 <CircleAlert size={16} className={isFallbackEnabled ? "text-warning" : "text-gray-400"} />
               </button>
@@ -483,7 +514,7 @@ const ModelDropdown = ({
         {modelType === "fine-tune" && (
           <div id="fine-tune-model-section" className="w-full sm:max-w-xs">
             <div className="label">
-              <span className="label-text text-base-content">Fine-Tune Model</span>
+              <span className="text-base-content">Fine-Tune Model</span>
             </div>
             <input
               autoComplete="off"
@@ -496,7 +527,7 @@ const ModelDropdown = ({
               onBlur={handleFinetuneModelChange}
               placeholder="Fine-tune model Name"
               disabled={isReadOnly}
-              className="input input-bordered input-sm w-full bg-base-100 text-base-content focus:border-primary focus:ring-1 focus:ring-primary min-h-[2.5rem] sm:min-h-[2rem]"
+              className="input input-sm w-full bg-base-100 text-base-content focus:border-primary focus:ring-1 focus:ring-primary min-h-[2.5rem] sm:min-h-[2rem]"
             />
           </div>
         )}
@@ -511,7 +542,7 @@ const ModelDropdown = ({
               <p className="text-sm text-base-content/80 leading-relaxed">
                 The newly selected model does not support <strong>JSON Schema</strong> response format.
               </p>
-              <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg text-xs text-warning flex items-start gap-2.5">
+              <div className="p-3 bg-warning/10 border border-warning/40 text-xs text-warning flex items-start gap-2.5">
                 <CircleAlert className="shrink-0 w-4 h-4 mt-0.5 text-warning" />
                 <span className="leading-normal">
                   The JSON schema will be automatically removed from the configuration if you proceed.

@@ -537,7 +537,9 @@ function MessageBubble({ text, align = "left", expandable = true, isError = fals
             collapsedHeight={TRACE_BUBBLE_CLAMP_HEIGHT}
             fadeHeight={40}
             style={{
-              "--expand-collapse-fade": isError ? "oklch(var(--er) / 0.10)" : "oklch(var(--b2) / 0.55)",
+              "--expand-collapse-fade": isError
+                ? "color-mix(in oklch, var(--color-error) 10%, transparent)"
+                : "color-mix(in oklch, var(--color-base-200) 55%, transparent)",
             }}
           >
             <div className="whitespace-pre-wrap">{text}</div>

@@ -56,7 +56,7 @@ function useIsDark() {
   return isDark;
 }
 
-function CodeBlock({ inline, className, children, showCopy = true, plain = false, ...props }) {
+function CodeBlock({ inline, className, children, showCopy = true, plain = false, fromIntegration = false, ...props }) {
   const match = /language-(\w+)/.exec(className || "");
   const [copyStatus, setCopyStatus] = useState("Copy");
   const [viewMode, setViewMode] = useState("code");
@@ -209,7 +209,7 @@ function CodeBlock({ inline, className, children, showCopy = true, plain = false
           {languageLabel || "Code"}
         </span>
         <div className="flex items-center gap-3">
-          {isHtml && (
+          {isHtml && !fromIntegration && (
             <div
               className={`flex items-center rounded-md p-0.5 gap-0.5 ${isDark ? "bg-base-300/50" : "bg-base-200/50"}`}
             >

@@ -1,4 +1,4 @@
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 /**
  * Safely extracts error message from axios error or network error
@@ -12,13 +12,10 @@ export const getErrorMessage = (error) => {
   }
 
   // Server error with response
-  return (
-    error?.response?.data?.message ||
-    error?.response?.data?.detail ||
-    error?.response?.data?.error ||
-    error?.message ||
-    "Something went wrong. Please try again."
-  );
+  const data = error?.response?.data;
+  const detailMessage = typeof data?.detail === "string" ? data.detail : data?.detail?.error || data?.detail?.message;
+
+  return data?.message || detailMessage || data?.error || error?.message || "Something went wrong. Please try again.";
 };
 
 /**

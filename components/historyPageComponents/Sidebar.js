@@ -12,7 +12,7 @@ import { ThumbsDownIcon, ThumbsUpIcon, UserIcon, MessageCircleIcon } from "@/com
 import { useEffect, useState, memo, useCallback, useRef, Fragment } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import CreateFineTuneModal from "../modals/CreateFineTuneModal.js";
 import DateRangePicker from "./DateRangePicker.js";
 import { usePathname, useRouter } from "next/navigation.js";
@@ -362,8 +362,8 @@ const Sidebar = memo(
         if (currentMessageId) finalUrl.searchParams.set("message_id", currentMessageId);
         if (searchParams?.type) finalUrl.searchParams.set("type", searchParams.type);
 
-        if (result?.data?.length) {
-          const firstResult = result.data[0];
+        if (result?.length) {
+          const firstResult = result[0];
           const rawThreadId = firstResult.thread_id;
           const rawSubThreadId = firstResult.sub_thread?.[0]?.sub_thread_id || rawThreadId;
           finalUrl.searchParams.set("thread_id", rawThreadId);
@@ -411,7 +411,7 @@ const Sidebar = memo(
         const startDate = searchParams?.start;
         const endDate = searchParams?.end;
 
-        await dispatch(
+        const result = await dispatch(
           getHistoryAction(
             params?.id,
             1,
@@ -432,6 +432,15 @@ const Sidebar = memo(
         // Remove message_id
         clearUrl.searchParams.delete("message_id");
         if (searchParams?.type) clearUrl.searchParams.set("type", searchParams.type);
+
+        if (!searchParams?.thread_id && result?.length) {
+          const firstResult = result[0];
+          const rawThreadId = firstResult.thread_id;
+          const rawSubThreadId = firstResult.sub_thread?.[0]?.sub_thread_id || rawThreadId;
+          clearUrl.searchParams.set("thread_id", rawThreadId);
+          clearUrl.searchParams.set("subThread_id", rawSubThreadId);
+          dispatch(clearThreadData());
+        }
 
         router.push(clearUrl.pathname + clearUrl.search, undefined, { shallow: true });
 
@@ -693,7 +702,7 @@ const Sidebar = memo(
                                   autoComplete="off"
                                   data-testid={`history-sidebar-filter-by-${fieldKey}`}
                                   type="text"
-                                  className="input input-xs input-bordered w-full text-xs"
+                                  className="input input-xs w-full text-xs"
                                   placeholder={`Search ${fieldKey.replace(/_/g, " ")}...`}
                                   value={filterByFields[fieldKey] || ""}
                                   onChange={(e) =>
@@ -709,7 +718,7 @@ const Sidebar = memo(
                                 autoComplete="off"
                                 data-testid="history-sidebar-filter-by-variable-key"
                                 type="text"
-                                className="input input-xs input-bordered flex-1 min-w-0 text-xs"
+                                className="input input-xs flex-1 min-w-0 text-xs"
                                 placeholder="key"
                                 value={variableKey}
                                 onChange={(e) => setVariableKey(e.target.value)}
@@ -718,7 +727,7 @@ const Sidebar = memo(
                                 autoComplete="off"
                                 data-testid="history-sidebar-filter-by-variable-value"
                                 type="text"
-                                className="input input-xs input-bordered flex-1 min-w-0 text-xs"
+                                className="input input-xs flex-1 min-w-0 text-xs"
                                 placeholder="value"
                                 value={variableValue}
                                 onChange={(e) => setVariableValue(e.target.value)}
@@ -771,7 +780,7 @@ const Sidebar = memo(
                 <select
                   data-testid="history-sidebar-version-select"
                   id="history-sidebar-version-select"
-                  className="select select-bordered select-sm rounded-lg w-full text-xs"
+                  className="select select-sm rounded-lg w-full text-xs"
                   value={selectedVersion}
                   onChange={handleVersionChange}
                 >
@@ -809,7 +818,7 @@ const Sidebar = memo(
                   ref={searchRef}
                   placeholder="Search..."
                   onChange={(e) => handleChange(e)}
-                  className="input input-bordered input-sm rounded-lg w-full pr-6 text-xs"
+                  className="input input-sm rounded-lg w-full pr-6 text-xs"
                 />
                 {searchQuery && (
                   <X
@@ -872,7 +881,7 @@ const Sidebar = memo(
                             />
                           </div>
                           <ul
-                            className={`min-h-full text-base-content flex flex-col space-y-2 px-2 pb-1 ${!isAnalytics ? "menu" : ""}`}
+                            className={`min-h-full min-w-full text-base-content flex flex-col space-y-2 px-2 pb-1 ${!isAnalytics ? "menu" : ""}`}
                           >
                             {items.map((item) => (
                               <div className="flex-col" key={item?.thread_id}>

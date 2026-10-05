@@ -14,7 +14,7 @@ import { closeModal, formatDate, formatRelativeTime, openModal } from "@/utils/u
 import { CopyIcon, TrashIcon } from "@/components/Icons";
 import React, { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import DeleteModal from "@/components/UI/DeleteModal";
 import Modal from "@/components/UI/Modal";
 import SearchItems from "@/components/UI/SearchItems";
@@ -28,16 +28,19 @@ function Page({ params }) {
 
   const resolvedParams = use(params);
   const dispatch = useDispatch();
-  const { authData, isFirstPauthCreation, descriptions, orgRole, linksData } = useCustomSelector((state) => {
-    const user = state.userDetailsReducer.userDetails || [];
-    return {
-      authData: state?.authDataReducer?.authData || [],
-      isFirstPauthCreation: user?.meta?.onboarding?.PauthKey,
-      descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
-      orgRole: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]?.role_name,
-      linksData: state.flowDataReducer.flowData.linksData || [],
-    };
-  });
+  const { authData, isFirstPauthCreation, descriptions, orgRole, linksData, isOrgBlocked } = useCustomSelector(
+    (state) => {
+      const user = state.userDetailsReducer.userDetails || [];
+      return {
+        authData: state?.authDataReducer?.authData || [],
+        isFirstPauthCreation: user?.meta?.onboarding?.PauthKey,
+        descriptions: state.flowDataReducer.flowData?.descriptionsData?.descriptions || {},
+        orgRole: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id]?.role_name,
+        linksData: state.flowDataReducer.flowData.linksData || [],
+        isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams.org_id) || false,
+      };
+    }
+  );
 
   const [filterPauthKeys, setFilterPauthKeys] = useState(authData);
   const [selectedDataToDelete, setselectedDataToDelete] = useState(null);
@@ -86,6 +89,10 @@ function Page({ params }) {
    * @param {string} name Name of the new auth key
    */
   const createAuthKeyHandler = async (e, name) => {
+    if (isOrgBlocked) {
+      toast.error("Your org is blocked. You cannot create auth keys. Contact support@gtwy.ai for assistance.");
+      return;
+    }
     const isDuplicate = authData.some((item) => item.name === name);
     if (isDuplicate) {
       toast.error("The name has already been taken");
@@ -190,7 +197,20 @@ function Page({ params }) {
               <SearchItems data={authData} setFilterItems={setFilterPauthKeys} item="Auth Key" />
             )}
             <div className={`flex-shrink-0 ${authData?.length > 5 ? "mr-2" : "ml-2"}`}>
-              <button className="btn btn-primary btn-sm" onClick={() => openModal(MODAL_TYPE.PAUTH_KEY_MODAL)}>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  if (isOrgBlocked) {
+                    toast.error(
+                      "Your org is blocked. You cannot create auth keys. Contact support@gtwy.ai for assistance."
+                    );
+                    return;
+                  }
+                  openModal(MODAL_TYPE.PAUTH_KEY_MODAL);
+                }}
+                disabled={isOrgBlocked}
+                title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
+              >
                 + Create New Auth Key
               </button>
             </div>
@@ -239,12 +259,19 @@ function Page({ params }) {
         widthClass="w-[min(480px,92vw)]"
         footer={
           <div className="flex gap-2">
-            <button className="btn btn-ghost btn-sm" onClick={handleClosePauthKeyModal}>
+            <button
+              data-testid="create-auth-key-cancel-button"
+              className="btn btn-ghost btn-sm"
+              onClick={handleClosePauthKeyModal}
+            >
               Cancel
             </button>
             <button
+              data-testid="create-auth-key-create-button"
               className="btn btn-primary btn-sm"
               onClick={(e) => createAuthKeyHandler(e, document.getElementById("authNameInput").value)}
+              disabled={isOrgBlocked}
+              title={isOrgBlocked ? "Your org is blocked. Contact support@gtwy.ai for assistance." : undefined}
             >
               Create
             </button>
@@ -256,8 +283,9 @@ function Page({ params }) {
             <input
               autoComplete="off"
               type="text"
-              className="input input-bordered w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
+              className="input w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
               id="authNameInput"
+              data-testid="create-auth-key-name-input"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   const authName = e.target.value.trim();

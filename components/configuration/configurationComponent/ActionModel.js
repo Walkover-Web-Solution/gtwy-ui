@@ -170,13 +170,13 @@ const ActionModel = ({ params, searchParams, actionId, setActionId, isPublished 
 const ActionSelect = ({ selectedAction, setSelectedAction, handleInputChange, isPublished, isEditor = true }) => (
   <label className="form-control">
     <div className="label">
-      <span className="label-text text-lg">Select an Action</span>
+      <span className="text-lg">Select an Action</span>
     </div>
     <select
       data-testid="action-type-select"
       id="action-type-select"
       disabled={isPublished || !isEditor}
-      className="select select-sm select-bordered"
+      className="select select-sm"
       value={selectedAction}
       onChange={(e) => {
         setSelectedAction(e.target.value);
@@ -188,7 +188,7 @@ const ActionSelect = ({ selectedAction, setSelectedAction, handleInputChange, is
       <option value="reply">Reply</option>
     </select>
     <div className="label">
-      <span className="label-text-alt">
+      <span className="">
         Choose an action for the chatbot: send data to the Frontend or reply to the user. These options allow you to
         direct the flow of data accordingly.
       </span>
@@ -199,21 +199,19 @@ const ActionSelect = ({ selectedAction, setSelectedAction, handleInputChange, is
 const ActionDescription = ({ descriptionRef, handleInputChange, isPublished, isEditor = true }) => (
   <label className="form-control">
     <div className="label">
-      <span className="label-text text-lg">Description</span>
+      <span className="text-lg">Description</span>
     </div>
     <textarea
       data-testid="action-description-textarea"
       id="action-description-textarea"
       disabled={isPublished || !isEditor}
-      className="textarea bg-base-100 textarea-bordered h-24"
+      className="textarea bg-base-100 h-24"
       placeholder="Enter a brief bio"
       ref={descriptionRef}
       onChange={handleInputChange}
     ></textarea>
     <div className="label">
-      <span className="label-text-alt">
-        Describe when to run this action. Provide specific scenarios or conditions.
-      </span>
+      <span className="">Describe when to run this action. Provide specific scenarios or conditions.</span>
     </div>
   </label>
 );
@@ -221,21 +219,19 @@ const ActionDescription = ({ descriptionRef, handleInputChange, isPublished, isE
 const ActionDataInput = ({ dataRef, handleInputChange, isPublished, isEditor = true }) => (
   <label className="form-control">
     <div className="label">
-      <span className="label-text text-lg">Data Structure for Frontend</span>
+      <span className="text-lg">Data Structure for Frontend</span>
     </div>
     <textarea
       data-testid="action-data-structure-textarea"
       id="action-data-structure-textarea"
       disabled={isPublished || !isEditor}
-      className="textarea bg-base-100 textarea-bordered h-24"
+      className="textarea bg-base-100 h-24"
       placeholder="Enter data structure format"
       ref={dataRef}
       onChange={handleInputChange}
     ></textarea>
     <div className="label">
-      <span className="label-text-alt">
-        Provide a proper structure in which the data should be sent to the Frontend.
-      </span>
+      <span className="">Provide a proper structure in which the data should be sent to the Frontend.</span>
     </div>
   </label>
 );

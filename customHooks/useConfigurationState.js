@@ -44,6 +44,7 @@ export const useConfigurationState = (params, searchParams) => {
       showSkills: state.appInfoReducer.embedUserDetails.showSkills,
       validationConfig: validationConfig, // Expose full validationConfig
       cacheOn: activeData?.cache_on ?? false,
+      configPanelLayout: state.appInfoReducer.embedUserDetails.layout || "tabs",
     };
   });
 };

@@ -15,19 +15,27 @@ import {
 } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
+import { useParams } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, getIconOfService } from "@/utils/utility";
 import { updateTestCaseAction } from "@/store/action/testCasesAction";
+import { getAllFunctions } from "@/store/action/bridgeAction";
 import TestCaseVariablesModal from "./TestCaseVariablesModal";
 import AutoResizeTextarea from "@/components/UI/AutoResizeTextarea";
 import ReactMarkdown from "react-markdown";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
 import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
-import { FileClockIcon } from "@/components/Icons";
+import { FileClockIcon, BotMessageIcon } from "@/components/Icons";
 import InfoTooltip from "@/components/InfoTooltip";
 import { PdfIcon } from "@/icons/pdfIcon";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import ExpandCollapse from "@/components/UI/ExpandCollapse";
+import MockToolResponsesSection, {
+  computeBridgeToolOptions,
+} from "@/components/testcaseComponents/MockToolResponsesSection";
+import { getMessageByIdApi } from "@/config/historyApi";
+import { promptObjectToString } from "@/utils/promptUtils";
+import { toast } from "react-hot-toast";
 
 const TestCaseDetailsPanel = ({
   selectedTestCase,
@@ -44,6 +52,8 @@ const TestCaseDetailsPanel = ({
   bridgeId,
 }) => {
   const dispatch = useDispatch();
+  const params = useParams();
+  const mockToolResponsesRef = useRef(null);
 
   // Comparison versions follow the single source of truth: `selectedVersions` from header.
   // Fall back to first 2 versions if nothing selected (defensive only).
@@ -233,6 +243,13 @@ const TestCaseDetailsPanel = ({
       state?.bridgeReducer?.org?.[bridgeId]?.embed_token,
   }));
 
+  // Source of truth for the bridge's configured tools — same slices the
+  // bridge/agent tool configuration screen (EmbedList) reads from.
+  const { functionData, publishedFunctionIds } = useCustomSelector((state) => ({
+    functionData: state?.bridgeReducer?.org?.[params?.org_id]?.functionData || {},
+    publishedFunctionIds: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.function_ids || [],
+  }));
+
   const handleToolPrimaryClick = useCallback(
     async (tool) => {
       // Check if this is a RAG tool - don't call openViasocket for RAG tools
@@ -255,9 +272,9 @@ const TestCaseDetailsPanel = ({
         return;
       }
 
-      // Call openViasocket for other tools
-      if (typeof window !== "undefined" && window.openViasocket) {
-        window.openViasocket(tool?.id, {
+      // First arg is tool.id (viasocket script_id) so the embed opens that tool's log.
+      if (typeof window !== "undefined" && window.openViasocket && tool?.id) {
+        window.openViasocket(tool.id, {
           flowHitId: tool?.data?.metadata?.flowHitId,
           embedToken,
           meta: {
@@ -379,6 +396,92 @@ const TestCaseDetailsPanel = ({
   // Get version data from Redux
   const bridgeVersionMapping = useCustomSelector(
     (state) => state?.bridgeReducer?.bridgeVersionMapping?.[bridgeId] || {}
+  );
+
+  useEffect(() => {
+    if (Object.keys(functionData || {}).length === 0) dispatch(getAllFunctions());
+  }, [dispatch, functionData]);
+
+  const bridgeToolOptions = useMemo(
+    () => computeBridgeToolOptions({ functionData, versionMapping: bridgeVersionMapping, publishedFunctionIds }),
+    [functionData, bridgeVersionMapping, publishedFunctionIds]
+  );
+
+  // Autosave hook for MockToolResponsesSection — fired on JSON field blur and on
+  // add/remove-recording clicks, so there's no separate "Save mocks" button.
+  const handleMockToolResponsesChange = (toolsResponse) => {
+    if (!selectedTestCase?._id) return;
+    dispatch(
+      updateTestCaseAction({
+        testCaseId: selectedTestCase._id,
+        dataToUpdate: {
+          conversation: selectedTestCase?.conversation,
+          type: selectedTestCase?.type,
+          expected: selectedTestCase?.expected,
+          matching_type: selectedTestCase?.matching_type,
+          variables: selectedTestCase?.variables,
+          tools_response: toolsResponse,
+        },
+      })
+    );
+  };
+
+  const [debuggingVersion, setDebuggingVersion] = useState(null);
+
+  const handleDebugAgent = useCallback(
+    async (version, currentRun, modelOutput, runErrorMessage) => {
+      if (typeof window.SendDataToChatbot !== "function") {
+        toast.error("Debug agent isn't ready yet. Please refresh the page.");
+        return;
+      }
+      setDebuggingVersion(version);
+      try {
+        let aiconfig = {};
+        if (currentRun?.message_id) {
+          try {
+            const log = await getMessageByIdApi({ message_id: currentRun.message_id });
+            aiconfig = log?.data?.AiConfig || {};
+          } catch (error) {
+            console.error("Failed to fetch AiConfig for debug agent:", error);
+          }
+        }
+        if (!aiconfig || Object.keys(aiconfig).length === 0) {
+          aiconfig = bridgeVersionMapping?.[version]?.configuration || {};
+        }
+
+        // Prompt is stored either as plain text or as a structured { role, goal, instruction }
+        // object, so flatten it the same way the rest of the app does before sending.
+        const rawPrompt = bridgeVersionMapping?.[version]?.configuration?.prompt;
+        const versionPrompt = typeof rawPrompt === "string" ? rawPrompt : promptObjectToString(rawPrompt) || "";
+
+        window.SendDataToChatbot({
+          parentId: "",
+          bridgeName: "testcase_page_chatbot",
+          threadId: String(
+            currentRun?.message_id || `${selectedTestCase?._id}_${version}_${currentRun?.model || "default"}`
+          ),
+          variables: {
+            "System Prompt": versionPrompt,
+            aiconfig,
+            response: modelOutput || runErrorMessage || "",
+            expected:
+              (typeof currentRun?.expected === "string"
+                ? currentRun.expected
+                : currentRun?.expected
+                  ? JSON.stringify(currentRun.expected, null, 2)
+                  : "") || getExpectedValue(selectedTestCase),
+          },
+          version_id: "null",
+          hideCloseButton: "false",
+        });
+        setTimeout(() => {
+          if (typeof window.openChatbot === "function") window.openChatbot();
+        }, 1000);
+      } finally {
+        setTimeout(() => setDebuggingVersion((curr) => (curr === version ? null : curr)), 1000);
+      }
+    },
+    [bridgeVersionMapping, selectedTestCase?._id]
   );
 
   // Reset test case variables and alert state when selectedTestCase changes
@@ -638,6 +741,17 @@ const TestCaseDetailsPanel = ({
               )}
             </div>
           )}
+
+          {/* Preset Tool Response */}
+          <div className="mb-6">
+            <MockToolResponsesSection
+              ref={mockToolResponsesRef}
+              tools={bridgeToolOptions}
+              initialValue={selectedTestCase?.tools_response}
+              resetKey={selectedTestCase?._id}
+              onBlurSave={handleMockToolResponsesChange}
+            />
+          </div>
 
           {/* Input Section - last user message (editable).
               If no user message exists yet, render an empty editable field so
@@ -1062,6 +1176,18 @@ const TestCaseDetailsPanel = ({
                                       </button>
                                     </InfoTooltip>
                                   </>
+                                )}
+                                {hasRun && (
+                                  <button
+                                    onClick={() => handleDebugAgent(version, currentRun, modelOutput, runErrorMessage)}
+                                    disabled={debuggingVersion === version}
+                                    className="h-6 px-2 flex items-center gap-1 rounded border border-base-300 bg-base-100 text-[10px] font-semibold text-base-content/70 hover:bg-base-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Ask AI why this version produced this output"
+                                    data-testid={`testcase-version-debug-agent-${versions.indexOf(version) + 1}`}
+                                  >
+                                    <BotMessageIcon size={12} />
+                                    <span>{debuggingVersion === version ? "Opening..." : "Debug"}</span>
+                                  </button>
                                 )}
                                 {totalRuns > 1 && (
                                   <div className="flex items-center gap-1 ml-1">

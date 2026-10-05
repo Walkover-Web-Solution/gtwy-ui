@@ -3,7 +3,7 @@ import { userDetails } from "@/store/action/userDetailsAction";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import LoadingSpinner from "./LoadingSpinner";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, RequiredItem } from "@/utils/utility";
@@ -146,7 +146,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
               value={orgDetails.name}
               onChange={handleChange}
               placeholder="Workspace Name"
-              className="input input-bordered input-sm text-xs w-full"
+              className="input input-sm text-xs w-full"
               minLength={3}
               maxLength={40}
               required
@@ -163,7 +163,7 @@ const CreateOrg = ({ handleSwitchOrg }) => {
               value={orgDetails.about}
               onChange={handleChange}
               placeholder="About Your Workspace"
-              className="textarea textarea-bordered textarea-sm text-xs w-full"
+              className="textarea textarea-sm text-xs w-full"
             />
           </div>
 
