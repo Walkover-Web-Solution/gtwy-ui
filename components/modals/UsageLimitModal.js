@@ -3,13 +3,16 @@ import React, { useState, useEffect } from "react";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
-import { Activity } from "lucide-react";
+import { Activity, Infinity } from "lucide-react";
 
 const UsageLimitModal = ({ data, onConfirm, item }) => {
   const [limit, setLimit] = useState(data?.item_limit);
   const [resetPeriod, setResetPeriod] = useState(data?.item_limit_reset_period || "daily");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const hasSavedLimit = Number(data?.item_limit || 0) > 0;
+  const isUnlimited = !(Number(limit || 0) > 0);
 
   useEffect(() => {
     if (data && data.item_limit) {
@@ -24,26 +27,33 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
     closeModal(MODAL_TYPE.API_KEY_LIMIT_MODAL);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!limit || isNaN(parseFloat(limit)) || parseFloat(limit) < 0) {
-      setError("Please enter a valid number for the limit");
-      return;
-    }
-
+  const submitLimit = async (limitValue) => {
     setIsLoading(true);
     setError("");
 
     try {
-      await onConfirm(data, parseFloat(limit), resetPeriod);
+      await onConfirm(data, limitValue, resetPeriod);
       handleClose();
     } catch (err) {
-      setError(err.message || "Failed to set API key limit");
+      setError(err.message || "Failed to set usage limit");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const isBlank = limit === "" || limit === null || limit === undefined;
+    if (!isBlank && (isNaN(parseFloat(limit)) || parseFloat(limit) < 0)) {
+      setError("Please enter a valid number for the limit");
+      return;
+    }
+
+    await submitLimit(isBlank ? 0 : parseFloat(limit));
+  };
+
+  const handleRemoveLimit = () => submitLimit(0);
 
   return (
     <Modal
@@ -74,6 +84,11 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
             min="0"
             step="0.0001"
           />
+          {isUnlimited && (
+            <p className="text-xs text-base-content/60 mt-1 flex items-center gap-1">
+              <Infinity size={14} /> Unlimited — usage will not be capped
+            </p>
+          )}
           {error && <p className="text-error text-sm mt-1">{error}</p>}
         </div>
 
@@ -91,6 +106,18 @@ const UsageLimitModal = ({ data, onConfirm, item }) => {
         </div>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-base-content/10">
+          {hasSavedLimit && (
+            <button
+              data-testid="usage-limit-remove-button"
+              id="usage-limit-remove-button"
+              type="button"
+              onClick={handleRemoveLimit}
+              className="btn btn-sm btn-ghost text-error mr-auto"
+              disabled={isLoading}
+            >
+              Remove Limit
+            </button>
+          )}
           <button
             data-testid="usage-limit-cancel-button"
             id="usage-limit-cancel-button"

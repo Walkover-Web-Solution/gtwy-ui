@@ -493,7 +493,7 @@ export const getAllResponseTypesAction = (orgId) => async (dispatch, getState) =
 };
 
 export const updateBridgeAction =
-  ({ bridgeId, dataToSend }) =>
+  ({ bridgeId, dataToSend, showToast = false }) =>
   async (dispatch) => {
     try {
       dispatch(isPending());
@@ -505,6 +505,7 @@ export const updateBridgeAction =
         name: data.data.agent?.name,
         update_type: "metadata",
       });
+      if (showToast) toast.success(data.data?.message || "Agent updated successfully");
       return { success: true };
     } catch (error) {
       console.error(error);
