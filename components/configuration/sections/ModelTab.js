@@ -11,6 +11,7 @@ import RecommendedModal from "../configurationComponent/RecommendedModal";
 import AdvancedParameters from "../configurationComponent/AdvancedParamenter";
 import FallbackModel from "../configurationComponent/FallbackModel";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { isJevService } from "@/utils/jevQuestions";
 
 const ModelTab = () => {
   const {
@@ -166,8 +167,9 @@ const ModelTab = () => {
           </div>
         </div>
 
-        {/* Parameters Section - rendered as its own panel so it reads apart from the fields above */}
-        {((showAdvancedParameters && isEmbedUser) || !isEmbedUser) && (
+        {/* Parameters Section - rendered as its own panel so it reads apart from the fields above.
+            Jev (TypeSafe) has no tunable parameters; its questions are edited in the playground. */}
+        {((showAdvancedParameters && isEmbedUser) || !isEmbedUser) && !isJevService(service) && (
           <div
             data-testid="model-tab-parameters-section"
             id="model-tab-parameters-section"

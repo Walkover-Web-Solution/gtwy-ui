@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { initializeVariablesState, updateVariables } from "@/store/reducer/variableReducer";
+import { getSavedJevQuestions, isJevService } from "@/utils/jevQuestions";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { sendDataToParent, toggleSidebar } from "@/utils/utility";
 import { CloseIcon } from "@/components/Icons";
@@ -232,7 +233,10 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     const connectedTools = versionData?.connected_tools || [];
 
     return {
-      prompt: versionData?.configuration?.prompt || "",
+      // Jev (TypeSafe) has no prompt: its {{variables}} are written in the saved questions.
+      prompt: isJevService(versionData?.service)
+        ? JSON.stringify(getSavedJevQuestions(versionData?.configuration))
+        : versionData?.configuration?.prompt || "",
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,

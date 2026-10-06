@@ -1,7 +1,7 @@
 import { dryRun } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
-import { uploadMultipleImagesAction } from "@/store/action/bridgeAction";
+import { updateBridgeVersionAction, uploadMultipleImagesAction } from "@/store/action/bridgeAction";
 import {
   setChatLoading,
   setChatError,
@@ -25,7 +25,7 @@ import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { buildVariablesObject } from "@/utils/variableValidation";
 import { buildUserUrls, isWordFileUrl } from "@/utils/attachmentUtils";
-import { isJevService } from "@/utils/jevQuestions";
+import { getSavedJevQuestions, isJevService } from "@/utils/jevQuestions";
 import JevQuestionsPanel from "./JevQuestionsPanel";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
@@ -161,12 +161,24 @@ function ChatTextInput({
 
   const [localDataToSend, setLocalDataToSend] = useState(dataToSend);
 
-  const activePrompt = draftPrompt !== undefined ? draftPrompt : prompt;
-
   const isJev = isJevService(service);
-  // { questions, error } reported by JevQuestionsPanel; null until it has loaded.
-  const [jevQuestionsState, setJevQuestionsState] = useState(null);
+  const savedJevQuestions = useMemo(() => (isJev ? getSavedJevQuestions(configuration) : {}), [isJev, configuration]);
+  const canEditJevQuestions = !isPublished && Boolean(versionId);
   const [jevEditorRequest, setJevEditorRequest] = useState(0);
+  const saveJevQuestions = useCallback(
+    (questions) =>
+      dispatch(
+        updateBridgeVersionAction({
+          bridgeId: params?.id,
+          versionId,
+          dataToSend: { configuration: { questions } },
+        })
+      ),
+    [dispatch, params?.id, versionId]
+  );
+
+  // Jev has no prompt; its {{variables}} live in the question text, so validate those instead.
+  const activePrompt = isJev ? JSON.stringify(savedJevQuestions) : draftPrompt !== undefined ? draftPrompt : prompt;
 
   const { isVision, isFileSupported, isVideoSupported } = useMemo(() => {
     const validationConfig =
@@ -314,13 +326,12 @@ function ChatTextInput({
     }
     let jevQuestions = null;
     if (isJev) {
-      if (!jevQuestionsState?.questions) {
-        const reason = jevQuestionsState?.error || "Add at least one question for Jev to answer.";
-        dispatch(setChatError(channelIdentifier, `Jev questions: ${reason}`));
+      if (Object.keys(savedJevQuestions).length === 0) {
+        dispatch(setChatError(channelIdentifier, "Add at least one question for Jev to answer."));
         setJevEditorRequest((n) => n + 1);
         return;
       }
-      jevQuestions = jevQuestionsState.questions;
+      jevQuestions = savedJevQuestions;
     }
 
     dispatch(setChatError(channelIdentifier, ""));
@@ -767,7 +778,12 @@ function ChatTextInput({
       className={`flex justify-end items-end gap-2 w-full relative ${isJev ? "flex-wrap" : ""}`}
     >
       {isJev && (
-        <JevQuestionsPanel agentId={params?.id} onChange={setJevQuestionsState} openRequest={jevEditorRequest} />
+        <JevQuestionsPanel
+          savedQuestions={savedJevQuestions}
+          canEdit={canEditJevQuestions}
+          onSave={saveJevQuestions}
+          openRequest={jevEditorRequest}
+        />
       )}
       {/* Unsaved prompt changes modal */}
       <ConfirmationModal

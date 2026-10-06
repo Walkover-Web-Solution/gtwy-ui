@@ -118,8 +118,6 @@ const nextUid = () => `q_${Date.now().toString(36)}_${itemCounter++}`;
 export const createJevItem = (type = "noul") => ({
   uid: nextUid(),
   id: "",
-  // The answer key follows the question text until the user edits it by hand.
-  keyEdited: false,
   type,
   instructions: "",
   options: [
@@ -129,20 +127,18 @@ export const createJevItem = (type = "noul") => ({
   levels: ["", "", ""],
 });
 
-// "Is the customer angry?" -> "is_the_customer_angry"
-export const toAnswerKey = (text) =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40)
-    .replace(/_+$/, "");
+// Saved questions as stored on the agent version. The API normally unwraps the
+// {mode, value} storage format, but accept it too in case a raw document comes through.
+export const getSavedJevQuestions = (configuration) => {
+  let questions = configuration?.questions;
+  if (questions && typeof questions === "object" && "mode" in questions) questions = questions.value;
+  return questions && typeof questions === "object" && !Array.isArray(questions) ? questions : {};
+};
 
 export const questionsToItems = (questions) =>
   Object.entries(questions || {}).map(([id, question]) => {
     const item = createJevItem(question?.type);
     item.id = id;
-    item.keyEdited = true;
     item.instructions = question?.instructions || "";
     if (question?.type === "choice" && question.criteria && typeof question.criteria === "object") {
       item.options = Object.entries(question.criteria).map(([key, description]) => ({
