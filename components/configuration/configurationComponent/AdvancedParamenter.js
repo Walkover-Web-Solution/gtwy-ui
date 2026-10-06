@@ -698,6 +698,19 @@ const AdvancedParameters = ({
                       dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
                         localOnly: true,
                       });
+                    } else if (selectedValue === "json_object") {
+                      setObjectFieldValue(null);
+                      dispatch(
+                        updateBridgeVersionAction({
+                          bridgeId: params?.id,
+                          versionId: searchParams?.version,
+                          dataToSend: {
+                            configuration: {
+                              response_type: { type: "json_object" },
+                            },
+                          },
+                        })
+                      );
                     } else if (selectedValue === "text") {
                       dispatch(
                         updateBridgeVersionAction({
@@ -738,6 +751,11 @@ const AdvancedParameters = ({
                       <ul className="absolute right-0 top-full z-high mt-1 w-full overflow-hidden border border-base-300 bg-base-100 shadow-lg">
                         {[
                           { value: "text", label: "Text", isActive: currentType === "text" },
+                          {
+                            value: "json_object",
+                            label: "JSON Object",
+                            isActive: currentType === "json_object",
+                          },
                           {
                             value: "json_schema",
                             label: "JSON Schema",
@@ -891,10 +909,7 @@ const AdvancedParameters = ({
                         // Handle response_type specifically
                         if (configuration?.[key]?.is_template) {
                           return "widget";
-                        } else if (
-                          configuration?.[key]?.type === "json_schema" ||
-                          configuration?.[key]?.type === "json_object"
-                        ) {
+                        } else if (configuration?.[key]?.type === "json_schema") {
                           return "json_schema";
                         } else if (configuration?.[key]?.type) {
                           return configuration?.[key]?.type;
@@ -1002,6 +1017,7 @@ const AdvancedParameters = ({
                       return (
                         <>
                           <option value="text">Text</option>
+                          <option value="json_object">JSON Object</option>
                           <option value="json_schema">JSON Schema</option>
                           {bridgeKind === "chatbot" && !isEmbedUser && <option value="widget">Widget</option>}
                         </>
