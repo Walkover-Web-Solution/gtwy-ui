@@ -243,8 +243,9 @@ const QuestionChip = ({ id, question }) => {
 };
 
 // Shown above the playground input for TypeSafe (Jev) agents. The chat message is sent as the
-// `state`; the questions are saved on the agent version as configuration.questions.
-// The editor works on a draft: Save persists it, closing any other way discards it.
+// `state`; the questions are kept in this browser per agent (not saved on the agent) and sent
+// with each message as configuration.questions. The editor works on a draft: Save keeps it,
+// closing any other way discards it.
 // Changing `openRequest` opens the editor (used when a send is blocked).
 function JevQuestionsPanel({ savedQuestions, canEdit, onSave, openRequest = 0 }) {
   const [draft, setDraft] = useState(null);
@@ -359,7 +360,7 @@ function JevQuestionsPanel({ savedQuestions, canEdit, onSave, openRequest = 0 })
                 <p className="mt-0.5 text-xs text-base-content/60">
                   Jev reads the message you send in the chat and answers every question below, with a confidence for
                   each. To fill in a value, write <code>{"{{name}}"}</code> in any text and set <code>name</code> in the
-                  Variables panel.
+                  Variables panel. Questions are kept in this browser and sent with each message.
                 </p>
               </div>
               <button

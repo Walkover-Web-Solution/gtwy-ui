@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { initializeVariablesState, updateVariables } from "@/store/reducer/variableReducer";
-import { getSavedJevQuestions, isJevService } from "@/utils/jevQuestions";
+import { isJevService } from "@/utils/jevQuestions";
+import useJevQuestions from "@/customHooks/useJevQuestions";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { sendDataToParent, toggleSidebar } from "@/utils/utility";
 import { CloseIcon } from "@/components/Icons";
@@ -214,7 +215,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const dispatch = useDispatch();
 
   const {
-    prompt,
+    prompt: agentPrompt,
+    isJev,
     bridgeName,
     variableGroups,
     activeGroup,
@@ -233,10 +235,8 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     const connectedTools = versionData?.connected_tools || [];
 
     return {
-      // Jev (TypeSafe) has no prompt: its {{variables}} are written in the saved questions.
-      prompt: isJevService(versionData?.service)
-        ? JSON.stringify(getSavedJevQuestions(versionData?.configuration))
-        : versionData?.configuration?.prompt || "",
+      prompt: versionData?.configuration?.prompt || "",
+      isJev: isJevService(versionData?.service),
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
@@ -255,6 +255,13 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       connectedTools: connectedTools,
     };
   });
+
+  // Jev (TypeSafe) has no prompt: its {{variables}} are written in the questions kept in this browser.
+  const jevQuestions = useJevQuestions(params?.id, isJev);
+  const prompt = useMemo(
+    () => (isJev ? JSON.stringify(jevQuestions) : agentPrompt),
+    [isJev, jevQuestions, agentPrompt]
+  );
   const [draftVariables, setDraftVariables] = useState([]);
   const [error, setError] = useState("");
   const [bulkEditMode, setBulkEditMode] = useState(false);

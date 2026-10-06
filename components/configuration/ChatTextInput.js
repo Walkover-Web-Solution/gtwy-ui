@@ -1,7 +1,7 @@
 import { dryRun } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
-import { updateBridgeVersionAction, uploadMultipleImagesAction } from "@/store/action/bridgeAction";
+import { uploadMultipleImagesAction } from "@/store/action/bridgeAction";
 import {
   setChatLoading,
   setChatError,
@@ -25,7 +25,8 @@ import { MODAL_TYPE } from "@/utils/enums";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import { buildVariablesObject } from "@/utils/variableValidation";
 import { buildUserUrls, isWordFileUrl } from "@/utils/attachmentUtils";
-import { getSavedJevQuestions, isJevService } from "@/utils/jevQuestions";
+import { isJevService, writeJevQuestions } from "@/utils/jevQuestions";
+import useJevQuestions from "@/customHooks/useJevQuestions";
 import JevQuestionsPanel from "./JevQuestionsPanel";
 
 const VARIABLE_SLIDER_DISABLE_KEY = "variableSliderDisabled";
@@ -162,20 +163,10 @@ function ChatTextInput({
   const [localDataToSend, setLocalDataToSend] = useState(dataToSend);
 
   const isJev = isJevService(service);
-  const savedJevQuestions = useMemo(() => (isJev ? getSavedJevQuestions(configuration) : {}), [isJev, configuration]);
-  const canEditJevQuestions = !isPublished && Boolean(versionId);
+  // Kept in this browser per agent (not saved on the agent) and sent with each message.
+  const savedJevQuestions = useJevQuestions(params?.id, isJev);
   const [jevEditorRequest, setJevEditorRequest] = useState(0);
-  const saveJevQuestions = useCallback(
-    (questions) =>
-      dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId,
-          dataToSend: { configuration: { questions } },
-        })
-      ),
-    [dispatch, params?.id, versionId]
-  );
+  const saveJevQuestions = useCallback((questions) => writeJevQuestions(params?.id, questions), [params?.id]);
 
   // Jev has no prompt; its {{variables}} live in the question text, so validate those instead.
   const activePrompt = isJev ? JSON.stringify(savedJevQuestions) : draftPrompt !== undefined ? draftPrompt : prompt;
@@ -780,7 +771,7 @@ function ChatTextInput({
       {isJev && (
         <JevQuestionsPanel
           savedQuestions={savedJevQuestions}
-          canEdit={canEditJevQuestions}
+          canEdit
           onSave={saveJevQuestions}
           openRequest={jevEditorRequest}
         />

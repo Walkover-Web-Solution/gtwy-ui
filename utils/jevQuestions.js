@@ -127,14 +127,6 @@ export const createJevItem = (type = "noul") => ({
   levels: ["", "", ""],
 });
 
-// Saved questions as stored on the agent version. The API normally unwraps the
-// {mode, value} storage format, but accept it too in case a raw document comes through.
-export const getSavedJevQuestions = (configuration) => {
-  let questions = configuration?.questions;
-  if (questions && typeof questions === "object" && "mode" in questions) questions = questions.value;
-  return questions && typeof questions === "object" && !Array.isArray(questions) ? questions : {};
-};
-
 export const questionsToItems = (questions) =>
   Object.entries(questions || {}).map(([id, question]) => {
     const item = createJevItem(question?.type);
@@ -189,4 +181,46 @@ export const validateJevItems = (items) => {
   });
   const count = Object.keys(errors).length;
   return { errors, error: count ? `${count} question${count === 1 ? " needs" : "s need"} attention.` : null };
+};
+
+// --- Browser storage ---------------------------------------------------------
+// Questions are not saved on the agent: they live in this browser per agent and
+// are sent with each playground request as configuration.questions.
+
+const JEV_STORAGE_EVENT = "jev-questions-change";
+const jevStorageKey = (agentId) => `jevQuestions:${agentId}`;
+
+export const readJevQuestions = (agentId) => {
+  if (!agentId) return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(jevStorageKey(agentId)) || "null");
+    // Earlier builds stored the editor's item list.
+    if (Array.isArray(parsed)) return itemsToQuestions(parsed.filter((item) => item?.id && item?.instructions));
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    // Unreadable or unavailable storage counts as no questions.
+  }
+  return {};
+};
+
+export const writeJevQuestions = (agentId, questions) => {
+  try {
+    localStorage.setItem(jevStorageKey(agentId), JSON.stringify(questions));
+  } catch {
+    return { success: false, error: "Could not save the questions in this browser." };
+  }
+  window.dispatchEvent(new CustomEvent(JEV_STORAGE_EVENT, { detail: { agentId } }));
+  return { success: true };
+};
+
+// Calls `onChange` when this agent's questions change in this tab or another one.
+export const subscribeJevQuestions = (agentId, onChange) => {
+  const handleLocal = (event) => event.detail?.agentId === agentId && onChange();
+  const handleStorage = (event) => event.key === jevStorageKey(agentId) && onChange();
+  window.addEventListener(JEV_STORAGE_EVENT, handleLocal);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(JEV_STORAGE_EVENT, handleLocal);
+    window.removeEventListener("storage", handleStorage);
+  };
 };
