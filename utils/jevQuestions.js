@@ -118,8 +118,6 @@ const nextUid = () => `q_${Date.now().toString(36)}_${itemCounter++}`;
 export const createJevItem = (type = "noul") => ({
   uid: nextUid(),
   id: "",
-  // The answer key follows the question text until the user edits it by hand.
-  keyEdited: false,
   type,
   instructions: "",
   options: [
@@ -129,20 +127,10 @@ export const createJevItem = (type = "noul") => ({
   levels: ["", "", ""],
 });
 
-// "Is the customer angry?" -> "is_the_customer_angry"
-export const toAnswerKey = (text) =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40)
-    .replace(/_+$/, "");
-
 export const questionsToItems = (questions) =>
   Object.entries(questions || {}).map(([id, question]) => {
     const item = createJevItem(question?.type);
     item.id = id;
-    item.keyEdited = true;
     item.instructions = question?.instructions || "";
     if (question?.type === "choice" && question.criteria && typeof question.criteria === "object") {
       item.options = Object.entries(question.criteria).map(([key, description]) => ({
@@ -193,4 +181,46 @@ export const validateJevItems = (items) => {
   });
   const count = Object.keys(errors).length;
   return { errors, error: count ? `${count} question${count === 1 ? " needs" : "s need"} attention.` : null };
+};
+
+// --- Browser storage ---------------------------------------------------------
+// Questions are not saved on the agent: they live in this browser per agent and
+// are sent with each playground request as configuration.questions.
+
+const JEV_STORAGE_EVENT = "jev-questions-change";
+const jevStorageKey = (agentId) => `jevQuestions:${agentId}`;
+
+export const readJevQuestions = (agentId) => {
+  if (!agentId) return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(jevStorageKey(agentId)) || "null");
+    // Earlier builds stored the editor's item list.
+    if (Array.isArray(parsed)) return itemsToQuestions(parsed.filter((item) => item?.id && item?.instructions));
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch {
+    // Unreadable or unavailable storage counts as no questions.
+  }
+  return {};
+};
+
+export const writeJevQuestions = (agentId, questions) => {
+  try {
+    localStorage.setItem(jevStorageKey(agentId), JSON.stringify(questions));
+  } catch {
+    return { success: false, error: "Could not save the questions in this browser." };
+  }
+  window.dispatchEvent(new CustomEvent(JEV_STORAGE_EVENT, { detail: { agentId } }));
+  return { success: true };
+};
+
+// Calls `onChange` when this agent's questions change in this tab or another one.
+export const subscribeJevQuestions = (agentId, onChange) => {
+  const handleLocal = (event) => event.detail?.agentId === agentId && onChange();
+  const handleStorage = (event) => event.key === jevStorageKey(agentId) && onChange();
+  window.addEventListener(JEV_STORAGE_EVENT, handleLocal);
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    window.removeEventListener(JEV_STORAGE_EVENT, handleLocal);
+    window.removeEventListener("storage", handleStorage);
+  };
 };

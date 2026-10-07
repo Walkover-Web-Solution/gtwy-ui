@@ -5,12 +5,9 @@ import {
   createJevItem,
   itemsToQuestions,
   questionsToItems,
-  toAnswerKey,
   validateJevItems,
 } from "@/utils/jevQuestions";
 import TypeSafeIcon from "@/icons/TypeSafeIcon";
-
-const storageKey = (agentId) => `jevQuestions:${agentId}`;
 
 const TYPES = {
   choice: {
@@ -18,34 +15,22 @@ const TYPES = {
     icon: CircleDot,
     description: "Picks one option from a list",
     placeholder: "Which team should handle this?",
+    keyPlaceholder: "department",
   },
   score: {
     label: "Score",
     icon: Gauge,
     description: "Rates it on a scale you define",
     placeholder: "How frustrated does the customer seem?",
+    keyPlaceholder: "frustration",
   },
   noul: {
     label: "Yes / No",
     icon: ToggleRight,
     description: "Chance a statement is true",
     placeholder: "The message is urgent",
+    keyPlaceholder: "is_urgent",
   },
-};
-
-const loadItems = (agentId) => {
-  try {
-    const stored = localStorage.getItem(storageKey(agentId));
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) return parsed;
-      // Earlier builds stored the raw questions map.
-      if (parsed && typeof parsed === "object") return questionsToItems(parsed);
-    }
-  } catch {
-    // Unreadable or unavailable storage starts empty.
-  }
-  return [];
 };
 
 const FieldLabel = ({ children, hint }) => (
@@ -218,12 +203,7 @@ const QuestionCard = ({ item, index, error, onChange, onRemove }) => (
         className="input input-sm input-bordered w-full"
         placeholder={`e.g. ${TYPES[item.type].placeholder}`}
         value={item.instructions}
-        onChange={(e) =>
-          onChange({
-            instructions: e.target.value,
-            ...(item.keyEdited ? {} : { id: toAnswerKey(e.target.value) }),
-          })
-        }
+        onChange={(e) => onChange({ instructions: e.target.value })}
       />
     </div>
 
@@ -235,9 +215,9 @@ const QuestionCard = ({ item, index, error, onChange, onRemove }) => (
       <input
         data-testid={`jev-question-key-${index}`}
         className="input input-sm input-bordered w-full font-mono text-xs"
-        placeholder="Filled in from the question"
+        placeholder={`e.g. ${TYPES[item.type].keyPlaceholder}`}
         value={item.id}
-        onChange={(e) => onChange({ id: e.target.value.replace(/[^\w-]/g, "_"), keyEdited: true })}
+        onChange={(e) => onChange({ id: e.target.value.replace(/[^\w-]/g, "_") })}
       />
     </div>
 
@@ -249,173 +229,238 @@ const QuestionCard = ({ item, index, error, onChange, onRemove }) => (
   </div>
 );
 
-const QuestionChip = ({ item }) => {
-  const Icon = TYPES[item.type]?.icon || CircleDot;
+const QuestionChip = ({ id, question }) => {
+  const Icon = TYPES[question?.type]?.icon || CircleDot;
   return (
     <span
-      title={item.instructions}
+      title={question?.instructions}
       className="inline-flex max-w-[220px] items-center gap-1 rounded-full border border-base-300 bg-base-100 px-2 py-0.5 text-xs"
     >
       <Icon size={12} className="shrink-0 text-primary" />
-      <span className="truncate">{item.instructions || item.id || "Untitled question"}</span>
+      <span className="truncate">{question?.instructions || id}</span>
     </span>
   );
 };
 
-// Shown above the playground input for TypeSafe (Jev) agents. The chat message is sent as
-// the `state`; these questions go in configuration.questions. Changing `openRequest` opens the editor.
-function JevQuestionsPanel({ agentId, onChange, openRequest = 0 }) {
-  const [items, setItems] = useState(null);
-  const [open, setOpen] = useState(false);
+// Shown above the playground input for TypeSafe (Jev) agents. The chat message is sent as the
+// `state`; the questions are kept in this browser per agent (not saved on the agent) and sent
+// with each message as configuration.questions. The editor works on a draft: Save keeps it,
+// closing any other way discards it.
+// Changing `openRequest` opens the editor (used when a send is blocked).
+function JevQuestionsPanel({ savedQuestions, canEdit, onSave, openRequest = 0 }) {
+  const [draft, setDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [showErrors, setShowErrors] = useState(false);
   const dialogRef = useRef(null);
 
-  // Loaded after mount: localStorage is not available during SSR.
-  useEffect(() => {
-    setItems(loadItems(agentId));
-  }, [agentId]);
+  const savedEntries = Object.entries(savedQuestions || {});
+  const isOpen = draft !== null;
+
+  const openEditor = () => {
+    if (!canEdit) return;
+    setDraft(questionsToItems(savedQuestions));
+    setSaveError(null);
+    setShowErrors(false);
+  };
+  const closeEditor = () => {
+    if (!saving) setDraft(null);
+  };
 
   useEffect(() => {
-    if (openRequest) setOpen(true);
+    if (openRequest) openEditor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest]);
 
   // Native <dialog> renders in the top layer, so it is not clipped by the playground layout.
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open, items]);
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
 
-  const { errors, error } = useMemo(() => (items ? validateJevItems(items) : { errors: {}, error: null }), [items]);
+  const { errors, error } = useMemo(() => {
+    // An empty list is a valid save: it clears the questions.
+    if (!draft || draft.length === 0) return { errors: {}, error: null };
+    return validateJevItems(draft);
+  }, [draft]);
 
-  useEffect(() => {
-    if (!items) return;
-    try {
-      localStorage.setItem(storageKey(agentId), JSON.stringify(items));
-    } catch {
-      // Storage can be unavailable (private mode); the builder still works for this session.
+  const updateItem = (uid, patch) => setDraft((prev) => prev.map((i) => (i.uid === uid ? { ...i, ...patch } : i)));
+  const addQuestion = () => setDraft((prev) => [...prev, createJevItem("choice")]);
+
+  const handleSave = async () => {
+    if (error) {
+      setShowErrors(true);
+      return;
     }
-    onChange({ questions: error ? null : itemsToQuestions(items), error });
-  }, [agentId, items, error, onChange]);
+    setSaving(true);
+    setSaveError(null);
+    const result = await onSave(itemsToQuestions(draft));
+    setSaving(false);
+    if (result?.success === false) {
+      setSaveError(result.error || "Could not save the questions. Please try again.");
+      return;
+    }
+    setDraft(null);
+  };
 
-  if (!items) return null;
-
-  const updateItem = (uid, patch) => setItems((prev) => prev.map((i) => (i.uid === uid ? { ...i, ...patch } : i)));
-  const addQuestion = () => setItems((prev) => [...prev, createJevItem("choice")]);
+  const footerMessage = saveError
+    ? saveError
+    : showErrors && error
+      ? error
+      : `${draft?.length || 0} question${draft?.length === 1 ? "" : "s"}`;
 
   return (
     <div data-testid="jev-questions-panel" className="w-full">
-      <div
-        className={`flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 ${
-          error ? "border-error/40 bg-error/5" : "border-base-300 bg-base-200/40"
-        }`}
-      >
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-base-300 bg-base-200/40 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-base-content/80">
           <TypeSafeIcon width={16} height={16} />
           Jev will answer
         </span>
-        {items.length === 0 ? (
+        {savedEntries.length === 0 ? (
           <span className="text-xs text-base-content/60">no questions yet</span>
         ) : (
-          items.slice(0, 3).map((item) => <QuestionChip key={item.uid} item={item} />)
+          savedEntries.slice(0, 3).map(([id, question]) => <QuestionChip key={id} id={id} question={question} />)
         )}
-        {items.length > 3 && <span className="text-xs text-base-content/60">+{items.length - 3} more</span>}
-        {error && items.length > 0 && <span className="text-xs text-error">· {error}</span>}
-        <button
-          type="button"
-          data-testid="jev-questions-toggle"
-          className="btn btn-xs btn-primary btn-outline ml-auto gap-1"
-          onClick={() => setOpen(true)}
-        >
-          {items.length === 0 ? <Plus size={12} /> : <Pencil size={12} />}
-          {items.length === 0 ? "Add questions" : "Edit questions"}
-        </button>
+        {savedEntries.length > 3 && (
+          <span className="text-xs text-base-content/60">+{savedEntries.length - 3} more</span>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            data-testid="jev-questions-toggle"
+            className="btn btn-xs btn-primary btn-outline ml-auto gap-1"
+            onClick={openEditor}
+          >
+            {savedEntries.length === 0 ? <Plus size={12} /> : <Pencil size={12} />}
+            {savedEntries.length === 0 ? "Add questions" : "Edit questions"}
+          </button>
+        )}
       </div>
 
-      <dialog ref={dialogRef} className="modal" onClose={() => setOpen(false)} data-testid="jev-questions-modal">
-        <div className="modal-box flex max-h-[85vh] w-11/12 max-w-2xl flex-col p-0">
-          <div className="flex items-start gap-3 border-b border-base-300 px-5 py-4">
-            <span className="shrink-0">
-              <TypeSafeIcon width={36} height={36} />
-            </span>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold">Questions for Jev</h3>
-              <p className="mt-0.5 text-xs text-base-content/60">
-                Jev reads the message you send in the chat and answers every question below, with a confidence for each.
-                You can use <code>{"{{variables}}"}</code> in any text.
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Close"
-              className="btn btn-ghost btn-sm btn-square"
-              onClick={() => setOpen(false)}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-base-200/40 px-5 py-4">
-            {items.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-base-300 bg-base-100 py-10 text-center">
-                <ListChecks size={24} className="text-base-content/40" />
-                <p className="text-sm font-medium">No questions yet</p>
-                <p className="max-w-xs text-xs text-base-content/60">
-                  Add a question, or start from an example that routes a support message.
+      <dialog
+        ref={dialogRef}
+        className="modal"
+        data-testid="jev-questions-modal"
+        onCancel={(e) => {
+          // Esc: discard the draft (or keep the dialog open while a save is running).
+          e.preventDefault();
+          closeEditor();
+        }}
+      >
+        {isOpen && (
+          <div className="modal-box flex max-h-[85vh] w-11/12 max-w-2xl flex-col p-0">
+            <div className="flex items-start gap-3 border-b border-base-300 px-5 py-4">
+              <span className="shrink-0">
+                <TypeSafeIcon width={36} height={36} />
+              </span>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold">Questions for Jev</h3>
+                <p className="mt-0.5 text-xs text-base-content/60">
+                  Jev reads the message you send in the chat and answers every question below, with a confidence for
+                  each. To fill in a value, write <code>{"{{name}}"}</code> in any text and set <code>name</code> in the
+                  Variables panel. Questions are kept in this browser and sent with each message.
                 </p>
-                <div className="mt-1 flex gap-2">
-                  <button type="button" className="btn btn-sm btn-primary gap-1" onClick={addQuestion}>
-                    <Plus size={14} /> Add question
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="jev-questions-reset"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => setItems(questionsToItems(JEV_EXAMPLE_QUESTIONS))}
-                  >
-                    Use example
-                  </button>
-                </div>
               </div>
-            ) : (
-              items.map((item, index) => (
-                <QuestionCard
-                  key={item.uid}
-                  item={item}
-                  index={index}
-                  error={errors[item.uid]}
-                  onChange={(patch) => updateItem(item.uid, patch)}
-                  onRemove={() => setItems((prev) => prev.filter((i) => i.uid !== item.uid))}
-                />
-              ))
-            )}
-            {items.length > 0 && (
               <button
                 type="button"
-                data-testid="jev-add-question"
-                className="btn btn-sm btn-ghost gap-1 border border-dashed border-base-300 bg-base-100"
-                onClick={addQuestion}
+                aria-label="Close without saving"
+                className="btn btn-ghost btn-sm btn-square"
+                onClick={closeEditor}
               >
-                <Plus size={14} /> Add another question
+                <X size={16} />
               </button>
-            )}
-          </div>
+            </div>
 
-          <div className="flex items-center gap-3 border-t border-base-300 px-5 py-3">
-            <span className={`text-xs ${error ? "text-error" : "text-base-content/60"}`}>
-              {error || `${items.length} question${items.length === 1 ? "" : "s"} ready`}
-            </span>
-            <button
-              type="button"
-              data-testid="jev-questions-done"
-              className="btn btn-sm btn-primary ml-auto"
-              onClick={() => setOpen(false)}
-            >
-              Done
-            </button>
+            <div className="flex flex-1 flex-col gap-3 overflow-y-auto bg-base-200/40 px-5 py-4">
+              {draft.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-base-300 bg-base-100 py-10 text-center">
+                  <ListChecks size={24} className="text-base-content/40" />
+                  <p className="text-sm font-medium">No questions yet</p>
+                  <p className="max-w-xs text-xs text-base-content/60">
+                    Add a question, or start from an example that routes a support message.
+                  </p>
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      type="button"
+                      data-testid="jev-add-first-question"
+                      className="btn btn-sm btn-primary gap-1"
+                      onClick={addQuestion}
+                    >
+                      <Plus size={14} /> Add question
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="jev-questions-reset"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => setDraft(questionsToItems(JEV_EXAMPLE_QUESTIONS))}
+                    >
+                      Use example
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                draft.map((item, index) => (
+                  <QuestionCard
+                    key={item.uid}
+                    item={item}
+                    index={index}
+                    error={showErrors ? errors[item.uid] : null}
+                    onChange={(patch) => updateItem(item.uid, patch)}
+                    onRemove={() => setDraft((prev) => prev.filter((i) => i.uid !== item.uid))}
+                  />
+                ))
+              )}
+              {draft.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="jev-add-question"
+                  className="btn btn-sm btn-ghost gap-1 border border-dashed border-base-300 bg-base-100"
+                  onClick={addQuestion}
+                >
+                  <Plus size={14} /> Add another question
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 border-t border-base-300 px-5 py-3">
+              <span
+                data-testid="jev-questions-status"
+                className={`text-xs ${saveError || (showErrors && error) ? "text-error" : "text-base-content/60"}`}
+              >
+                {footerMessage}
+              </span>
+              <button
+                type="button"
+                data-testid="jev-questions-cancel"
+                className="btn btn-sm btn-ghost ml-auto"
+                onClick={closeEditor}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="jev-questions-done"
+                className="btn btn-sm btn-primary"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving && <span className="loading loading-spinner loading-xs" />}
+                Save
+              </button>
+            </div>
           </div>
-        </div>
-        <form method="dialog" className="modal-backdrop">
+        )}
+        <form
+          method="dialog"
+          className="modal-backdrop"
+          onSubmit={(e) => {
+            e.preventDefault();
+            closeEditor();
+          }}
+        >
           <button type="submit">close</button>
         </form>
       </dialog>
