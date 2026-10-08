@@ -334,6 +334,9 @@ const ApiKeyModal = ({
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
           </select>
+          <span className="text-xs text-base-content/60">
+            Usage resets at 00:00 UTC: daily every day, weekly every Monday, monthly on the 1st.
+          </span>
         </div>
 
         <div id="apikey-modal-service-field" className="flex flex-col gap-2">

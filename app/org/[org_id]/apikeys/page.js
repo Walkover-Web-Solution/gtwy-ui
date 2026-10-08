@@ -25,6 +25,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import DeleteModal from "@/components/UI/DeleteModal";
 import SearchItems from "@/components/UI/SearchItems";
+import LimitUsageCell from "@/components/UI/LimitUsageCell";
 import ApiKeyGuideSlider from "@/components/configuration/configurationComponent/ApiKeyGuide";
 import ConnectedAgentsModal from "@/components/modals/ConnectedAgentsModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
@@ -67,11 +68,11 @@ const Page = ({ isEmbedUser = false }) => {
 
   const handleUpdateClick = useCallback(
     (item) => {
-      setSelectedApiKey(item);
+      setSelectedApiKey(apikeyData?.find((api) => api._id === item._id) || item);
       setIsEditing(true);
       openModal(MODAL_TYPE.API_KEY_MODAL);
     },
-    [MODAL_TYPE, openModal]
+    [apikeyData]
   );
 
   const deleteApikey = useCallback(
@@ -117,7 +118,14 @@ const Page = ({ isEmbedUser = false }) => {
     ...item,
     actualName: item.name,
     serviceKey: item.service,
-    apikey_usage: item?.apikey_usage ? parseFloat(item.apikey_usage).toFixed(4) : 0,
+    apikey_usage: (
+      <LimitUsageCell
+        usage={item?.apikey_usage}
+        limit={item?.apikey_limit}
+        resetPeriod={item?.apikey_limit_reset_period}
+      />
+    ),
+    apikey_usage_original: Number(item?.apikey_usage) || 0,
     service: (
       <div className="flex items-center gap-2">
         {getIconOfService(item.service, 18, 18)}
@@ -166,7 +174,7 @@ const Page = ({ isEmbedUser = false }) => {
         name: item.name,
         apikey_object_id: item._id,
         service: apikeyData?.find((api) => api._id === item._id)?.service,
-        apikey_limit: item?.apikey_limit || 1,
+        apikey_limit: Number(item?.apikey_limit) || 0,
         apikey_usage: 0,
         org_id: item.org_id,
       };
@@ -199,7 +207,7 @@ const Page = ({ isEmbedUser = false }) => {
         >
           <SquarePenIcon size={16} />
         </div>
-        {row?.apikey_usage && Number(row?.apikey_usage) > 0 ? (
+        {row?.apikey_usage_original > 0 ? (
           <div
             className="tooltip tooltip-primary"
             data-tip="Reset Usage"

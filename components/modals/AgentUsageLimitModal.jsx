@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal } from "@/utils/utility";
+import { closeModal, formatNextLimitReset } from "@/utils/utility";
 import { Settings2 } from "lucide-react";
 import { updateBridgeAction } from "@/store/action/bridgeAction";
 import { useDispatch } from "react-redux";
@@ -67,7 +67,8 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
         toast.error("Failed to update agent usage limit");
       }
     } catch (error) {
-      toast.error("An error occurred while saving limits", error);
+      // updateBridge already toasts the server's message (e.g. missing access).
+      console.error(error);
     } finally {
       setIsSaving(false);
     }
@@ -83,7 +84,8 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
         toast.error("Failed to reset usage");
       }
     } catch (error) {
-      toast.error("An error occurred while resetting usage", error);
+      // updateBridge already toasts the server's message (e.g. missing access).
+      console.error(error);
     } finally {
       setIsResetting(false);
     }
@@ -122,6 +124,14 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
                   : "—"}
               </span>
             </div>
+            {Number(agent?.bridge_limit ?? agent?.agent_limit_original) > 0 && (
+              <div className="flex justify-between items-center gap-2 py-0.5 border-t border-base-content/5">
+                <span className="text-base-content/60">Resets</span>
+                <span className="text-xs text-right text-base-content">
+                  {formatNextLimitReset(agent?.bridge_limit_reset_period, agent?.bridge_limit_start_date)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -152,6 +162,10 @@ const AgentUsageLimitModal = ({ agent, isEmbedUser }) => {
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select>
+              <span className="text-xs text-base-content/60 mt-1">
+                Usage resets at the time the limit was set (UTC): daily every day, weekly on the same weekday, monthly
+                on the same date.
+              </span>
             </div>
           )}
         </div>

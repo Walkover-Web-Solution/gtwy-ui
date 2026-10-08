@@ -24,7 +24,7 @@ import { FolderTabs } from "@/components/folders/FolderTabs";
 import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
 import { useFolders } from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
-import { Folder, Funnel, Undo2, Infinity, Trash2 } from "lucide-react";
+import { Folder, Funnel, Undo2, Trash2 } from "lucide-react";
 
 import { ClockIcon, EllipsisIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
@@ -34,6 +34,7 @@ import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
+import LimitUsageCell from "@/components/UI/LimitUsageCell";
 import AgentEmptyState from "@/components/AgentEmptyState";
 import GtwySkillBanner from "@/components/gtwySkill/GtwySkillBanner";
 import DeleteModal from "@/components/UI/DeleteModal";
@@ -201,7 +202,7 @@ const getColumnLabel = (column) => {
     case "updated_by":
       return "Updated By";
     case "agent_limit":
-      return "Limit $";
+      return "Usage / Limit";
     case "apikey_usage":
       return "Apikey Usage";
     case "agent_usage":
@@ -282,20 +283,14 @@ const renderUpdatedByCell = (updatedBy, timestamp) => {
   );
 };
 
-const renderLimitCell = (limit) => {
-  const limitValue = Number(limit ?? 0);
-  const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
-
-  if (!hasLimit) {
-    return (
-      <div className="flex items-center justify-center">
-        <Infinity size={20} className="text-base-content" />
-      </div>
-    );
-  }
-
-  return <div className="text-center font-medium">{formatUsageNumber(limitValue, 4)}</div>;
-};
+const renderLimitCell = (item) => (
+  <LimitUsageCell
+    usage={item?.bridge_usage}
+    limit={item?.bridge_limit}
+    resetPeriod={item?.bridge_limit_reset_period}
+    anchorDate={item?.bridge_limit_start_date}
+  />
+);
 
 // Footer Component
 const PoweredByFooter = () => {
@@ -730,7 +725,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <EmptyCell />
         ),
         averageResponseTime: averageResponseTime[item?._id] ? averageResponseTime[item?._id] : "Not used in 24h",
-        agent_limit: renderLimitCell(item?.bridge_limit),
+        agent_limit: renderLimitCell(item),
         agent_limit_original: item?.bridge_limit || 0,
         agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
         isLoading: loadingAgentId === item._id,
@@ -759,6 +754,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         ),
         updated_at_original: updatedAt,
         bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
+        bridge_limit_start_date: item?.bridge_limit_start_date || null,
         folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
         settings: item?.settings || {},
       };
@@ -885,7 +881,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       ) : (
         <EmptyCell />
       ),
-      agent_limit: renderLimitCell(item?.bridge_limit),
+      agent_limit: renderLimitCell(item),
       agent_limit_original: item?.bridge_limit || 0,
       averageResponseTime:
         averageResponseTime[item?._id] === 0 ? (

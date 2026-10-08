@@ -46,8 +46,8 @@ export const AgentMenuItems = ({
       toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
       onClose?.();
     } catch (err) {
+      // updateBridge already toasts the server's message (e.g. missing access).
       console.error(err);
-      toast.error("Failed to update agent status");
     }
   }, [dispatch, bridge, bridgeStatus, onClose]);
 
