@@ -41,12 +41,14 @@ const DefaultVariablesSection = memo(
 
     const preToolVariables = useMemo(() => {
       if (!preTools?.length) return [];
-      return preTools
+      const variables = preTools
         .map((t) => {
           const type = typeof t === "string" ? "custom_function" : t.type;
           return PRE_TOOL_VARIABLE_MAP[type];
         })
         .filter(Boolean);
+      // Several pre-tools of the same type expose the same variable; list it once.
+      return [...new Map(variables.map((v) => [v.name, v])).values()];
     }, [preTools]);
 
     return (
