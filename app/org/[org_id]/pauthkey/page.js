@@ -14,7 +14,7 @@ import { closeModal, formatDate, formatRelativeTime, openModal } from "@/utils/u
 import { CopyIcon, TrashIcon } from "@/components/Icons";
 import React, { useEffect, useState, use } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import DeleteModal from "@/components/UI/DeleteModal";
 import Modal from "@/components/UI/Modal";
 import SearchItems from "@/components/UI/SearchItems";
@@ -283,7 +283,7 @@ function Page({ params }) {
             <input
               autoComplete="off"
               type="text"
-              className="input input-bordered w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
+              className="input w-full input-sm h-9 px-3 text-sm focus-visible:ring-[3px] border-base-content/20"
               id="authNameInput"
               data-testid="create-auth-key-name-input"
               onKeyDown={(e) => {

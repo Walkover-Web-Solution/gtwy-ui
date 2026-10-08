@@ -1,5 +1,5 @@
 import axios from "@/utils/interceptor";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -75,8 +75,7 @@ export const deleteApikey = async (id, service) => {
     return response;
   } catch (error) {
     console.error(error);
-    toast.error(error?.response?.data?.message);
-    return error;
+    throw error;
   }
 };
 

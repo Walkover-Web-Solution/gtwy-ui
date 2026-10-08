@@ -1,4 +1,4 @@
-import axios from "@/utils/interceptor";
+import axios, { rawAxios } from "@/utils/interceptor";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 
@@ -80,4 +80,19 @@ export const generateChatbotTokenApi = async (data) => {
     console.error(error);
     return error;
   }
+};
+
+// Same login call gtwy.js makes; rawAxios so the interceptor cannot overwrite the Authorization header.
+export const embedLoginApi = async (embedToken) => {
+  const response = await rawAxios.post(
+    `${URL}/api/embed/login`,
+    {},
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: embedToken,
+      },
+    }
+  );
+  return response?.data;
 };

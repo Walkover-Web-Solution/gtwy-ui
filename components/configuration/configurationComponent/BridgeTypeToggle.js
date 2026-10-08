@@ -63,7 +63,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
     <div data-testid="bridge-type-toggle-container" className="flex flex-col gap-4 w-full">
       {/* Agent Type Label */}
       <div className="flex items-center gap-1">
-        <span className="label-text font-medium">Agent Type</span>
+        <span className="font-medium">Agent Type</span>
         <InfoTooltip tooltipContent="Choose how users will interact with your AI agent - through API calls, chatbot interface, batch processing, or automated triggers.">
           <CircleQuestionMark size={14} className="text-gray-500 hover:text-gray-700 cursor-help" />
         </InfoTooltip>
@@ -88,7 +88,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
                   onChange={(e) => handleInputChange(e, "bridgeType")}
                 />
                 <div className="group relative inline-block">
-                  <span className="label-text text-sm sm:text-base ml-2 cursor-pointer">API</span>
+                  <span className="text-sm sm:text-base ml-2 cursor-pointer">API</span>
                 </div>
               </label>
             </InfoTooltip>
@@ -110,7 +110,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
                     disabled={modelType === "embedding" || isReadOnly}
                   />
                   <div className="group relative inline-block">
-                    <span className="label-text text-sm sm:text-base ml-2 cursor-pointer">Triggers</span>
+                    <span className="text-sm sm:text-base ml-2 cursor-pointer">Triggers</span>
                   </div>
                 </label>
               </InfoTooltip>
@@ -122,7 +122,7 @@ const BridgeTypeToggle = ({ params, searchParams, isEmbedUser, isPublished, isEd
         {modelType === "embedding" && (
           <div role="alert" className="alert p-2 w-fit">
             <InfoIcon size={16} />
-            <span className="label-text-alt">Embedding models do not support ChatBot.</span>
+            <span className="">Embedding models do not support ChatBot.</span>
           </div>
         )}
       </div>

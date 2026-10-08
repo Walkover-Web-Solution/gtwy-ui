@@ -46,7 +46,7 @@ const CustomPromptModal = ({ modalId, title, description, placeholder, prompt, o
       <div className="flex flex-col gap-4">
         <div className="relative">
           <textarea
-            className="textarea textarea-bordered w-full text-sm resize-none focus:outline-none focus:border-primary border-base-content/20"
+            className="textarea w-full text-sm resize-none focus:outline-none focus:border-primary border-base-content/20"
             rows={5}
             placeholder={placeholder}
             value={value}

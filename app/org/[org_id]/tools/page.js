@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, use, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, ChevronRight, Wrench, Bot, Settings, Funnel, Clock, Layers, Link2, Folder } from "lucide-react";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import PageHeader from "@/components/Pageheader";
 import MainLayout from "@/components/layoutComponents/MainLayout";
 import SearchItems from "@/components/UI/SearchItems";
@@ -17,10 +17,8 @@ import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, formatRelativeTime, formatDate, getStatusClass } from "@/utils/utility";
 import CustomTable from "@/components/customTable/CustomTable";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
-import ResourcePage from "@/components/folders/ResourcePage";
-import FolderTabs from "@/components/folders/FolderTabs";
-import MoveToFolderMenu from "@/components/folders/MoveToFolderMenu";
-import useFolders from "@/hooks/useFolders";
+import { ResourcePage } from "@/components/folders/ResourcePage";
+import { useFolders } from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
 import Protected from "@/components/Protected";
 
@@ -61,9 +59,9 @@ const EmptyState = ({ onAddTool, isBlocked }) => (
     <div
       className="w-full max-w-2xl flex flex-col items-center justify-center text-center px-6 py-12 mx-auto"
       style={{
-        border: "2px dashed var(--fallback-bc,oklch(var(--bc)/0.25))",
+        border: "2px dashed color-mix(in oklch, var(--color-base-content) 25%, transparent)",
         borderRadius: 6,
-        background: "var(--fallback-b1,oklch(var(--b1)/1))",
+        background: "var(--color-base-100)",
       }}
     >
       <h2

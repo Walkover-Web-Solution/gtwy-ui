@@ -80,7 +80,7 @@ const Modal = ({
         >
           <div
             id={`${MODAL_ID}-container`}
-            className={`relative flex ${widthClass} max-h-[88vh] flex-col overflow-hidden rounded-xl border border-base-content/10 shadow-2xl animate-scaleIn`}
+            className={`relative flex ${widthClass} max-h-[88vh] flex-col overflow-hidden border border-base-content/10 shadow-2xl animate-scaleIn`}
             style={{ background: "var(--ai-config-container-bg)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -100,7 +100,7 @@ const Modal = ({
                 type="button"
                 data-testid={MODAL_ID ? `${MODAL_ID}-close-button` : "modal-close-button"}
                 data-test-id={MODAL_ID ? `${MODAL_ID}-close-button` : "modal-close-button"}
-                className="rounded-md p-1.5 text-base-content/60 transition-colors hover:bg-base-content/10 hover:text-base-content"
+                className="p-1.5 text-base-content/60 transition-colors hover:bg-base-content/10 hover:text-base-content"
                 onClick={handleClose}
               >
                 <X size={18} />

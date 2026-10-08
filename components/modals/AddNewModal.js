@@ -4,7 +4,7 @@ import { CloseIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { ChevronDown, ChevronRight, RefreshCw, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import Modal from "../UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, RequiredItem } from "@/utils/utility";
@@ -77,6 +77,15 @@ const PLACEHOLDERS = {
     description: "Speech-to-text and audio intelligence model with low latency and strong transcription quality.",
     knowledge_cutoff: "e.g., Jan 2026",
     usecase: "One per line, e.g., Real-time call transcription",
+  },
+  typesafe: {
+    display_name: "e.g., Jev 1.13",
+    model_name: "e.g., jev-1.13.0",
+    input_cost: "e.g., 0.042",
+    output_cost: "e.g., 0",
+    description: "Answers typed questions (choice, score, yes/no) about an input with calibrated probabilities.",
+    knowledge_cutoff: "",
+    usecase: "One per line, e.g., Intent routing",
   },
   deepseek: {
     display_name: "e.g., DeepSeek V3",
@@ -470,45 +479,45 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
   };
 
   const renderDropdownControls = (key, fieldConfig) => (
-    <div className="mt-4 p-4 bg-base-200 rounded-md">
+    <div className="mt-4 p-4 bg-base-200">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {fieldConfig.hasOwnProperty("min") && (
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Min</span>
+              <span className="">Min</span>
             </label>
             <input
               autoComplete="off"
               type="number"
               value={fieldConfig.min}
               onChange={(e) => handleConfigChange(key, "min", parseFloat(e.target.value))}
-              className="input input-bordered input-sm w-full"
+              className="input input-sm w-full"
             />
           </div>
         )}
         {fieldConfig.hasOwnProperty("max") && (
           <div className="form-control">
             <label className="label">
-              <span className="label-text">Max</span>
+              <span className="">Max</span>
             </label>
             <input
               autoComplete="off"
               type="number"
               value={fieldConfig.max}
               onChange={(e) => handleConfigChange(key, "max", parseFloat(e.target.value))}
-              className="input input-bordered input-sm w-full"
+              className="input input-sm w-full"
             />
           </div>
         )}
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Default value</span>
+            <span className="">Default value</span>
           </label>
           {fieldConfig.field === "boolean" ? (
             <select
               value={String(fieldConfig.default)}
               onChange={(e) => handleConfigChange(key, "default", e.target.value === "true")}
-              className="select select-bordered select-sm w-full"
+              className="select select-sm w-full"
             >
               <option value="true">True</option>
               <option value="false">False</option>
@@ -526,7 +535,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                   handleConfigChange(key, "default", e.target.value);
                 }
               }}
-              className="select select-bordered select-sm w-full"
+              className="select select-sm w-full"
             >
               {fieldConfig.options?.map((opt, i) => (
                 <option key={i} value={typeof opt === "object" ? JSON.stringify(opt) : opt}>
@@ -543,7 +552,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                 const v = fieldConfig.field === "number" ? parseFloat(e.target.value) : e.target.value;
                 handleConfigChange(key, "default", v);
               }}
-              className="input input-bordered input-sm w-full"
+              className="input input-sm w-full"
             />
           )}
         </div>
@@ -551,7 +560,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
       {(fieldConfig.field === "dropdown" || fieldConfig.field === "select") && (
         <div className="mt-4">
           <div className="flex justify-between items-center mb-3">
-            <label className="label-text">Options</label>
+            <label className="label">Options</label>
             <button type="button" onClick={() => addOption(key)} className="btn btn-sm btn-primary">
               Add
             </button>
@@ -564,7 +573,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                   type="text"
                   value={typeof opt === "object" ? opt.type : opt}
                   onChange={(e) => updateOption(key, i, e.target.value)}
-                  className="input input-bordered input-sm w-full"
+                  className="input input-sm w-full"
                 />
                 <button
                   type="button"
@@ -719,7 +728,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">
+                    <span className="">
                       Service
                       <span className="text-lg opacity-0 ml-0.5">*</span>
                     </span>
@@ -729,7 +738,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                     id="add-model-service-select"
                     value={config.service}
                     onChange={(e) => handleTopLevelChange("service", e.target.value)}
-                    className="select select-bordered select-sm w-full"
+                    className="select select-sm w-full"
                     disabled={disableServiceChange}
                   >
                     {Array.isArray(SERVICES)
@@ -743,7 +752,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                 </div>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">
+                    <span className="">
                       Model Name
                       <RequiredItem />
                     </span>
@@ -769,13 +778,13 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         },
                       }));
                     }}
-                    className="input input-bordered input-sm w-full"
+                    className="input input-sm w-full"
                     placeholder={PLACEHOLDERS[config.service]?.model_name}
                   />
                 </div>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">
+                    <span className="">
                       Display Name <RequiredItem />
                     </span>
                   </label>
@@ -786,7 +795,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                     type="text"
                     value={config.display_name}
                     onChange={(e) => handleTopLevelChange("display_name", e.target.value)}
-                    className="input input-bordered input-sm w-full"
+                    className="input input-sm w-full"
                     placeholder={PLACEHOLDERS[config.service]?.display_name}
                   />
                 </div>
@@ -795,7 +804,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                 <h2 className="text-lg font-semibold mb-3">Model Capabilities</h2>
                 <p className="text-sm text-base-content/60 mb-4">Enable/disable the features this model supports.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="form-control p-4 rounded-lg border border-base-300">
+                  <div className="form-control p-4 border border-base-300">
                     <label className="label cursor-pointer justify-start gap-4">
                       <input
                         autoComplete="off"
@@ -806,10 +815,10 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         onChange={(e) => handleValidationChange("vision", e.target.checked)}
                         className="checkbox checkbox-sm checkbox-primary"
                       />
-                      <span className="label-text font-medium">Supports Vision</span>
+                      <span className="font-medium">Supports Vision</span>
                     </label>
                   </div>
-                  <div className="form-control p-4 rounded-lg border border-base-300">
+                  <div className="form-control p-4 border border-base-300">
                     <label className="label cursor-pointer justify-start gap-4">
                       <input
                         autoComplete="off"
@@ -820,10 +829,10 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         onChange={(e) => handleValidationChange("tools", e.target.checked)}
                         className="checkbox checkbox-sm checkbox-primary"
                       />
-                      <span className="label-text font-medium">Supports Tools</span>
+                      <span className="font-medium">Supports Tools</span>
                     </label>
                   </div>
-                  <div className="form-control p-4 rounded-lg border border-base-300">
+                  <div className="form-control p-4 border border-base-300">
                     <label className="label cursor-pointer justify-start gap-4">
                       <input
                         autoComplete="off"
@@ -834,19 +843,19 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         onChange={(e) => handleValidationChange("system_prompt", e.target.checked)}
                         className="checkbox checkbox-sm checkbox-primary"
                       />
-                      <span className="label-text font-medium">Support System Prompt</span>
+                      <span className="font-medium">Support System Prompt</span>
                     </label>
                   </div>
-                  <div className="form-control p-4 rounded-lg border border-base-300">
+                  <div className="form-control p-4 border border-base-300">
                     <label className="label">
-                      <span className="label-text font-medium">Model Type</span>
+                      <span className="font-medium">Model Type</span>
                     </label>
                     <select
                       data-testid="add-model-type-select"
                       id="add-model-type-select"
                       value={config.validationConfig?.type}
                       onChange={(e) => handleValidationChange("type", e.target.value)}
-                      className="select select-bordered select-sm w-full"
+                      className="select select-sm w-full"
                     >
                       <option value="chat">Chat</option>
                       <option value="fine-tune">Fine-tune</option>
@@ -863,7 +872,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="form-control">
                         <label className="label">
-                          <span className="label-text">
+                          <span className="">
                             Input Cost / Mtok
                             <RequiredItem />
                           </span>
@@ -880,7 +889,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                               e.target.value === "" ? "" : parseFloat(e.target.value)
                             )
                           }
-                          className="input input-bordered input-sm w-full"
+                          className="input input-sm w-full"
                           step="0.001"
                           placeholder={PLACEHOLDERS[config.service]?.input_cost}
                           min={0}
@@ -888,7 +897,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                       </div>
                       <div className="form-control">
                         <label className="label">
-                          <span className="label-text">
+                          <span className="">
                             Output Cost / Mtok
                             <RequiredItem />
                           </span>
@@ -908,7 +917,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                             }
                           }}
                           min={0}
-                          className="input input-bordered input-sm w-full"
+                          className="input input-sm w-full"
                           step="0.001"
                           placeholder={PLACEHOLDERS[config.service]?.output_cost}
                         />
@@ -916,7 +925,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                     </div>
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text">
+                        <span className="">
                           Description
                           <RequiredItem />
                         </span>
@@ -926,14 +935,14 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         value={config.validationConfig.specification.description}
                         onChange={(e) => handleSpecificationChange("description", e.target.value)}
                         onBlur={(e) => handleSpecificationChange("description", e.target.value.trim())}
-                        className="textarea bg-base-100 textarea-bordered w-full"
+                        className="textarea bg-base-100 w-full"
                         rows={3}
                         placeholder={PLACEHOLDERS[config.service]?.description}
                       ></textarea>
                     </div>
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text">
+                        <span className="">
                           Knowledge Cutoff
                           <RequiredItem />
                         </span>
@@ -945,13 +954,13 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                         value={config.validationConfig.specification.knowledge_cutoff}
                         onChange={(e) => handleSpecificationChange("knowledge_cutoff", e.target.value)}
                         onBlur={(e) => handleSpecificationChange("knowledge_cutoff", e.target.value.trim())}
-                        className="input input-bordered input-sm w-full"
+                        className="input input-sm w-full"
                         placeholder={PLACEHOLDERS[config.service]?.knowledge_cutoff}
                       />
                     </div>
                     <div className="form-control">
                       <label className="label">
-                        <span className="label-text">
+                        <span className="">
                           Use Case
                           <RequiredItem />
                         </span>
@@ -963,7 +972,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                           handleSpecificationChange("usecase", e.target.value.split("\n").filter(Boolean))
                         }
                         onBlur={(e) => handleSpecificationChange("usecase", e.target.value.split("\n").filter(Boolean))}
-                        className="textarea bg-base-100 textarea-bordered w-full"
+                        className="textarea bg-base-100 w-full"
                         rows={3}
                         placeholder={PLACEHOLDERS[config.service]?.usecase}
                       />
@@ -986,10 +995,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                   </button>
                 )}
                 {showNewParamForm && (
-                  <div
-                    id="add-model-new-param-form"
-                    className="p-4 border border-primary/20 rounded-lg bg-primary/5 mb-6"
-                  >
+                  <div id="add-model-new-param-form" className="p-4 border border-primary/20 bg-primary/5 mb-6">
                     <h4 className="text-md font-medium mb-3">New Parameter Details</h4>
                     <form
                       className="space-y-4"
@@ -1001,7 +1007,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="form-control">
                           <label className="label">
-                            <span className="label-text">Parameter Name</span>
+                            <span className="">Parameter Name</span>
                           </label>
                           <input
                             autoComplete="off"
@@ -1012,18 +1018,18 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
                             onChange={(e) =>
                               setNewParamData((p) => ({ ...p, name: e.target.value.replace(/\s/g, "_") }))
                             }
-                            className="input input-bordered input-sm w-full"
+                            className="input input-sm w-full"
                           />
                         </div>
                         <div className="form-control">
                           <label className="label">
-                            <span className="label-text">Field Type</span>
+                            <span className="">Field Type</span>
                           </label>
                           <select
                             id="add-model-param-type-select"
                             value={newParamData.type}
                             onChange={(e) => setNewParamData((p) => ({ ...p, type: e.target.value }))}
-                            className="select select-bordered select-sm w-full"
+                            className="select select-sm w-full"
                           >
                             <option value="slider">Numeric (Slider)</option>
                             <option value="boolean">On/Off (Boolean)</option>
@@ -1054,7 +1060,7 @@ export default function AddNewModelModal({ disableServiceChange = false }) {
             </div>
             {error?.message && (
               <div className="w-full mt-4">
-                <div className="error-container p-4 bg-error/10 border-l-4 border-error rounded-md shadow-sm text-error">
+                <div className="error-container p-4 bg-error/10 border-l-4 border-error shadow-sm text-error">
                   {error?.message}
                 </div>
               </div>

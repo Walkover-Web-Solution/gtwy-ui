@@ -44,7 +44,7 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
       <div data-testid="save-widget-modal" className="flex flex-col gap-4">
         <div className="form-control">
           <label className="label">
-            <span className="label-text">
+            <span className="">
               Widget Name <RequiredItem />
             </span>
           </label>
@@ -53,7 +53,7 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
             data-testid="save-widget-name-input"
             type="text"
             placeholder="Enter widget name"
-            className="input input-bordered w-full"
+            className="input w-full"
             value={widgetName}
             onChange={(e) => onNameChange(e.target.value)}
             autoFocus
@@ -62,12 +62,12 @@ const SaveWidgetModal = ({ widgetName, widgetDescription, onNameChange, onDescri
 
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Description</span>
+            <span className="">Description</span>
           </label>
           <textarea
             data-testid="save-widget-description-textarea"
             placeholder="Enter widget description (optional)"
-            className="textarea textarea-bordered w-full h-24"
+            className="textarea w-full h-24"
             value={widgetDescription}
             onChange={(e) => onDescriptionChange(e.target.value)}
           />

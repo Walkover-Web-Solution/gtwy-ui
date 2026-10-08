@@ -5,7 +5,7 @@ import { ArchiveRestore, MoreVertical, Pause, Play, Settings2, Trash2, Users, Gl
 import { archiveBridgeAction, updateBridgeAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import ConfigureEnvironmentModal from "../modals/ConfigureEnvironmentModal";
 
 const BRIDGE_STATUS = {
@@ -46,8 +46,8 @@ export const AgentMenuItems = ({
       toast.success(`Agent ${newStatus === BRIDGE_STATUS.ACTIVE ? "resumed" : "paused"} successfully`);
       onClose?.();
     } catch (err) {
+      // updateBridge already toasts the server's message (e.g. missing access).
       console.error(err);
-      toast.error("Failed to update agent status");
     }
   }, [dispatch, bridge, bridgeStatus, onClose]);
 

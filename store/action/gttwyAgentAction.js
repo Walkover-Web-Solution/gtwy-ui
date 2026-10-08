@@ -1,5 +1,5 @@
 import { getAllAgentsApi, privateAgentLoginApi, publicAgentLoginApi } from "@/config/index";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { getAllAgentReducer, getPrivateAgentDataReducer, getPublicAgentDataReducer } from "../reducer/gwtyAgentReducer";
 import { getFromCookies } from "@/utils/utility";
 

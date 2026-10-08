@@ -25,9 +25,9 @@ export default function SelectComponent({
   const [value, setValue] = useState(defaultValue ?? "");
 
   const variantMap = {
-    bordered: "select-bordered",
+    bordered: "",
     ghost: "select-ghost bg-base-200/60",
-    outline: "select-bordered border-2",
+    outline: "border-2",
     primary: "select-primary",
     accent: "select-accent",
   };
@@ -50,7 +50,7 @@ export default function SelectComponent({
       className={`flex flex-col ${align === "end" ? "items-end" : align === "center" ? "items-center" : "items-start"} ${className}`}
       style={{ ...widthStyle, ...safeStyle }}
     >
-      {label && <label className="label-text text-xs font-semibold text-base-content/50 mb-0.5 block">{label}</label>}
+      {label && <label className="label text-xs font-semibold text-base-content/50 mb-0.5 block">{label}</label>}
       <select
         value={value}
         onChange={handleChange}

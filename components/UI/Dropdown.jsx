@@ -283,7 +283,7 @@ const Dropdown = ({
                           id={`dropdown-option-${opt.value}`}
                           className={cx(
                             "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
-                            isActive ? "active text-primary" : ""
+                            isActive ? "bg-base-300 font-semibold text-base-content" : "text-base-content/80"
                           )}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -374,7 +374,7 @@ const Dropdown = ({
                               id={`dropdown-grouped-option-${opt.value}`}
                               className={cx(
                                 "flex items-start gap-2 w-full rounded-md hover:bg-base-200",
-                                isActive ? "active text-primary" : ""
+                                isActive ? "bg-base-300 font-semibold text-base-content" : "text-base-content/80"
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();

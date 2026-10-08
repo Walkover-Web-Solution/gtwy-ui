@@ -23,7 +23,8 @@ import { updateAnalyticsFromRtLayer, addAnalyticsThread } from "@/store/reducer/
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import WebSocketClient from "rtlayer-client";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
+import { AlertTriangle, Bell } from "lucide-react";
 import { didCurrentTabInitiateUpdate } from "@/utils/utility";
 import { RefreshIcon } from "@/components/Icons";
 import { buildLlmUrls } from "@/utils/attachmentUtils";
@@ -38,8 +39,36 @@ import { useDispatch, useSelector } from "react-redux";
 // ---------------------------------------------------------------------------
 const channelClientRegistry = new Map(); // Map<channelId, { client, refCount }>
 
+// model_config_updated: 1st call immediate; later same-service → 1 call after 30s
+const modelConfigPending = new Map(); // service → timerId | true (waiting for 2nd)
+
+function refreshServiceModels(dispatch, service, services) {
+  const known = services?.some((s) => s?.value === service);
+  if (!known) return dispatch(getServiceAction()).then(() => dispatch(getModelAction({ service })));
+  return dispatch(getModelAction({ service }));
+}
+
 function parseRtMessage(message) {
   return typeof message === "string" ? JSON.parse(message) : message;
+}
+
+// Adds a pushed notification to the inbox and toasts it. Critical ones stay until dismissed.
+function handleNotificationRtMessage(notification, dispatch) {
+  dispatch(addNotificationReducer({ notification }));
+  const content = (
+    <div>
+      <div className="font-semibold">{notification.title}</div>
+      <div className="text-sm">{notification.message}</div>
+    </div>
+  );
+  const options = { id: `notification-${notification._id}`, position: "top-right" };
+  if (notification.severity === "critical") {
+    toast.error(content, { ...options, duration: Infinity });
+  } else if (notification.severity === "warning") {
+    toast(content, { ...options, duration: 6000, icon: <AlertTriangle size={18} className="text-warning shrink-0" /> });
+  } else {
+    toast(content, { ...options, duration: 6000, icon: <Bell size={18} className="text-info shrink-0" /> });
+  }
 }
 
 function handleOrgRtChannelMessage(parsedData, dispatch, orgId) {
@@ -50,20 +79,8 @@ function handleOrgRtChannelMessage(parsedData, dispatch, orgId) {
     }
   }
   if (parsedData?.type === "notification" && parsedData.notification) {
-    const notification = parsedData.notification;
-    // Org channel only ever carries org-wide notifications (agent_id null) — store under the org bucket.
-    dispatch(addNotificationReducer({ agentId: null, notification }));
-    toast.info(
-      <div>
-        <div className="font-semibold">{notification.title}</div>
-        <div className="text-sm">{notification.message}</div>
-      </div>,
-      {
-        position: "top-right",
-        autoClose: 6000,
-        toastId: `notification-${notification._id}`,
-      }
-    );
+    // The hub pushes every org and agent notification on the org channel.
+    handleNotificationRtMessage(parsedData.notification, dispatch);
   }
 }
 
@@ -124,38 +141,32 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
 
   // Helper function to show toast notification
   const showAgentUpdatedToast = useCallback(() => {
-    if (!toast.isActive("agent-updated")) {
-      const RefreshButton = () => {
-        const handleRefresh = () => {
-          toast.dismiss("agent-updated");
-          window.location.reload();
-        };
-        return (
-          <div className="mt-2 flex justify-center">
-            <button onClick={handleRefresh} className="btn btn-primary btn-sm">
-              <RefreshIcon size={16} />
-              Refresh Page
-            </button>
-          </div>
-        );
+    const RefreshButton = () => {
+      const handleRefresh = () => {
+        toast.dismiss("agent-updated");
+        window.location.reload();
       };
-      toast.info(
-        <div className="">
-          <div className="">Agent has been updated. Please refresh to see changes.</div>
-          <RefreshButton />
-        </div>,
-        {
-          position: "top-right",
-          autoClose: false,
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          toastId: "agent-updated",
-          style: { border: "1px solid #ccc" },
-        }
+      return (
+        <div className="mt-2 flex justify-center">
+          <button onClick={handleRefresh} className="btn btn-primary btn-sm">
+            <RefreshIcon size={16} />
+            Refresh Page
+          </button>
+        </div>
       );
-    }
+    };
+    toast(
+      <div className="">
+        <div className="">Agent has been updated. Please refresh to see changes.</div>
+        <RefreshButton />
+      </div>,
+      {
+        position: "top-right",
+        duration: Infinity,
+        id: "agent-updated",
+        style: { border: "1px solid #ccc" },
+      }
+    );
   }, []);
 
   // ---------- History data processor (socket messages) ----------
@@ -171,24 +182,6 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
           parsedData.type === "cost_over_time"
         ) {
           dispatch(updateAnalyticsFromRtLayer(parsedData));
-          return;
-        }
-
-        if (parsedData.type === "notification" && parsedData.notification) {
-          const notification = parsedData.notification;
-          // This per-agent channel only ever carries this agent's own notifications.
-          dispatch(addNotificationReducer({ agentId: bridgeId, notification }));
-          toast.info(
-            <div>
-              <div className="font-semibold">{notification.title}</div>
-              <div className="text-sm">{notification.message}</div>
-            </div>,
-            {
-              position: "top-right",
-              autoClose: 6000,
-              toastId: `notification-${notification._id}`,
-            }
-          );
           return;
         }
 
@@ -649,64 +642,63 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
       setConnectionError(error.message);
     }
   }, [client, channelId]);
-  // Global channel — carries both broadcast notifications and model/service/plan
-  // registry updates; branch on the payload shape to route each to its handler.
+  // Global channel for model/service registry updates (published by the Python backend)
+  useEffect(() => {
+    if (!client) return;
+
+    const globalListener = client.on("global_model_updates", (message) => {
+      try {
+        const data = typeof message === "string" ? JSON.parse(message) : message;
+        if (data?.event !== "model_config_updated") return;
+
+        const service = data.service;
+        if (!service) {
+          SERVICES?.length
+            ? SERVICES.forEach((s) => s?.value && dispatch(getModelAction({ service: s.value })))
+            : dispatch(getServiceAction());
+          return;
+        }
+
+        const state = modelConfigPending.get(service);
+        if (!state) {
+          // 1st event → call now
+          refreshServiceModels(dispatch, service, SERVICES);
+          modelConfigPending.set(service, true);
+          return;
+        }
+        if (state !== true) return; // timer already running
+
+        // 2nd+ → one call after 30s, then clear
+        const timer = setTimeout(() => {
+          modelConfigPending.delete(service);
+          refreshServiceModels(dispatch, service, SERVICES);
+        }, 30_000);
+        modelConfigPending.set(service, timer);
+      } catch (error) {
+        console.error("Error processing model config update:", error);
+      }
+    });
+
+    return () => globalListener?.remove?.();
+  }, [client, dispatch, SERVICES]);
+
+  // Global channel for broadcast notifications (published by the notification hub)
   useEffect(() => {
     if (!client) return;
 
     const globalUpdatesListener = client.on("global_updates", (message) => {
       try {
         const parsedData = parseRtMessage(message);
-
         if (parsedData?.type === "notification" && parsedData.notification) {
-          const notification = parsedData.notification;
-          // Broadcasts (org_id: null) are shown alongside org-wide notifications.
-          dispatch(addNotificationReducer({ agentId: null, notification }));
-          toast.info(
-            <div>
-              <div className="font-semibold">{notification.title}</div>
-              <div className="text-sm">{notification.message}</div>
-            </div>,
-            {
-              position: "top-right",
-              autoClose: 6000,
-              toastId: `notification-${notification._id}`,
-            }
-          );
-          return;
-        }
-
-        // Otherwise this is a registry change event (model_config_updated,
-        // service_registry_updated, billing_plans_updated, ...).
-        if (parsedData?.event === "model_config_updated") {
-          // Refresh only the specific service that was updated
-          const serviceToRefresh = parsedData.service;
-
-          if (serviceToRefresh) {
-            dispatch(getModelAction({ service: serviceToRefresh }));
-          } else {
-            // Fallback: if no service specified, refresh all services
-            if (Array.isArray(SERVICES) && SERVICES.length > 0) {
-              SERVICES.forEach((service) => {
-                if (service?.value) {
-                  dispatch(getModelAction({ service: service.value }));
-                }
-              });
-            } else {
-              dispatch(getServiceAction());
-            }
-          }
+          // Broadcasts (org_id: null) are shown alongside the org's own notifications.
+          handleNotificationRtMessage(parsedData.notification, dispatch);
         }
       } catch (error) {
-        console.error("Error processing global update:", error);
+        console.error("Error processing global notification:", error);
       }
     });
 
-    return () => {
-      if (globalUpdatesListener && typeof globalUpdatesListener.remove === "function") {
-        globalUpdatesListener.remove();
-      }
-    };
+    return () => globalUpdatesListener?.remove?.();
   }, [client, dispatch]);
 
   // Org channel — API key status (org_{org_id})

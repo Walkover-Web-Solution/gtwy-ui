@@ -41,12 +41,14 @@ const DefaultVariablesSection = memo(
 
     const preToolVariables = useMemo(() => {
       if (!preTools?.length) return [];
-      return preTools
+      const variables = preTools
         .map((t) => {
           const type = typeof t === "string" ? "custom_function" : t.type;
           return PRE_TOOL_VARIABLE_MAP[type];
         })
         .filter(Boolean);
+      // Several pre-tools of the same type expose the same variable; list it once.
+      return [...new Map(variables.map((v) => [v.name, v])).values()];
     }, [preTools]);
 
     return (
@@ -74,10 +76,7 @@ const DefaultVariablesSection = memo(
             {usedVariables.length > 0 && (
               <div className="flex items-center gap-1">
                 <span className="text-xs text-base-content/60">Used:</span>
-                <p
-                  role="alert"
-                  className="label-text-alt p-1 bg-success/20 text-success inline-block w-fit text-xs rounded"
-                >
+                <p role="alert" className="label p-1 bg-success/20 text-success inline-block w-fit text-xs rounded">
                   &#123;&#123;{usedVariables[0]}&#125;&#125;
                   {usedVariables.length > 1 && <>...</>}
                 </p>

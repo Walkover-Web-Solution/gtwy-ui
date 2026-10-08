@@ -30,6 +30,8 @@
     "react/jsx-key": "off",
     // Ignore missing display name for component definitions
     "react/display-name": "off",
+    // Images come from arbitrary remote hosts (user uploads, service icons), so next/image doesn't fit
+    "@next/next/no-img-element": "off",
     // Surface unused imports/vars to help clean dead code
     "unused-imports/no-unused-imports": "error",
     "unused-imports/no-unused-vars": [

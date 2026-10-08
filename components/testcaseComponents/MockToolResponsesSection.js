@@ -281,7 +281,7 @@ const MockToolResponsesSection = forwardRef(function MockToolResponsesSection(
                               value={rec.argsText}
                               onChange={(e) => updateRecordingField(tool.name, idx, "argsText", e.target.value)}
                               onBlur={commitSave}
-                              className="w-full font-mono text-xs textarea textarea-bordered textarea-xs bg-base-100 leading-relaxed"
+                              className="w-full font-mono text-xs textarea textarea-xs bg-base-100 leading-relaxed"
                               data-testid={`mock-tool-args-${tool.name}-${idx}`}
                             />
                             {rec.argsError && <div className="text-error text-[11px] mt-0.5">{rec.argsError}</div>}
@@ -294,7 +294,7 @@ const MockToolResponsesSection = forwardRef(function MockToolResponsesSection(
                               value={rec.responseText}
                               onChange={(e) => updateRecordingField(tool.name, idx, "responseText", e.target.value)}
                               onBlur={commitSave}
-                              className="w-full font-mono text-xs textarea textarea-bordered textarea-xs bg-base-100 leading-relaxed"
+                              className="w-full font-mono text-xs textarea textarea-xs bg-base-100 leading-relaxed"
                               data-testid={`mock-tool-response-${tool.name}-${idx}`}
                             />
                             {rec.responseError && (

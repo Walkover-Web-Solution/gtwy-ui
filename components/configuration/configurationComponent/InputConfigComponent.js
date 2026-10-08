@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePromptSelector } from "@/customHooks/useOptimizedSelector";
 import { MODAL_TYPE, PROMPT_SECTION_CONFIG } from "@/utils/enums";
-import { openModal } from "@/utils/utility";
+import { openModal, extractPromptVariables } from "@/utils/utility";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import PromptSummaryModal from "../../modals/PromptSummaryModal";
 import Diff_Modal from "@/components/modals/DiffModal";
@@ -54,15 +54,36 @@ const InputConfigComponent = memo(
   }) => {
     // Optimized Redux selector with memoization and shallow comparison
     const { prompt: reduxPrompt, oldContent } = usePromptSelector(params, searchParams);
-    const { showVariables, embedPromptConfig, bridge_pre_tools } = useCustomSelector((state) => {
+    const { showVariables, embedPromptConfig, connectedTools } = useCustomSelector((state) => {
       const eu = state.appInfoReducer.embedUserDetails;
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+      const activeData = isPublished ? state?.bridgeReducer?.allBridgesMap?.[params?.id] : versionData;
       return {
         showVariables: eu?.showVariables,
         embedPromptConfig: eu?.prompt,
-        bridge_pre_tools: versionData?.pre_tools || [],
+        connectedTools: activeData?.connected_tools,
       };
     });
+    // Pre-tools now live in connected_tools (type "pre_tool"); the legacy pre_tools field is empty after migration.
+    const bridge_pre_tools = useMemo(
+      () => (connectedTools || []).filter((t) => t?.type === "pre_tool").map((t) => ({ type: t.pre_tool_type })),
+      [connectedTools]
+    );
+    // Variables used in the prompt, minus the built-in and pre-tool ones (listed under Default Variables)
+    // and embed fields (listed under Hidden Fields).
+    const customVariables = useMemo(() => {
+      const reserved = new Set([
+        "current_time_date_and_current_identifier",
+        "timezone",
+        "pre_function",
+        "rag_pre_result",
+        "web_search_pre_result",
+        ...(Array.isArray(embedPromptConfig?.embedFields) ? embedPromptConfig.embedFields.map((f) => f?.name) : []),
+      ]);
+      return [...new Set(extractPromptVariables(reduxPrompt).map((v) => v.trim()))].filter(
+        (v) => v && !reserved.has(v)
+      );
+    }, [reduxPrompt, embedPromptConfig]);
     // Refs for zero-render typing experience
     const debounceTimerRef = useRef(null);
     const textareaRef = useRef(null);
@@ -440,7 +461,7 @@ const InputConfigComponent = memo(
               />
             </>
           ) : isEmbedCustomPrompt ? (
-            <div className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col gap-3">
               {isOldEmbedFormat && !isPublished && isEditor && (
                 <div className="alert alert-warning py-2 text-xs flex items-center justify-between gap-2">
                   <span>This prompt uses an older format. Save to migrate to the new format.</span>
@@ -453,7 +474,7 @@ const InputConfigComponent = memo(
                 <div key={field.name} className="form-control">
                   <div className="flex items-center justify-between mb-2">
                     <label className="label py-0">
-                      <span className="label-text text-xs font-medium capitalize text-base-content/70">
+                      <span className="text-xs font-medium capitalize text-base-content/70">
                         {field.displayValue || field.name}
                       </span>
                       {field.deprecated && (
@@ -525,7 +546,7 @@ const InputConfigComponent = memo(
                   <div className="relative">
                     {field.type === "textarea" ? (
                       <textarea
-                        className={`textarea textarea-bordered w-full text-sm leading-relaxed resize-y min-h-32 pr-8 ${
+                        className={`textarea w-full text-sm leading-relaxed resize-y min-h-32 pr-8 ${
                           field.deprecated ? "opacity-60" : ""
                         }`}
                         value={activeEmbedFieldValues[field.name] || ""}
@@ -551,9 +572,7 @@ const InputConfigComponent = memo(
                       <input
                         autoComplete="off"
                         type="text"
-                        className={`input input-bordered w-full text-sm input-sm pr-8 ${
-                          field.deprecated ? "opacity-60" : ""
-                        }`}
+                        className={`input w-full text-sm input-sm pr-8 ${field.deprecated ? "opacity-60" : ""}`}
                         value={activeEmbedFieldValues[field.name] || ""}
                         onChange={(e) => !field.deprecated && handleEmbedFieldChange(field.name, e.target.value)}
                         readOnly={field.deprecated}
@@ -609,11 +628,11 @@ const InputConfigComponent = memo(
               ))}
             </div>
           ) : isStructuredPrompt ? (
-            <div className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col gap-3">
               {Object.entries(PROMPT_SECTION_CONFIG).map(([key, fieldConfig]) => (
                 <div key={key} className="form-control">
                   <label className="label py-0">
-                    <span className="label-text text-xs font-medium capitalize text-base-content/70 mb-1">
+                    <span className="text-xs font-medium capitalize text-base-content/70 mb-1">
                       {fieldConfig.label || key}
                     </span>
                   </label>
@@ -621,7 +640,7 @@ const InputConfigComponent = memo(
                     {fieldConfig.type === "textarea" ? (
                       <textarea
                         key={`${params?.id || "agent"}-${searchParams?.version || "version"}-${key}`}
-                        className="textarea textarea-bordered w-full h-72 min-h-72 text-sm leading-relaxed resize-y overflow-y-auto pr-8"
+                        className="textarea w-full h-72 min-h-72 text-sm leading-relaxed resize-y overflow-y-auto pr-8"
                         value={(structuredFields || {})[key] || ""}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         onFocus={handleTextareaFocus}
@@ -635,7 +654,7 @@ const InputConfigComponent = memo(
                       <input
                         autoComplete="off"
                         type="text"
-                        className="input input-bordered w-full text-sm input-sm pr-8"
+                        className="input w-full text-sm input-sm pr-8"
                         value={(structuredFields || {})[key] || ""}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         onFocus={handleTextareaFocus}
@@ -712,6 +731,7 @@ const InputConfigComponent = memo(
               isEditor={isEditor}
               isEmbedUser={isEmbedUser}
               hiddenFields={hiddenEmbedFields}
+              customVariables={customVariables}
               preTools={bridge_pre_tools}
             />
           )}

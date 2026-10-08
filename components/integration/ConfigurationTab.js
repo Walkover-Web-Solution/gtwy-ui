@@ -7,7 +7,7 @@ import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateIntegrationDataAction } from "@/store/action/integrationAction";
 import { createApiAction, integrationAction, deleteFunctionAction } from "@/store/action/bridgeAction";
 import { setEmbedUserDetailsAction } from "@/store/action/appInfoAction";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { RefreshCw, Save } from "lucide-react";
 import ThemePaletteEditor, { hexToOklchString } from "./ThemePaletteEditor";
 import EmbedPromptBuilder from "../gtwy_embed/EmbedPromptBuilder";
@@ -307,7 +307,7 @@ const ModelCustomization = ({ value = {}, onChange, onBlur }) => {
                         <input
                           autoComplete="off"
                           type="text"
-                          className="input input-bordered input-xs w-full bg-base-200"
+                          className="input input-xs w-full bg-base-200"
                           value={modelConfig.value !== undefined ? modelConfig.value : modelName}
                           onChange={(e) => handleModelChange(service, modelName, "value", e.target.value)}
                           onBlur={(e) => handleModelChange(service, modelName, "value", e.target.value, true)}
@@ -749,7 +749,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                                     ? "embed-config-slide-position-select"
                                     : `embed-config-select-${config.key}`
                               }
-                              className="select select-bordered select-xs w-full mt-1"
+                              className="select select-xs w-full mt-1"
                               value={configuration[config.key] ?? config.defaultValue}
                               onChange={(e) => handleConfigChange(config.key, e.target.value)}
                             >
@@ -768,14 +768,14 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
                                 <span
-                                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                                  className="capitalize font-medium text-primary cursor-pointer hover:opacity-80 transition-opacity text-xs"
                                   onClick={() => openModal(MODAL_TYPE.JSON_SCHEMA_VISUAL_BUILDER)}
                                 >
                                   Build Visually
                                 </span>
                                 <span className="text-xs text-base-content/50">|</span>
                                 <span
-                                  className="label-text capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text cursor-pointer hover:opacity-80 transition-opacity text-xs"
+                                  className="capitalize font-medium text-primary cursor-pointer hover:opacity-80 transition-opacity text-xs"
                                   onClick={() => {
                                     if (!aiThreadId) {
                                       const newThreadId = generateRandomID();

@@ -106,12 +106,12 @@ const Page = ({ params }) => {
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Auth Name</span>
+                  <span className="">Auth Name</span>
                 </label>
                 <input
                   autoComplete="off"
                   type="text"
-                  className="input input-bordered w-full"
+                  className="input w-full"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter Auth name"
@@ -120,19 +120,19 @@ const Page = ({ params }) => {
 
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Auth Redirect URL</span>
+                  <span className="">Auth Redirect URL</span>
                 </label>
                 <input
                   autoComplete="off"
                   type="url"
-                  className={`input input-bordered w-full ${urlError ? "input-error" : ""}`}
+                  className={`input w-full ${urlError ? "input-error" : ""}`}
                   value={url}
                   onChange={handleUrlChange}
                   placeholder="https://example.com/oauth/callback"
                 />
                 {urlError && (
                   <label className="label">
-                    <span className="label-text-alt text-error">{urlError}</span>
+                    <span className="text-error">{urlError}</span>
                   </label>
                 )}
               </div>

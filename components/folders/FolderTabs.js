@@ -109,11 +109,7 @@ export const FolderTabs = ({
               style={{
                 borderStyle: isDragOver ? "dashed" : "solid",
                 borderWidth: isDragOver ? "2px" : "1px",
-                borderColor: isDragOver
-                  ? "var(--fallback-p,oklch(var(--p)/1))"
-                  : isSelected
-                    ? "transparent"
-                    : undefined,
+                borderColor: isDragOver ? "var(--color-primary)" : isSelected ? "transparent" : undefined,
               }}
             >
               {isSelected ? <FolderOpen size={15} className="shrink-0" /> : <Folder size={15} className="shrink-0" />}
@@ -129,7 +125,7 @@ export const FolderTabs = ({
                       if (e.key === "Enter") handleRename(folder._id);
                       if (e.key === "Escape") setEditingFolderId(null);
                     }}
-                    className="input input-xs input-bordered w-32 text-base-content text-xs h-6 py-0 px-1"
+                    className="input input-xs w-32 text-base-content text-xs h-6 py-0 px-1"
                     autoFocus
                   />
                   <button
@@ -185,7 +181,7 @@ export const FolderTabs = ({
           style={{
             borderStyle: dragOverFolderId === "uncategorized" ? "dashed" : "solid",
             borderWidth: dragOverFolderId === "uncategorized" ? "2px" : "1px",
-            borderColor: dragOverFolderId === "uncategorized" ? "var(--fallback-p,oklch(var(--p)/1))" : "transparent",
+            borderColor: dragOverFolderId === "uncategorized" ? "var(--color-primary)" : "transparent",
           }}
         >
           <FileMinus size={15} />
@@ -220,7 +216,7 @@ export const FolderTabs = ({
               placeholder="Folder name..."
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              className="input input-xs input-bordered w-32 h-6 text-xs"
+              className="input input-xs w-32 h-6 text-xs"
               autoFocus
             />
             <button type="submit" className="btn btn-square btn-xs btn-primary h-6 w-6">

@@ -1,5 +1,6 @@
 import axios from "@/utils/interceptor";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 const URL = process.env.NEXT_PUBLIC_SERVER_URL;
 const PYTHON_URL = process.env.NEXT_PUBLIC_PYTHON_SERVER_URL;
@@ -32,7 +33,6 @@ export const createBridge = async (dataToSend) => {
   try {
     return await axios.post(`${URL}/api/agent/`, dataToSend);
   } catch (error) {
-    toast.error(error.response.data.error);
     throw error;
   }
 };
@@ -43,7 +43,7 @@ export const updateBridge = async ({ bridgeId, dataToSend }) => {
     return response;
   } catch (error) {
     console.error(error);
-    toast.error(error?.response?.data?.error);
+    toast.error(getErrorMessage(error));
     throw error;
   }
 };

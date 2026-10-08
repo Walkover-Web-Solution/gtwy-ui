@@ -92,7 +92,7 @@ function ModelCustomization({ value = {}, onChange, onBlur }) {
                         <input
                           autoComplete="off"
                           type="text"
-                          className="input input-bordered input-xs w-full bg-base-200"
+                          className="input input-xs w-full bg-base-200"
                           value={modelConfig.value !== undefined ? modelConfig.value : modelName}
                           onChange={(e) => handleModelChange(service, modelName, "value", e.target.value)}
                           onBlur={(e) => handleModelChange(service, modelName, "value", e.target.value, true)}
@@ -124,11 +124,11 @@ function RadioGroup({ onChange, name, value }) {
   return (
     <div id="radio-group-position">
       <div className="label">
-        <span className="label-text">Position</span>
+        <span className="">Position</span>
       </div>
       <select
         data-testid="chatbot-config-position-select"
-        className="select select-bordered select-sm w-full"
+        className="select select-sm w-full"
         value={value || ""}
         onChange={(e) => onChange({ target: { name, value: e.target.value } })}
         name={name}
@@ -150,14 +150,14 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
   return (
     <div className="flex flex-col">
       <div className="label">
-        <span className="label-text">{placeholder}</span>
+        <span className="">{placeholder}</span>
       </div>
       <div className="join">
         <input
           autoComplete="off"
           data-testid={`chatbot-config-${name}-input`}
           id={`dimension-input-${name}`}
-          className="input input-bordered join-item input-sm max-w-[90px]"
+          className="input join-item input-sm max-w-[90px]"
           type="number"
           placeholder={placeholder}
           defaultValue={value || ""}
@@ -168,7 +168,7 @@ function DimensionInput({ placeholder, options, onChange, name, value, unit }) {
         <select
           data-testid={`chatbot-config-${name}-unit`}
           id={`dimension-select-${name}-unit`}
-          className="select select-bordered join-item select-sm max-w-[70px]"
+          className="select join-item select-sm max-w-[70px]"
           value={unit || ""}
           onChange={onChange}
           name={`${name}Unit`}
@@ -380,14 +380,14 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
         <div className="space-y-3">
           <label className="form-control w-full">
             <div className="label">
-              <span className="label-text font-medium text-xs">Chatbot Title</span>
+              <span className="font-medium text-xs">Chatbot Title</span>
             </div>
             <input
               autoComplete="off"
               data-testid="chatbot-config-title-input"
               type="text"
               placeholder="Enter chatbot title"
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
               value={formData.chatbotTitle}
               onChange={handleInputChange}
               onBlur={handleBlur}
@@ -397,14 +397,14 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
           <label className="form-control w-full">
             <div className="label">
-              <span className="label-text font-medium text-xs">Chatbot Subtitle</span>
+              <span className="font-medium text-xs">Chatbot Subtitle</span>
             </div>
             <input
               autoComplete="off"
               data-testid="chatbot-config-subtitle-input"
               type="text"
               placeholder="Enter chatbot subtitle"
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
               value={formData.chatbotSubtitle}
               onChange={handleInputChange}
               onBlur={handleBlur}
@@ -414,13 +414,13 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
           <label className="form-control w-full">
             <div className="label">
-              <span className="label-text font-medium text-xs">Button Title</span>
+              <span className="font-medium text-xs">Button Title</span>
             </div>
             <input
               autoComplete="off"
               type="text"
               placeholder="Enter button title"
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
               value={formData.buttonName}
               onChange={handleInputChange}
               onBlur={handleBlur}
@@ -430,13 +430,13 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
           <label className="form-control w-full">
             <div className="label">
-              <span className="label-text font-medium text-xs">Button Icon URL</span>
+              <span className="font-medium text-xs">Button Icon URL</span>
             </div>
             <input
               autoComplete="off"
               type="text"
               placeholder="Enter icon URL"
-              className="input input-bordered w-full input-sm"
+              className="input w-full input-sm"
               value={formData.iconUrl}
               onChange={handleInputChange}
               onBlur={handleBlur}
@@ -446,7 +446,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
           <label className="form-control w-full">
             <div className="label justify-between">
-              <span className="label-text font-medium text-xs">Default Error Message</span>
+              <span className="font-medium text-xs">Default Error Message</span>
               <button
                 type="button"
                 onClick={() => router.push(`/org/${params?.org_id}/alerts`)}
@@ -459,7 +459,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
             <textarea
               autoComplete="off"
               placeholder="Enter default error message to show when something goes wrong"
-              className="textarea textarea-bordered w-full textarea-sm"
+              className="textarea w-full textarea-sm"
               value={formData.defaultErrorMessage}
               onChange={handleInputChange}
               onBlur={handleBlur}
@@ -470,65 +470,61 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
           </label>
 
           {/* Show Tool Calls Toggle */}
-          <div className="form-control">
-            <label
-              data-testid="chatbot-config-hide-tool-toggle"
-              className="label cursor-pointer justify-between gap-8 px-0"
-            >
-              <div className="flex flex-col">
-                <span className="label-text font-medium text-xs">Hide Tool Calls</span>
-                <span className="text-xs text-base-content/50">
-                  {formData.hide_tool ? "Hidden from chat" : "Shown in chat"}
-                </span>
-              </div>
-              <input
-                autoComplete="off"
-                data-testid="chatbot-config-hide-tool-checkbox"
-                id="chatbot-config-hide-tool-checkbox"
-                type="checkbox"
-                className="toggle toggle-sm toggle-primary"
-                checked={formData.hide_tool}
-                onChange={(event) => {
-                  event.preventDefault();
-                  handleToggleChange("hide_tool");
-                }}
-              />
-            </label>
-          </div>
+          <label
+            data-testid="chatbot-config-hide-tool-toggle"
+            className="flex w-full flex-row flex-nowrap items-center justify-between gap-8 cursor-pointer py-1"
+          >
+            <div className="flex flex-col">
+              <span className="font-medium text-xs">Hide Tool Calls</span>
+              <span className="text-xs text-base-content/50">
+                {formData.hide_tool ? "Hidden from chat" : "Shown in chat"}
+              </span>
+            </div>
+            <input
+              autoComplete="off"
+              data-testid="chatbot-config-hide-tool-checkbox"
+              id="chatbot-config-hide-tool-checkbox"
+              type="checkbox"
+              className="toggle toggle-sm toggle-primary"
+              checked={formData.hide_tool}
+              onChange={(event) => {
+                event.preventDefault();
+                handleToggleChange("hide_tool");
+              }}
+            />
+          </label>
 
           {/* Allow Model Switch Toggle */}
-          <div className="form-control">
-            <label
-              data-testid="chatbot-config-allow-modal-switch-toggle"
-              className="label cursor-pointer justify-between gap-8 px-0"
-            >
-              <div className="flex flex-col">
-                <span className="label-text font-medium text-xs">Allow Model Switch</span>
-                <span className="text-xs text-base-content/50">
-                  {formData.allowModalSwitch
-                    ? "Users can switch the AI model in chat"
-                    : "AI model is fixed for this chatbot"}
-                </span>
-              </div>
-              <input
-                autoComplete="off"
-                data-testid="chatbot-config-allow-modal-switch-checkbox"
-                id="chatbot-config-allow-modal-switch-checkbox"
-                type="checkbox"
-                className="toggle toggle-sm toggle-primary"
-                checked={formData.allowModalSwitch}
-                onChange={(event) => {
-                  event.preventDefault();
-                  handleToggleChange("allowModalSwitch");
-                }}
-              />
-            </label>
-          </div>
+          <label
+            data-testid="chatbot-config-allow-modal-switch-toggle"
+            className="flex w-full flex-row flex-nowrap items-center justify-between gap-8 cursor-pointer py-1"
+          >
+            <div className="flex flex-col">
+              <span className="font-medium text-xs">Allow Model Switch</span>
+              <span className="text-xs text-base-content/50">
+                {formData.allowModalSwitch
+                  ? "Users can switch the AI model in chat"
+                  : "AI model is fixed for this chatbot"}
+              </span>
+            </div>
+            <input
+              autoComplete="off"
+              data-testid="chatbot-config-allow-modal-switch-checkbox"
+              id="chatbot-config-allow-modal-switch-checkbox"
+              type="checkbox"
+              className="toggle toggle-sm toggle-primary"
+              checked={formData.allowModalSwitch}
+              onChange={(event) => {
+                event.preventDefault();
+                handleToggleChange("allowModalSwitch");
+              }}
+            />
+          </label>
 
           {formData.allowModalSwitch && (
             <div className="form-control w-full">
               <div className="label">
-                <span className="label-text font-medium text-xs">Models Shown In Switch</span>
+                <span className="font-medium text-xs">Models Shown In Switch</span>
               </div>
               <p className="text-xs text-base-content/50 mb-2">
                 Choose which models users can switch to, and optionally rename how they appear in the chat.
@@ -543,12 +539,12 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
           <label className="form-control w-full">
             <div className="label">
-              <span className="label-text font-medium text-xs">Default Message</span>
+              <span className="font-medium text-xs">Default Message</span>
             </div>
             <textarea
               autoComplete="off"
               placeholder="Enter default message to show when chatbot loads"
-              className="textarea textarea-bordered w-full textarea-sm"
+              className="textarea w-full textarea-sm"
               value={formData.defaultMessage}
               onChange={handleInputChange}
               onBlur={handleBlur}
@@ -564,7 +560,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
             <div className="label">
               <div className="flex items-center gap-2">
                 <Server size={14} className="text-primary" />
-                <span className="label-text font-medium text-xs">MCP Configuration</span>
+                <span className="font-medium text-xs">MCP Configuration</span>
               </div>
             </div>
 
@@ -617,9 +613,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
                               autoComplete="off"
                               type="text"
                               placeholder="MCP name (e.g. my-mcp)"
-                              className={`input input-bordered w-full input-sm ${
-                                !config.name ? "input-error input-error/30" : ""
-                              }`}
+                              className={`input w-full input-sm ${!config.name ? "input-error input-error/30" : ""}`}
                               value={config.name || ""}
                               onChange={(e) => handleMcpConfigChange(index, "name", e.target.value)}
                               required
@@ -628,9 +622,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
                               autoComplete="off"
                               type="url"
                               placeholder="https://mcp.example.com/..."
-                              className={`input input-bordered w-full input-sm ${
-                                !config.url ? "input-error input-error/30" : ""
-                              }`}
+                              className={`input w-full input-sm ${!config.url ? "input-error input-error/30" : ""}`}
                               value={config.url || ""}
                               onChange={(e) => handleMcpConfigChange(index, "url", e.target.value)}
                               required
@@ -702,11 +694,11 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
         {formData.type === "popup" && (
           <label className="form-control w-full">
             <div className="label">
-              <span className="label-text font-medium text-xs">Popup Side</span>
+              <span className="font-medium text-xs">Popup Side</span>
             </div>
             <select
               data-testid="chatbot-config-popup-side-select"
-              className="select select-bordered select-sm w-full"
+              className="select select-sm w-full"
               value={formData.side || "right"}
               name="side"
               onChange={(e) => handleBlur(e)}
@@ -720,7 +712,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
         {/* Theme Color */}
         <label className="form-control">
           <div className="label">
-            <span className="label-text font-medium text-xs">Theme Color</span>
+            <span className="font-medium text-xs">Theme Color</span>
           </div>
           <div className="flex items-center gap-3">
             <input
@@ -740,11 +732,11 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
         {/* Theme Mode */}
         <label className="form-control w-full">
           <div className="label">
-            <span className="label-text font-medium text-xs">Theme</span>
+            <span className="font-medium text-xs">Theme</span>
           </div>
           <select
             data-testid="chatbot-config-theme-mode"
-            className="select select-bordered select-sm w-full"
+            className="select select-sm w-full"
             value={formData.theme}
             name="theme"
             onChange={(e) => handleBlur(e)}

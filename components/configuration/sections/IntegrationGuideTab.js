@@ -13,8 +13,9 @@ const IntegrationGuideTab = ({ isPublished }) => {
   const { params, isEmbedUser } = useConfigurationContext();
 
   // Get bridge data and integration data from Redux store
-  const { slugName, prompt, bridgeTypeFromRedux, publishedVersionId } = useCustomSelector((state) => {
+  const { slugName, prompt, service, bridgeTypeFromRedux, publishedVersionId } = useCustomSelector((state) => {
     return {
+      service: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.service,
       slugName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.slugName,
       prompt: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.configuration?.prompt,
       bridgeTypeFromRedux: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.toLowerCase(),
@@ -35,7 +36,9 @@ const IntegrationGuideTab = ({ isPublished }) => {
         </div>
       );
     }
-    return <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} />;
+    return (
+      <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} service={service} />
+    );
   };
 
   // Treat route state and persisted state as published signals.

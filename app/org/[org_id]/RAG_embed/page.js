@@ -10,7 +10,7 @@ import { formatRelativeTime, formatDate, openModal } from "@/utils/utility";
 import SearchItems from "@/components/UI/SearchItems";
 import IntegrationModal from "@/components/modals/IntegrationModal";
 import Protected from "@/components/Protected";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 
 export const runtime = "edge";
 

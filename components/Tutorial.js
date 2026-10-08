@@ -8,7 +8,7 @@ const Tutorial = ({ video, setShowTutorial }) => {
     <div
       data-testid="tutorial-modal-overlay"
       id="tutorial-modal-overlay"
-      className="fixed inset-0 z-very-high bg-black bg-opacity-70 flex items-center justify-center"
+      className="fixed inset-0 z-very-high bg-black/70 flex items-center justify-center"
     >
       <button
         data-testid="tutorial-close-button"

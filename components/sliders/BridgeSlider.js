@@ -83,7 +83,7 @@ function BridgeSlider() {
           data={bridgesList}
           setFilterItems={setFilteredBridgesList}
           item="agents"
-          style="input input-sm input-bordered w-full mb-0 ml-0 border border-base-content/50"
+          style="input input-sm w-full mb-0 ml-0 border border-base-content/50"
         />
         <button
           id="bridge-slider-create-agent-button"

@@ -222,7 +222,7 @@ export const AgentSummaryContent = memo(
       return {
         hasValidationError: showValidationError && isEmpty,
         isDisabled: isGeneratingSummary || bridge_summary === displayValue,
-        textareaClassName: `textarea bg-base-100 textarea-bordered w-full min-h-32 resize-y focus:border-primary caret-base-content p-2 ${
+        textareaClassName: `textarea bg-base-100 w-full min-h-32 resize-y focus:border-primary caret-base-content p-2 ${
           showValidationError && isEmpty ? "border-red-500 focus:border-red-500" : ""
         }`,
       };
@@ -247,7 +247,7 @@ export const AgentSummaryContent = memo(
                   onClick={handleGenerateSummary}
                   disabled={isGeneratingSummary}
                 >
-                  <span className="capitalize font-medium bg-gradient-to-r from-blue-800 to-orange-600 text-transparent bg-clip-text">
+                  <span className="capitalize font-medium text-primary">
                     {isGeneratingSummary ? "Generating Summary..." : "Generate New Summary"}
                   </span>
                 </button>
@@ -264,7 +264,7 @@ export const AgentSummaryContent = memo(
         <div className="space-y-2">
           <div className="relative">
             {isGeneratingSummary ? (
-              <div className="flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content/70">
+              <div className="flex items-center gap-2 border border-base-300 bg-base-100 px-3 py-2 text-sm text-base-content/70">
                 <span className="loading loading-spinner loading-xs text-primary" />
                 Generating summary...
               </div>

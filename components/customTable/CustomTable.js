@@ -124,6 +124,13 @@ const CustomTable = ({
           return ascending ? limitA - limitB : limitB - limitA;
         }
 
+        // Numeric sorting for apikey_usage column
+        if (activeColumn === "apikey_usage") {
+          const usageA = Number(a.apikey_usage_original ?? 0);
+          const usageB = Number(b.apikey_usage_original ?? 0);
+          return ascending ? usageA - usageB : usageB - usageA;
+        }
+
         // Special handling for date columns (last_used, created_at, createdAt, created)
         if (["last_used", "created_at", "createdAt", "created", "updated_at", "updatedAt"].includes(activeColumn)) {
           const getOriginalTimestamp = (row) => {
@@ -335,7 +342,7 @@ const CustomTable = ({
 
   // Render table view for desktop
   const renderTableView = () => {
-    const tableClass = viewportWidth < 1024 ? "table-compact" : "";
+    const tableClass = viewportWidth < 1024 ? "table-sm" : "";
 
     return (
       <div

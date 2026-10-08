@@ -24,6 +24,8 @@ export const KEYS_TO_COMPARE = [
   "gpt_memory",
   "function_ids",
   "pre_tools",
+  "post_tool",
+  "built_in_tools",
   "settings",
   "IsstarterQuestionEnable",
   "actions",
@@ -44,6 +46,14 @@ export const DIFFERNCE_DATA_DISPLAY_NAME = (key) => {
       return "Tools";
     case "pre_tools":
       return "Pre Tools";
+    case "post_tool":
+      return "Post Tool";
+    case "built_in_tools":
+      return "Built-in Tools";
+    case "web_search_filters":
+      return "Web Search Filters";
+    case "gtwy_web_search_filters":
+      return "Gtwy Web Search Filters";
     case "service":
       return "Service Provider";
     case "cache_on":

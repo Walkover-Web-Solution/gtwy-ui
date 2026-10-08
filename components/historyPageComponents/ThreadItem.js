@@ -50,7 +50,7 @@ import {
   Brain,
 } from "lucide-react";
 import { rerunApi } from "@/config/modelApi";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { GenericSlider, useSlider } from "@/utils/sliderUtility";
 import CodeBlock from "../codeBlock/CodeBlock";
 import MessageExecutionTrace from "../historyUi/executionTrace/MessageExecutionTrace";
@@ -87,7 +87,11 @@ function InlineVarValue({ raw, isLong }) {
           <ExpandCollapse
             collapsedHeight={160}
             fadeHeight={60}
-            style={{ "--expand-collapse-fade": isDark ? "oklch(var(--b2) / 0.97)" : "oklch(var(--b1) / 0.97)" }}
+            style={{
+              "--expand-collapse-fade": isDark
+                ? "color-mix(in oklch, var(--color-base-200) 97%, transparent)"
+                : "color-mix(in oklch, var(--color-base-100) 97%, transparent)",
+            }}
           >
             <CodeBlock className="language-json" showCopy={false}>
               {prettyJson}
@@ -466,13 +470,6 @@ const ThreadItem = ({
   // Platform-injected variables are hidden from the user-facing variables panel
   const visibleVariables = useMemo(() => omitHiddenVariables(item?.variables), [item?.variables]);
 
-  // Only offer the Tokens & Cost panel when there is actually usage to show
-  const hasTokenData = useMemo(() => {
-    if (!item?.tokens || typeof item.tokens !== "object") return false;
-    const rows = formatTokensTable(item.tokens);
-    return Array.isArray(rows) && rows.length > 0;
-  }, [item?.tokens]);
-
   const handleCopyAllVariables = () => {
     const jsonString = JSON.stringify(visibleVariables, null, 2);
     navigator.clipboard.writeText(jsonString);
@@ -498,6 +495,12 @@ const ThreadItem = ({
     navigator.clipboard.writeText(content);
     toast.success("Message copied to clipboard");
   }, []);
+
+  const handleCopyVersionId = useCallback(() => {
+    if (!item?.version_id) return;
+    navigator.clipboard.writeText(item.version_id);
+    toast.success("Version ID copied to clipboard");
+  }, [item?.version_id]);
 
   const { sliderState, openSlider, closeSlider } = useSlider();
   const dropupRef = useRef(null);
@@ -1263,11 +1266,28 @@ const ThreadItem = ({
     return (
       <ThreadInlinePanel className={panelClassName}>
         <div className="text-left">
-          <div className="px-4 py-2 border-b border-base-content/10 bg-base-200/50">
-            <span className="text-xs font-semibold text-base-content/70 uppercase tracking-wide">
-              Tokens &amp; Cost
-            </span>
-          </div>
+          {item?.message_id ? (
+            <div
+              key="message_id"
+              className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
+            >
+              <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">Message ID</span>
+              <span className="text-xs break-all text-base-content whitespace-pre-wrap font-mono">
+                {item.message_id}
+              </span>
+            </div>
+          ) : null}
+          {item?.batch_data?.batch_id ? (
+            <div
+              key="batch_id"
+              className="flex items-start gap-4 border-b border-base-content/10 px-4 py-2.5 last:border-b-0"
+            >
+              <span className="min-w-[120px] shrink-0 text-xs font-normal text-trace-gold">Batch ID</span>
+              <span className="text-xs break-all text-base-content whitespace-pre-wrap font-mono">
+                {item.batch_data.batch_id}
+              </span>
+            </div>
+          ) : null}
           {(() => {
             const tokensVal = item.tokens;
             if (tokensVal !== undefined && tokensVal !== null && typeof tokensVal === "object") {
@@ -1275,6 +1295,9 @@ const ThreadItem = ({
               if (rows && rows.length > 0) {
                 return (
                   <div key="tokens" className="flex flex-col gap-2  px-4 py-3">
+                    <span className="text-xs font-semibold text-trace-gold uppercase tracking-wide">
+                      Token and Cost
+                    </span>
                     <div className="overflow-x-auto w-full border border-base-content/10 bg-base-200/10 rounded-lg shadow-sm">
                       <table className="table table-xs w-full border-collapse">
                         <thead>
@@ -1522,10 +1545,10 @@ const ThreadItem = ({
             Variables
           </ThreadActionPill>
         ) : null}
-        {!isEmbedUser && hasTokenData ? (
+        {!isEmbedUser ? (
           <ThreadActionPill
-            testId="thread-item-user-tokens-cost-button"
-            id="thread-item-user-tokens-cost-button"
+            testId="thread-item-user-more-button"
+            id="thread-item-user-more-button"
             trailing={ChevronRight}
             trailingClassName={`transition-transform duration-200 ${isMoreDetailsExpanded ? "rotate-90" : ""}`}
             active={isMoreDetailsExpanded}
@@ -1540,21 +1563,28 @@ const ThreadItem = ({
               });
             }}
           >
-            Tokens &amp; Cost
+            More
           </ThreadActionPill>
         ) : null}
         {item?.model || item?.service || versionNumber ? (
           <span
             data-testid="thread-item-model-meta"
             className="inline-flex items-center gap-1.5 text-xs text-base-content/55"
-            title={[item?.service, item?.model, versionNumber ? `Version ${versionNumber}` : null]
-              .filter(Boolean)
-              .join(" · ")}
+            title={[item?.service, item?.model].filter(Boolean).join(" · ")}
           >
             {versionNumber ? (
-              <span className="rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-content">
+              <button
+                type="button"
+                data-testid="thread-item-version-badge"
+                title={item?.version_id ? `Version ID: ${item.version_id}\nClick to copy` : `Version ${versionNumber}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyVersionId();
+                }}
+                className="rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-medium text-primary-content transition-opacity hover:opacity-80"
+              >
                 V{versionNumber}
-              </span>
+              </button>
             ) : null}
             {item?.service ? getIconOfService(item.service, 12, 12) : null}
             {item?.model ? <span className="max-w-[180px] truncate">{item.model}</span> : null}

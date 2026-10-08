@@ -1,20 +1,36 @@
 import React, { useMemo } from "react";
-import { Check, X, AlertCircle } from "lucide-react";
+import { Check, X, AlertCircle, Bot } from "lucide-react";
 import { isEqual } from "lodash";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { DIFFERNCE_DATA_DISPLAY_NAME, CONFIGURATION_KEYS_TO_EXCLUDE } from "@/jsonFiles/bridgeParameter";
 import ComparisonCheck from "@/utils/comparisonCheck";
 import { preprocessPrompt } from "@/utils/promptUtils";
-import { PROMPT_SECTION_CONFIG } from "@/utils/enums";
+import { PROMPT_SECTION_CONFIG, PRE_TOOL_LABELS, PRE_TOOL_TYPES } from "@/utils/enums";
+import { SquareFunctionIcon } from "@/components/Icons";
+
+const TOOL_LIST_KEYS = ["function_ids", "pre_tools", "post_tool", "connected_agents"];
+const TOOL_STATUS_BORDER = {
+  added: "border-success/60",
+  removed: "border-error/60",
+  changed: "border-warning/60",
+};
+const TOOL_STATUS_BADGE = {
+  added: "badge-success text-white",
+  removed: "badge-error text-white",
+  changed: "badge-warning text-white",
+};
 
 const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
-  const { apikeyData, functionData, knowledgeBaseData, orgAgents, allBridgesMap } = useCustomSelector((state) => ({
-    apikeyData: state?.apiKeysReducer?.apikeys[params.org_id] || [],
-    functionData: state?.bridgeReducer?.org[params.org_id]?.functionData || {},
-    knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params.org_id] || [],
-    orgAgents: state?.bridgeReducer?.org?.[params.org_id]?.orgs || [],
-    allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
-  }));
+  const { apikeyData, functionData, integrationData, knowledgeBaseData, orgAgents, allBridgesMap } = useCustomSelector(
+    (state) => ({
+      apikeyData: state?.apiKeysReducer?.apikeys[params.org_id] || [],
+      functionData: state?.bridgeReducer?.org[params.org_id]?.functionData || {},
+      integrationData: state?.bridgeReducer?.org?.[params.org_id]?.integrationData || {},
+      knowledgeBaseData: state?.knowledgeBaseReducer?.knowledgeBaseData?.[params.org_id] || [],
+      orgAgents: state?.bridgeReducer?.org?.[params.org_id]?.orgs || [],
+      allBridgesMap: state?.bridgeReducer?.allBridgesMap || {},
+    })
+  );
 
   const bridgeIdToNameMap = useMemo(() => {
     const idToName = {};
@@ -163,8 +179,135 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
     });
   }, [differences]);
 
+  const formatVariableValue = (variableValue) =>
+    variableValue !== null && typeof variableValue === "object" ? JSON.stringify(variableValue) : String(variableValue);
+
+  // Normalize a tool/agent entry (legacy string id or connected_tools-derived object) and resolve its display data
+  const resolveToolItem = (item, rootKey) => {
+    const tool = typeof item === "string" ? { id: item } : item || {};
+
+    if (rootKey === "connected_agents") {
+      return {
+        key: tool.id || JSON.stringify(tool),
+        title: bridgeIdToNameMap[tool.id] || tool.id || "Unknown Agent",
+        icons: [],
+        isAgent: true,
+        meta: [tool.thread_id ? "Thread: On" : null, tool.environment ? `Env: ${tool.environment}` : null].filter(
+          Boolean
+        ),
+        variables: tool.variable_path || {},
+        raw: tool,
+      };
+    }
+
+    const isBuiltInPreTool = tool.type && tool.type !== PRE_TOOL_TYPES.custom_function;
+    const functionId = tool.id || tool.config?.function_id;
+    const fn = functionId ? functionData?.[functionId] : null;
+    const scriptId = fn?.script_id || tool.config?.script_id;
+    const integration = scriptId ? integrationData?.[scriptId] : null;
+    const title = isBuiltInPreTool
+      ? PRE_TOOL_LABELS[tool.type] || tool.type
+      : fn?.title || integration?.title || fn?.name || functionId || "Unknown Tool";
+    return {
+      key: isBuiltInPreTool ? `type:${tool.type}` : functionId || JSON.stringify(tool),
+      title,
+      icons: integration?.serviceIcons || [],
+      meta: [],
+      variables: tool.variable_path || tool.args || {},
+      raw: tool,
+    };
+  };
+
+  const renderToolList = (items, otherItems, side, rootKey) => {
+    const otherByKey = new Map(
+      (Array.isArray(otherItems) ? otherItems : []).map((item) => {
+        const resolved = resolveToolItem(item, rootKey);
+        return [resolved.key, resolved];
+      })
+    );
+
+    return (
+      <div className="flex flex-col gap-2 whitespace-normal break-normal">
+        {items.map((item, index) => {
+          const tool = resolveToolItem(item, rootKey);
+          const counterpart = otherByKey.get(tool.key);
+          const itemStatus = !counterpart
+            ? side === "old"
+              ? "removed"
+              : "added"
+            : isEqual(counterpart.raw, tool.raw)
+              ? null
+              : "changed";
+          const variableEntries = Object.entries(tool.variables || {});
+
+          return (
+            <div
+              key={`${tool.key}-${index}`}
+              className={`flex flex-col gap-1 rounded-md border bg-base-100 px-2 py-1.5 ${TOOL_STATUS_BORDER[itemStatus] || "border-base-200"}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {tool.icons.length > 0 ? (
+                  <div className="flex items-center -space-x-2 shrink-0">
+                    {tool.icons.slice(0, 5).map((icon, iconIndex) => (
+                      <img
+                        key={iconIndex}
+                        src={icon}
+                        alt={`${tool.title} icon ${iconIndex + 1}`}
+                        className="w-5 h-5 rounded-full border-2 border-base-100 object-contain bg-white p-0.5"
+                        style={{ zIndex: 5 - iconIndex }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : tool.isAgent ? (
+                  <Bot size={20} className="shrink-0" />
+                ) : (
+                  <SquareFunctionIcon className="w-5 h-5 shrink-0" />
+                )}
+                <span className="text-sm truncate flex-1 min-w-0" title={tool.title}>
+                  {tool.title}
+                </span>
+                {itemStatus && (
+                  <span className={`badge badge-xs shrink-0 ${TOOL_STATUS_BADGE[itemStatus]}`}>{itemStatus}</span>
+                )}
+              </div>
+              {tool.meta.length > 0 && (
+                <div className="flex flex-wrap gap-1 pl-7">
+                  {tool.meta.map((metaLabel) => (
+                    <span key={metaLabel} className="badge badge-outline badge-xs text-[10px] text-base-content/70">
+                      {metaLabel}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {variableEntries.length > 0 && (
+                <div className="flex flex-col gap-0.5 pl-7">
+                  <span className="text-[10px] uppercase tracking-wide text-base-content/50">Variables</span>
+                  {variableEntries.map(([variableKey, variableValue]) => {
+                    const isVariableChanged =
+                      !!counterpart && !isEqual(counterpart.variables?.[variableKey], variableValue);
+                    return (
+                      <div
+                        key={variableKey}
+                        className={`text-xs font-mono break-all ${isVariableChanged ? "text-warning" : "text-base-content/70"}`}
+                      >
+                        {variableKey} → {formatVariableValue(variableValue)}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Format value for display
-  const formatValue = (value, key) => {
+  const formatValue = (value, key, otherValue, side) => {
     if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) {
       return <span className="text-gray-400 italic">No Data Added</span>;
     }
@@ -187,62 +330,12 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
       return apikeyData?.find((item) => item._id === value)?.name || value;
     }
 
-    // Handle function IDs
-    if (rootKey === "function_ids") {
-      if (Array.isArray(value) && value.length > 0) {
-        const functionItems = Object.values(functionData || {}).filter((item) => value.includes(item?._id));
-        if (functionItems.length > 0) {
-          return functionItems.map((item) => item?.title || item?._id).join(", ");
-        }
-      }
-      return JSON.stringify(value);
-    }
-
-    const formatPreToolLabel = (tool) => {
-      if (!tool || typeof tool !== "object") return String(tool);
-
-      if (tool.type === "custom_function") {
-        const functionId = tool?.config?.function_id;
-        const functionItem = functionId ? functionData?.[functionId] : null;
-        return functionItem?.title || functionItem?.name || functionId || "Custom Function";
-      }
-
-      if (typeof tool.type === "string" && tool.type.trim()) {
-        return tool.type;
-      }
-
-      return tool?.config?.function_id || tool?.name || "Pre Tool";
-    };
-
-    // Handle pre_tools arrays with a readable old/new breakdown
-    if (rootKey === "pre_tools") {
+    // Handle connected tools and agents with the same row UI as the configuration page
+    if (TOOL_LIST_KEYS.includes(rootKey)) {
       if (!Array.isArray(value)) {
         return JSON.stringify(value);
       }
-
-      return (
-        <div className="space-y-2">
-          {value.length === 0 ? (
-            <span className="text-gray-400 italic">No Data Added</span>
-          ) : (
-            value.map((tool, index) => (
-              <div key={index} className="rounded-md border border-base-300 bg-base-100 px-3 py-2 text-xs">
-                <div className="font-medium">{formatPreToolLabel(tool)}</div>
-                <div className="mt-1 text-base-content/70 break-all">
-                  {tool?.type === "custom_function" ? (
-                    <>
-                      function_id: {tool?.config?.function_id || "-"}
-                      {tool?.config?.script_id ? `, script_id: ${tool.config.script_id}` : ""}
-                    </>
-                  ) : (
-                    `type: ${tool?.type || "-"}`
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      );
+      return renderToolList(value, otherValue, side, rootKey);
     }
 
     // Handle tool_choice values (show tool title instead of tool id)
@@ -304,6 +397,19 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
     // Handle objects and arrays with improved display
     if (typeof value === "object" && value !== null) {
       try {
+        // Arrays of plain values (e.g. built-in tools, filters) read better as chips
+        if (Array.isArray(value) && value.every((item) => item === null || typeof item !== "object")) {
+          return (
+            <div className="flex flex-wrap gap-1.5">
+              {value.map((item, index) => (
+                <span key={index} className="badge badge-ghost border border-base-content/20 text-xs">
+                  {String(item)}
+                </span>
+              ))}
+            </div>
+          );
+        }
+
         // Handle arrays
         if (Array.isArray(value)) {
           return (
@@ -414,55 +520,14 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
                   const promptSubFieldKey = path.startsWith("prompt.") ? path.slice("prompt.".length) : null;
                   const isPromptField = path === "prompt" || promptSubFieldKey !== null;
                   const pathParts = path.split(".");
-                  const isConnectedAgentPath = pathParts[0] === "connected_agents";
-
-                  const resolveConnectedAgentName = () => {
-                    if (!isConnectedAgentPath) return "";
-
-                    const connectionKey = pathParts[1];
-                    if (bridgeIdToNameMap[connectionKey]) {
-                      return bridgeIdToNameMap[connectionKey];
-                    }
-
-                    if (typeof oldValue === "string" && bridgeIdToNameMap[oldValue]) {
-                      return bridgeIdToNameMap[oldValue];
-                    }
-                    if (typeof newValue === "string" && bridgeIdToNameMap[newValue]) {
-                      return bridgeIdToNameMap[newValue];
-                    }
-
-                    if (
-                      oldValue &&
-                      typeof oldValue === "object" &&
-                      oldValue.bridge_id &&
-                      bridgeIdToNameMap[oldValue.bridge_id]
-                    ) {
-                      return bridgeIdToNameMap[oldValue.bridge_id];
-                    }
-                    if (
-                      newValue &&
-                      typeof newValue === "object" &&
-                      newValue.bridge_id &&
-                      bridgeIdToNameMap[newValue.bridge_id]
-                    ) {
-                      return bridgeIdToNameMap[newValue.bridge_id];
-                    }
-
-                    return "";
-                  };
-                  const connectedAgentName = resolveConnectedAgentName();
-
                   // Label: use PROMPT_SECTION_CONFIG label for known prompt sub-fields, else DIFFERNCE_DATA_DISPLAY_NAME
                   const leafKey = pathParts.at(-1);
                   const isFallbackModelPath = path === "settings.fall_back.model";
-                  const displayLabel =
-                    isConnectedAgentPath && connectedAgentName
-                      ? connectedAgentName
-                      : isFallbackModelPath
-                        ? "Fallback Model"
-                        : promptSubFieldKey && PROMPT_SECTION_CONFIG[promptSubFieldKey]?.label
-                          ? PROMPT_SECTION_CONFIG[promptSubFieldKey].label
-                          : DIFFERNCE_DATA_DISPLAY_NAME(leafKey);
+                  const displayLabel = isFallbackModelPath
+                    ? "Fallback Model"
+                    : promptSubFieldKey && PROMPT_SECTION_CONFIG[promptSubFieldKey]?.label
+                      ? PROMPT_SECTION_CONFIG[promptSubFieldKey].label
+                      : DIFFERNCE_DATA_DISPLAY_NAME(leafKey);
 
                   return (
                     <div key={path} data-testid={`comparison-card-${path}`} className="card bg-base-200">
@@ -481,13 +546,13 @@ const PublishVersionDataComparisonView = ({ oldData, newData, params }) => {
                             <div>
                               <div className="text-xs text-gray-500 mb-1">Current Value:</div>
                               <div className="bg-base-300 p-3 rounded text-sm break-all whitespace-pre-wrap overflow-hidden">
-                                {formatValue(oldValue, path)}
+                                {formatValue(oldValue, path, newValue, "old")}
                               </div>
                             </div>
                             <div>
                               <div className="text-xs text-gray-500 mb-1">Updated Value:</div>
                               <div className="bg-base-300 p-3 rounded text-sm break-all whitespace-pre-wrap overflow-hidden">
-                                {formatValue(newValue, path)}
+                                {formatValue(newValue, path, oldValue, "new")}
                               </div>
                             </div>
                           </div>

@@ -14,7 +14,7 @@ import SaveWidgetModal from "@/components/modals/SaveWidgetModal";
 import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import { generateRichUITemplate } from "@/config/utilityApi";
 import ReactMarkdown from "@/components/LazyMarkdown";
 import { mdComponentsDark, mdRemarkPlugins } from "@/utils/markdownComponents";

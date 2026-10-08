@@ -54,11 +54,6 @@ const ModelGardenPage = ({ params }) => {
     setSelectedModel(null);
   };
 
-  const handleClosePanel = () => {
-    setIsPanelOpen(false);
-    setTimeout(() => setSelectedService(null), 300);
-  };
-
   const handleModelClick = useCallback((model) => {
     setSelectedModel(model);
     openSidebar(SLIDER_ID, "right");
@@ -142,7 +137,7 @@ const ModelGardenPage = ({ params }) => {
           selectedModel.vision === true ? (
             <Check size={16} className="text-success" />
           ) : (
-            <X size={16} className="text-error" />
+            <span className="text-base-content/50">—</span>
           ),
       },
       {
@@ -151,7 +146,7 @@ const ModelGardenPage = ({ params }) => {
           selectedModel.files === true ? (
             <Check size={16} className="text-success" />
           ) : (
-            <X size={16} className="text-error" />
+            <span className="text-base-content/50">—</span>
           ),
       },
     ];
@@ -253,9 +248,6 @@ const ModelGardenPage = ({ params }) => {
                     {filteredModels.length} model{filteredModels.length !== 1 ? "s" : ""} available
                   </p>
                 </div>
-                <button onClick={handleClosePanel} className="btn btn-ghost btn-sm btn-square">
-                  <X size={18} />
-                </button>
               </div>
 
               {/* Search Bar */}
@@ -269,7 +261,7 @@ const ModelGardenPage = ({ params }) => {
                       placeholder="Search models..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="input input-bordered input-sm w-full pl-9"
+                      className="input input-sm w-full pl-9"
                     />
                   </div>
                 </div>
@@ -333,14 +325,14 @@ const ModelGardenPage = ({ params }) => {
                             {model.vision === true ? (
                               <Check size={16} className="text-success" />
                             ) : (
-                              <X size={16} className="text-error opacity-30" />
+                              <span className="text-base-content/30">—</span>
                             )}
                           </td>
                           <td className="text-sm">
                             {model.files === true ? (
                               <Check size={16} className="text-success" />
                             ) : (
-                              <X size={16} className="text-error opacity-30" />
+                              <span className="text-base-content/30">—</span>
                             )}
                           </td>
                         </tr>

@@ -37,8 +37,9 @@ const MetricsChart = memo(({ rawData, currentTheme, factor }) => {
     );
   };
 
-  const axisColor = currentTheme === "dark" ? "oklch(var(--bc))" : "#374151";
-  const gridColor = currentTheme === "dark" ? "oklch(var(--bc) / 0.2)" : "#e5e7eb";
+  const axisColor = currentTheme === "dark" ? "var(--color-base-content)" : "#374151";
+  const gridColor =
+    currentTheme === "dark" ? "color-mix(in oklch, var(--color-base-content) 20%, transparent)" : "#e5e7eb";
 
   if (rawData.length === 0) {
     return (

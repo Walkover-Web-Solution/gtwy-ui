@@ -107,7 +107,7 @@ function ConnectedAgentListSuggestion({
           placeholder="Search Agent"
           value={searchQuery}
           onChange={handleInputChange}
-          className="input input-bordered w-full input-sm"
+          className="input w-full input-sm"
         />
         {renderBridgeSuggestions}
       </div>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, use, useRef } from "r
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import InfiniteScroll from "react-infinite-scroll-component";
 import {
   deleteTestCaseAction,
@@ -13,7 +13,7 @@ import {
   runTestCaseAction,
   updateTestCaseAction,
 } from "@/store/action/testCasesAction";
-import { updateBridgeAction } from "@/store/action/bridgeAction";
+import { updateBridgeAction, getBridgeVersionAction } from "@/store/action/bridgeAction";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import { PlayIcon } from "@/components/Icons";
@@ -671,6 +671,20 @@ function TestCases({ params }) {
 
   const selectedTestCase = Array.isArray(testCases) && testCases[selectedTestCaseIndex];
 
+  // Version configuration is not fetched anywhere on this page, so `bridgeVersionMapping`
+  // stays empty unless the user came via the configure page. The debug agent reads the
+  // system prompt (and falls back to the config for aiconfig) from it, so pull in each
+  // selected version once — same as the history page does before opening the debug agent.
+  const requestedVersionConfigs = useRef(new Set());
+  useEffect(() => {
+    selectedVersions.forEach((versionId) => {
+      if (!versionId || requestedVersionConfigs.current.has(versionId)) return;
+      if (bridgeVersionMapping?.[versionId]?.configuration) return;
+      requestedVersionConfigs.current.add(versionId);
+      dispatch(getBridgeVersionAction({ versionId }));
+    });
+  }, [selectedVersions, bridgeVersionMapping, dispatch]);
+
   // Check which selected versions don't have an API key configured for their service
   const versionsWithoutApiKeys = useMemo(() => {
     return selectedVersions.filter((versionId) => {
@@ -1024,7 +1038,7 @@ function TestCases({ params }) {
                     placeholder="Search test cases..."
                     value={searchKeyword}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="input input-sm input-bordered w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    className="input input-sm w-full pl-9 pr-9 bg-base-50 text-base-content placeholder-base-content/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
                     {searchKeyword && (

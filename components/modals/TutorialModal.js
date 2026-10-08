@@ -18,7 +18,7 @@ import { HelpCircle } from "lucide-react";
 
 const TutorialVideo = ({ videoUrl, title }) => {
   return (
-    <div className="relative bg-black rounded-lg overflow-hidden">
+    <div className="relative bg-black overflow-hidden">
       <iframe
         src={videoUrl}
         title={title}
@@ -97,7 +97,7 @@ const TutorialModal = () => {
                   id={`tutorial-item-${index}`}
                   data-testid={`tutorial-item-${index}`}
                   key={index}
-                  className={`border rounded-xl transition-all duration-200 transform hover:scale-[1.01] ${
+                  className={`border transition-all duration-200 transform hover:scale-[1.01] ${
                     isActive
                       ? "border-base-300 shadow-lg bg-base-100"
                       : "border-base-300 hover:border-base-300 hover:shadow-md bg-base-100 hover:bg-base-100"
@@ -107,8 +107,8 @@ const TutorialModal = () => {
                     <div className="flex items-center gap-4">
                       {/* Icon */}
                       <div
-                        className={`p-2.5 bg-base-100 rounded-lg border border-base-300 transition-all duration-200 ${
-                          isActive ? "bg-base-300 border-base-200" : "group-hover:bg-base-200"
+                        className={`p-2.5 bg-base-100 border border-base-300 transition-all duration-200 ${
+                          isActive ? "bg-base-300 border-base-300" : "group-hover:bg-base-200"
                         }`}
                       >
                         <IconComponent
@@ -133,7 +133,7 @@ const TutorialModal = () => {
                               e.stopPropagation();
                               toggleTutorial(index);
                             }}
-                            className="flex items-center gap-2 px-4 py-2 bg-base-300 text-base-content rounded-lg hover:bg-base-200 transition-all duration-200 text-sm font-medium hover:scale-105 shadow-sm hover:shadow-md"
+                            className="flex items-center gap-2 px-4 py-2 bg-base-300 text-base-content hover:bg-base-200 transition-all duration-200 text-sm font-medium hover:scale-105 shadow-sm hover:shadow-md"
                           >
                             <PlayIcon size={20} />
                             Watch
@@ -171,7 +171,7 @@ const TutorialModal = () => {
                             id={`tutorial-close-video-button-${index}`}
                             data-testid={`tutorial-close-video-button-${index}`}
                             onClick={() => setActiveIndex(null)}
-                            className="px-4 py-2 text-base-content hover:text-base-content hover:bg-base-200 rounded-lg transition-all duration-200 text-sm hover:scale-105"
+                            className="px-4 py-2 text-base-content hover:text-base-content hover:bg-base-200 transition-all duration-200 text-sm hover:scale-105"
                           >
                             Close Video
                           </button>

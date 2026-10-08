@@ -19,22 +19,24 @@ import {
 import { MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { getIconOfService, openModal, formatRelativeTime, formatDate } from "@/utils/utility";
-import ResourcePage from "@/components/folders/ResourcePage";
-import FolderTabs from "@/components/folders/FolderTabs";
-import MoveToFolderMenu from "@/components/folders/MoveToFolderMenu";
-import useFolders from "@/hooks/useFolders";
+import { ResourcePage } from "@/components/folders/ResourcePage";
+import { FolderTabs } from "@/components/folders/FolderTabs";
+import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
+import { useFolders } from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
-import { Folder, Funnel, Undo2, Infinity, Trash2 } from "lucide-react";
+import { Folder, Funnel, Undo2, Trash2 } from "lucide-react";
 
 import { ClockIcon, EllipsisIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
+import LimitUsageCell from "@/components/UI/LimitUsageCell";
 import AgentEmptyState from "@/components/AgentEmptyState";
+import GtwySkillBanner from "@/components/gtwySkill/GtwySkillBanner";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
 import ConfigureEnvironmentModal from "@/components/modals/ConfigureEnvironmentModal";
@@ -119,7 +121,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
               autoComplete="off"
               type="number"
               placeholder="Enter limit in $"
-              className="input input-bordered max-w-sm w-full input-sm"
+              className="input max-w-sm w-full input-sm"
               value={limit}
               min="0"
               step="0.0001"
@@ -143,7 +145,7 @@ export const UsageSummaryPopover = ({ stats, item, isEmbedUser, onSetLimit, onRe
             <span className="text-base-content/60">Reset Period</span>
             <select
               data-testid="agent-reset-period-select"
-              className="select select-bordered select-sm w-36"
+              className="select select-sm w-36"
               value={resetPeriod}
               onChange={handleResetPeriodChange}
             >
@@ -200,7 +202,7 @@ const getColumnLabel = (column) => {
     case "updated_by":
       return "Updated By";
     case "agent_limit":
-      return "Limit $";
+      return "Usage / Limit";
     case "apikey_usage":
       return "Apikey Usage";
     case "agent_usage":
@@ -281,20 +283,14 @@ const renderUpdatedByCell = (updatedBy, timestamp) => {
   );
 };
 
-const renderLimitCell = (limit) => {
-  const limitValue = Number(limit ?? 0);
-  const hasLimit = Number.isFinite(limitValue) && limitValue > 0;
-
-  if (!hasLimit) {
-    return (
-      <div className="flex items-center justify-center">
-        <Infinity size={20} className="text-base-content" />
-      </div>
-    );
-  }
-
-  return <div className="text-center font-medium">{formatUsageNumber(limitValue, 4)}</div>;
-};
+const renderLimitCell = (item) => (
+  <LimitUsageCell
+    usage={item?.bridge_usage}
+    limit={item?.bridge_limit}
+    resetPeriod={item?.bridge_limit_reset_period}
+    anchorDate={item?.bridge_limit_start_date}
+  />
+);
 
 // Footer Component
 const PoweredByFooter = () => {
@@ -729,7 +725,7 @@ function Home({ params, searchParams, isEmbedUser }) {
           <EmptyCell />
         ),
         averageResponseTime: averageResponseTime[item?._id] ? averageResponseTime[item?._id] : "Not used in 24h",
-        agent_limit: renderLimitCell(item?.bridge_limit),
+        agent_limit: renderLimitCell(item),
         agent_limit_original: item?.bridge_limit || 0,
         agent_usage: item?.bridge_usage ? parseFloat(item.bridge_usage).toFixed(4) : 0,
         isLoading: loadingAgentId === item._id,
@@ -758,6 +754,7 @@ function Home({ params, searchParams, isEmbedUser }) {
         ),
         updated_at_original: updatedAt,
         bridge_limit_reset_period: item?.bridge_limit_reset_period || null,
+        bridge_limit_start_date: item?.bridge_limit_start_date || null,
         folder_id: item?.folder_id ? getFolderIdStr(item.folder_id) : null,
         settings: item?.settings || {},
       };
@@ -884,7 +881,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       ) : (
         <EmptyCell />
       ),
-      agent_limit: renderLimitCell(item?.bridge_limit),
+      agent_limit: renderLimitCell(item),
       agent_limit_original: item?.bridge_limit || 0,
       averageResponseTime:
         averageResponseTime[item?._id] === 0 ? (
@@ -1312,6 +1309,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                             isEmbedUser={isEmbedUser}
                           />
                         </div>
+                        {!isEmbedUser && <GtwySkillBanner orgId={resolvedParams.org_id} />}
                       </MainLayout>
 
                       <div className="flex flex-row flex-wrap gap-4 pb-3 items-center">
@@ -1473,7 +1471,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       autoComplete="off"
                       type="date"
                       data-testid="usage-filter-start-date"
-                      className="input input-bordered input-sm w-full"
+                      className="input input-sm w-full"
                       value={usageFilterDates.start_date}
                       max={usageFilterDates.end_date || undefined}
                       onChange={(e) => handleUsageDateChange("start_date", e.target.value)}
@@ -1485,7 +1483,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       autoComplete="off"
                       type="date"
                       data-testid="usage-filter-end-date"
-                      className="input input-bordered input-sm w-full"
+                      className="input input-sm w-full"
                       value={usageFilterDates.end_date}
                       min={usageFilterDates.start_date || undefined}
                       onChange={(e) => handleUsageDateChange("end_date", e.target.value)}

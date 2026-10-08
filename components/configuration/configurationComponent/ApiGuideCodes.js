@@ -1,4 +1,15 @@
 import { extractPromptVariables } from "@/utils/utility";
+import { isJevService, JEV_EXAMPLE_QUESTIONS, JEV_EXAMPLE_STATE, JEV_EXAMPLE_ANSWERS } from "@/utils/jevQuestions";
+
+// Pretty JSON whose continuation lines start at `indent`, for embedding inside a snippet.
+const indentJson = (value, indent) =>
+  JSON.stringify(value, null, 2)
+    .split("\n")
+    .map((line, i) => (i === 0 ? line : indent + line))
+    .join("\n");
+
+const JEV_CONFIGURATION = { questions: JEV_EXAMPLE_QUESTIONS };
+const userQuestion = (service) => (isJevService(service) ? JEV_EXAMPLE_STATE : "YOUR_USER_QUESTION");
 
 const buildVariables = (prompt) => {
   const used = extractPromptVariables(prompt);
@@ -14,7 +25,7 @@ const buildPythonVariables = (prompt) => {
     : "            # No variables found in prompt";
 };
 
-export const getCurlCode = (bridgeId, modelType, isEmbedUser, prompt = "") => {
+export const getCurlCode = (bridgeId, modelType, isEmbedUser, prompt = "", service = "") => {
   const url = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/chat/completion`;
   const authHeader = isEmbedUser
     ? `--header 'Content-Type: application/json'`
@@ -22,10 +33,11 @@ export const getCurlCode = (bridgeId, modelType, isEmbedUser, prompt = "") => {
 
   const body = [
     "{",
-    `  ${modelType === "embedding" ? '"text": "YOUR_TEXT_HERE",' : '"user": "YOUR_USER_QUESTION",'}`,
+    `  ${modelType === "embedding" ? '"text": "YOUR_TEXT_HERE",' : `"user": "${userQuestion(service)}",`}`,
     `  "agent_id": "${bridgeId}",`,
     `  "thread_id": "YOUR_THREAD_ID",`,
-    `  "response_type": "text",`,
+    // Jev answers typed questions instead of generating text, so it takes questions rather than a response_type.
+    isJevService(service) ? `  "configuration": ${indentJson(JEV_CONFIGURATION, "  ")},` : `  "response_type": "text",`,
     `  "variables": {`,
     buildVariables(prompt),
     `  }`,
@@ -64,7 +76,7 @@ export const getCurlBatchCode = (bridgeId, isEmbedUser) => {
   return `curl --location '${url}' \\\n  ${authHeader} \\\n  --data '${body}'`;
 };
 
-export const getPythonCode = (bridgeId, isEmbedUser, prompt = "") => {
+export const getPythonCode = (bridgeId, isEmbedUser, prompt = "", service = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const apiKeyLine = isEmbedUser
     ? "    # No API key required for embed users"
@@ -80,9 +92,10 @@ export const getPythonCode = (bridgeId, isEmbedUser, prompt = "") => {
     "",
     "response = client.responses.create(",
     `    model="YOUR_MODEL_NAME",`,
-    `    input="YOUR_USER_QUESTION",`,
+    `    input="${userQuestion(service)}",`,
     "    extra_body={",
     `        "agent_id": "${bridgeId}",`,
+    ...(isJevService(service) ? [`        "configuration": ${indentJson(JEV_CONFIGURATION, "        ")},`] : []),
     `        "variables": {`,
     buildPythonVariables(prompt),
     "        },",
@@ -125,7 +138,7 @@ export const getPythonBatchCode = (bridgeId, isEmbedUser) => {
   ].join("\n");
 };
 
-export const getJavaScriptCode = (bridgeId, isEmbedUser, prompt = "") => {
+export const getJavaScriptCode = (bridgeId, isEmbedUser, prompt = "", service = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const used = extractPromptVariables(prompt);
   const varsBlock =
@@ -145,7 +158,8 @@ export const getJavaScriptCode = (bridgeId, isEmbedUser, prompt = "") => {
     "const response = await client.responses.create({",
     `  model: "YOUR_MODEL_NAME",`,
     `  agent_id: "${bridgeId}",`,
-    `  input: "YOUR_USER_QUESTION",`,
+    `  input: "${userQuestion(service)}",`,
+    ...(isJevService(service) ? [`  configuration: ${indentJson(JEV_CONFIGURATION, "  ")},`] : []),
     "  variables: {",
     varsBlock,
     "  },",
@@ -183,7 +197,7 @@ export const getJavaScriptBatchCode = (bridgeId, isEmbedUser) => {
   ].join("\n");
 };
 
-export const getDotNetCode = (bridgeId, isEmbedUser, prompt = "") => {
+export const getDotNetCode = (bridgeId, isEmbedUser, prompt = "", service = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const used = extractPromptVariables(prompt);
   const varsLines =
@@ -216,10 +230,17 @@ export const getDotNetCode = (bridgeId, isEmbedUser, prompt = "") => {
     "        var response = await client.Responses.CreateAsync(new ResponseCreateRequest",
     "        {",
     `            Model = "YOUR_MODEL_NAME",`,
-    `            Input = "YOUR_USER_QUESTION",`,
+    `            Input = "${userQuestion(service)}",`,
     "            AdditionalProperties =",
     "            {",
     `                ["agent_id"] = BinaryData.FromString('"${bridgeId}"'),`,
+    ...(isJevService(service)
+      ? [
+          `                ["configuration"] = BinaryData.FromString("""`,
+          `                ${indentJson(JEV_CONFIGURATION, "                ")}`,
+          `                """),`,
+        ]
+      : []),
     `                ["variables"] = BinaryData.FromObjectAsJson(new`,
     "                {",
     varsLines,
@@ -279,7 +300,7 @@ export const getDotNetBatchCode = (bridgeId, isEmbedUser) => {
   ].join("\n");
 };
 
-export const getJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
+export const getJavaCode = (bridgeId, isEmbedUser, prompt = "", service = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const used = extractPromptVariables(prompt);
   const varsLines =
@@ -295,9 +316,16 @@ export const getJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
     "import com.openai.client.okhttp.OpenAIOkHttpClient;",
     "import com.openai.models.responses.Response;",
     "import com.openai.models.responses.ResponseCreateParams;",
+    ...(isJevService(service)
+      ? [
+          "import com.fasterxml.jackson.databind.ObjectMapper;",
+          "import com.openai.core.JsonValue;",
+          "import java.util.Map;",
+        ]
+      : []),
     "",
-    "public class Main {",
-    "    public static void main(String[] args) {",
+    `public class Main {`,
+    `    public static void main(String[] args)${isJevService(service) ? " throws Exception" : ""} {`,
     "        OpenAIClient client = OpenAIOkHttpClient.builder()",
     apiKeyLine,
     `            .baseUrl("${baseUrl}")`,
@@ -305,8 +333,15 @@ export const getJavaCode = (bridgeId, isEmbedUser, prompt = "") => {
     "",
     "        ResponseCreateParams params = ResponseCreateParams.builder()",
     `            .model("YOUR_MODEL_NAME")`,
-    `            .input("YOUR_USER_QUESTION")`,
+    `            .input("${userQuestion(service)}")`,
     `            .putAdditionalBodyProperty("agent_id", "${bridgeId}")`,
+    ...(isJevService(service)
+      ? [
+          `            .putAdditionalBodyProperty("configuration", JsonValue.from(new ObjectMapper().readValue("""`,
+          `                ${indentJson(JEV_CONFIGURATION, "                ")}`,
+          `                """, Map.class)))`,
+        ]
+      : []),
     varsLines,
     "            .build();",
     "",
@@ -355,7 +390,7 @@ export const getJavaBatchCode = (bridgeId, isEmbedUser) => {
   ].join("\n");
 };
 
-export const getGoCode = (bridgeId, isEmbedUser, prompt = "") => {
+export const getGoCode = (bridgeId, isEmbedUser, prompt = "", service = "") => {
   const baseUrl = `${process.env.NEXT_PUBLIC_PYTHON_SERVER_WITH_PROXY_URL}/api/v2/model/openai`;
   const used = extractPromptVariables(prompt);
   const varsLines =
@@ -371,6 +406,7 @@ export const getGoCode = (bridgeId, isEmbedUser, prompt = "") => {
     "",
     "import (",
     '\t"context"',
+    ...(isJevService(service) ? ['\t"encoding/json"'] : []),
     '\t"fmt"',
     "",
     '\t"github.com/openai/openai-go/v3"',
@@ -386,9 +422,12 @@ export const getGoCode = (bridgeId, isEmbedUser, prompt = "") => {
     "",
     "\tresp, err := client.Responses.New(context.TODO(), openai.ResponseNewParams{",
     `\t\tModel: "YOUR_MODEL_NAME",`,
-    `\t\tInput: responses.ResponseNewParamsInputUnion{OfString: openai.String("YOUR_USER_QUESTION")},`,
+    `\t\tInput: responses.ResponseNewParamsInputUnion{OfString: openai.String("${userQuestion(service)}")},`,
     "\t},",
     `\t\toption.WithJSONSet("agent_id", "${bridgeId}"),`,
+    ...(isJevService(service)
+      ? [`\t\toption.WithJSONSet("configuration", json.RawMessage(\`${indentJson(JEV_CONFIGURATION, "\t\t")}\`)),`]
+      : []),
     `\t\toption.WithJSONSet("variables", map[string]string{`,
     varsLines,
     "\t\t}),",
@@ -448,33 +487,49 @@ export const getGoBatchCode = (bridgeId, isEmbedUser) => {
 
 // Response formats
 
-export const getCurlResponseFormat = () =>
+export const getCurlResponseFormat = (service = "") =>
   JSON.stringify(
-    {
-      success: true,
-      response: {
-        data: {
-          id: "chatcmpl-d7a6874d-a82f-4cb5-8a40-1c899722c64f",
-          content: "Response from the AI assistant",
-          model: "your-model-name",
-          role: "assistant",
-          tools_data: {},
-          fallback: false,
-          finish_reason: "completed",
-          message_id: "abdd920a-ec69-11f0-b14a-928ade59a1ee",
+    isJevService(service)
+      ? {
+          success: true,
+          response: {
+            data: {
+              id: "YOUR_TYPESAFE_REQUEST_ID",
+              content: JSON.stringify(JEV_EXAMPLE_ANSWERS),
+              answers: JEV_EXAMPLE_ANSWERS,
+              model: "jev-1.13.0",
+              role: "assistant",
+              finish_reason: "completed",
+              message_id: "abdd920a-ec69-11f0-b14a-928ade59a1ee",
+            },
+            usage: { total_tokens: 457, input_tokens: 392, output_tokens: 65, cached_tokens: 0, cost: 0.0000165 },
+          },
+        }
+      : {
+          success: true,
+          response: {
+            data: {
+              id: "chatcmpl-d7a6874d-a82f-4cb5-8a40-1c899722c64f",
+              content: "Response from the AI assistant",
+              model: "your-model-name",
+              role: "assistant",
+              tools_data: {},
+              fallback: false,
+              finish_reason: "completed",
+              message_id: "abdd920a-ec69-11f0-b14a-928ade59a1ee",
+            },
+            usage: {
+              total_tokens: 500,
+              input_tokens: 300,
+              output_tokens: 200,
+              cached_tokens: 0,
+              cache_read_input_tokens: 0,
+              cache_creation_input_tokens: 0,
+              reasoning_tokens: 0,
+              cost: 0.0025,
+            },
+          },
         },
-        usage: {
-          total_tokens: 500,
-          input_tokens: 300,
-          output_tokens: 200,
-          cached_tokens: 0,
-          cache_read_input_tokens: 0,
-          cache_creation_input_tokens: 0,
-          reasoning_tokens: 0,
-          cost: 0.0025,
-        },
-      },
-    },
     null,
     2
   );

@@ -42,7 +42,7 @@ const AuthDataModal = ({ data }) => {
         {/* Route Name */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text flex items-center space-x-2">
+            <span className="flex items-center space-x-2">
               <ShieldIcon className="h-4 w-4 text-base-content/50" />
               <span>Route Name</span>
             </span>
@@ -55,7 +55,7 @@ const AuthDataModal = ({ data }) => {
               type="text"
               value={data?.name || ""}
               readOnly
-              className="input input-bordered join-item flex-1 bg-base-200"
+              className="input join-item flex-1 bg-base-200"
             />
             <button
               data-testid="auth-data-copy-route-name-button"
@@ -75,7 +75,7 @@ const AuthDataModal = ({ data }) => {
         {/* Client ID */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text flex items-center space-x-2">
+            <span className="flex items-center space-x-2">
               <KeyIcon className="h-4 w-4 text-base-content/50" />
               <span>Client ID</span>
             </span>
@@ -88,7 +88,7 @@ const AuthDataModal = ({ data }) => {
               type="text"
               value={data?.client_id || ""}
               readOnly
-              className="input input-bordered join-item flex-1 bg-base-200 font-mono text-sm"
+              className="input join-item flex-1 bg-base-200 font-mono text-sm"
             />
             <button
               data-testid="auth-data-copy-client-id-button"
@@ -108,7 +108,7 @@ const AuthDataModal = ({ data }) => {
         {/* Redirection URL */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text flex items-center space-x-2">
+            <span className="flex items-center space-x-2">
               <GlobeIcon className="h-4 w-4 text-base-content/50" />
               <span>Redirection URL</span>
             </span>
@@ -121,7 +121,7 @@ const AuthDataModal = ({ data }) => {
               type="text"
               value={data?.redirection_url || ""}
               readOnly
-              className="input input-bordered join-item flex-1 bg-base-200"
+              className="input join-item flex-1 bg-base-200"
             />
             <button
               data-testid="auth-data-copy-redirection-url-button"
