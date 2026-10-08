@@ -987,6 +987,68 @@ export const formatRelativeTime = (dateString) => {
   return `${Math.floor(diffInSeconds / 31536000)}y ago`;
 };
 
+// API key spend is counted per calendar window in UTC (see periodKey in the backend):
+// daily rolls at midnight, weekly on Monday (ISO week), monthly on the 1st.
+export const LIMIT_RESET_PERIOD_LABELS = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
+
+export const normalizeLimitResetPeriod = (resetPeriod) => {
+  const candidate = String(resetPeriod || "")
+    .toLowerCase()
+    .trim();
+  return LIMIT_RESET_PERIOD_LABELS[candidate] ? candidate : "monthly";
+};
+
+// Without an anchor the window is a UTC calendar day/week/month (API keys). Agent and folder limits pass
+// their limit start date and reset at that time of day, weekday or day of month (see calculate_limit_ttl).
+export const getNextLimitReset = (resetPeriod, anchorDate = null, now = new Date()) => {
+  const period = normalizeLimitResetPeriod(resetPeriod);
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const day = now.getUTCDate();
+  const anchor = anchorDate ? new Date(anchorDate) : null;
+
+  if (!anchor || isNaN(anchor.getTime())) {
+    if (period === "daily") return new Date(Date.UTC(year, month, day + 1));
+    if (period === "weekly") {
+      const daysSinceMonday = (now.getUTCDay() + 6) % 7;
+      return new Date(Date.UTC(year, month, day - daysSinceMonday + 7));
+    }
+    return new Date(Date.UTC(year, month + 1, 1));
+  }
+
+  const atAnchorTime = (y, m, d) =>
+    new Date(Date.UTC(y, m, d, anchor.getUTCHours(), anchor.getUTCMinutes(), anchor.getUTCSeconds()));
+
+  if (period === "daily") {
+    const candidate = atAnchorTime(year, month, day);
+    return candidate > now ? candidate : atAnchorTime(year, month, day + 1);
+  }
+  if (period === "weekly") {
+    const daysUntilAnchor = (anchor.getUTCDay() - now.getUTCDay() + 7) % 7;
+    const candidate = atAnchorTime(year, month, day + daysUntilAnchor);
+    return candidate > now ? candidate : atAnchorTime(year, month, day + daysUntilAnchor + 7);
+  }
+  const clampedAnchorTime = (y, m) => {
+    const lastDayOfMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return atAnchorTime(y, m, Math.min(anchor.getUTCDate(), lastDayOfMonth));
+  };
+  const candidate = clampedAnchorTime(year, month);
+  return candidate > now ? candidate : clampedAnchorTime(year, month + 1);
+};
+
+export const formatNextLimitReset = (resetPeriod, anchorDate = null) => {
+  const nextReset = getNextLimitReset(resetPeriod, anchorDate);
+  return `${formatDate(nextReset.toISOString())} (in ${formatTimeUntil(nextReset)})`;
+};
+
+export const formatTimeUntil = (date, now = new Date()) => {
+  const diffInMinutes = Math.max(0, Math.ceil((date.getTime() - now.getTime()) / 60000));
+  if (diffInMinutes < 60) return `${diffInMinutes}m`;
+  const hours = Math.floor(diffInMinutes / 60);
+  if (hours < 24) return `${hours}h ${diffInMinutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+};
+
 export const toUtcIso = (value) => {
   if (!value) return value;
   const d = new Date(value);
