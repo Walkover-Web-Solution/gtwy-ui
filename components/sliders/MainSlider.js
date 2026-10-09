@@ -40,6 +40,7 @@ import { logoutUser } from "../../config/authApi";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import WalletSidebarWidget from "@/components/wallet/WalletSidebarWidget";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Component                                 */
@@ -899,6 +900,15 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
               <div className="space-y-1">
                 {/* Wallet balance -> plans page (only when we have an unambiguous org from the URL) */}
                 {pathParts[2] && <WalletSidebarWidget orgId={pathParts[2]} showLabel={showSidebarContent} />}
+
+                {/* Notifications: every org and agent notification, opens the bell slider */}
+                {pathParts[2] && (
+                  <NotificationBell
+                    orgId={pathParts[2]}
+                    showLabel={showSidebarContent}
+                    onOpen={() => isMobile && setIsMobileVisible(false)}
+                  />
+                )}
 
                 {/* Primary action: Admin */}
                 <button
