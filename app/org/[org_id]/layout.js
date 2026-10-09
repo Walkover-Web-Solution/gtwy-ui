@@ -47,6 +47,7 @@ import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
 const MainSlider = dynamic(() => import("@/components/sliders/MainSlider"), { loading: () => <LoadingSpinner /> });
+const NotificationsSlider = dynamic(() => import("@/components/sliders/NotificationsSlider"), { ssr: false });
 const BlockedOrgBanner = dynamic(() => import("@/components/organization/BlockedOrgBanner"));
 const ChatDetails = dynamic(() => import("@/components/historyPageComponents/ChatDetails"), {
   loading: () => <LoadingSpinner />,
@@ -636,6 +637,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
 
         {/* Chat Details Sidebar */}
         <ChatDetails selectedItem={selectedItem} setIsSliderOpen={setIsSliderOpen} isSliderOpen={isSliderOpen} />
+        <NotificationsSlider orgId={resolvedParams?.org_id} />
         <ServiceInitializer />
         <KeyboardShortcutsModal />
       </div>
