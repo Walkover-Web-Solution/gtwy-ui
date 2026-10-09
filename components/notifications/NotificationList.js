@@ -43,12 +43,20 @@ function NotificationList({ items, agentNames = {}, onItemClick, onOpenAgent, em
                   title={item.severity}
                 />
                 <span className="text-sm font-semibold truncate">{item.title}</span>
+                {item.count > 1 && (
+                  <span
+                    className="badge badge-xs badge-ghost shrink-0 tabular-nums"
+                    title={`Happened ${item.count} times`}
+                  >
+                    ×{item.count}
+                  </span>
+                )}
               </div>
               <span
                 className="text-xs text-base-content/40 shrink-0 tabular-nums"
-                title={new Date(item.createdAt).toLocaleString()}
+                title={new Date(item.updatedAt || item.createdAt).toLocaleString()}
               >
-                {formatRelativeTime(item.createdAt)}
+                {formatRelativeTime(item.updatedAt || item.createdAt)}
               </span>
             </div>
             <p className="text-xs text-base-content/60 break-words line-clamp-3">{item.message}</p>

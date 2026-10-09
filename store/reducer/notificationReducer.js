@@ -3,13 +3,10 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialInbox = () => ({ items: [], page: 1, total: 0, unreadCount: 0, loading: false, fetched: false });
 
 // The inbox holds every notification the user can see: org-wide, every agent's, and global
-// broadcasts. Rules, channels and deliveries back the admin tabs of the notification centre.
+// broadcasts. Alerts are configured in the Alerts section; this only shows what happened.
 const initialState = {
   inbox: initialInbox(),
   catalogue: [],
-  rules: { items: [], loading: false, fetched: false },
-  channels: { items: [], loading: false, fetched: false },
-  deliveries: { items: [], total: 0, page: 1, loading: false },
 };
 
 export const notificationReducer = createSlice({
@@ -31,11 +28,21 @@ export const notificationReducer = createSlice({
     },
     addNotificationReducer: (state, action) => {
       const { notification } = action.payload;
-      // The same notification can arrive on more than one RTLayer channel; keep one copy.
-      if (state.inbox.items.some((item) => item._id === notification._id)) return;
-      state.inbox.items = [{ ...notification, read: false }, ...state.inbox.items];
-      state.inbox.total += 1;
-      state.inbox.unreadCount += 1;
+      const incoming = { ...notification, read: false };
+      const index = state.inbox.items.findIndex((item) => item._id === notification._id);
+      if (index === -1) {
+        state.inbox.items = [incoming, ...state.inbox.items];
+        state.inbox.total += 1;
+        state.inbox.unreadCount += 1;
+        return;
+      }
+      const existing = state.inbox.items[index];
+      // The same push can arrive twice (several listeners); only a newer version counts.
+      if (existing.updatedAt && existing.updatedAt === notification.updatedAt) return;
+      // A repeat of the alert was merged into this notification: move it up, unread again.
+      if (existing.read) state.inbox.unreadCount += 1;
+      state.inbox.items.splice(index, 1);
+      state.inbox.items.unshift(incoming);
     },
     markNotificationReadReducer: (state, action) => {
       const notification = state.inbox.items.find((item) => item._id === action.payload.id);
@@ -50,49 +57,6 @@ export const notificationReducer = createSlice({
     },
     setCatalogueReducer: (state, action) => {
       state.catalogue = action.payload;
-    },
-    setSettingsLoadingReducer: (state, action) => {
-      const { key, loading } = action.payload;
-      state[key].loading = loading;
-    },
-    setRulesReducer: (state, action) => {
-      state.rules = { items: action.payload, loading: false, fetched: true };
-    },
-    upsertRuleReducer: (state, action) => {
-      const rule = action.payload;
-      const index = state.rules.items.findIndex((item) => item._id === rule._id);
-      if (index === -1) state.rules.items.unshift(rule);
-      else state.rules.items[index] = rule;
-    },
-    removeRuleReducer: (state, action) => {
-      state.rules.items = state.rules.items.filter((item) => item._id !== action.payload);
-    },
-    setChannelsReducer: (state, action) => {
-      state.channels = { items: action.payload, loading: false, fetched: true };
-    },
-    upsertChannelReducer: (state, action) => {
-      const channel = action.payload;
-      const index = state.channels.items.findIndex((item) => item._id === channel._id);
-      if (index === -1) state.channels.items.unshift(channel);
-      else state.channels.items[index] = channel;
-    },
-    removeChannelReducer: (state, action) => {
-      const channelId = action.payload;
-      state.channels.items = state.channels.items.filter((item) => item._id !== channelId);
-      // The backend drops a deleted channel from every rule; mirror that locally.
-      state.rules.items = state.rules.items.map((rule) => ({
-        ...rule,
-        channel_ids: (rule.channel_ids || []).filter((id) => id !== channelId),
-      }));
-    },
-    setDeliveriesReducer: (state, action) => {
-      const { data, total, page, append } = action.payload;
-      state.deliveries = {
-        items: append ? [...state.deliveries.items, ...data] : data,
-        total,
-        page,
-        loading: false,
-      };
     },
   },
   extraReducers: (builder) => {
@@ -109,14 +73,6 @@ export const {
   markNotificationReadReducer,
   markAllNotificationsReadReducer,
   setCatalogueReducer,
-  setSettingsLoadingReducer,
-  setRulesReducer,
-  upsertRuleReducer,
-  removeRuleReducer,
-  setChannelsReducer,
-  upsertChannelReducer,
-  removeChannelReducer,
-  setDeliveriesReducer,
 } = notificationReducer.actions;
 
 export default notificationReducer.reducer;
