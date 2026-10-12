@@ -8,7 +8,7 @@ import { updateIntegrationDataAction } from "@/store/action/integrationAction";
 import { createApiAction, integrationAction, deleteFunctionAction } from "@/store/action/bridgeAction";
 import { setEmbedUserDetailsAction } from "@/store/action/appInfoAction";
 import toast from "react-hot-toast";
-import { RefreshCw, Save } from "lucide-react";
+import { RefreshCw, Save, Copy, CheckCircle } from "lucide-react";
 import ThemePaletteEditor, { hexToOklchString } from "./ThemePaletteEditor";
 import EmbedPromptBuilder from "../gtwy_embed/EmbedPromptBuilder";
 import ToolsConfiguration from "../gtwy_embed/ToolsConfiguration";
@@ -335,6 +335,7 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
   const [isJsonSchemaFullscreen, setIsJsonSchemaFullscreen] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
   const [aiThreadId, setAiThreadId] = useState("");
+  const [jsonSchemaCopied, setJsonSchemaCopied] = useState(false);
 
   useEffect(() => {
     onUnsavedChanges?.(hasUnsavedChanges);
@@ -792,6 +793,45 @@ const ConfigurationTab = ({ data, isConfigMode, onUnsavedChanges, onSaveRef }) =
                                   }}
                                 >
                                   Build with AI
+                                </span>
+                                <span className="text-xs text-base-content/50">|</span>
+                                <span
+                                  className="capitalize font-medium text-primary cursor-pointer hover:opacity-80 transition-opacity text-xs flex items-center gap-1"
+                                  onClick={() => {
+                                    try {
+                                      const schemaValue = configuration?.response_type?.json_schema;
+                                      if (schemaValue) {
+                                        const schemaString =
+                                          typeof schemaValue === "string"
+                                            ? schemaValue
+                                            : JSON.stringify(schemaValue, null, 2);
+                                        navigator.clipboard
+                                          .writeText(schemaString)
+                                          .then(() => {
+                                            setJsonSchemaCopied(true);
+                                            setTimeout(() => setJsonSchemaCopied(false), 2000);
+                                          })
+                                          .catch(() => {
+                                            console.error("Failed to copy JSON schema to clipboard");
+                                          });
+                                      }
+                                    } catch (error) {
+                                      console.error("Error copying JSON schema:", error);
+                                    }
+                                  }}
+                                  title="Copy JSON schema to clipboard"
+                                >
+                                  {jsonSchemaCopied ? (
+                                    <>
+                                      <CheckCircle size={12} />
+                                      Copied!
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy size={12} />
+                                      Copy
+                                    </>
+                                  )}
                                 </span>
                                 <span className="text-xs text-base-content/50">|</span>
                                 <FullscreenEditorButton

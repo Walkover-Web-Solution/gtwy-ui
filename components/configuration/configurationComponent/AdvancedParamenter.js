@@ -15,7 +15,7 @@ import OnBoarding from "@/components/OnBoarding";
 import TutorialSuggestionToast from "@/components/TutorialSuggestoinToast";
 import InfoTooltip from "@/components/InfoTooltip";
 import { setThreadIdForVersionReducer } from "@/store/reducer/bridgeReducer";
-import { Check, CircleQuestionMark, CircleX, ExternalLink } from "lucide-react";
+import { Check, CircleQuestionMark, CircleX, ExternalLink, Copy, CheckCircle } from "lucide-react";
 import RenderNode from "@/components/richUI/RenderNode";
 import FullscreenEditorModal, { FullscreenEditorButton } from "@/components/modals/FullscreenEditorModal";
 import { useConfigurationContext } from "../ConfigurationContext";
@@ -66,6 +66,7 @@ const AdvancedParameters = ({
   const [jsonSchemaError, setJsonSchemaError] = useState(null);
   const [jsonSchemaErrorExpanded, setJsonSchemaErrorExpanded] = useState(false);
   const [isErrorTruncated, setIsErrorTruncated] = useState(false);
+  const [jsonSchemaCopied, setJsonSchemaCopied] = useState(false);
   const errorTextRef = useRef(null);
   const lastSubmittedSchemaRef = useRef(null);
   const dropdownContainerRef = useRef(null);
@@ -1240,6 +1241,44 @@ const AdvancedParameters = ({
                             }}
                           >
                             Build with AI
+                          </span>
+                          <span className="text-xs text-base-content/50">|</span>
+                          <span
+                            data-testid={`advanced-param-json-schema-copy-${key}`}
+                            className="label capitalize font-medium text-primary cursor-pointer hover:opacity-80 transition-opacity text-xs flex items-center gap-1"
+                            onClick={() => {
+                              try {
+                                const schemaObj = configuration?.[key]?.json_schema;
+                                if (schemaObj) {
+                                  const schemaString =
+                                    typeof schemaObj === "string" ? schemaObj : JSON.stringify(schemaObj, null, 2);
+                                  navigator.clipboard
+                                    .writeText(schemaString)
+                                    .then(() => {
+                                      setJsonSchemaCopied(true);
+                                      setTimeout(() => setJsonSchemaCopied(false), 2000);
+                                    })
+                                    .catch(() => {
+                                      console.error("Failed to copy JSON schema to clipboard");
+                                    });
+                                }
+                              } catch (error) {
+                                console.error("Error copying JSON schema:", error);
+                              }
+                            }}
+                            title="Copy JSON schema to clipboard"
+                          >
+                            {jsonSchemaCopied ? (
+                              <>
+                                <CheckCircle size={14} />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={14} />
+                                Copy
+                              </>
+                            )}
                           </span>
                           <span className="text-xs text-base-content/50">|</span>
                           <FullscreenEditorButton
