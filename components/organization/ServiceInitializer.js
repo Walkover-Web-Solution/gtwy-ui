@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch } from "react-redux";
 import { usePathname } from "next/navigation";
 import { getServiceAction } from "@/store/action/serviceAction";
@@ -16,8 +16,23 @@ const ServiceInitializer = ({ isEmbedUser }) => {
   const MODELS = useCustomSelector((state) => state.modelReducer.serviceModels);
   const isOrgPage = pathname === "/org" || pathname.endsWith("/org");
 
+  // Stable key of service values so the models effect only re-runs when the actual set of services changes,
+  // not on every new SERVICES array reference or MODELS update (which caused a fetch loop on the org page)
+  const serviceKeys = useMemo(
+    () =>
+      Array.isArray(SERVICES)
+        ? SERVICES.map((service) => service?.value)
+            .filter(Boolean)
+            .join(",")
+        : "",
+    [SERVICES]
+  );
+
   useEffect(() => {
-    if (isOrgPage && !isEmbedUser) {
+    if (isEmbedUser) {
+      // Embed users: always refetch services on every load, ignoring cached redux/localStorage data
+      dispatch(getServiceAction());
+    } else if (isOrgPage) {
       dispatch(userDetails());
       dispatch(getServiceAction());
       getBlockedOrgs()
@@ -27,30 +42,28 @@ const ServiceInitializer = ({ isEmbedUser }) => {
         .catch((error) => {
           console.error("Failed to fetch blocked organizations", error);
         });
-    } else if (!isOrgPage) {
+    } else {
       const hasServices = Array.isArray(SERVICES) && SERVICES.length > 0;
       if (!hasServices) {
         dispatch(getServiceAction());
       }
     }
-  }, [dispatch, isOrgPage]);
+  }, [dispatch, isOrgPage, isEmbedUser]);
 
-  // Fetch models per-service:
-  // - org page: always re-fetch all models
+  // Fetch models per-service (runs once per page load for a given set of services):
+  // - embed users: always re-fetch on every refresh, even if cached
+  // - org page: re-fetch all models once
   // - non-org pages: only fetch if model data is missing from redux
   useEffect(() => {
-    if (!Array.isArray(SERVICES) || SERVICES.length === 0) return;
+    if (!serviceKeys) return;
 
     const getModelData = () => {
-      SERVICES.forEach((service) => {
-        const serviceValue = service?.value;
-        if (!serviceValue) return;
-
+      serviceKeys.split(",").forEach((serviceValue) => {
         const serviceModels = MODELS?.[serviceValue];
         const hasModelData =
           serviceModels && typeof serviceModels === "object" && Object.keys(serviceModels).length > 0;
 
-        if (isOrgPage || !hasModelData) {
+        if (isEmbedUser || isOrgPage || !hasModelData) {
           dispatch(getModelAction({ service: serviceValue }));
         }
       });
@@ -58,7 +71,9 @@ const ServiceInitializer = ({ isEmbedUser }) => {
 
     const timer = setTimeout(getModelData, 1000);
     return () => clearTimeout(timer);
-  }, [SERVICES, isOrgPage, MODELS]);
+    // MODELS is intentionally excluded: including it re-triggers this effect after every model fetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceKeys, isOrgPage, isEmbedUser]);
 
   return null;
 };
