@@ -24,7 +24,8 @@ import { FolderTabs } from "@/components/folders/FolderTabs";
 import { MoveToFolderMenu } from "@/components/folders/MoveToFolderMenu";
 import { useFolders } from "@/hooks/useFolders";
 import { useFolderContext } from "@/components/folders/FolderContext";
-import { Folder, Funnel, Undo2, Trash2 } from "lucide-react";
+import { Folder, Funnel, Undo2, Trash2, Zap } from "lucide-react";
+import Link from "next/link";
 
 import { ClockIcon, EllipsisIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
@@ -1329,6 +1330,17 @@ function Home({ params, searchParams, isEmbedUser }) {
                               {isUsageFilterActive ? usageFilterLabel || "Last 24h" : "Last 24h"}
                             </span>
                           </button>
+
+                          {!isEmbedUser && type === "api" && (
+                            <Link
+                              href={`/org/${resolvedParams.org_id}/agents/direct`}
+                              data-testid="use-without-agent-button"
+                              className="btn btn-outline btn-sm gap-1"
+                            >
+                              <Zap size={14} />
+                              Use without agent
+                            </Link>
+                          )}
 
                           <button
                             data-testid="create-new-agent-button"

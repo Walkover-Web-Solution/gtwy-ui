@@ -41,6 +41,10 @@ const AdvancedParameters = ({
   compact = false,
   isPublished = false,
   isEditor = true,
+  // Optional { service, configuration, onChange }: renders the parameters for a configuration
+  // that is not a saved agent (the direct playground). Reads come from it, and every save
+  // calls onChange with the configuration patch instead of updating the agent version.
+  directConfig = null,
 }) => {
   const isReadOnly = isPublished || !isEditor;
   const { discardPromptDraft } = useConfigurationContext();
@@ -83,6 +87,19 @@ const AdvancedParameters = ({
   }, [responseTypePickerOpen]);
   const dispatch = useDispatch();
   const router = useRouter();
+
+  const directOnChange = directConfig?.onChange;
+  // Every parameter save goes through here: the agent version, or the direct playground's config.
+  const saveUpdate = useCallback(
+    (payload) => {
+      if (directOnChange) {
+        directOnChange(payload?.dataToSend?.configuration || {});
+        return { success: true };
+      }
+      return dispatch(updateBridgeVersionAction(payload));
+    },
+    [dispatch, directOnChange]
+  );
   const { actualTheme } = useThemeManager();
 
   // Pending action ref for unsaved-prompt guard on response_type changes
@@ -135,7 +152,11 @@ const AdvancedParameters = ({
     const allBridgesMap = state?.bridgeReducer?.allBridgesMap || {};
 
     // Use bridgeData when isPublished=true, otherwise use versionData
-    const activeData = isPublished ? bridgeDataFromState : versionData;
+    const activeData = directConfig
+      ? { service: directConfig.service, configuration: directConfig.configuration }
+      : isPublished
+        ? bridgeDataFromState
+        : versionData;
     const service = activeData?.service;
     const configuration = activeData?.configuration;
     const type = configuration?.type;
@@ -190,7 +211,7 @@ const AdvancedParameters = ({
   const [thread_id, setThreadId] = useState(initialThreadId);
 
   useEffect(() => {
-    if (!bridge?.thread_id && initialThreadId) {
+    if (!directConfig && !bridge?.thread_id && initialThreadId) {
       setThreadIdForVersionReducer &&
         dispatch(
           setThreadIdForVersionReducer({
@@ -247,17 +268,15 @@ const AdvancedParameters = ({
   };
 
   const dispatchResponseTypeUpdate = async (responseTypePayload, { localOnly = false } = {}) => {
-    const result = await dispatch(
-      updateBridgeVersionAction({
-        bridgeId: params?.id,
-        versionId: searchParams?.version,
-        dataToSend: {
-          configuration: { response_type: responseTypePayload },
-        },
-        localOnly,
-        skipRollback: true,
-      })
-    );
+    const result = await saveUpdate({
+      bridgeId: params?.id,
+      versionId: searchParams?.version,
+      dataToSend: {
+        configuration: { response_type: responseTypePayload },
+      },
+      localOnly,
+      skipRollback: true,
+    });
     return result;
   };
 
@@ -326,13 +345,11 @@ const AdvancedParameters = ({
       },
     };
     if ((isSlider ? newValue : e.target.type === "checkbox" ? newCheckedValue : newValue) !== configuration?.[key]) {
-      dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.version,
-          dataToSend: { ...updatedDataToSend },
-        })
-      );
+      saveUpdate({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { ...updatedDataToSend },
+      });
     }
   };
 
@@ -417,13 +434,11 @@ const AdvancedParameters = ({
       };
     }
     if (e.target.value !== configuration?.[key]) {
-      dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.version,
-          dataToSend: { ...updatedDataToSend },
-        })
-      );
+      saveUpdate({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { ...updatedDataToSend },
+      });
     }
   };
   const setSliderValue = (value, key, isDeafaultObject = false) => {
@@ -453,13 +468,11 @@ const AdvancedParameters = ({
             },
           };
     if (numericValue !== configuration?.[key]) {
-      dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.version,
-          dataToSend: { ...updatedDataToSend },
-        })
-      );
+      saveUpdate({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { ...updatedDataToSend },
+      });
     }
   };
 
@@ -471,15 +484,13 @@ const AdvancedParameters = ({
           [key]: newValue,
         },
       };
-      dispatch(
-        updateBridgeVersionAction({
-          bridgeId: params?.id,
-          versionId: searchParams?.version,
-          dataToSend: { ...updatedDataToSend },
-        })
-      );
+      saveUpdate({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { ...updatedDataToSend },
+      });
     },
-    [dispatch, params?.id, searchParams?.version]
+    [saveUpdate, params?.id, searchParams?.version]
   );
 
   // State for selected widgets (indices)
@@ -689,22 +700,20 @@ const AdvancedParameters = ({
                     }
                     if (selectedValue === "widget") {
                       const defaultSchema = generateCombinedSchema([], richUiWidgets);
-                      dispatch(
-                        updateBridgeVersionAction({
-                          bridgeId: params?.id,
-                          versionId: searchParams?.version,
-                          dataToSend: {
-                            configuration: {
-                              response_type: {
-                                type: "json_schema",
-                                json_schema: defaultSchema,
-                                is_template: true,
-                                template_id: [],
-                              },
+                      saveUpdate({
+                        bridgeId: params?.id,
+                        versionId: searchParams?.version,
+                        dataToSend: {
+                          configuration: {
+                            response_type: {
+                              type: "json_schema",
+                              json_schema: defaultSchema,
+                              is_template: true,
+                              template_id: [],
                             },
                           },
-                        })
-                      );
+                        },
+                      });
                     } else if (selectedValue === "json_schema") {
                       setObjectFieldValue(null);
                       dispatchResponseTypeUpdate(buildJsonSchemaResponseType({ is_template: false }), {
@@ -712,29 +721,25 @@ const AdvancedParameters = ({
                       });
                     } else if (selectedValue === "json_object") {
                       setObjectFieldValue(null);
-                      dispatch(
-                        updateBridgeVersionAction({
-                          bridgeId: params?.id,
-                          versionId: searchParams?.version,
-                          dataToSend: {
-                            configuration: {
-                              response_type: { type: "json_object" },
-                            },
+                      saveUpdate({
+                        bridgeId: params?.id,
+                        versionId: searchParams?.version,
+                        dataToSend: {
+                          configuration: {
+                            response_type: { type: "json_object" },
                           },
-                        })
-                      );
+                        },
+                      });
                     } else if (selectedValue === "text") {
-                      dispatch(
-                        updateBridgeVersionAction({
-                          bridgeId: params?.id,
-                          versionId: searchParams?.version,
-                          dataToSend: {
-                            configuration: {
-                              response_type: { type: "text", text: "" },
-                            },
+                      saveUpdate({
+                        bridgeId: params?.id,
+                        versionId: searchParams?.version,
+                        dataToSend: {
+                          configuration: {
+                            response_type: { type: "text", text: "" },
                           },
-                        })
-                      );
+                        },
+                      });
                     }
                   });
                 };
@@ -953,13 +958,11 @@ const AdvancedParameters = ({
                                 },
                               },
                             };
-                            dispatch(
-                              updateBridgeVersionAction({
-                                bridgeId: params?.id,
-                                versionId: searchParams?.version,
-                                dataToSend: { ...updatedDataToSend },
-                              })
-                            );
+                            saveUpdate({
+                              bridgeId: params?.id,
+                              versionId: searchParams?.version,
+                              dataToSend: { ...updatedDataToSend },
+                            });
                             return;
                           } else if (selectedValue === "json_schema") {
                             setObjectFieldValue(null);
@@ -968,37 +971,33 @@ const AdvancedParameters = ({
                             });
                             return;
                           } else if (selectedValue === "text") {
-                            dispatch(
-                              updateBridgeVersionAction({
-                                bridgeId: params?.id,
-                                versionId: searchParams?.version,
-                                dataToSend: {
-                                  configuration: {
-                                    response_type: {
-                                      type: "text",
-                                      text: configuration?.response_type?.text || "",
-                                    },
+                            saveUpdate({
+                              bridgeId: params?.id,
+                              versionId: searchParams?.version,
+                              dataToSend: {
+                                configuration: {
+                                  response_type: {
+                                    type: "text",
+                                    text: configuration?.response_type?.text || "",
                                   },
                                 },
-                              })
-                            );
+                              },
+                            });
                             return;
                           } else if (selectedValue === "default") {
                             // Handle default case
                             setSliderValue("default", key, isDeafaultObject);
                             return;
                           } else {
-                            dispatch(
-                              updateBridgeVersionAction({
-                                bridgeId: params?.id,
-                                versionId: searchParams?.version,
-                                dataToSend: {
-                                  configuration: {
-                                    [key]: { type: selectedValue },
-                                  },
+                            saveUpdate({
+                              bridgeId: params?.id,
+                              versionId: searchParams?.version,
+                              dataToSend: {
+                                configuration: {
+                                  [key]: { type: selectedValue },
                                 },
-                              })
-                            );
+                              },
+                            });
                             return;
                           }
                         }); // end guardedResponseTypeAction
@@ -1089,13 +1088,11 @@ const AdvancedParameters = ({
                                   },
                                 };
 
-                                dispatch(
-                                  updateBridgeVersionAction({
-                                    bridgeId: params?.id,
-                                    versionId: searchParams?.version,
-                                    dataToSend: { ...updatedDataToSend },
-                                  })
-                                );
+                                saveUpdate({
+                                  bridgeId: params?.id,
+                                  versionId: searchParams?.version,
+                                  dataToSend: { ...updatedDataToSend },
+                                });
 
                                 toast.success(`Updated widgets (${newSelectedWidgets.length} selected)`);
                               }
@@ -1185,17 +1182,15 @@ const AdvancedParameters = ({
                           const val = e.target.value;
                           const current = configuration?.[key]?.text ?? configuration?.[key]?.example_output ?? "";
                           if (val === current) return;
-                          dispatch(
-                            updateBridgeVersionAction({
-                              bridgeId: params?.id,
-                              versionId: searchParams?.version,
-                              dataToSend: {
-                                configuration: {
-                                  response_type: { type: "text", text: val },
-                                },
+                          saveUpdate({
+                            bridgeId: params?.id,
+                            versionId: searchParams?.version,
+                            dataToSend: {
+                              configuration: {
+                                response_type: { type: "text", text: val },
                               },
-                            })
-                          );
+                            },
+                          });
                         }}
                       />
                     </div>

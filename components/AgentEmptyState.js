@@ -6,6 +6,8 @@ import CreateNewBridge from "./CreateNewBridge";
 import Protected from "./Protected";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import Link from "next/link";
+import { Zap } from "lucide-react";
 
 const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title, description, docLink }) => {
   const { getApiAgentCreationVideo, getChatbotAgentCreationVideo } = useTutorialVideos();
@@ -56,6 +58,17 @@ const AgentEmptyState = ({ orgid, isEmbedUser, defaultBridgeType = "api", title,
               >
                 + Create New Agent
               </button>
+
+              {!isEmbedUser && defaultBridgeType === "api" ? (
+                <Link
+                  href={`/org/${orgid}/agents/direct`}
+                  data-testid="agent-empty-use-without-agent-button"
+                  className="btn btn-outline btn-sm gap-1"
+                >
+                  <Zap size={12} />
+                  Use without agent
+                </Link>
+              ) : null}
 
               {!isEmbedUser ? (
                 <button
