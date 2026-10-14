@@ -7,13 +7,15 @@ import CreateNewBridge from "../CreateNewBridge";
 import { MODAL_TYPE } from "@/utils/enums";
 import SearchItems from "../UI/SearchItems";
 
+const EMPTY_BRIDGES_LIST = [];
+
 function BridgeSlider() {
   const router = useRouter();
   const pathName = usePathname();
   const searchParams = useSearchParams();
   const path = pathName.split("?")[0].split("/");
 
-  const bridgesList = useCustomSelector((state) => state.bridgeReducer.org[path[2]]?.orgs) || [];
+  const bridgesList = useCustomSelector((state) => state.bridgeReducer.org[path[2]]?.orgs) || EMPTY_BRIDGES_LIST;
   const defaultBridgeType = searchParams?.get("type")?.toLowerCase() === "chatbot" ? "chatbot" : "api";
 
   const [filteredBridgesList, setFilteredBridgesList] = useState(bridgesList);
