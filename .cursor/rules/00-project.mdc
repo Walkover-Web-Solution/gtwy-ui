@@ -1,0 +1,12 @@
+---
+description: Project overview and where to find architecture docs
+alwaysApply: true
+---
+GTWY AI frontend: Next.js 15 App Router (client components), React 19, Redux Toolkit + redux-persist, Axios, Tailwind v4 + DaisyUI 5, plain JavaScript.
+
+- Start from AGENTS.md; details live in docs/ai/ (ARCHITECTURE, COMPONENTS, UTILITIES, DATA_MODEL, CONVENTIONS, GLOSSARY).
+- Design and embed rules: docs/AI_INSTRUCTIONS.md.
+- "bridge" in code = agent. Don't rename bridge* symbols or misspelled files and slices.
+- No tests exist. Verify with `npm run lint` and `npm run build`.
+- If a request is ambiguous, ask before coding.
+- After adding a route, slice, API client, env var, hook or convention, update docs/ai/.

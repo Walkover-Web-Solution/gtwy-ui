@@ -1,0 +1,10 @@
+---
+description: Tailwind v4 + DaisyUI styling conventions
+globs: app/globals.css,styles/**,components/**/*.js,components/**/*.jsx
+alwaysApply: false
+---
+- Tailwind v4 is configured in CSS (app/globals.css: @plugin "daisyui", @theme). There is no tailwind.config.js.
+- Use DaisyUI components (`btn btn-sm btn-primary`, `input input-md`, `modal`) and semantic colors (`text-base-content`, `bg-base-200`, `border-base-content/10`, `text-error`).
+- No hardcoded hex or rgb colors in components; light, dark and embed themes override DaisyUI variables at runtime.
+- Content is left-aligned. Sharp corners for structure, rounded for interactive elements (docs/AI_INSTRUCTIONS.md).
+- The layout must work at about 390px width without horizontal scroll.
