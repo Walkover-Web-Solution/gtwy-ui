@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
-import { getResourceChunks } from "@/config/knowledgeBaseApi";
+import { getResourceChunksAction } from "@/store/action/knowledgeBaseAction";
 import { Layers } from "lucide-react";
 
 const ResourceChunksModal = ({ resourceId, resourceName }) => {
+  const dispatch = useDispatch();
   const [chunks, setChunks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -20,7 +22,7 @@ const ResourceChunksModal = ({ resourceId, resourceName }) => {
       setError(null);
 
       try {
-        const response = await getResourceChunks(resourceId);
+        const response = await dispatch(getResourceChunksAction(resourceId));
         if (response?.success && response?.data?.chunks) {
           setChunks(response.data.chunks);
         } else {
@@ -36,7 +38,7 @@ const ResourceChunksModal = ({ resourceId, resourceName }) => {
     };
 
     fetchChunks();
-  }, [resourceId]);
+  }, [resourceId, dispatch]);
 
   const handleClose = () => {
     closeModal(MODAL_TYPE.RESOURCE_CHUNKS_MODAL);

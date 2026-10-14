@@ -1,11 +1,13 @@
 "use client";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { generateAffiliateEmbedTokenApi } from "@/config/integrationApi";
+import { generateAffiliateEmbedTokenAction } from "@/store/action/integrationAction";
 import { useParams } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { useDispatch } from "react-redux";
 
 export default function ReferAndEarnPage() {
   const { org_id } = useParams();
+  const dispatch = useDispatch();
   const containerRef = useRef(null);
   const scriptRef = useRef(null);
 
@@ -21,11 +23,13 @@ export default function ReferAndEarnPage() {
 
     (async () => {
       try {
-        const json = await generateAffiliateEmbedTokenApi({
-          organization: "GTWY AI",
-          expires_in_hours: 720,
-          label: "Dashboard Widget",
-        });
+        const json = await dispatch(
+          generateAffiliateEmbedTokenAction({
+            organization: "GTWY AI",
+            expires_in_hours: 720,
+            label: "Dashboard Widget",
+          })
+        );
         const embedToken = (json?.data && json.data.embed_token) || json?.embed_token || "";
 
         if (cancelled || !containerRef.current) return;
@@ -64,7 +68,7 @@ export default function ReferAndEarnPage() {
       const widget = document.querySelector("affiliate-widget");
       if (widget) widget.remove();
     };
-  }, [userdetails?.email, orgName]);
+  }, [userdetails?.email, orgName, dispatch]);
 
   return <div id="refer-earn-widget-root" ref={containerRef} style={{ width: "100%", height: "100vh" }} />;
 }

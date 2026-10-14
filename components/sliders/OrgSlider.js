@@ -1,6 +1,6 @@
-import { logoutUserFromMsg91, switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { setCurrentOrgIdAction } from "@/store/action/orgAction";
+import { setCurrentOrgIdAction, switchOrgAction } from "@/store/action/orgAction";
+import { logoutUserFromMsg91Action, switchUserAction } from "@/store/action/authAction";
 import {
   clearCookie,
   filterOrganizations,
@@ -42,11 +42,13 @@ function OrgSlider() {
 
   const logoutHandler = async () => {
     try {
-      await logoutUserFromMsg91({
-        headers: {
-          proxy_auth_token: getFromCookies("proxy_token"),
-        },
-      });
+      await dispatch(
+        logoutUserFromMsg91Action({
+          headers: {
+            proxy_auth_token: getFromCookies("proxy_token"),
+          },
+        })
+      );
       clearCookie();
       sessionStorage.clear();
       router.replace("/");
@@ -58,11 +60,13 @@ function OrgSlider() {
   const handleSwitchOrg = async (id, name) => {
     const doSwitch = async () => {
       try {
-        const response = await switchOrg(id);
-        const localToken = await switchUser({
-          orgId: id,
-          orgName: name,
-        });
+        const response = await dispatch(switchOrgAction(id));
+        const localToken = await dispatch(
+          switchUserAction({
+            orgId: id,
+            orgName: name,
+          })
+        );
         setInCookies("local_token", localToken.token);
         router.push(`/org/${id}/agents`);
         dispatch(setCurrentOrgIdAction(id));

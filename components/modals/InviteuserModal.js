@@ -1,12 +1,14 @@
 import { MODAL_TYPE } from "@/utils/enums";
 import React, { useState } from "react";
 import Modal from "../UI/Modal";
-import { getInvitedUsers, inviteUser } from "@/config/index";
+import { getInvitedUsersAction, inviteUserAction } from "@/store/action/orgAction";
+import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import { closeModal, RequiredItem } from "@/utils/utility";
 import { Mail, UserPlus } from "lucide-react";
 
 const InviteUserModal = () => {
+  const dispatch = useDispatch();
   const [email, setEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
 
@@ -28,9 +30,9 @@ const InviteUserModal = () => {
     setIsInviting(true);
 
     try {
-      const response = await inviteUser({ user: { email: email } });
+      const response = await dispatch(inviteUserAction({ user: { email: email } }));
       if (response.status === "success") {
-        await getInvitedUsers(1, 20, "");
+        await dispatch(getInvitedUsersAction({ page: 1, limit: 20, search: "" }));
         toast.success(`Invitation sent to ${email} successfully!`);
         setEmail("");
         handleClose();

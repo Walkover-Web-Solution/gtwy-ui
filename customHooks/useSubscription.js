@@ -2,15 +2,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
 import {
-  getBillingSubscription,
-  startBillingCheckout,
-  subscribeBilling,
-  cancelBilling,
-  resumeBilling,
-  retryBillingPayment,
-  getBillingPortal,
-} from "@/config/billingApi";
+  getBillingSubscriptionAction,
+  startBillingCheckoutAction,
+  subscribeBillingAction,
+  cancelBillingAction,
+  resumeBillingAction,
+  retryBillingPaymentAction,
+  getBillingPortalAction,
+} from "@/store/action/billingAction";
 import { consumeCheckoutReturn, peekCheckoutReturnIntent, rememberCheckoutReturn } from "@/utils/billingReturn";
 
 const POLL_MAX_ATTEMPTS = 5;
@@ -21,6 +22,7 @@ const errorMessage = (err, fallback) => err?.response?.data?.message || fallback
 // resume, billing portal) so both the status banner and the Pro plan card's CTA share one
 // source of truth instead of duplicating the plan/price display.
 export default function useSubscription({ onChanged } = {}) {
+  const dispatch = useDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState(null);
@@ -35,7 +37,7 @@ export default function useSubscription({ onChanged } = {}) {
 
   const load = useCallback(async () => {
     try {
-      const res = await getBillingSubscription();
+      const res = await dispatch(getBillingSubscriptionAction());
       const data = res?.data ?? null;
       if (!data || typeof data.plan === "undefined") throw new Error("unexpected response");
       setView(data);
@@ -53,7 +55,7 @@ export default function useSubscription({ onChanged } = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     load();
@@ -91,7 +93,7 @@ export default function useSubscription({ onChanged } = {}) {
     (async () => {
       setBusy("subscribe");
       try {
-        await subscribeBilling();
+        await dispatch(subscribeBillingAction());
         toast.success("Card saved and subscription started. Pro activates as soon as the payment clears.");
       } catch (err) {
         // 409 = already subscribed / already pending; the refresh below shows the real state.
@@ -103,7 +105,7 @@ export default function useSubscription({ onChanged } = {}) {
         refresh();
       }
     })();
-  }, [checkoutResult, load, refresh, router, searchParams]);
+  }, [checkoutResult, load, refresh, router, searchParams, dispatch]);
 
   const status = view?.billing?.status;
 
@@ -118,7 +120,7 @@ export default function useSubscription({ onChanged } = {}) {
     (async () => {
       setBusy("subscribe");
       try {
-        await subscribeBilling();
+        await dispatch(subscribeBillingAction());
         toast.success("Subscription started. Pro activates as soon as the payment clears.");
       } catch (err) {
         if (err?.response?.status !== 409) {
@@ -129,7 +131,7 @@ export default function useSubscription({ onChanged } = {}) {
         refresh();
       }
     })();
-  }, [checkoutResult, status, refresh]);
+  }, [checkoutResult, status, refresh, dispatch]);
 
   // Poll while the first charge settles. When the status moves on, tell the
   // parent so plan and wallet balance refresh too.
@@ -189,28 +191,39 @@ export default function useSubscription({ onChanged } = {}) {
   };
 
   const onUpgrade = () =>
-    run("upgrade", startBillingCheckout, { redirect: true, intent: "subscribe", failMsg: "Could not start checkout" });
+    run("upgrade", () => dispatch(startBillingCheckoutAction()), {
+      redirect: true,
+      intent: "subscribe",
+      failMsg: "Could not start checkout",
+    });
   const onSubscribe = () =>
-    run("subscribe", subscribeBilling, {
+    run("subscribe", () => dispatch(subscribeBillingAction()), {
       successMsg: "Subscription started. We'll activate Pro as soon as the payment clears.",
       failMsg: "Could not start subscription",
     });
   const onResume = () =>
-    run("resume", resumeBilling, { successMsg: "Subscription resumed.", failMsg: "Could not resume subscription" });
+    run("resume", () => dispatch(resumeBillingAction()), {
+      successMsg: "Subscription resumed.",
+      failMsg: "Could not resume subscription",
+    });
   // "Cancel" here means turn off auto-renew (cancel_at_period_end) — access continues
   // until the current period ends, it doesn't end the subscription immediately.
   const onCancelAutoRenew = () =>
-    run("cancel", cancelBilling, {
+    run("cancel", () => dispatch(cancelBillingAction()), {
       successMsg: "Auto-renew turned off. Pro stays active until the current period ends.",
       failMsg: "Could not turn off auto-renew",
     });
   const onRetry = () =>
-    run("retry", retryBillingPayment, {
+    run("retry", () => dispatch(retryBillingPaymentAction()), {
       successMsg: (d) => (d?.status === "already_paid" ? "This invoice was already paid." : "Payment retry requested."),
       failMsg: "Could not retry payment",
     });
   const onPortal = () =>
-    run("portal", getBillingPortal, { redirect: true, newTab: true, failMsg: "Could not open billing portal" });
+    run("portal", () => dispatch(getBillingPortalAction()), {
+      redirect: true,
+      newTab: true,
+      failMsg: "Could not open billing portal",
+    });
 
   return {
     view,

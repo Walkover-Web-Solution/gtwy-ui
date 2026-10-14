@@ -28,12 +28,12 @@ import ToolsDataModal from "@/components/historyPageComponents/ToolsDataModal";
 import { FileClockIcon, BotMessageIcon } from "@/components/Icons";
 import InfoTooltip from "@/components/InfoTooltip";
 import { PdfIcon } from "@/icons/pdfIcon";
+import { getMessageByIdDataAction } from "@/store/action/historyAction";
 import { setTestCaseConfig } from "@/store/reducer/testCaseConfigReducer";
 import { ExpandCollapse } from "@/components/UI/ExpandCollapse";
 import MockToolResponsesSection, {
   computeBridgeToolOptions,
 } from "@/components/testcaseComponents/MockToolResponsesSection";
-import { getMessageByIdApi } from "@/config/historyApi";
 import { promptObjectToString } from "@/utils/promptUtils";
 import { toast } from "react-hot-toast";
 
@@ -439,7 +439,7 @@ const TestCaseDetailsPanel = ({
         let aiconfig = {};
         if (currentRun?.message_id) {
           try {
-            const log = await getMessageByIdApi({ message_id: currentRun.message_id });
+            const log = await dispatch(getMessageByIdDataAction({ message_id: currentRun.message_id }));
             aiconfig = log?.data?.AiConfig || {};
           } catch (error) {
             console.error("Failed to fetch AiConfig for debug agent:", error);
@@ -481,7 +481,7 @@ const TestCaseDetailsPanel = ({
         setTimeout(() => setDebuggingVersion((curr) => (curr === version ? null : curr)), 1000);
       }
     },
-    [bridgeVersionMapping, selectedTestCase?._id]
+    [bridgeVersionMapping, selectedTestCase?._id, dispatch]
   );
 
   // Reset test case variables and alert state when selectedTestCase changes
@@ -1424,204 +1424,6 @@ const TestCaseDetailsPanel = ({
                 data-testid="testcase-version-output-empty-state"
               >
                 <p className="text-sm text-base-content/60">Add a version above to start comparing outputs.</p>
-              </div>
-            )}
-
-            {/* DEPRECATED Version History Section - replaced by inline pagination */}
-            {false && selectedTestCase?.version_history && Object.keys(selectedTestCase.version_history).length > 0 && (
-              <div className="mt-8 space-y-4">
-                <h3 className="text-base font-semibold text-base-content">Execution History</h3>
-                {Object.entries(selectedTestCase.version_history).map(([versionId, runs]) => {
-                  const versionIndex = versions.findIndex((v) => v === versionId) + 1;
-                  const isExpanded = false;
-                  const totalRuns = Array.isArray(runs) ? runs.length : 0;
-
-                  return (
-                    <div key={versionId} className="space-y-3">
-                      {/* Version Header with Toggle */}
-                      <button
-                        onClick={() =>
-                          setExpandedVersionHistory((prev) => ({
-                            ...prev,
-                            [versionId]: !prev[versionId],
-                          }))
-                        }
-                        className="w-full flex items-center justify-between px-4 py-3 bg-base-50 hover:bg-base-100 rounded-lg border border-base-200 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-primary">v{versionIndex}</span>
-                          <span className="text-xs text-base-content/60">version default</span>
-                          <span className="text-xs text-base-content/40">
-                            ({totalRuns} run{totalRuns !== 1 ? "s" : ""})
-                          </span>
-                        </div>
-                        <ChevronDownIcon
-                          size={18}
-                          className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
-                      </button>
-
-                      {/* Expanded Grid of Runs */}
-                      {isExpanded && Array.isArray(runs) && runs.length > 0 && (
-                        <div className={`grid gap-4 ${runs.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-                          {runs.map((run, runIdx) => {
-                            const score = run?.score || 0;
-                            const modelOutput = run?.model_output;
-                            const runError = run?.error;
-                            const runErrorMessage =
-                              typeof runError === "string"
-                                ? runError
-                                : runError?.error || runError?.message || (runError ? "Run failed" : null);
-                            const toolsCallData = run?.tools_call_data || [];
-                            const llmUrls = run?.llm_urls || [];
-                            const matchingTypeFromResult = selectedTestCase?.matching_type || "cosine";
-
-                            return (
-                              <div
-                                key={runIdx}
-                                className={`bg-base-50 border rounded-lg p-4 h-fit ${runErrorMessage ? "border-error/40" : "border-base-200"}`}
-                              >
-                                {/* Header with Run Number and Score */}
-                                <div className="flex items-center justify-between mb-3 pb-3 border-b border-base-200">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-primary uppercase tracking-wide">
-                                      Run #{totalRuns - runIdx}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {runErrorMessage ? (
-                                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error">
-                                        Error
-                                      </span>
-                                    ) : (
-                                      <InfoTooltip
-                                        tooltipContent={run?.reason || getScoreMessage(score, matchingTypeFromResult)}
-                                      >
-                                        <span
-                                          className={`text-lg font-bold cursor-help ${getScoreColor(score, matchingTypeFromResult)}`}
-                                        >
-                                          {getScoreDisplay(score, matchingTypeFromResult)}
-                                        </span>
-                                      </InfoTooltip>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Timestamp */}
-                                <div className="text-xs text-base-content/50 mb-3">
-                                  {run?.created_at ? new Date(run.created_at).toLocaleString() : "N/A"}
-                                </div>
-
-                                {/* Tool calls display */}
-                                {toolsCallData.length > 0 && (
-                                  <div className="mb-3 flex flex-wrap gap-2">
-                                    {toolsCallData
-                                      .flatMap((toolObj) => Object.values(toolObj || {}))
-                                      .map((toolEntry, toolIdx) => {
-                                        if (!toolEntry) return null;
-                                        const toolName =
-                                          toolEntry.name ||
-                                          toolEntry.display_tool_name ||
-                                          toolEntry.model_tool_name ||
-                                          "Unknown Tool";
-                                        const toolType = toolEntry.type || "tool";
-                                        const isRAGTool = toolEntry?.data?.metadata?.type === "RAG";
-                                        const isAgentTool = toolEntry?.type?.toUpperCase() === "AGENT";
-                                        const isUnclickable = isRAGTool || isAgentTool;
-
-                                        return (
-                                          <div
-                                            key={toolIdx}
-                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 border rounded-md text-xs font-medium transition-colors ${
-                                              isRAGTool
-                                                ? "bg-info/10 border-info/30 text-info hover:bg-info/20 cursor-default"
-                                                : isAgentTool
-                                                  ? "bg-base-200/50 border-base-300 text-base-content/70 cursor-default"
-                                                  : "bg-base-200/50 border-base-300 text-base-content/70 hover:bg-base-300 cursor-pointer"
-                                            }`}
-                                            onClick={() => {
-                                              if (!isUnclickable) handleToolPrimaryClick(toolEntry);
-                                            }}
-                                          >
-                                            <span className={isRAGTool ? "" : "text-base-content"}>{toolName}</span>
-                                            <span className="text-base-content/40">·</span>
-                                            <span className="text-base-content/50 capitalize">{toolType}</span>
-                                            <div
-                                              className="tooltip tooltip-top"
-                                              data-tip={
-                                                isRAGTool
-                                                  ? "knowledge base data"
-                                                  : isAgentTool
-                                                    ? "agent data"
-                                                    : "function data"
-                                              }
-                                            >
-                                              <FileClockIcon
-                                                size={12}
-                                                className="opacity-50 hover:opacity-100 ml-1"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setToolsData(toolEntry);
-                                                  toolsDataModalRef.current?.showModal();
-                                                }}
-                                              />
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                  </div>
-                                )}
-
-                                {/* Model Output or Error */}
-                                {runErrorMessage ? (
-                                  <div className="text-sm leading-relaxed p-3 rounded-md bg-error/5 border border-error/20 text-error break-words">
-                                    {runErrorMessage}
-                                  </div>
-                                ) : (
-                                  <div className="text-sm text-base-content leading-relaxed">
-                                    {/* Render images if llm_urls exists */}
-                                    {llmUrls && llmUrls.length > 0 && (
-                                      <div className="mb-3 flex flex-wrap gap-2">
-                                        {llmUrls.map((urlObj, idx) => (
-                                          <div key={idx} className="relative">
-                                            {urlObj.type === "image" && urlObj.permanent_url && (
-                                              <img
-                                                src={urlObj.permanent_url}
-                                                alt={`Generated image ${idx + 1}`}
-                                                className="max-w-full h-auto rounded-lg border border-base-200"
-                                                style={{ maxHeight: "300px" }}
-                                              />
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {/* Render text output */}
-                                    {typeof modelOutput === "string" ? (
-                                      <ReactMarkdown
-                                        components={{
-                                          code: ({ node, inline, className, children, ...props }) => (
-                                            <CodeBlock className={className} {...props}>
-                                              {children}
-                                            </CodeBlock>
-                                          ),
-                                        }}
-                                      >
-                                        {modelOutput}
-                                      </ReactMarkdown>
-                                    ) : (
-                                      JSON.stringify(modelOutput)
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
             )}
           </div>

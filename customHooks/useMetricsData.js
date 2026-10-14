@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { getMetricsDataApi } from "@/config/index";
+import { useDispatch } from "react-redux";
+import { getMetricsDataAction } from "@/store/action/metricsAction";
 import { METRICS_FACTOR_OPTIONS } from "@/utils/enums";
 
 // Data conversion logic extracted from the main component
@@ -230,6 +231,7 @@ export const aggregateDataByFactor = (rawData) => {
 
 // Custom hook for metrics data management
 export const useMetricsData = (orgId, allBridges, apikeyData) => {
+  const dispatch = useDispatch();
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -253,7 +255,7 @@ export const useMetricsData = (orgId, allBridges, apikeyData) => {
           requestBody.end_date = customEndDate;
         }
 
-        const response = await getMetricsDataApi(requestBody);
+        const response = await dispatch(getMetricsDataAction(requestBody));
         const data = convertApiData(response, factor, range, allBridges, apikeyData, customStartDate, customEndDate);
         setRawData(data);
       } catch (error) {
@@ -263,7 +265,7 @@ export const useMetricsData = (orgId, allBridges, apikeyData) => {
         setLoading(false);
       }
     },
-    [orgId, allBridges, apikeyData]
+    [orgId, allBridges, apikeyData, dispatch]
   );
 
   return {

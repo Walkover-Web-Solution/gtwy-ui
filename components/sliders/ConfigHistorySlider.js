@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useDispatch } from "react-redux";
 import { CloseIcon, FileTextIcon } from "@/components/Icons";
 import { toggleSidebar } from "@/utils/utility";
-import { getBridgeConfigHistory } from "@/config/index";
+import { getBridgeConfigHistoryAction } from "@/store/action/bridgeAction";
 import { CONFIG_HISTORY_FILTER_KEYS, CONFIG_HISTORY_FEATURE_OPTIONS, CONFIG_HISTORY_HIDDEN_TYPES } from "@/utils/enums";
 import InfiniteScroll from "react-infinite-scroll-component";
 
 function ConfigHistorySlider({ versionId }) {
+  const dispatch = useDispatch();
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -43,7 +45,7 @@ function ConfigHistorySlider({ versionId }) {
 
       setLoading(true);
       try {
-        const response = await getBridgeConfigHistory(versionId, targetPage, pageSize, currentFilters);
+        const response = await dispatch(getBridgeConfigHistoryAction(versionId, targetPage, pageSize, currentFilters));
         const usersFromResponse = response?.userData?.users;
 
         if (Array.isArray(usersFromResponse) && usersFromResponse.length > 0) {
@@ -67,7 +69,7 @@ function ConfigHistorySlider({ versionId }) {
         setLoading(false);
       }
     },
-    [versionId, pageSize]
+    [versionId, pageSize, dispatch]
   );
 
   // Close slider when versionId changes (agent navigation)

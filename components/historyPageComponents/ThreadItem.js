@@ -20,6 +20,7 @@ import { truncate } from "./AssistFile";
 import ToolsDataModal from "./ToolsDataModal";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getHistoryAction } from "@/store/action/historyAction";
+import { rerunAction } from "@/store/action/modelAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
 import {
   getToolName,
@@ -49,7 +50,6 @@ import {
   User,
   Brain,
 } from "lucide-react";
-import { rerunApi } from "@/config/modelApi";
 import toast from "react-hot-toast";
 import { GenericSlider, useSlider } from "@/utils/sliderUtility";
 import CodeBlock from "../codeBlock/CodeBlock";
@@ -439,12 +439,14 @@ const ThreadItem = ({
     if (!item?.message_id) return;
     setIsRerunning(true);
     try {
-      await rerunApi({
-        agent_id: item.bridge_id,
-        thread_id: item?.thread_id,
-        sub_thread_id: item?.sub_thread_id,
-        message_ids: [item.message_id],
-      });
+      await dispatch(
+        rerunAction({
+          agent_id: item.bridge_id,
+          thread_id: item?.thread_id,
+          sub_thread_id: item?.sub_thread_id,
+          message_ids: [item.message_id],
+        })
+      );
       toast.success("Rerun triggered successfully");
       // Refresh sidebars on both history and analytics pages after a short delay
       // so the backend has time to create the rerun thread

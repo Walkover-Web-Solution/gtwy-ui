@@ -35,8 +35,8 @@ import {
 } from "@/utils/utility";
 import { BATCH_PROCESSING_STATUSES, MODAL_TYPE } from "@/utils/enums";
 import { flattenToolsCallData } from "@/utils/executionTraceTransform";
-import { rerunApi } from "@/config/modelApi";
 import { getHistoryAction } from "@/store/action/historyAction";
+import { rerunAction } from "@/store/action/modelAction";
 import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
 import { isWordFileUrl } from "@/utils/attachmentUtils";
 import { PdfIcon } from "@/icons/pdfIcon";
@@ -390,12 +390,14 @@ const NewThreadItem = ({
     if (!item?.message_id) return;
     setIsRerunning(true);
     try {
-      await rerunApi({
-        agent_id: item.bridge_id,
-        thread_id: item?.thread_id,
-        sub_thread_id: item?.sub_thread_id,
-        message_ids: [item.message_id],
-      });
+      await dispatch(
+        rerunAction({
+          agent_id: item.bridge_id,
+          thread_id: item?.thread_id,
+          sub_thread_id: item?.sub_thread_id,
+          message_ids: [item.message_id],
+        })
+      );
       toast.success("Rerun triggered successfully");
       setTimeout(() => {
         dispatch(getHistoryAction(item.bridge_id, 1, "all", false, "all"));

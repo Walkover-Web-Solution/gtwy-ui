@@ -1,12 +1,12 @@
 import React, { useCallback, useState, useMemo, useEffect } from "react";
 import { AlertTriangle, ArrowRightLeft, Check, Bot, Rocket } from "lucide-react";
 import {
+  convertAgentToTemplateAction,
   getAllBridgesAction,
   getBridgeVersionAction,
   publishBridgeVersionAction,
   publishBulkVersionAction,
 } from "@/store/action/bridgeAction";
-import { convertAgentToTemplate } from "@/config/bridgeApi";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
 import { useDispatch } from "react-redux";
@@ -813,7 +813,7 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
         }, 100);
 
         if (shouldConvertToTemplate) {
-          const templatePromise = convertAgentToTemplate(params?.id, agent_name?.trim());
+          const templatePromise = dispatch(convertAgentToTemplateAction(params?.id, agent_name?.trim()));
           toast.promise(templatePromise, {
             loading: "Evaluating and publishing template...",
             success: "Agent converted to template successfully!",

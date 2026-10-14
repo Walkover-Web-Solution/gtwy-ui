@@ -20,6 +20,7 @@ import {
   updateKnowledgeBaseReducer,
 } from "../reducer/knowledgeBaseReducer";
 import { trackKnowledgeBaseEvent } from "@/utils/posthog";
+import { getResourceChunks, queryKnowledgeBase } from "@/config/knowledgeBaseApi";
 
 export const createKnowledgeBaseEntryAction = (data, orgId) => async (dispatch) => {
   try {
@@ -190,3 +191,7 @@ export const deleteResourceAction =
       return { success: false };
     }
   };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const getResourceChunksAction = (resourceId) => async () => getResourceChunks(resourceId);
+export const queryKnowledgeBaseAction = (data) => async () => queryKnowledgeBase(data);

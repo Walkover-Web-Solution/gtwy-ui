@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { getWalletBalance, getCreditPacks, buyCredits } from "@/config/walletApi";
+import { useDispatch } from "react-redux";
+import { getWalletBalanceAction, getCreditPacksAction, buyCreditsAction } from "@/store/action/walletAction";
 import { WalletIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -20,6 +21,7 @@ const WalletMeter = ({ percentRemaining, credits, total }) => (
 );
 
 export default function WalletCard({ orgId }) {
+  const dispatch = useDispatch();
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,26 +33,26 @@ export default function WalletCard({ orgId }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await getWalletBalance();
+      const res = await dispatch(getWalletBalanceAction());
       setWallet(res?.data ?? null);
     } catch {
       setError("Could not load wallet balance");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   const loadPacks = useCallback(async () => {
     setPacksLoading(true);
     try {
-      const res = await getCreditPacks();
+      const res = await dispatch(getCreditPacksAction());
       setCreditPacks(res?.data ?? null);
     } catch {
       setCreditPacks(null);
     } finally {
       setPacksLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     load();
@@ -60,7 +62,7 @@ export default function WalletCard({ orgId }) {
   const handleBuy = async (usd) => {
     setBuyingUsd(usd);
     try {
-      const res = await buyCredits(usd);
+      const res = await dispatch(buyCreditsAction(usd));
       toast.success(res?.message || "Card is being charged; credits arrive once it clears.");
       load();
     } catch (err) {

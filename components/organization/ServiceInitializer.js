@@ -5,7 +5,7 @@ import { getServiceAction } from "@/store/action/serviceAction";
 import { getModelAction } from "@/store/action/modelAction";
 import { userDetails } from "@/store/action/userDetailsAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getBlockedOrgs } from "@/config/organizationApi";
+import { getBlockedOrgsAction } from "@/store/action/orgAction";
 import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 import Protected from "../Protected";
 
@@ -35,7 +35,7 @@ const ServiceInitializer = ({ isEmbedUser }) => {
     } else if (isOrgPage) {
       dispatch(userDetails());
       dispatch(getServiceAction());
-      getBlockedOrgs()
+      dispatch(getBlockedOrgsAction())
         .then((response) => {
           dispatch(setBlockedOrgs(response?.data?.data || []));
         })

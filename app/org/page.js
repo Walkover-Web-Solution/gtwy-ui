@@ -5,9 +5,9 @@ import OrganizationHeader from "@/components/organization/OrganizationHeader";
 import OrganizationGrid from "@/components/organization/OrganizationGrid";
 import { ThemeManager } from "@/customHooks/useThemeManager";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
-import { switchOrg, switchUser } from "@/config/index";
+import { switchUserAction } from "@/store/action/authAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { setCurrentOrgIdAction } from "@/store/action/orgAction";
+import { setCurrentOrgIdAction, switchOrgAction } from "@/store/action/orgAction";
 import { setInCookies, getFromCookies } from "@/utils/utility";
 import { peekCheckoutReturnUrl } from "@/utils/billingReturn";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,8 +31,8 @@ function Page() {
   const handleSwitchOrg = useCallback(
     async (id, name) => {
       try {
-        const response = await switchOrg(id);
-        const localToken = await switchUser({ orgId: id, orgName: name });
+        const response = await dispatch(switchOrgAction(id));
+        const localToken = await dispatch(switchUserAction({ orgId: id, orgName: name }));
         setInCookies("local_token", localToken.token);
         route.push(`/org/${id}/agents`);
         dispatch(setCurrentOrgIdAction(id));
