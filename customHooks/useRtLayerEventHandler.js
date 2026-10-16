@@ -10,6 +10,7 @@ import {
   handleRtLayerFunctionCall,
 } from "@/store/action/chatAction";
 import { updateApiKeyStatusReducer } from "@/store/reducer/apiKeysReducer";
+import { addNotificationReducer } from "@/store/reducer/notificationReducer";
 import {
   testRunStartedReducer,
   testRunResultReducer,
@@ -23,6 +24,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import WebSocketClient from "rtlayer-client";
 import toast from "react-hot-toast";
+import { AlertTriangle, Bell } from "lucide-react";
 import { didCurrentTabInitiateUpdate } from "@/utils/utility";
 import { RefreshIcon } from "@/components/Icons";
 import { buildLlmUrls } from "@/utils/attachmentUtils";
@@ -50,12 +52,35 @@ function parseRtMessage(message) {
   return typeof message === "string" ? JSON.parse(message) : message;
 }
 
+// Adds a pushed notification to the inbox and toasts it. Critical ones stay until dismissed.
+function handleNotificationRtMessage(notification, dispatch) {
+  dispatch(addNotificationReducer({ notification }));
+  const content = (
+    <div>
+      <div className="font-semibold">{notification.title}</div>
+      <div className="text-sm">{notification.message}</div>
+    </div>
+  );
+  const options = { id: `notification-${notification._id}`, position: "top-right" };
+  if (notification.severity === "critical") {
+    toast.error(content, { ...options, duration: Infinity });
+  } else if (notification.severity === "warning") {
+    toast(content, { ...options, duration: 6000, icon: <AlertTriangle size={18} className="text-warning shrink-0" /> });
+  } else {
+    toast(content, { ...options, duration: 6000, icon: <Bell size={18} className="text-info shrink-0" /> });
+  }
+}
+
 function handleOrgRtChannelMessage(parsedData, dispatch, orgId) {
   if (parsedData?.type === "apikey_status_update") {
     const { apikey_id, status } = parsedData;
     if (apikey_id && status) {
       dispatch(updateApiKeyStatusReducer({ org_id: orgId, apikey_id, status }));
     }
+  }
+  if (parsedData?.type === "notification" && parsedData.notification) {
+    // The hub pushes every org and agent notification on the org channel.
+    handleNotificationRtMessage(parsedData.notification, dispatch);
   }
 }
 
@@ -617,7 +642,7 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
       setConnectionError(error.message);
     }
   }, [client, channelId]);
-  // Listen to global channel for model config updates
+  // Global channel for model/service registry updates (published by the Python backend)
   useEffect(() => {
     if (!client) return;
 
@@ -656,6 +681,25 @@ function useRtLayerEventHandler(channelIdentifier = "", agentCreateChannelOverri
 
     return () => globalListener?.remove?.();
   }, [client, dispatch, SERVICES]);
+
+  // Global channel for broadcast notifications (published by the notification hub)
+  useEffect(() => {
+    if (!client) return;
+
+    const globalUpdatesListener = client.on("global_updates", (message) => {
+      try {
+        const parsedData = parseRtMessage(message);
+        if (parsedData?.type === "notification" && parsedData.notification) {
+          // Broadcasts (org_id: null) are shown alongside the org's own notifications.
+          handleNotificationRtMessage(parsedData.notification, dispatch);
+        }
+      } catch (error) {
+        console.error("Error processing global notification:", error);
+      }
+    });
+
+    return () => globalUpdatesListener?.remove?.();
+  }, [client, dispatch]);
 
   // Org channel — API key status (org_{org_id})
   useEffect(() => {
