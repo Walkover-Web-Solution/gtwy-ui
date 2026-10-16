@@ -1,5 +1,6 @@
-import { getOrCreateNotificationAuthKey } from "@/config/index";
+import { getOrCreateNotificationAuthKeyAction } from "@/store/action/authAction";
 import { useEffect } from "react";
+import { useDispatch } from "react-redux";
 
 export const isValidEmbedToken = (token) => {
   if (typeof token !== "string") return false;
@@ -9,10 +10,11 @@ export const isValidEmbedToken = (token) => {
 };
 
 export const useEmbedScriptLoader = (embedToken = null, isEmbedUser = false, isViewer = false) => {
+  const dispatch = useDispatch();
   async function embedMaker(token, shouldAppendScript) {
     const pAuthKey =
       !isEmbedUser && !isViewer
-        ? await getOrCreateNotificationAuthKey("gtwy_bridge_trigger").then((res) => res?.authkey)
+        ? await dispatch(getOrCreateNotificationAuthKeyAction("gtwy_bridge_trigger")).then((res) => res?.authkey)
         : null;
 
     if (!shouldAppendScript()) return;

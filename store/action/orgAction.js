@@ -3,6 +3,7 @@ import { organizationCreated, organizationsFetched, setCurrentOrgId, usersFetche
 import { updateToken, updateUserDetails, updateUserMeta } from "../reducer/userDetailsReducer";
 import { trackOrganizationEvent } from "@/utils/posthog";
 import { handleApiError, isNetworkError } from "@/utils/errorHandler";
+import { switchOrg, getBlockedOrgs, getInvitedUsers, inviteUser } from "@/config/organizationApi";
 
 export const createOrgAction = (dataToSend, onSuccess, onError) => async (dispatch) => {
   try {
@@ -99,3 +100,9 @@ export const getUsersAction = () => async (dispatch) => {
     console.error("Error fetching users:", error);
   }
 };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const switchOrgAction = (company_ref_id) => async () => switchOrg(company_ref_id);
+export const getBlockedOrgsAction = () => async () => getBlockedOrgs();
+export const getInvitedUsersAction = (params) => async () => getInvitedUsers(params);
+export const inviteUserAction = (email) => async () => inviteUser(email);

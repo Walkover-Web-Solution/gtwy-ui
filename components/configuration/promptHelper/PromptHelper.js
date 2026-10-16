@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Canvas from "@/components/Canvas";
 import { useDispatch } from "react-redux";
 import { optimizePromptReducer } from "@/store/reducer/bridgeReducer";
-import { optimizePromptApi } from "@/config/index";
+import { optimizePromptAction } from "@/store/action/bridgeAction";
 
 const PromptHelper = ({
   isVisible,
@@ -43,12 +43,14 @@ const PromptHelper = ({
   const handleOptimizePrompt = useCallback(
     async (instructionText) => {
       try {
-        const response = await optimizePromptApi({
-          query: instructionText,
-          thread_id,
-          bridge_id: promptParams.id,
-          version_id: promptParams.version,
-        });
+        const response = await dispatch(
+          optimizePromptAction({
+            query: instructionText,
+            thread_id,
+            bridge_id: promptParams.id,
+            version_id: promptParams.version,
+          })
+        );
 
         const result = typeof response === "string" ? JSON.parse(response) : (response?.data ?? response);
 

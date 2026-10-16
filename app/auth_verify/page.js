@@ -6,10 +6,13 @@ import Protected from "@/components/Protected";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { Search, Building2, Shield, CheckCircle, Lock, User, Database, AlertCircle, ArrowRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { getClientInfo, switchOrg, verifyAuth, switchUser } from "@/config/index";
+import { getClientInfoAction, verifyAuthAction, switchUserAction } from "@/store/action/authAction";
+import { switchOrgAction } from "@/store/action/orgAction";
+import { useDispatch } from "react-redux";
 import { BuildingIcon } from "@/components/Icons";
 
 const Page = () => {
+  const dispatch = useDispatch();
   const [formState, setFormState] = useState({
     searchQuery: "",
     selectedOrg: null,
@@ -41,7 +44,7 @@ const Page = () => {
       if (clientId || redirectionUrl || state) {
         if (clientId) {
           try {
-            const res = await getClientInfo(clientId);
+            const res = await dispatch(getClientInfoAction(clientId));
             updateFormState({
               client_name: res?.result?.name,
               isClientVerified: true,
@@ -81,8 +84,8 @@ const Page = () => {
 
   const handleSwitchOrg = useCallback(async (id, name) => {
     try {
-      await switchOrg(id);
-      const localToken = await switchUser({ orgId: id, orgName: name });
+      await dispatch(switchOrgAction(id));
+      const localToken = await dispatch(switchUserAction({ orgId: id, orgName: name }));
       setInCookies("local_token", localToken.token);
     } catch (_error) {
       console.error("Error switching workspace", _error);
@@ -106,7 +109,7 @@ const Page = () => {
       redirection_url: formState?.redirectionUrl,
       state: formState?.state,
     };
-    await verifyAuth(data);
+    await dispatch(verifyAuthAction(data));
     updateFormState({ isLoading: false });
   }, [formState.selectedOrg, formState.isClientVerified, updateFormState]);
 

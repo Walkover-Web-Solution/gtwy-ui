@@ -15,10 +15,13 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
-import { generateRichUITemplate } from "@/config/utilityApi";
 import ReactMarkdown from "@/components/LazyMarkdown";
 import { mdComponentsDark, mdRemarkPlugins } from "@/utils/markdownComponents";
-import { createRichUiTemplateAction, deleteRichUiTemplateAction } from "@/store/action/richUiTemplateAction";
+import {
+  createRichUiTemplateAction,
+  deleteRichUiTemplateAction,
+  generateRichUITemplateAction,
+} from "@/store/action/richUiTemplateAction";
 import { useDispatch } from "react-redux";
 
 export const runtime = "edge";
@@ -151,11 +154,13 @@ const TemplatesPage = ({ params }) => {
 
     try {
       // Call GTWY AI API for rich UI widget generation
-      const data = await generateRichUITemplate({
-        message: userMessage.content,
-        context: "template_generation",
-        thread_id: thread_id,
-      });
+      const data = await dispatch(
+        generateRichUITemplateAction({
+          message: userMessage.content,
+          context: "template_generation",
+          thread_id: thread_id,
+        })
+      );
 
       const aiMessage = {
         id: Date.now() + 1,

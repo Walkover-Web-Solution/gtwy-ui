@@ -10,7 +10,7 @@ import {
 } from "@/store/action/testCasesAction";
 import { toggleSidebar, openModal } from "@/utils/utility";
 import { validatePromptVariables, buildVariablesObject } from "@/utils/variableValidation";
-import { improvePrompt } from "@/config/utilityApi";
+import { improvePromptAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import HistoryPagePromptUpdateModal from "../modals/HistoryPagePromptUpdateModal";
 
@@ -269,7 +269,7 @@ const TestCaseSidebar = ({ params, resolvedParams, matching_type, onTestCaseClic
       variables["conversation_history"] = conversation;
       variables["updated_response"] = testCase.expected?.response || "";
 
-      const data = await improvePrompt(variables);
+      const data = await dispatch(improvePromptAction(variables));
 
       if (data?.updated_prompt) {
         setPromptToUpdate(data.updated_prompt);

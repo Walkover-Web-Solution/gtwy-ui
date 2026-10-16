@@ -1,5 +1,6 @@
 import { getAgentAnalyticsApi } from "@/config/index";
 import { fetchAnalyticsFailure, fetchAnalyticsStart, fetchAnalyticsSuccess } from "../reducer/analyticsReducer";
+import { getEmbedAnalyticsApi, getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
 
 export const getAgentAnalyticsAction =
   (bridge_id, queryParams = {}, org_id) =>
@@ -27,3 +28,8 @@ export const getAgentAnalyticsAction =
       throw error;
     }
   };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const getEmbedAnalyticsAction = (folder_id, queryParams, org_id) => async () =>
+  getEmbedAnalyticsApi(folder_id, queryParams, org_id);
+export const getAgentAnalyticsFiltersAction = (bridge_id) => async () => getAgentAnalyticsFiltersApi(bridge_id);

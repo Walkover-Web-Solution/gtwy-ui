@@ -14,6 +14,7 @@ import {
   setEmbedToken,
 } from "../reducer/integrationReducer";
 import { updateGtwyAccessToken } from "../reducer/userDetailsReducer";
+import { embedLoginApi, generateAffiliateEmbedTokenApi } from "@/config/integrationApi";
 
 export const createIntegrationAction = (data) => async (dispatch) => {
   try {
@@ -109,3 +110,8 @@ export const generateRagEmbedTokenAction = (folderId, userId) => async (dispatch
     console.error(error);
   }
 };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const generateEmbedTokenDataAction = (data) => async () => generateEmbedTokenApi(data);
+export const embedLoginAction = (embedToken) => async () => embedLoginApi(embedToken);
+export const generateAffiliateEmbedTokenAction = (data) => async () => generateAffiliateEmbedTokenApi(data);

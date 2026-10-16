@@ -1,4 +1,4 @@
-import { getOrCreateNotificationAuthKey } from "@/config/index";
+import { getOrCreateNotificationAuthKeyAction } from "@/store/action/authAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateTriggerDataReducer } from "@/store/reducer/bridgeReducer";
 import { AddIcon } from "@/components/Icons";
@@ -37,7 +37,7 @@ export default function TriggersList({ params, isEmbedUser, isReadOnly }) {
   const [authkey, setAuthkey] = useState("");
 
   async function getAndSetAuthKey() {
-    const keytoset = await getOrCreateNotificationAuthKey("gtwy_bridge_trigger");
+    const keytoset = await dispatch(getOrCreateNotificationAuthKeyAction("gtwy_bridge_trigger"));
     if (keytoset) setAuthkey(keytoset?.authkey);
   }
 

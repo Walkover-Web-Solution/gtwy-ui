@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { getRecursiveHistory } from "@/config/historyApi";
+import { useDispatch } from "react-redux";
+import { getRecursiveHistoryDataAction } from "@/store/action/historyAction";
 import { flattenToolsCallData, historyMessageToEmbeddedTrace } from "@/utils/executionTraceTransform";
 import { MessageRunTrace } from "./ExecutionTraceView";
 
@@ -17,6 +18,7 @@ export default function MessageExecutionTrace({
   onAgentDataClick,
   onAgentHistoryClick,
 }) {
+  const dispatch = useDispatch();
   // Memoize item properties to prevent unnecessary re-renders
   const itemKey = useMemo(
     () => `${item?.thread_id}:${item?.message_id}:${item?.tools_call_data ? JSON.stringify(item.tools_call_data) : ""}`,
@@ -61,11 +63,13 @@ export default function MessageExecutionTrace({
 
     async function load() {
       try {
-        const response = await getRecursiveHistory({
-          agent_id: bridgeId,
-          thread_id: item.thread_id,
-          message_id: item.message_id,
-        });
+        const response = await dispatch(
+          getRecursiveHistoryDataAction({
+            agent_id: bridgeId,
+            thread_id: item.thread_id,
+            message_id: item.message_id,
+          })
+        );
         if (cancelled) return;
         const message = response?.data;
         if (message) {
@@ -92,7 +96,7 @@ export default function MessageExecutionTrace({
     return () => {
       cancelled = true;
     };
-  }, [hasToolsData, bridgeId, itemKey, rootAgentName, formatDateAndTime, localTrace]);
+  }, [hasToolsData, bridgeId, itemKey, rootAgentName, formatDateAndTime, localTrace, dispatch]);
 
   if (!hasToolsData) return null;
 

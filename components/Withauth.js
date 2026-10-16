@@ -1,5 +1,6 @@
 "use client";
-import { loginUser, switchOrg, switchUser } from "@/config/index";
+import { loginUserAction, switchUserAction } from "@/store/action/authAction";
+import { switchOrgAction } from "@/store/action/orgAction";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useLayoutEffect, useState } from "react";
 import { userDetails } from "@/store/action/userDetailsAction";
@@ -15,14 +16,16 @@ const handleUserDetailsAndSwitchOrg = async (url, dispatch, userDetails) => {
   const companyRefId = extractCompanyRefId(url);
   if (companyRefId) {
     const company = userDetailsData?.c_companies?.find((company) => company.id == companyRefId);
-    await switchOrg(companyRefId);
-    const localToken = await switchUser({ orgId: companyRefId, orgName: company.name });
+    await dispatch(switchOrgAction(companyRefId));
+    const localToken = await dispatch(switchUserAction({ orgId: companyRefId, orgName: company.name }));
     setInCookies("local_token", localToken.token);
     return url;
   } else {
     const companyId = userDetailsData?.currentCompany?.id;
-    await switchOrg(companyId);
-    const localToken = await switchUser({ orgId: companyId, orgName: userDetailsData?.currentCompany?.name });
+    await dispatch(switchOrgAction(companyId));
+    const localToken = await dispatch(
+      switchUserAction({ orgId: companyId, orgName: userDetailsData?.currentCompany?.name })
+    );
     setInCookies("local_token", localToken.token);
     return `/org/${companyId}/agents`;
   }
@@ -75,12 +78,14 @@ const WithAuth = (Children) => {
           setLoading(true);
           setInCookies("proxy_token", proxyAuthToken);
 
-          const localToken = await loginUser({
-            userId: searchParams.get("user_ref_id"),
-            orgId: searchParams.get("company_ref_id"),
-            userName: "",
-            orgName: "",
-          });
+          const localToken = await dispatch(
+            loginUserAction({
+              userId: searchParams.get("user_ref_id"),
+              orgId: searchParams.get("company_ref_id"),
+              userName: "",
+              orgName: "",
+            })
+          );
           setInCookies("local_token", localToken.token);
           const finalRedirectUrl = await handleUserDetailsAndSwitchOrg(redirectionUrl, dispatch, userDetails);
           trackAuthEvent("user_logged_in", {

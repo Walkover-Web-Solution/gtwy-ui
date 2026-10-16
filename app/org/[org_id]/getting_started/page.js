@@ -25,13 +25,14 @@ import {
   SquareFunctionIcon,
 } from "@/components/Icons";
 import Protected from "@/components/Protected";
-import { dryRun } from "@/config/index";
+import { runDryRunAction } from "@/store/action/modelAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { copyToClipboard, getIconOfService, getServiceDisplayName } from "@/utils/utility";
 import { getCalApi } from "@calcom/embed-react";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { use, useEffect, useMemo, useState } from "react";
+import { useDispatch } from "react-redux";
 
 export const runtime = "edge";
 
@@ -183,6 +184,7 @@ function Page({ params, isEmbedUser }) {
   const resolvedParams = use(params);
   const orgId = resolvedParams?.org_id || "";
   const router = useRouter();
+  const dispatch = useDispatch();
 
   const [showKey, setShowKey] = useState(false);
   const [mode, setMode] = useState("default");
@@ -287,14 +289,16 @@ function Page({ params, isEmbedUser }) {
     setTryItRaw("");
 
     try {
-      const result = await dryRun({
-        localDataToSend: {
-          configuration: { type: activeAgent?.configuration?.type || "chat" },
-          user: question,
-          thread_id: `getting_started_${orgId}_${activeAgent._id}`,
-        },
-        bridge_id: activeAgent._id,
-      });
+      const result = await dispatch(
+        runDryRunAction({
+          localDataToSend: {
+            configuration: { type: activeAgent?.configuration?.type || "chat" },
+            user: question,
+            thread_id: `getting_started_${orgId}_${activeAgent._id}`,
+          },
+          bridge_id: activeAgent._id,
+        })
+      );
 
       setTryItRaw(JSON.stringify(result?.data ?? result, null, 2));
       const content = result?.data?.response?.data?.content;

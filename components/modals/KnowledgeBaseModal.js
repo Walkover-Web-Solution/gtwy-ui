@@ -5,9 +5,8 @@ import Modal from "@/components/UI/Modal";
 import { MODAL_TYPE, MIME_EXTENSION_MAP } from "@/utils/enums";
 import { closeModal, RequiredItem } from "@/utils/utility";
 import { createResourceAction, updateResourceAction } from "@/store/action/knowledgeBaseAction";
-import { uploadImage } from "@/config/utilityApi";
 import toast from "react-hot-toast";
-import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
+import { updateBridgeVersionAction, uploadImageAction } from "@/store/action/bridgeAction";
 import { FolderContext } from "@/components/folders/FolderContext";
 import { Database } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
@@ -96,7 +95,7 @@ const KnowledgeBaseModal = ({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await uploadImage(formData, true);
+      const response = await dispatch(uploadImageAction(formData, true));
       const fileUrl = response.url || response.file_url || response.data?.url;
 
       setUploadedFile({

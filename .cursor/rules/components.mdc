@@ -1,0 +1,18 @@
+---
+description: Rules for React pages and UI components
+globs: components/**/*.js,components/**/*.jsx,components/**/*.tsx,app/**/*.js
+alwaysApply: false
+---
+- Pages and most components are `"use client"`. Lazy-load heavy children with `next/dynamic` + `LoadingSpinner`.
+- Authenticated pages: `export default Protected(Page)` (components/Protected.js). Org-wide data is already loaded by app/org/[org_id]/layout.js.
+- Read state with `useCustomSelector` from @/customHooks/customSelector, never `useSelector`. Mutate via thunks in store/action/.
+- NEVER import or call config/* APIs from components or pages. Flow is always: dispatch an action (store/action/) → the action calls the API (config/) → the action dispatches a reducer → the component reads via useCustomSelector. Enforced by ESLint no-restricted-imports.
+- Modals: wrap in `<Modal MODAL_ID={MODAL_TYPE.X} title=…>` (components/UI/Modal.jsx). Add the ID to MODAL_TYPE in utils/enums.js. Open and close with `openModal`/`closeModal` from utils/utility.js, not useState.
+- Sliders: reuse components/sliders/* with `toggleSidebar(id)`.
+- Deletes: `useDeleteOperation` + components/UI/DeleteModal.jsx.
+- Reuse primitives first: Dropdown, SearchItems, ConfirmationModal (components/UI/), CustomTable, PageHeader, InfoTooltip. See docs/ai/COMPONENTS.md.
+- Give interactive elements a kebab-case `id` / `data-testid` prefixed by the component.
+- Follow docs/AI_INSTRUCTIONS.md: one primary CTA, cards below 15 items and a table at 15+, empty states explain the next action, AI actions show idle/thinking/done.
+- Files over about 400 lines: split into sub-components in a subfolder.
+- Hooks lint rules are disabled. Check dependency arrays and never call hooks conditionally.
+- Reference: @components/modals/TemplateNameModal.js

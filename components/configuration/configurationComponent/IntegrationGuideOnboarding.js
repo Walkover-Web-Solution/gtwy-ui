@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { HeartPulse, Info, RefreshCw } from "lucide-react";
+import { useDispatch } from "react-redux";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
 import GenericTable from "@/components/table/Table";
 import { ExpandCollapse } from "@/components/UI/ExpandCollapse";
@@ -106,6 +107,7 @@ const SegmentedControl = ({ items, activeId, onChange, testId, itemTestIdPrefix,
 );
 
 const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = "", service = "" }) => {
+  const dispatch = useDispatch();
   const [category, setCategory] = useState("curl");
   const [example, setExample] = useState("api");
   const [gtwyLang, setGtwyLang] = useState("python");
@@ -154,7 +156,7 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
 
   const handleCheckHealth = async () => {
     setHealth((prev) => ({ status: "loading", data: prev.data }));
-    const data = await checkAgentHealth(agentId);
+    const data = await checkAgentHealth(agentId, dispatch);
     setHealth({ status: "done", data });
   };
 

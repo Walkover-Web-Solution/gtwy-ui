@@ -143,6 +143,12 @@ NEXT_PUBLIC_SERVER_URL=</code></pre>
       docs/AI_INSTRUCTIONS.md
     </a>
   </li>
+  <li>
+    <b>AI agent guide (Claude Code, Cursor, Devin):</b>
+    <a href="https://github.com/Walkover-Web-Solution/gtwy-frontend/blob/main/AGENTS.md">AGENTS.md</a>
+    (entry point), with detailed references in
+    <a href="https://github.com/Walkover-Web-Solution/gtwy-frontend/tree/main/docs/ai">docs/ai/</a>
+  </li>
 </ul>
 
 <hr/>
