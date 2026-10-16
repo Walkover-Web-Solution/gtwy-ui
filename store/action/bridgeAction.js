@@ -661,7 +661,28 @@ export const updateBridgeVersionAction =
         optimisticData.web_search_filters = dataToSend.web_search_filters;
       }
 
-      // Handle settings if present (deep merge including nested objects like review_agent)
+      // Handle connected_tools (skills, agents, etc.) if present
+      if (dataToSend.connected_tools) {
+        optimisticData.connected_tools = currentVersion.connected_tools || [];
+        const toolToModify = dataToSend.connected_tools;
+
+        if (dataToSend.connected_tools_operation === 1) {
+          // Add tool if not already present
+          const exists = optimisticData.connected_tools.some(
+            (tool) => tool.type === toolToModify.type && tool.id === toolToModify.id
+          );
+          if (!exists) {
+            optimisticData.connected_tools = [...optimisticData.connected_tools, toolToModify];
+          }
+        } else if (dataToSend.connected_tools_operation === 0) {
+          // Remove tool
+          optimisticData.connected_tools = optimisticData.connected_tools.filter(
+            (tool) => !(tool.type === toolToModify.type && tool.id === toolToModify.id)
+          );
+        }
+      }
+
+      // Handle settings if present (deep merge)
       if (dataToSend.settings) {
         optimisticData.settings = {
           ...currentVersion.settings,
