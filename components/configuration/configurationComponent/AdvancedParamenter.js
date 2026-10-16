@@ -25,6 +25,7 @@ import { useThemeManager } from "@/customHooks/useThemeManager";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import { linter, lintGutter } from "@codemirror/lint";
+import { resolveConfigParam } from "@/utils/configHistoryUtils";
 
 const humanizeParameterKey = (key) =>
   String(key)
@@ -602,7 +603,8 @@ const AdvancedParameters = ({
     // parameter missing a label doesn't surface as snake_case.
     const displayName = name || modelInfoData?.[key]?.name || humanizeParameterKey(key);
     const displayDescription = description || modelInfoData?.[key]?.description || "";
-    const isDefaultValue = configuration?.[key] === "default" || configuration?.[key] === undefined;
+    const paramValue = resolveConfigParam(configuration?.[key], modelInfoData?.[key]);
+    const isDefaultValue = paramValue.isDefault;
     // Check if this parameter has a default value defined in model info
     const hasDefaultValue = modelInfoData?.[key]?.default !== undefined;
     const inputSizeClass = "input-sm h-8";
@@ -613,16 +615,19 @@ const AdvancedParameters = ({
 
     let error = false;
     if (field === "slider" && !isDefaultValue) {
+      const sliderNumericValue = paramValue.numeric ?? paramValue.display;
       error =
-        !(min <= configuration?.[key] && configuration?.[key] <= max) && configuration?.["key"]?.type === "string";
+        typeof sliderNumericValue === "number" &&
+        !(min <= sliderNumericValue && sliderNumericValue <= max) &&
+        configuration?.["key"]?.type === "string";
     }
 
-    const sliderDisplayValue =
-      field === "slider" && !isDefaultValue
-        ? configuration?.[key] === "min" || configuration?.[key] === "max" || configuration?.[key] === "default"
-          ? modelInfoData?.[key]?.[configuration?.[key]]
-          : configuration?.[key]
-        : null;
+    const sliderDisplayValue = field === "slider" && !isDefaultValue ? paramValue.display : null;
+
+    const sliderRenderableValue =
+      sliderDisplayValue !== null && typeof sliderDisplayValue === "object"
+        ? JSON.stringify(sliderDisplayValue)
+        : sliderDisplayValue;
 
     const sliderMin = min || 0;
     const sliderMax = max || 100;
@@ -640,7 +645,7 @@ const AdvancedParameters = ({
           }`}
           id={sliderValueId}
         >
-          {sliderDisplayValue}
+          {sliderRenderableValue}
         </span>
       ) : null;
 
@@ -1172,11 +1177,12 @@ const AdvancedParameters = ({
                     <div
                       id={`advanced-param-example-output-${key}`}
                       data-testid={`advanced-param-example-output-${key}`}
-                      className="mt-3 p-2 bg-base-100 space-y-2"
+                      className="mt-3 space-y-2"
                     >
+                      <label className="text-xs font-medium block">Example Output</label>
                       <textarea
                         data-testid={`advanced-param-example-output-textarea-${key}`}
-                        className="textarea w-full text-xs font-mono"
+                        className="textarea textarea-bordered w-full text-xs font-mono"
                         rows={6}
                         placeholder="Enter an example output the model should produce..."
                         disabled={isReadOnly}
@@ -1202,7 +1208,7 @@ const AdvancedParameters = ({
                   )}
                 {field === "select" &&
                   !isDefaultValue &&
-                  configuration?.[key]?.type === "json_schema" &&
+                  (configuration?.[key]?.type === "json_schema" || configuration?.[key]?.type === "json_object") &&
                   !configuration?.[key]?.is_template && (
                     <div
                       id={`advanced-param-json-schema-${key}`}
