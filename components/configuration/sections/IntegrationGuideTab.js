@@ -7,15 +7,15 @@ import IntegrationGuideOnboarding from "../configurationComponent/IntegrationGui
 import SecondStep from "../../chatbotConfiguration/SecondStep";
 import PrivateFormSection from "../../chatbotConfiguration/FirstStep";
 import SlugNameInput from "../configurationComponent/SlugNameInput";
+import GtwySkillBanner from "../../gtwySkill/GtwySkillBanner";
 import { AlertTriangle, Zap, Settings2 } from "lucide-react";
 
 const IntegrationGuideTab = ({ isPublished }) => {
   const { params, isEmbedUser } = useConfigurationContext();
 
   // Get bridge data and integration data from Redux store
-  const { slugName, prompt, service, bridgeTypeFromRedux, publishedVersionId } = useCustomSelector((state) => {
+  const { slugName, prompt, bridgeTypeFromRedux, publishedVersionId } = useCustomSelector((state) => {
     return {
-      service: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.service,
       slugName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.slugName,
       prompt: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.configuration?.prompt,
       bridgeTypeFromRedux: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType?.toLowerCase(),
@@ -37,7 +37,10 @@ const IntegrationGuideTab = ({ isPublished }) => {
       );
     }
     return (
-      <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} service={service} />
+      <>
+        {!isEmbedUser && <GtwySkillBanner orgId={params?.org_id} agentId={params?.id} />}
+        <IntegrationGuideOnboarding agentId={params?.id} isEmbedUser={isEmbedUser} prompt={prompt} />
+      </>
     );
   };
 
