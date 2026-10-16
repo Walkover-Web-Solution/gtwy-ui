@@ -1,7 +1,8 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState } from "react";
 import Protected from "@/components/Protected";
-import { FileDiff, X, Upload, Sparkles } from "lucide-react";
+import { FileDiff, X, Upload, Sparkles, Copy, CheckCircle } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
+import { formatPromptForCopy } from "@/utils/promptUtils";
 
 // Optimized header component with memoization
 const PromptHeader = memo(
@@ -23,9 +24,24 @@ const PromptHeader = memo(
     isEmbedCustomPrompt = false,
     isEmbedUser = false,
   }) => {
+    const [copied, setCopied] = useState(false);
+
     const handleOpenDiff = useCallback(() => {
       onOpenDiff?.();
     }, [onOpenDiff]);
+
+    const handleCopyPrompt = useCallback(() => {
+      const formattedPrompt = formatPromptForCopy(prompt);
+      navigator.clipboard
+        .writeText(formattedPrompt)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => {
+          console.error("Failed to copy prompt to clipboard");
+        });
+    }, [prompt]);
 
     const showPromptHelper = useCustomSelector(
       (state) => state.appInfoReducer?.embedUserDetails?.showPromptHelper ?? true
@@ -52,6 +68,27 @@ const PromptHeader = memo(
               >
                 <FileDiff size={12} />
                 Diff
+              </button>
+            )}
+            {prompt && !isEmbedCustomPrompt && (
+              <button
+                type="button"
+                data-testid="prompt-header-copy-button-open"
+                className="btn btn-xs btn-ghost gap-1 text-base-content/70 hover:text-base-content"
+                onClick={handleCopyPrompt}
+                title="Copy prompt to clipboard"
+              >
+                {copied ? (
+                  <>
+                    <CheckCircle size={12} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} />
+                    Copy Prompt
+                  </>
+                )}
               </button>
             )}
             {canEdit && onSavePrompt && (
@@ -159,6 +196,30 @@ const PromptHeader = memo(
             >
               <Upload size={11} />
               Migrate Prompt
+            </button>
+          )}
+          {prompt && !isEmbedCustomPrompt && (
+            <button
+              type="button"
+              data-testid="prompt-header-copy-button"
+              className={`btn btn-xs btn-ghost gap-1 text-base-content/60 hover:text-base-content transition-all duration-200 opacity-100`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleCopyPrompt();
+              }}
+              title="Copy prompt to clipboard"
+            >
+              {copied ? (
+                <>
+                  <CheckCircle size={12} />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  Copy Prompt
+                </>
+              )}
             </button>
           )}
 

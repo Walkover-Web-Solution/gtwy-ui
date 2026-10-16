@@ -112,3 +112,30 @@ export const extractVariablesFromPrompt = (prompt) => {
   }
   return variables;
 };
+
+// Format prompt for copying to clipboard
+// Includes role, goal, instruction, and optional JSON schema
+export const formatPromptForCopy = (prompt) => {
+  if (!prompt) return "";
+
+  let formattedPrompt = "";
+
+  // Handle structured prompt object
+  if (typeof prompt === "object" && prompt !== null && !Array.isArray(prompt)) {
+    const parts = [];
+    if (prompt[PROMPT_SECTIONS.ROLE]) {
+      parts.push(`Role: ${prompt[PROMPT_SECTIONS.ROLE]}`);
+    }
+    if (prompt[PROMPT_SECTIONS.GOAL]) {
+      parts.push(`Goal: ${prompt[PROMPT_SECTIONS.GOAL]}`);
+    }
+    if (prompt[PROMPT_SECTIONS.INSTRUCTION]) {
+      parts.push(`Instruction:\n${prompt[PROMPT_SECTIONS.INSTRUCTION]}`);
+    }
+    formattedPrompt = parts.join("\n\n");
+  } else if (typeof prompt === "string") {
+    // Handle plain string prompt
+    formattedPrompt = prompt;
+  }
+  return formattedPrompt;
+};
