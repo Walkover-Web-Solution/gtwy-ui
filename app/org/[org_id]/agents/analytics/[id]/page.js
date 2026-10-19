@@ -32,10 +32,63 @@ import { getStatsConfig, MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
-import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
+import { getBridgeVersionAction } from "@/store/action/bridgeAction";
 
 // Stable reference so a stale render does not hand children a fresh array each time.
 const EMPTY_THREAD = [];
+const EMPTY_ARRAY = [];
+const EMPTY_OBJECT = {};
+
+// Keeps both entries when two labels collide.
+function addOption(map, label, value) {
+  const key = map[label] === undefined || map[label] === value ? label : `${label} (${value})`;
+  map[key] = value;
+}
+
+// Filter options merged from agent/version configs. Values match the ids logs store:
+// tools -> script_id, agents -> bridge id, docs -> resource_id. MCP tools are skipped.
+function buildFilterOptions(sources, { functionData, agentsById, knowledgeBaseNameMap }) {
+  const tools_data = {};
+  const knowledgebase_data = {};
+  const agent_data = {};
+  const unique_model = {};
+  const addModel = (service, model) => {
+    if (!model) return;
+    const key = service || "other";
+    if (!unique_model[key]) unique_model[key] = [];
+    if (!unique_model[key].includes(model)) unique_model[key].push(model);
+  };
+
+  const addSourceOptions = (source) => {
+    for (const tool of source?.connected_tools || []) {
+      if (!tool?.id && !tool?.resource_id) continue;
+      const id = String(tool.id || "");
+      const isCustomPreTool = tool.type === "pre_tool" && tool.pre_tool_type === "custom_function";
+      if (tool.type === "tools" || isCustomPreTool || tool.type === "post_tool") {
+        const apiCall = functionData[id];
+        const scriptId =
+          tool.type === "tools"
+            ? apiCall?.script_id
+            : tool.variable_path?.script_id || tool.script_id || apiCall?.script_id;
+        if (!scriptId) continue;
+        addOption(tools_data, tool.title || apiCall?.title || scriptId, scriptId);
+      } else if (tool.type === "agent") {
+        addOption(agent_data, agentsById[id]?.name || tool.name || id, id);
+      } else if (tool.type === "docs") {
+        const resourceId = String(tool.resource_id || id);
+        addOption(knowledgebase_data, knowledgeBaseNameMap[resourceId] || tool.name || resourceId, resourceId);
+      }
+    }
+
+    addModel(source?.service, source?.configuration?.model);
+    // A disabled fallback never runs.
+    const fallBack = source?.settings?.fall_back;
+    if (fallBack?.is_enable) addModel(fallBack.service || source?.service, fallBack.model);
+  };
+
+  sources.forEach(addSourceOptions);
+  return { tools_data, knowledgebase_data, agent_data, unique_model };
+}
 
 // URL params that must never be forwarded to the analytics API.
 const UI_ONLY_QUERY_PARAMS = new Set([
@@ -133,8 +186,16 @@ function Page({ params, searchParams }) {
     analyticsLoading,
     isEmbedUser,
     reduxUserId,
+    orgAgents,
+    allBridgesMap,
+    functionData,
+    versionMapping,
   } = useCustomSelector((state) => {
     return {
+      orgAgents: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.orgs || EMPTY_ARRAY,
+      allBridgesMap: state?.bridgeReducer?.allBridgesMap || EMPTY_OBJECT,
+      functionData: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.functionData || EMPTY_OBJECT,
+      versionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[resolvedParams.id] || EMPTY_OBJECT,
       thread: state?.historyReducer?.thread || [],
       loadedThreadKey: state?.historyReducer?.loadedThreadKey || null,
       analyticsData: state?.analyticsReducer?.analyticsData?.[resolvedParams.id] || {},
@@ -258,12 +319,34 @@ function Page({ params, searchParams }) {
     parseArrayParam(resolvedSearchParams?.knowledgebase_id)
   );
   const [filterAgent, setFilterAgent] = useState(parseArrayParam(resolvedSearchParams?.agent_id));
-  const [filterOptions, setFilterOptions] = useState({
-    tools_data: {},
-    unique_model: {},
-    knowledgebase_data: {},
-    agent_data: {},
-  });
+
+  // Org agent list merged with fully loaded agents.
+  const agentsById = useMemo(() => {
+    const map = {};
+    for (const agent of orgAgents) {
+      if (agent?._id) map[agent._id] = agent;
+    }
+    for (const [id, agent] of Object.entries(allBridgesMap)) {
+      map[id] = { ...map[id], ...agent };
+    }
+    return map;
+  }, [orgAgents, allBridgesMap]);
+
+  // "all" merges the root agent with every version; otherwise just the selected version.
+  const agentVersionIds = agentsById[resolvedParams?.id]?.versions;
+  const filterVersionIds = useMemo(
+    () => (selectedVersion !== "all" ? [selectedVersion] : (agentVersionIds || []).filter(Boolean)),
+    [selectedVersion, agentVersionIds]
+  );
+  const filterSources = useMemo(() => {
+    const versions = filterVersionIds.map((id) => versionMapping[id]);
+    return selectedVersion !== "all" ? versions : [agentsById[resolvedParams?.id], ...versions];
+  }, [filterVersionIds, versionMapping, selectedVersion, agentsById, resolvedParams?.id]);
+
+  const filterOptions = useMemo(
+    () => buildFilterOptions(filterSources, { functionData, agentsById, knowledgeBaseNameMap }),
+    [filterSources, functionData, agentsById, knowledgeBaseNameMap]
+  );
 
   const hasAnyFilter = Boolean(
     filterStart ||
@@ -477,23 +560,18 @@ function Page({ params, searchParams }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedParams?.id]);
 
+  // Fetch versions the filters need that aren't loaded, once each.
+  const requestedVersionIds = useRef(new Set());
+  const missingVersionIds = filterVersionIds
+    .filter((id) => !versionMapping[id]?.connected_tools && !versionMapping[id]?.configuration)
+    .join(",");
   useEffect(() => {
-    if (!resolvedParams?.id) return;
-    const fetchFilters = async () => {
-      try {
-        const data = await getAgentAnalyticsFiltersApi(resolvedParams.id);
-        setFilterOptions({
-          tools_data: data.tools_data || {},
-          unique_model: data.unique_model || {},
-          knowledgebase_data: data.knowledgebase_data || {},
-          agent_data: data.agent_data || {},
-        });
-      } catch (e) {
-        console.error("Failed to fetch filter options:", e);
-      }
-    };
-    fetchFilters();
-  }, [resolvedParams?.id]);
+    for (const versionId of missingVersionIds ? missingVersionIds.split(",") : []) {
+      if (requestedVersionIds.current.has(versionId)) continue;
+      requestedVersionIds.current.add(versionId);
+      dispatch(getBridgeVersionAction({ versionId }));
+    }
+  }, [missingVersionIds, dispatch]);
 
   const getAnalyticsQueryParams = useCallback(
     (extra = {}) =>
