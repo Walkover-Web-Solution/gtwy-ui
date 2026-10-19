@@ -286,6 +286,35 @@ function Page({ params, searchParams }) {
     filterVariableRows.some((row) => row.key.trim() || row.value.trim())
   );
 
+  // Tool/KB/agent/model picks and the search fields only take effect on Apply.
+  const sameSelection = (a, b) => a.length === b.length && a.every((v) => b.includes(v));
+  const normalizeFields = ({ filterByFields: fields, filterVariableRows: rows }) =>
+    JSON.stringify([
+      Object.entries(fields).map(([k, v]) => [k, String(v || "").trim()]),
+      rows.map((r) => [r.key.trim(), r.value.trim()]).filter(([k]) => k),
+    ]);
+  const hasPendingOptions =
+    !sameSelection(filterTool, parseArrayParam(search.get("tool_id"))) ||
+    !sameSelection(filterModel, parseArrayParam(search.get("model"))) ||
+    !sameSelection(filterKnowledgeBase, parseArrayParam(search.get("knowledgebase_id"))) ||
+    !sameSelection(filterAgent, parseArrayParam(search.get("agent_id")));
+  const hasPendingFields =
+    normalizeFields({ filterByFields, filterVariableRows }) !== normalizeFields(appliedAdvancedFilters);
+  const canApplyFilters = hasPendingOptions || hasPendingFields;
+
+  // Apply stays in its loading state until the analytics request it triggers finishes.
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
+  const applyFetchStarted = useRef(false);
+  useEffect(() => {
+    if (!isApplyingFilters) return;
+    if (analyticsLoading) {
+      applyFetchStarted.current = true;
+    } else if (applyFetchStarted.current) {
+      applyFetchStarted.current = false;
+      setIsApplyingFilters(false);
+    }
+  }, [isApplyingFilters, analyticsLoading]);
+
   // Auto-clear applied advanced filters when user manually empties all input fields
   useEffect(() => {
     if (!hasAdvancedFilterValues) {
@@ -477,11 +506,15 @@ function Page({ params, searchParams }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedParams?.id]);
 
+  // Options for the selected version, or for the agent and all its versions.
   useEffect(() => {
     if (!resolvedParams?.id) return;
+    let stale = false;
     const fetchFilters = async () => {
       try {
-        const data = await getAgentAnalyticsFiltersApi(resolvedParams.id);
+        const params = selectedVersion !== "all" ? { version_id: selectedVersion } : {};
+        const data = await getAgentAnalyticsFiltersApi(resolvedParams.id, params);
+        if (stale) return;
         setFilterOptions({
           tools_data: data.tools_data || {},
           unique_model: data.unique_model || {},
@@ -493,7 +526,10 @@ function Page({ params, searchParams }) {
       }
     };
     fetchFilters();
-  }, [resolvedParams?.id]);
+    return () => {
+      stale = true;
+    };
+  }, [resolvedParams?.id, selectedVersion]);
 
   const getAnalyticsQueryParams = useCallback(
     (extra = {}) =>
@@ -1124,7 +1160,6 @@ function Page({ params, searchParams }) {
                           setFilterTool([]);
                           setFilterKnowledgeBase([]);
                           setFilterAgent([]);
-                          applyFilters({ tool_id: [], knowledgebase_id: [], agent_id: [] });
                         }}
                         className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           !filterTool.length && !filterKnowledgeBase.length && !filterAgent.length
@@ -1161,19 +1196,16 @@ function Page({ params, searchParams }) {
                               ? filterTool.filter((t) => t !== item.id)
                               : [...filterTool, item.id];
                             setFilterTool(next);
-                            applyFilters({ tool_id: next });
                           } else if (item.type === "kb") {
                             const next = filterKnowledgeBase.includes(item.id)
                               ? filterKnowledgeBase.filter((k) => k !== item.id)
                               : [...filterKnowledgeBase, item.id];
                             setFilterKnowledgeBase(next);
-                            applyFilters({ knowledgebase_id: next });
                           } else {
                             const next = filterAgent.includes(item.id)
                               ? filterAgent.filter((a) => a !== item.id)
                               : [...filterAgent, item.id];
                             setFilterAgent(next);
-                            applyFilters({ agent_id: next });
                           }
                         };
                         const visibleItems = showAllToolGroup ? allItems : allItems.slice(0, 8);
@@ -1229,7 +1261,6 @@ function Page({ params, searchParams }) {
                       <button
                         onClick={() => {
                           setFilterModel([]);
-                          applyFilters({ model: [] });
                         }}
                         className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           !filterModel.length
@@ -1254,7 +1285,6 @@ function Page({ params, searchParams }) {
                               ? filterModel.filter((x) => x !== m)
                               : [...filterModel, m];
                             setFilterModel(next);
-                            applyFilters({ model: next });
                           }}
                           className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                             filterModel.includes(m)
@@ -1377,17 +1407,23 @@ function Page({ params, searchParams }) {
                       Reset Fields
                     </button>
                     <button
-                      className="px-5 py-1 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                      disabled={!hasAdvancedFilterValues}
+                      className="px-5 py-1 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-lg disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      disabled={!canApplyFilters || isApplyingFilters}
+                      aria-busy={isApplyingFilters}
                       onClick={() => {
                         if (document.activeElement) document.activeElement.blur();
-                        dispatchAnalyticsWithAdvancedFilters({
-                          filterByFields,
-                          filterVariableRows,
-                        });
+                        setIsApplyingFilters(true);
+                        if (hasPendingOptions) applyFilters();
+                        if (hasPendingFields) {
+                          dispatchAnalyticsWithAdvancedFilters({
+                            filterByFields: { ...filterByFields },
+                            filterVariableRows: filterVariableRows.map((row) => ({ ...row })),
+                          });
+                        }
                       }}
                     >
-                      Apply Filter
+                      {isApplyingFilters && <span className="loading loading-spinner loading-xs" />}
+                      {isApplyingFilters ? "Applying..." : "Apply Filter"}
                     </button>
                   </div>
                 </div>
