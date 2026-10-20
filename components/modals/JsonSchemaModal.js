@@ -1,7 +1,6 @@
 // JsonSchemaModal.jsx
-import { optimizeSchemaApi } from "@/config/utilityApi";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
+import { optimizeSchemaAction, updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE } from "@/utils/enums";
 import React, { useMemo } from "react";
 import { useDispatch } from "react-redux";
@@ -45,13 +44,15 @@ function JsonSchemaModal({
   }, [effectiveSchema]);
 
   const handleOptimizeApi = async (instructionText) => {
-    const result = await optimizeSchemaApi({
-      data: {
-        thread_id,
-        query: instructionText,
-        json_schema: jsonSchemaRequirements,
-      },
-    });
+    const result = await dispatch(
+      optimizeSchemaAction({
+        data: {
+          thread_id,
+          query: instructionText,
+          json_schema: jsonSchemaRequirements,
+        },
+      })
+    );
     return result;
   };
 

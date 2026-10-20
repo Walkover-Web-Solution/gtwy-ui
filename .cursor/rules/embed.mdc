@@ -1,0 +1,12 @@
+---
+description: Rules for the embed (iframe) surface and embed loader scripts
+globs: app/embed/**,public/gtwy*.js,components/gtwy_embed/**,components/integration/**,components/ragEmbed/**,store/reducer/appInfoReducer.js,utils/themeLoader.js,utils/integrationSliderUtils.js
+alwaysApply: false
+---
+- Read docs/AI_INSTRUCTIONS.md § Embed Architecture before editing.
+- public/gtwy.js, gtwy_dev.js and gtwy_embed_local.js must change together.
+- New public option keys are snake_case. For migrated keys, add a `snake_case: 'internalName'` pair to KEY_ALIASES in all three scripts. Internal code stays camelCase.
+- New config option: EMBED_*_KEYS in utils/enums.js → the message handler in app/embed/layout.js → embedUserDetails in appInfoReducer → CONFIG_SCHEMA in utils/integrationSliderUtils.js.
+- New postMessage event: define the type, handle it in app/embed/layout.js, and document the contract in docs/AI_INSTRUCTIONS.md.
+- Theme tokens: keep ThemePaletteEditor and VAR_ALIAS_MAP in utils/themeLoader.js in sync.
+- Embed detection logic lives in both components/Protected.js and utils/interceptor.js; keep them consistent.

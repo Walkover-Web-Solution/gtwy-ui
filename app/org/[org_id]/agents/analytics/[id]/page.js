@@ -7,7 +7,7 @@ import { useQueryParams } from "@/customHooks/useQueryParams";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 import { getSubThreadsAction } from "@/store/action/historyAction";
-import { getAgentAnalyticsAction } from "@/store/action/analyticsAction";
+import { getAgentAnalyticsAction, getAgentAnalyticsFiltersAction } from "@/store/action/analyticsAction";
 import { setSelectedVersion, buildThreadKey } from "@/store/reducer/historyReducer";
 import Protected from "@/components/Protected";
 
@@ -32,7 +32,6 @@ import { getStatsConfig, MODAL_TYPE } from "@/utils/enums";
 import { openModal } from "@/utils/utility";
 import ChatAiConfigDeatilViewModal from "@/components/modals/ChatAiConfigDeatilViewModal";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
-import { getAgentAnalyticsFiltersApi } from "@/config/analyticsApi";
 
 // Stable reference so a stale render does not hand children a fresh array each time.
 const EMPTY_THREAD = [];
@@ -481,7 +480,7 @@ function Page({ params, searchParams }) {
     if (!resolvedParams?.id) return;
     const fetchFilters = async () => {
       try {
-        const data = await getAgentAnalyticsFiltersApi(resolvedParams.id);
+        const data = await dispatch(getAgentAnalyticsFiltersAction(resolvedParams.id));
         setFilterOptions({
           tools_data: data.tools_data || {},
           unique_model: data.unique_model || {},
@@ -493,7 +492,7 @@ function Page({ params, searchParams }) {
       }
     };
     fetchFilters();
-  }, [resolvedParams?.id]);
+  }, [resolvedParams?.id, dispatch]);
 
   const getAnalyticsQueryParams = useCallback(
     (extra = {}) =>

@@ -3,7 +3,8 @@ import dynamic from "next/dynamic";
 import ErrorPage from "@/app/not-found";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Protected from "@/components/Protected";
-import { getSingleMessage, switchOrg, switchUser } from "@/config/index";
+import { switchUserAction } from "@/store/action/authAction";
+import { getSingleMessageAction } from "@/store/action/historyAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { ThemeManager, useThemeManager } from "@/customHooks/useThemeManager";
 import { getAllApikeyAction } from "@/store/action/apiKeyAction";
@@ -18,7 +19,13 @@ import {
 } from "@/store/action/bridgeAction";
 import { getRichUiTemplatesAction } from "@/store/action/richUiTemplateAction";
 import { getAllKnowBaseDataAction } from "@/store/action/knowledgeBaseAction";
-import { updateUserMetaOnboarding, updateOrgMetaAction, getUsersAction } from "@/store/action/orgAction";
+import {
+  updateUserMetaOnboarding,
+  updateOrgMetaAction,
+  getUsersAction,
+  switchOrgAction,
+  getBlockedOrgsAction,
+} from "@/store/action/orgAction";
 import { getServiceAction } from "@/store/action/serviceAction";
 import { getPlanAction } from "@/store/action/planAction";
 import { getFromCookies, removeCookie, setInCookies } from "@/utils/utility";
@@ -42,7 +49,6 @@ import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { getAllAuthData } from "@/store/action/authkeyAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
-import { getBlockedOrgs } from "@/config/organizationApi";
 import { setBlockedOrgs } from "@/store/reducer/userDetailsReducer";
 
 const Navbar = dynamic(() => import("@/components/Navbar"), { loading: () => <LoadingSpinner /> });
@@ -139,7 +145,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   // page a user lands on (direct link or refresh), so fetch it here too.
   useEffect(() => {
     if (isEmbedUser) return;
-    getBlockedOrgs()
+    dispatch(getBlockedOrgsAction())
       .then((response) => {
         dispatch(setBlockedOrgs(response?.data?.data || []));
       })
@@ -321,9 +327,11 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
       if (isValidOrg && !isEmbedUser) {
         const orgId = getFromCookies("current_org_id");
         if (orgId !== resolvedParams?.org_id) {
-          await switchOrg(resolvedParams?.org_id);
+          await dispatch(switchOrgAction(resolvedParams?.org_id));
           const currentOrg = organizations[resolvedParams?.org_id];
-          const localToken = await switchUser({ orgId: resolvedParams?.org_id, orgName: currentOrg?.name });
+          const localToken = await dispatch(
+            switchUserAction({ orgId: resolvedParams?.org_id, orgName: currentOrg?.name })
+          );
           setInCookies("local_token", localToken.token);
         }
       }
@@ -574,10 +582,12 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     }
     if (e.data?.type === "MESSAGE_CLICK") {
       try {
-        const systemPromptResponse = await getSingleMessage({
-          bridge_id: urlParams?.id,
-          message_id: e?.data?.data?.createdAt,
-        });
+        const systemPromptResponse = await dispatch(
+          getSingleMessageAction({
+            bridge_id: urlParams?.id,
+            message_id: e?.data?.data?.createdAt,
+          })
+        );
         setSelectedItem({ "System Prompt": systemPromptResponse, ...e?.data?.data });
         setIsSliderOpen(true);
       } catch (error) {

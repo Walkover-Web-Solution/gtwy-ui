@@ -4,9 +4,9 @@ import { openModal, renderedOrganizations, setInCookies } from "@/utils/utility"
 import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import Protected from "@/components/Protected";
-import { switchOrg, switchUser } from "@/config/index";
+import { switchUserAction } from "@/store/action/authAction";
 import toast from "react-hot-toast";
-import { setCurrentOrgIdAction } from "@/store/action/orgAction";
+import { setCurrentOrgIdAction, switchOrgAction } from "@/store/action/orgAction";
 import { createBridgeAction, createAgentFromTemplateAction } from "@/store/action/bridgeAction";
 import { useRouter, useSearchParams } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -89,12 +89,14 @@ function Page() {
         const resolvedBridgeName = isTemplateFlow ? templateBridgeName : bridgeName;
         const resolvedSlugName = isTemplateFlow ? templateBridgeName : slugName || bridgeName;
         updateFormState({ isLoading: true });
-        const response = await switchOrg(selectedOrg.id);
+        const response = await dispatch(switchOrgAction(selectedOrg.id));
 
-        const { token } = await switchUser({
-          orgId: selectedOrg.id,
-          orgName: selectedOrg.name,
-        });
+        const { token } = await dispatch(
+          switchUserAction({
+            orgId: selectedOrg.id,
+            orgName: selectedOrg.name,
+          })
+        );
         setInCookies("local_token", token);
 
         await dispatch(setCurrentOrgIdAction(selectedOrg.id));

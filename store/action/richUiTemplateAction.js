@@ -8,6 +8,7 @@ import {
 } from "../reducer/richUiTemplateReducer";
 import { getErrorMessage, handleApiError, isNetworkError } from "@/utils/errorHandler";
 import toast from "react-hot-toast";
+import { generateRichUITemplate } from "@/config/utilityApi";
 
 export const getRichUiTemplatesAction = (orgId) => async (dispatch) => {
   try {
@@ -56,3 +57,6 @@ export const deleteRichUiTemplateAction = (templateId) => async (dispatch) => {
     throw error;
   }
 };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const generateRichUITemplateAction = (data) => async () => generateRichUITemplate(data);

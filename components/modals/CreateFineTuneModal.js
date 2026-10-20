@@ -1,4 +1,5 @@
-import { downloadFineTuneData } from "@/config/index";
+import { useDispatch } from "react-redux";
+import { downloadFineTuneDataAction } from "@/store/action/metricsAction";
 import { CircleMinusIcon, CirclePlusIcon, GlobeIcon } from "@/components/Icons";
 import React from "react";
 import Modal from "../UI/Modal";
@@ -7,6 +8,7 @@ import { Cpu } from "lucide-react";
 import { closeModal } from "@/utils/utility";
 
 function CreateFineTuneModal({ params, selectedThreadIds }) {
+  const dispatch = useDispatch();
   const [status, setStatus] = React.useState([0]);
 
   const handleStatusChange = (e, newStatus) => {
@@ -23,7 +25,7 @@ function CreateFineTuneModal({ params, selectedThreadIds }) {
 
   const handleDownloadFineTuneData = async () => {
     try {
-      const response = await downloadFineTuneData(params.id, selectedThreadIds, status);
+      const response = await dispatch(downloadFineTuneDataAction(params.id, selectedThreadIds, status));
 
       const blob = new Blob([typeof response == "object" ? JSON.stringify(response) : response], {
         type: "application/jsonl;charset=utf-8;",

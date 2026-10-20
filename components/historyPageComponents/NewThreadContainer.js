@@ -17,8 +17,7 @@ import AddTestCaseModal from "../modals/AddTestCaseModal";
 import HistoryPagePromptUpdateModal from "../modals/HistoryPagePromptUpdateModal";
 import { ChatLoadingSkeleton } from "./ChatLayoutLoader";
 import EditMessageModal from "../modals/EditMessageModal";
-import { improvePrompt } from "@/config/utilityApi";
-import { getBridgeVersionAction } from "@/store/action/bridgeAction";
+import { getBridgeVersionAction, improvePromptAction } from "@/store/action/bridgeAction";
 
 // ------------------------------------
 // Constants
@@ -192,7 +191,7 @@ const NewThreadContainer = ({
       variables["updated_response"] = modalInput.content;
       let data;
       try {
-        data = await improvePrompt(variables);
+        data = await dispatch(improvePromptAction(variables));
       } catch (error) {
         console.error(error);
       }

@@ -15,11 +15,11 @@ import {
 } from "lucide-react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { logoutUserFromMsg91, switchOrg, switchUser } from "@/config/index";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { truncate } from "@/components/historyPageComponents/AssistFile";
 import { clearCookie, getFromCookies, openModal, closeModal, setInCookies } from "@/utils/utility";
-import { setCurrentOrgIdAction } from "@/store/action/orgAction";
+import { setCurrentOrgIdAction, switchOrgAction } from "@/store/action/orgAction";
+import { logoutUserAction, logoutUserFromMsg91Action, switchUserAction } from "@/store/action/authAction";
 import OrgSlider from "./OrgSlider";
 import TutorialModal from "@/components/modals/TutorialModal";
 import DemoModal from "../modals/DemoModal";
@@ -36,7 +36,6 @@ import {
   NAV_SECTIONS,
 } from "@/utils/mainSliderHelper";
 import InviteUserModal from "../modals/InviteuserModal";
-import { logoutUser } from "../../config/authApi";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import WalletSidebarWidget from "@/components/wallet/WalletSidebarWidget";
@@ -163,11 +162,13 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
   const handleLogout = useCallback(async () => {
     try {
       if (getFromCookies("local_token")) {
-        await logoutUser(getFromCookies("local_token")); // Blacklist token
+        await dispatch(logoutUserAction(getFromCookies("local_token"))); // Blacklist token
       }
-      await logoutUserFromMsg91({
-        headers: { proxy_auth_token: getFromCookies("proxy_token") ?? "" },
-      });
+      await dispatch(
+        logoutUserFromMsg91Action({
+          headers: { proxy_auth_token: getFromCookies("proxy_token") ?? "" },
+        })
+      );
 
       clearCookie();
       localStorage.clear();
@@ -313,8 +314,8 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
 
       const doSwitch = async () => {
         try {
-          await switchOrg(id);
-          const localToken = await switchUser({ orgId: id, orgName: name });
+          await dispatch(switchOrgAction(id));
+          const localToken = await dispatch(switchUserAction({ orgId: id, orgName: name }));
           setInCookies("local_token", localToken.token);
 
           router.push(`/org/${id}/agents`);

@@ -4,9 +4,15 @@ import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 // eslint-disable-next-line unused-imports/no-unused-imports -- ExternalLink is only used by the commented-out "Manage billing" card below
 import { Check, CreditCard, ExternalLink, RefreshCw, AlertTriangle, Loader2, X, Zap } from "lucide-react";
-import { getMyPlan, getPlans, getCreditPacks, buyCredits, getRecentInvoices } from "@/config/walletApi";
 import { getPlanAction } from "@/store/action/planAction";
-import { getWalletAction } from "@/store/action/walletAction";
+import {
+  getWalletAction,
+  getMyPlanAction,
+  getPlansAction,
+  getCreditPacksAction,
+  buyCreditsAction,
+  getRecentInvoicesAction,
+} from "@/store/action/walletAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import useSubscription from "@/customHooks/useSubscription";
 import { formatPlanAmount, planIntervalLabel } from "@/utils/billingPrice";
@@ -142,14 +148,14 @@ function PlansPageInner() {
   const loadCreditPacks = useCallback(async () => {
     setLoadingPacks(true);
     try {
-      const res = await getCreditPacks();
+      const res = await dispatch(getCreditPacksAction());
       setCreditPacks(res?.data ?? null);
     } catch {
       setCreditPacks(null);
     } finally {
       setLoadingPacks(false);
     }
-  }, []);
+  }, [dispatch]);
 
   const confirmBuyCredits = useCallback((pack) => {
     setPendingPack(pack);
@@ -161,7 +167,7 @@ function PlansPageInner() {
       closeModal(MODAL_TYPE.BUY_CREDITS_MODAL);
       setBuyingUsd(usd);
       try {
-        const res = await buyCredits(usd);
+        const res = await dispatch(buyCreditsAction(usd));
         // A card not yet on file gets a Stripe checkout link instead of an
         // immediate charge — same redirect dance as subscribe/upgrade: stash
         // where we left from (billing/page.js sends the user back here) then
@@ -179,41 +185,41 @@ function PlansPageInner() {
         setBuyingUsd(null);
       }
     },
-    [loadWallet]
+    [loadWallet, dispatch]
   );
 
   const loadPlan = useCallback(async () => {
     try {
-      const res = await getMyPlan();
+      const res = await dispatch(getMyPlanAction());
       setPlan(res?.data ?? null);
     } catch {
       setPlan(null);
     } finally {
       setLoadingPlan(false);
     }
-  }, []);
+  }, [dispatch]);
 
   const loadPlans = useCallback(async () => {
     try {
-      const res = await getPlans();
+      const res = await dispatch(getPlansAction());
       setPlans(Array.isArray(res?.data) ? res.data : []);
     } catch {
       setPlans([]);
     } finally {
       setLoadingPlans(false);
     }
-  }, []);
+  }, [dispatch]);
 
   const loadInvoices = useCallback(async () => {
     try {
-      const res = await getRecentInvoices();
+      const res = await dispatch(getRecentInvoicesAction());
       setInvoices(Array.isArray(res?.data) ? res.data : []);
     } catch {
       setInvoices(null);
     } finally {
       setLoadingInvoices(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadWallet();

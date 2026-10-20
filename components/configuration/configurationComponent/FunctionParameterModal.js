@@ -1,5 +1,4 @@
-import { optimizeJsonApi, updateFlow } from "@/config/index";
-import { updateFuntionApiAction } from "@/store/action/bridgeAction";
+import { optimizeJsonAction, updateFlowAction, updateFuntionApiAction } from "@/store/action/bridgeAction";
 import { closeModal } from "@/utils/utility";
 import { isEqual } from "lodash";
 import { CopyIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
@@ -1227,11 +1226,13 @@ function FunctionParameterModal({
     try {
       setIsLoading(true);
       const reqJson = JSON.parse(objectFieldValue);
-      const result = await optimizeJsonApi({
-        data: {
-          example_json: reqJson,
-        },
-      });
+      const result = await dispatch(
+        optimizeJsonAction({
+          data: {
+            example_json: reqJson,
+          },
+        })
+      );
 
       // API may return string or object
       const parsed = typeof result?.result === "string" ? JSON.parse(result.result) : result?.result || {};
@@ -1263,7 +1264,9 @@ function FunctionParameterModal({
     }
     if (name !== "Agent" && name !== "orchestralAgent") {
       try {
-        const flowResponse = await updateFlow(embedToken, toolData.script_id, toolData?.description || "", toolName);
+        const flowResponse = await dispatch(
+          updateFlowAction(embedToken, toolData.script_id, toolData?.description || "", toolName)
+        );
         if (flowResponse?.metadata?.description) {
           const { _id, description, ...dataToSend } = toolData;
           await dispatch(

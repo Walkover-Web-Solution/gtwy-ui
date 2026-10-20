@@ -17,6 +17,7 @@ import {
   fetchRecursiveHistorySuccess,
   buildThreadKey,
 } from "../reducer/historyReducer";
+import { getSingleMessage } from "@/config/historyApi";
 
 export const getHistoryAction =
   (id, page = 1, user_feedback, isErrorTrue, selectedVersion, keyword, startDate, endDate, filterBy) =>
@@ -138,3 +139,16 @@ export const getRecursiveHistoryAction =
       console.error("Error in getRecursiveHistoryAction:", error);
     }
   };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const getThreadsAction =
+  (...args) =>
+  async () =>
+    getThreads(...args);
+export const getSingleThreadDataAction =
+  (...args) =>
+  async () =>
+    getSingleThreadData(...args);
+export const getRecursiveHistoryDataAction = (params) => async () => getRecursiveHistory(params);
+export const getMessageByIdDataAction = (params) => async () => getMessageByIdApi(params);
+export const getSingleMessageAction = (params) => async () => getSingleMessage(params);

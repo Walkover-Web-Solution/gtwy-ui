@@ -64,7 +64,15 @@ import {
 } from "../reducer/bridgeReducer";
 import { getAllResponseTypeSuccess } from "../reducer/responseTypeReducer";
 import { markUpdateInitiatedByCurrentTab } from "@/utils/utility";
-import { callViasocketCreateFullFlow } from "@/config/utilityApi";
+import {
+  callViasocketCreateFullFlow,
+  optimizePromptApi,
+  improvePrompt,
+  optimizeJsonApi,
+  optimizeSchemaApi,
+  updateFlow,
+} from "@/config/utilityApi";
+import { modelSuggestionApi, convertAgentToTemplate, getBridgeConfigHistory } from "@/config/bridgeApi";
 
 const AGENT_CREATE_RT_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -1023,3 +1031,16 @@ export const getAgentsVersionsDataAction = (orgId) => async (dispatch) => {
     throw error;
   }
 };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const modelSuggestionAction = (params) => async () => modelSuggestionApi(params);
+export const convertAgentToTemplateAction = (agentId, templateName) => async () =>
+  convertAgentToTemplate(agentId, templateName);
+export const getBridgeConfigHistoryAction = (versionId, page, pageSize, filters) => async () =>
+  getBridgeConfigHistory(versionId, page, pageSize, filters);
+export const optimizePromptAction = (params) => async () => optimizePromptApi(params);
+export const improvePromptAction = (variables) => async () => improvePrompt(variables);
+export const optimizeJsonAction = (params) => async () => optimizeJsonApi(params);
+export const optimizeSchemaAction = (params) => async () => optimizeSchemaApi(params);
+export const updateFlowAction = (embed_token, functionId, description, title) => async () =>
+  updateFlow(embed_token, functionId, description, title);

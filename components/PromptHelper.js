@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Canvas from "@/components/Canvas";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { optimizePromptApi } from "@/config/index";
+import { useDispatch } from "react-redux";
+import { optimizePromptAction } from "@/store/action/bridgeAction";
 import { PROMPT_SECTION_CONFIG } from "@/utils/enums";
 import Protected from "./Protected";
 
@@ -23,6 +24,7 @@ const PromptHelper = ({
   variable_key,
   draftPrompt,
 }) => {
+  const dispatch = useDispatch();
   const { embedPromptConfig, reduxPrompt } = useCustomSelector((state) => {
     const eu = state.appInfoReducer.embedUserDetails;
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
@@ -40,13 +42,15 @@ const PromptHelper = ({
   const handleOptimizePrompt = useCallback(
     async (instructionText) => {
       try {
-        const response = await optimizePromptApi({
-          query: instructionText,
-          thread_id,
-          bridge_id: params.id,
-          version_id: searchParams.version,
-          variables: { variable_key },
-        });
+        const response = await dispatch(
+          optimizePromptAction({
+            query: instructionText,
+            thread_id,
+            bridge_id: params.id,
+            version_id: searchParams.version,
+            variables: { variable_key },
+          })
+        );
 
         if (response?.isAxiosError || response?.response) {
           return { description: "Failed to optimize prompt. Please try again." };

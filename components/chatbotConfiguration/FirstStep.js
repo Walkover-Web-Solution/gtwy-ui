@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { createOrgToken } from "@/config/index";
+import { useDispatch } from "react-redux";
+import { createOrgTokenAction } from "@/store/action/chatBotAction";
 import { CopyIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import CodeBlock from "@/components/codeBlock/CodeBlock";
@@ -41,6 +42,7 @@ function InputWithCopyButton({ label, placeholder, value, disabled }) {
 }
 
 export default function PrivateFormSection({ params, ChooseChatbot, setChatBotIdFucntion = null }) {
+  const dispatch = useDispatch();
   const [showInput, setShowInput] = useState(false);
   const [accessKey, setAccessKey] = useState("");
   const [chatbotId, setChatBotId] = useState("");
@@ -55,7 +57,7 @@ export default function PrivateFormSection({ params, ChooseChatbot, setChatBotId
 
   const handleGetAccessKey = async () => {
     try {
-      const response = await createOrgToken(params?.org_id);
+      const response = await dispatch(createOrgTokenAction(params?.org_id));
       setAccessKey(response?.data?.orgAccessToken);
       setShowInput(true);
     } catch (error) {

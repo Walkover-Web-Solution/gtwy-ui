@@ -1,0 +1,16 @@
+---
+description: Rules for Redux slices, thunks and API client files
+globs: store/**/*.js,config/**/*.js,utils/interceptor.js
+alwaysApply: false
+---
+- Mandatory flow: component → action → API → reducer. Only store/action/* may import from config/*. Components and pages never call APIs directly.
+- API clients: config/<domain>Api.js, `import axios from "@/utils/interceptor"` (adds auth headers and 401 redirect). Never use bare axios or fetch for backend calls.
+- Base URLs come from `process.env.NEXT_PUBLIC_SERVER_URL` / `NEXT_PUBLIC_PYTHON_SERVER_URL` / `NEXT_PUBLIC_PROXY_URL`, read once at the top of the file.
+- Add new API files to config/index.js (billingApi and walletApi are currently not re-exported).
+- Thunks: even when the result isn't stored, wrap the call in a thunk and `return` the response so the component awaits `dispatch(action())`. Pattern: `export const xAction = (params) => async () => xApi(params);`
+- Thunk shape: plain `(args) => async (dispatch) => {}` in store/action/<domain>Action.js; no createAsyncThunk. try/catch, `toast`, `handleApiError`/`getErrorMessage` from utils/errorHandler.js, `trackUserAction` for key events.
+- Slices: `createSlice`, key data by org_id (`state.items[org_id]`), export actions plus a default `.reducer`. Guard against missing nested keys because state may be rehydrated from old versions.
+- New slice → register in combineReducers in store/store.js; add to `whitelist` only if it must persist.
+- Changing the shape of a persisted slice (bridgeReducer, orgReducer, userDetailsReducer, apiKeysReducer, …) needs migration-safe code.
+- Optimistic updates: back up, update, roll back on failure (see apiKeysReducer backup/rollback).
+- Reference: @store/action/apiKeyAction.js @store/reducer/apiKeysReducer.js

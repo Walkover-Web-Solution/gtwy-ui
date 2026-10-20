@@ -8,7 +8,7 @@ import { useDispatch } from "react-redux";
 import { UserCircleIcon } from "@/components/Icons";
 import { UserPlus2, Shield } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { getInvitedUsers, inviteUser } from "@/config/organizationApi";
+import { getInvitedUsersAction, inviteUserAction } from "@/store/action/orgAction";
 const AccessManagementModal = ({ agent }) => {
   // agent.users contains the users already added to this agent
   const users = useCustomSelector((state) => state.orgReducer.users) || [];
@@ -95,11 +95,13 @@ const AccessManagementModal = ({ agent }) => {
 
     try {
       // Search for user in the organization
-      const response = await getInvitedUsers({
-        page: 1,
-        limit: 20, // Increased limit to get more results
-        search: emailInput,
-      });
+      const response = await dispatch(
+        getInvitedUsersAction({
+          page: 1,
+          limit: 20, // Increased limit to get more results
+          search: emailInput,
+        })
+      );
 
       if (response.status === 200 && response.data) {
         const users = response.data.data.data || [];
@@ -249,7 +251,7 @@ const AccessManagementModal = ({ agent }) => {
     setIsInviting(true);
 
     try {
-      const response = await inviteUser({ user: { email: emailInput } });
+      const response = await dispatch(inviteUserAction({ user: { email: emailInput } }));
 
       if (response.status === "success") {
         toast.success(`Invitation sent to ${emailInput} successfully!`);
@@ -321,11 +323,13 @@ const AccessManagementModal = ({ agent }) => {
     setIsSearching(true);
 
     try {
-      const response = await getInvitedUsers({
-        page: 1,
-        limit: 20, // Increased limit to get more results
-        search: query,
-      });
+      const response = await dispatch(
+        getInvitedUsersAction({
+          page: 1,
+          limit: 20, // Increased limit to get more results
+          search: query,
+        })
+      );
 
       // Don't update if user started typing again during API call
       if (isTypingRef.current) {

@@ -1,12 +1,14 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import { Send, Loader2, SearchCode } from "lucide-react";
-import { queryKnowledgeBase } from "@/config/knowledgeBaseApi";
+import { queryKnowledgeBaseAction } from "@/store/action/knowledgeBaseAction";
 import toast from "react-hot-toast";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 import Modal from "../UI/Modal";
 
 const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
+  const dispatch = useDispatch();
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
@@ -28,7 +30,7 @@ const QueryKnowledgeBaseModal = ({ resource, orgId }) => {
         resource_id: resource._id,
       };
 
-      const response = await queryKnowledgeBase(payload);
+      const response = await dispatch(queryKnowledgeBaseAction(payload));
       setResults(response?.text);
       toast.success("Query executed successfully");
     } catch (error) {

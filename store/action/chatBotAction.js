@@ -5,6 +5,7 @@ import {
   getChatBotDetails,
   updateChatBot,
   updateChatBotConfig,
+  createOrgToken,
 } from "@/config/chatbotApi";
 import {
   getAllChatBotReducer,
@@ -83,3 +84,6 @@ export const createOrRemoveActionBridge = (dataToSend) => async (dispatch) => {
     console.error(error);
   }
 };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const createOrgTokenAction = (orgId) => async () => createOrgToken(orgId);

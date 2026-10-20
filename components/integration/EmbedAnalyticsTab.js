@@ -4,8 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation";
 import { BarChart3, Users, Bot, CheckCircle2, ChevronDown, ChevronRight, LogIn } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
-import { getEmbedAnalyticsApi } from "@/config/analyticsApi";
-import { generateEmbedTokenApi, embedLoginApi } from "@/config/integrationApi";
+import { useDispatch } from "react-redux";
+import { getEmbedAnalyticsAction } from "@/store/action/analyticsAction";
+import { generateEmbedTokenDataAction, embedLoginAction } from "@/store/action/integrationAction";
 import { getStatsConfig } from "@/utils/enums";
 import { AnalyticsStatsSkeleton, AnalyticsChartSkeleton } from "@/components/skeletons/AnalyticsSkeleton";
 import { formatRelativeTime, formatDate, buildEmbedLoginUrl } from "@/utils/utility";
@@ -62,6 +63,7 @@ function formatChartTime(t) {
 
 const EmbedAnalyticsTab = ({ data }) => {
   const params = useParams();
+  const dispatch = useDispatch();
   const orgId = params?.org_id;
   const folderId = data?.folder_id || data?._id;
 
@@ -105,10 +107,10 @@ const EmbedAnalyticsTab = ({ data }) => {
         const embedUserId = embedUserIdOf(user, folderId);
         if (!embedUserId) throw new Error("UserId Not Available");
 
-        const tokenRes = await generateEmbedTokenApi({ folder_id: folderId, user_id: embedUserId });
+        const tokenRes = await dispatch(generateEmbedTokenDataAction({ folder_id: folderId, user_id: embedUserId }));
         if (!tokenRes?.data?.embedToken) throw new Error("Could not create an embed token for this user");
 
-        const loginRes = await embedLoginApi(tokenRes.data.embedToken);
+        const loginRes = await dispatch(embedLoginAction(tokenRes.data.embedToken));
         // `standalone` tells the embed page it is a plain tab, not a gtwy.js iframe.
         const url = buildEmbedLoginUrl(loginRes?.data && { ...loginRes.data, standalone: true });
         if (!url) throw new Error("Embed login did not return a session");
@@ -121,7 +123,7 @@ const EmbedAnalyticsTab = ({ data }) => {
         setLoginAsUserId(null);
       }
     },
-    [folderId]
+    [folderId, dispatch]
   );
 
   const fetchAnalytics = useCallback(async () => {
@@ -130,10 +132,12 @@ const EmbedAnalyticsTab = ({ data }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getEmbedAnalyticsApi(
-        folderId,
-        { range, search: debouncedSearch, page: userPage, limit: USERS_PAGE_SIZE },
-        orgId
+      const res = await dispatch(
+        getEmbedAnalyticsAction(
+          folderId,
+          { range, search: debouncedSearch, page: userPage, limit: USERS_PAGE_SIZE },
+          orgId
+        )
       );
       // API returns summary/users/agents at the top level (not nested under data).
       // Avoid `res.data ?? res` — empty/undefined data would drop the real payload.
@@ -153,7 +157,7 @@ const EmbedAnalyticsTab = ({ data }) => {
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [folderId, range, orgId, debouncedSearch, userPage]);
+  }, [folderId, range, orgId, debouncedSearch, userPage, dispatch]);
 
   useEffect(() => {
     fetchAnalytics();

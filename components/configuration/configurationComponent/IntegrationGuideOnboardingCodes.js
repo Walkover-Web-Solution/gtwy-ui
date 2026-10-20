@@ -1,4 +1,4 @@
-import { getThreads, getSingleThreadData } from "@/config/historyApi";
+import { getThreadsAction, getSingleThreadDataAction } from "@/store/action/historyAction";
 import { extractErrorMessage } from "@/utils/utility";
 
 export const GTWY_SDK_LANGUAGES = [
@@ -238,28 +238,30 @@ export const getGtwySdkAccessorSnippet = (languageId) => {
 
 const NO_CALLS_MESSAGE = "No calls received yet — send a request using the code below to see it here.";
 
-export const checkAgentHealth = async (agentId) => {
+export const checkAgentHealth = async (agentId, dispatch) => {
   if (!agentId) {
     return { status: "empty", agentId, message: NO_CALLS_MESSAGE };
   }
 
   try {
-    const threads = await getThreads(agentId, 1);
+    const threads = await dispatch(getThreadsAction(agentId, 1));
     const latestThread = threads?.data?.[0];
 
     if (!latestThread?.thread_id) {
       return { status: "empty", agentId, message: NO_CALLS_MESSAGE };
     }
 
-    const singleThreadResponse = await getSingleThreadData(
-      latestThread.thread_id,
-      agentId,
-      latestThread.thread_id,
-      1,
-      undefined,
-      undefined,
-      undefined,
-      1
+    const singleThreadResponse = await dispatch(
+      getSingleThreadDataAction(
+        latestThread.thread_id,
+        agentId,
+        latestThread.thread_id,
+        1,
+        undefined,
+        undefined,
+        undefined,
+        1
+      )
     );
     const messages = singleThreadResponse?.data?.data || [];
     const latestMessage = messages[messages.length - 1];

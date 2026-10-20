@@ -57,6 +57,28 @@
   },
   "overrides": [
     {
+      "files": [
+        "app/**/*.{js,jsx,ts,tsx}",
+        "components/**/*.{js,jsx,ts,tsx}",
+        "customHooks/**/*.{js,jsx,ts,tsx}",
+        "hooks/**/*.{js,jsx,ts,tsx}",
+        "wrapper/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/config", "@/config/*", "**/config/*Api", "**/config/index"],
+                "message": "Don't call APIs from UI code. Dispatch an action from store/action/* (component -> action -> API -> reducer)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["app/**/*.{js,jsx,ts,tsx}"],
       "rules": {
         "import/no-unused-modules": "off"

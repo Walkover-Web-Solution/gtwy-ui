@@ -1,9 +1,10 @@
-import { modelSuggestionApi } from "@/config/index";
+import { modelSuggestionAction } from "@/store/action/bridgeAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { useFloating, offset, flip, shift, autoUpdate } from "@floating-ui/react";
 import { X } from "lucide-react";
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useDispatch } from "react-redux";
 
 const RecommendedModal = ({
   apiKeySectionRef,
@@ -17,6 +18,7 @@ const RecommendedModal = ({
   isPublished,
   isEditor,
 }) => {
+  const dispatch = useDispatch();
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [modelRecommendations, setModelRecommendations] = useState(null);
   const { prompt } = useCustomSelector((state) => {
@@ -98,7 +100,7 @@ const RecommendedModal = ({
             "";
       const currentPrompt = promptTextAreaRef.current?.querySelector("textarea")?.value?.trim() || promptText.trim();
       if (((bridgeApiKey || deafultApiKeys) && currentPrompt !== "") || service === "ai_ml") {
-        const response = await modelSuggestionApi({ versionId: searchParams?.version });
+        const response = await dispatch(modelSuggestionAction({ versionId: searchParams?.version }));
         if (response?.success) {
           setModelRecommendations({
             service: response.data.service,

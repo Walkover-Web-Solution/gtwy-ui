@@ -1,4 +1,4 @@
-import { dryRun } from "@/config/index";
+import { runDryRunAction } from "@/store/action/modelAction";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import { uploadMultipleImagesAction } from "@/store/action/bridgeAction";
@@ -352,28 +352,30 @@ function ChatTextInput({
         };
 
         const apiCall = async () => {
-          return await dryRun({
-            localDataToSend: {
-              ...(isPublished ? {} : { version_id: versionId }),
-              configuration: {
-                type: modelType,
-                ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
-                ...(jevQuestions ? { questions: jevQuestions } : {}),
+          return await dispatch(
+            runDryRunAction({
+              localDataToSend: {
+                ...(isPublished ? {} : { version_id: versionId }),
+                configuration: {
+                  type: modelType,
+                  ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
+                  ...(jevQuestions ? { questions: jevQuestions } : {}),
+                },
+                thread_id: threadId,
+                user: data.content,
+                user_urls: userUrls,
+                variables,
+                is_playground: true,
+                orchestrator_flag: isOrchestralModel,
+                // TypeSafe has no streaming endpoint.
+                is_stream:
+                  isJev || bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image"
+                    ? false
+                    : true,
               },
-              thread_id: threadId,
-              user: data.content,
-              user_urls: userUrls,
-              variables,
-              is_playground: true,
-              orchestrator_flag: isOrchestralModel,
-              // TypeSafe has no streaming endpoint.
-              is_stream:
-                isJev || bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image"
-                  ? false
-                  : true,
-            },
-            bridge_id: params?.id,
-          });
+              bridge_id: params?.id,
+            })
+          );
         };
 
         // Send message — streams SSE response from dryRun directly
@@ -401,22 +403,24 @@ function ChatTextInput({
 
         // Use RT layer action for embedding models too
         const apiCall = async () => {
-          return await dryRun({
-            localDataToSend: {
-              ...(isPublished ? {} : { version_id: versionId }),
-              configuration: {
-                type: modelType,
-                ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
+          return await dispatch(
+            runDryRunAction({
+              localDataToSend: {
+                ...(isPublished ? {} : { version_id: versionId }),
+                configuration: {
+                  type: modelType,
+                  ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
+                },
+                thread_id: threadId,
+                text: newMessage,
+                is_playground: true,
+                orchestrator_flag: isOrchestralModel,
+                is_stream:
+                  bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image" ? false : true,
               },
-              thread_id: threadId,
-              text: newMessage,
-              is_playground: true,
-              orchestrator_flag: isOrchestralModel,
-              is_stream:
-                bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image" ? false : true,
-            },
-            bridge_id: params?.id,
-          });
+              bridge_id: params?.id,
+            })
+          );
         };
 
         // Send message with RT layer handling (loading will persist until RT response)
@@ -435,22 +439,24 @@ function ChatTextInput({
       } else if (modelType !== "image") {
         // Use RT layer action for completion models too
         const apiCall = async () => {
-          return await dryRun({
-            localDataToSend: {
-              ...localDataToSend,
-              ...(isPublished ? {} : { version_id: versionId }),
-              configuration: {
-                ...localDataToSend.configuration,
-                ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
+          return await dispatch(
+            runDryRunAction({
+              localDataToSend: {
+                ...localDataToSend,
+                ...(isPublished ? {} : { version_id: versionId }),
+                configuration: {
+                  ...localDataToSend.configuration,
+                  ...(testCaseConversation ? { conversation: testCaseConversation } : {}),
+                },
+                input: bridge?.inputConfig?.input?.input,
+                is_playground: true,
+                orchestrator_flag: isOrchestralModel,
+                is_stream:
+                  bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image" ? false : true,
               },
-              input: bridge?.inputConfig?.input?.input,
-              is_playground: true,
-              orchestrator_flag: isOrchestralModel,
-              is_stream:
-                bridge?.configuration?.stream !== true || bridge?.configuration?.type === "image" ? false : true,
-            },
-            bridge_id: params?.id,
-          });
+              bridge_id: params?.id,
+            })
+          );
         };
 
         // Send message with RT layer handling (loading will persist until RT response)

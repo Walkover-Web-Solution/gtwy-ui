@@ -1,5 +1,6 @@
 import { addNewModelReducer, deleteModelReducer, fetchModelReducer } from "../reducer/modelReducer";
 import { addNewModel, deleteModel, getAllModels } from "@/config/index";
+import { dryRun, rerunApi } from "@/config/modelApi";
 
 export const getModelAction =
   ({ service }) =>
@@ -34,3 +35,7 @@ export const deleteModelAction = (dataToSend) => async (dispatch) => {
     throw error;
   }
 };
+
+// Pass-through thunks: call the API and return its response unchanged (errors propagate to the caller).
+export const runDryRunAction = (params) => async () => dryRun(params);
+export const rerunAction = (params) => async () => rerunApi(params);
