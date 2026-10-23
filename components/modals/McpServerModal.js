@@ -1,15 +1,33 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Server } from "lucide-react";
 import Modal from "../UI/Modal";
+import McpSecretInput from "../configuration/configurationComponent/McpSecretInput";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 
 const MCP_MODAL_ID = MODAL_TYPE.MCP_SERVER_MODAL;
+const HEADER_NAME_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+const EMPTY_HEADER = { key: "", value: "" };
+
+// An MCP server carries a single auth header. Reads it back into the modal's auth mode:
+// "Authorization: Bearer ..." is shown as a bearer token, any other header as a custom header.
+const authStateFromHeaders = (headers) => {
+  const [entry] = Object.entries(headers || {});
+  if (!entry) return { authType: "none", token: "", header: EMPTY_HEADER };
+  const [key, value] = entry;
+  if (key.toLowerCase() === "authorization" && /^bearer\s+/i.test(value || "")) {
+    return { authType: "bearer", token: value.replace(/^bearer\s+/i, ""), header: EMPTY_HEADER };
+  }
+  return { authType: "custom", token: "", header: { key, value: value ?? "" } };
+};
 
 const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) => {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
+  const [authType, setAuthType] = useState("none");
+  const [token, setToken] = useState("");
+  const [header, setHeader] = useState(EMPTY_HEADER);
 
   const initialDataRef = useRef(initialData);
   initialDataRef.current = initialData;
@@ -21,6 +39,10 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
     const syncFromInitialData = () => {
       setName(initialDataRef.current?.name || "");
       setUrl(initialDataRef.current?.url || "");
+      const authState = authStateFromHeaders(initialDataRef.current?.headers);
+      setAuthType(authState.authType);
+      setToken(authState.token);
+      setHeader(authState.header);
       setError("");
     };
 
@@ -37,7 +59,32 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
   const resetForm = () => {
     setName("");
     setUrl("");
+    setAuthType("none");
+    setToken("");
+    setHeader(EMPTY_HEADER);
     setError("");
+  };
+
+  const updateHeader = (field, value) => {
+    setHeader((prev) => ({ ...prev, [field]: value }));
+    if (error) setError("");
+  };
+
+  // Returns { headers } or { error } for the selected auth mode.
+  const buildHeaders = () => {
+    if (authType === "bearer") {
+      const trimmedToken = token.trim();
+      if (!trimmedToken) return { error: "Enter a bearer token or choose No auth." };
+      return { headers: { Authorization: `Bearer ${trimmedToken}` } };
+    }
+    if (authType === "custom") {
+      const key = header.key.trim();
+      const value = header.value.trim();
+      if (!key || !value) return { error: "Enter both a header name and a value, or choose No auth." };
+      if (!HEADER_NAME_PATTERN.test(key)) return { error: `"${key}" is not a valid header name.` };
+      return { headers: { [key]: value } };
+    }
+    return { headers: {} };
   };
 
   const handleClose = () => {
@@ -59,8 +106,15 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
       setError("Enter a valid server URL.");
       return;
     }
+    const { headers, error: headerError } = buildHeaders();
+    if (headerError) {
+      setError(headerError);
+      return;
+    }
     setError("");
-    await onSave({ name: trimmedName.replace(/ /g, "_"), url: trimmedUrl });
+    const server = { name: trimmedName.replace(/ /g, "_"), url: trimmedUrl };
+    if (Object.keys(headers).length) server.headers = headers;
+    await onSave(server);
     resetForm();
   };
 
@@ -140,6 +194,76 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
             disabled={isSaving}
           />
         </div>
+        <div className="form-control">
+          <label htmlFor="mcp-server-modal-auth-type" className="label !px-0">
+            <span className="text-sm font-medium">Authentication</span>
+          </label>
+          <select
+            id="mcp-server-modal-auth-type"
+            data-testid="mcp-server-modal-auth-type"
+            className="select select-sm w-full"
+            value={authType}
+            onChange={(e) => {
+              setAuthType(e.target.value);
+              if (error) setError("");
+            }}
+            disabled={isSaving}
+          >
+            <option value="none">No auth</option>
+            <option value="bearer">Bearer token</option>
+            <option value="custom">Custom header</option>
+          </select>
+        </div>
+        {authType === "bearer" && (
+          <div className="form-control">
+            <label htmlFor="mcp-server-modal-token" className="label !px-0">
+              <span className="text-sm font-medium">Token</span>
+            </label>
+            <McpSecretInput
+              id="mcp-server-modal-token"
+              data-testid="mcp-server-modal-token"
+              placeholder="Token or {{variable}}"
+              className="w-full"
+              value={token}
+              onChange={(e) => {
+                setToken(e.target.value);
+                if (error) setError("");
+              }}
+              disabled={isSaving}
+            />
+            <p className="text-xs text-base-content/60 mt-1">
+              Sent as <code>Authorization: Bearer &lt;token&gt;</code>.
+            </p>
+          </div>
+        )}
+        {authType === "custom" && (
+          <div className="flex items-center gap-2" data-testid="mcp-server-modal-header">
+            <input
+              autoComplete="off"
+              data-testid="mcp-server-modal-header-key"
+              type="text"
+              placeholder="Header name, e.g. X-Api-Key"
+              className="input input-sm flex-1 min-w-0 focus:ring-1 ring-primary/40"
+              value={header.key}
+              onChange={(e) => updateHeader("key", e.target.value)}
+              disabled={isSaving}
+            />
+            <McpSecretInput
+              data-testid="mcp-server-modal-header-value"
+              placeholder="Value or {{variable}}"
+              className="flex-1 min-w-0"
+              value={header.value}
+              onChange={(e) => updateHeader("value", e.target.value)}
+              disabled={isSaving}
+            />
+          </div>
+        )}
+        <p className="text-xs text-base-content/60" data-testid="mcp-server-modal-runtime-auth-hint">
+          For a per-user token, use <code>{"{{variable_name}}"}</code> here and send it in the request&apos;s{" "}
+          <code>variables</code>, or send{" "}
+          <code>{`"mcp_auth": { "${name.trim().replace(/ /g, "_") || "server_name"}": "<token>" }`}</code>, which
+          replaces the auth set here.
+        </p>
         {error && <p className="text-xs text-error">{error}</p>}
       </div>
     </Modal>
