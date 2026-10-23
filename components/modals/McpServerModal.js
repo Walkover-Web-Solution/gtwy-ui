@@ -222,7 +222,7 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
             <McpSecretInput
               id="mcp-server-modal-token"
               data-testid="mcp-server-modal-token"
-              placeholder="Token"
+              placeholder="Token or {{variable}}"
               className="w-full"
               value={token}
               onChange={(e) => {
@@ -250,7 +250,7 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
             />
             <McpSecretInput
               data-testid="mcp-server-modal-header-value"
-              placeholder="Value"
+              placeholder="Value or {{variable}}"
               className="flex-1 min-w-0"
               value={header.value}
               onChange={(e) => updateHeader("value", e.target.value)}
@@ -259,9 +259,10 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
           </div>
         )}
         <p className="text-xs text-base-content/60" data-testid="mcp-server-modal-runtime-auth-hint">
-          To send a different token per user, pass it with each request as{" "}
-          <code>{`"mcp_auth": { "${name.trim().replace(/ /g, "_") || "server_name"}": "<token>" }`}</code>. It replaces
-          the auth set here.
+          For a per-user token, use <code>{"{{variable_name}}"}</code> here and send it in the request&apos;s{" "}
+          <code>variables</code>, or send{" "}
+          <code>{`"mcp_auth": { "${name.trim().replace(/ /g, "_") || "server_name"}": "<token>" }`}</code>, which
+          replaces the auth set here.
         </p>
         {error && <p className="text-xs text-error">{error}</p>}
       </div>

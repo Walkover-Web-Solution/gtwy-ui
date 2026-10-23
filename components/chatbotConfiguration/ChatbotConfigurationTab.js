@@ -579,9 +579,9 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
             {formData.mcpConfig && formData.mcpConfig.length > 0 ? (
               <div className="space-y-3">
                 <p className="text-[11px] text-base-content/60">
-                  The chatbot config is visible in the browser. Send per-user tokens at runtime with{" "}
-                  <code>{'SendDataToChatbot({ mcpAuth: { "<mcp name>": "<token>" } })'}</code> instead of pasting a
-                  secret here.
+                  The chatbot config is visible in the browser, so don&apos;t paste a secret here. Use{" "}
+                  <code>{"Bearer {{mcp_token}}"}</code> and send the token as a chatbot variable, or send it with{" "}
+                  <code>{'SendDataToChatbot({ mcpAuth: { "<mcp name>": "<token>" } })'}</code>.
                 </p>
                 {(() => {
                   const hasUnsavedMcp = Object.values(mcpEdited).some((edited) => edited);
@@ -645,7 +645,7 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
                               required
                             />
                             <McpSecretInput
-                              placeholder="Authorization (optional), e.g. Bearer <token>"
+                              placeholder="Authorization (optional), e.g. Bearer {{mcp_token}}"
                               className="w-full"
                               value={config.headers?.Authorization || ""}
                               onChange={(e) => handleMcpAuthorizationChange(index, e.target.value)}
