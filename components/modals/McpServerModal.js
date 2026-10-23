@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Plus, Server, Trash2 } from "lucide-react";
 import Modal from "../UI/Modal";
+import McpSecretInput from "../configuration/configurationComponent/McpSecretInput";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal } from "@/utils/utility";
 
@@ -228,13 +229,11 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
             <label htmlFor="mcp-server-modal-token" className="label !px-0">
               <span className="text-sm font-medium">Token</span>
             </label>
-            <input
-              autoComplete="off"
+            <McpSecretInput
               id="mcp-server-modal-token"
               data-testid="mcp-server-modal-token"
-              type="password"
               placeholder="sk-... or {{mcp_token}}"
-              className="input input-sm w-full focus:ring-1 ring-primary/40"
+              className="w-full"
               value={token}
               onChange={(e) => {
                 setToken(e.target.value);
@@ -261,12 +260,10 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
                   onChange={(e) => updateHeaderRow(index, "key", e.target.value)}
                   disabled={isSaving}
                 />
-                <input
-                  autoComplete="off"
+                <McpSecretInput
                   data-testid={`mcp-server-modal-header-value-${index}`}
-                  type="password"
                   placeholder="Value or {{variable}}"
-                  className="input input-sm flex-1 min-w-0 focus:ring-1 ring-primary/40"
+                  className="flex-1 min-w-0"
                   value={row.value}
                   onChange={(e) => updateHeaderRow(index, "value", e.target.value)}
                   disabled={isSaving}

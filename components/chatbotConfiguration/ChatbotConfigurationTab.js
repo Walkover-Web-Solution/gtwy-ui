@@ -9,6 +9,7 @@ import { getServiceAction } from "@/store/action/serviceAction";
 import { getModelAction } from "@/store/action/modelAction";
 import { getServiceDisplayName } from "@/utils/utility";
 import ChatbotPreview from "./ChatbotPreview";
+import McpSecretInput from "@/components/configuration/configurationComponent/McpSecretInput";
 import { ExternalLink, Trash2, Save, Plus, Server } from "lucide-react";
 
 function ModelCustomization({ value = {}, onChange, onBlur }) {
@@ -642,11 +643,9 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
                               onChange={(e) => handleMcpConfigChange(index, "url", e.target.value)}
                               required
                             />
-                            <input
-                              autoComplete="off"
-                              type="password"
+                            <McpSecretInput
                               placeholder="Authorization (optional), e.g. Bearer {{mcp_token}}"
-                              className="input w-full input-sm"
+                              className="w-full"
                               value={config.headers?.Authorization || ""}
                               onChange={(e) => handleMcpAuthorizationChange(index, e.target.value)}
                             />
