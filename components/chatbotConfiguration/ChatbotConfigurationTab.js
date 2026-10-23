@@ -275,6 +275,17 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
     }));
   }, []);
 
+  // Chatbot MCP auth is a single Authorization header; an empty value removes it.
+  const handleMcpAuthorizationChange = useCallback(
+    (index, value) => {
+      const current = formData.mcpConfig[index] || {};
+      const { Authorization: _previous, ...otherHeaders } = current.headers || {};
+      const headers = value ? { ...otherHeaders, Authorization: value } : otherHeaders;
+      handleMcpConfigChange(index, "headers", Object.keys(headers).length ? headers : undefined);
+    },
+    [formData.mcpConfig, handleMcpConfigChange]
+  );
+
   const handleAddMcpConfig = useCallback(() => {
     setFormData((prevFormData) => {
       const newIndex = prevFormData.mcpConfig.length;
@@ -566,6 +577,10 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
             {formData.mcpConfig && formData.mcpConfig.length > 0 ? (
               <div className="space-y-3">
+                <p className="text-[11px] text-base-content/60">
+                  The chatbot config is visible in the browser, so pass tokens as variables (e.g.{" "}
+                  <code>{"Bearer {{mcp_token}}"}</code>) instead of pasting a secret here.
+                </p>
                 {(() => {
                   const hasUnsavedMcp = Object.values(mcpEdited).some((edited) => edited);
                   return (
@@ -626,6 +641,14 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
                               value={config.url || ""}
                               onChange={(e) => handleMcpConfigChange(index, "url", e.target.value)}
                               required
+                            />
+                            <input
+                              autoComplete="off"
+                              type="password"
+                              placeholder="Authorization (optional), e.g. Bearer {{mcp_token}}"
+                              className="input w-full input-sm"
+                              value={config.headers?.Authorization || ""}
+                              onChange={(e) => handleMcpAuthorizationChange(index, e.target.value)}
                             />
                           </div>
                         );

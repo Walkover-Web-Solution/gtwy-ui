@@ -8,7 +8,7 @@ import DeleteModal from "@/components/UI/DeleteModal";
 import useDeleteOperation from "@/customHooks/useDeleteOperation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal } from "@/utils/utility";
-import { CircleQuestionMark, Pencil, Plus, Server, Trash2 } from "lucide-react";
+import { CircleQuestionMark, Lock, Pencil, Plus, Server, Trash2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
@@ -133,8 +133,16 @@ const McpServerList = ({ params, searchParams, isPublished, isEditor = true }) =
                 <div className="p-2 flex-1 flex items-center gap-2 min-w-0">
                   <Server size={16} className="shrink-0 text-base-content/60" />
                   <div className="flex-1 min-w-0">
-                    <span className="block truncate text-sm font-medium text-base-content">
-                      {config.name || `MCP ${index + 1}`}
+                    <span className="flex items-center gap-1 text-sm font-medium text-base-content">
+                      <span className="truncate">{config.name || `MCP ${index + 1}`}</span>
+                      {config.headers && Object.keys(config.headers).length > 0 && (
+                        <Lock
+                          size={12}
+                          className="shrink-0 text-base-content/50"
+                          data-testid={`mcp-server-auth-indicator-${index}`}
+                          aria-label="Authentication configured"
+                        />
+                      )}
                     </span>
                     <span className="block truncate text-xs text-base-content/50">{config.url}</span>
                   </div>
