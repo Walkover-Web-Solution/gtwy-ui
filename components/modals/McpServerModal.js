@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Plus, Server, Trash2 } from "lucide-react";
+import { Server } from "lucide-react";
 import Modal from "../UI/Modal";
 import McpSecretInput from "../configuration/configurationComponent/McpSecretInput";
 import { MODAL_TYPE } from "@/utils/enums";
@@ -7,18 +7,18 @@ import { closeModal } from "@/utils/utility";
 
 const MCP_MODAL_ID = MODAL_TYPE.MCP_SERVER_MODAL;
 const HEADER_NAME_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
-const EMPTY_HEADER_ROW = { key: "", value: "" };
+const EMPTY_HEADER = { key: "", value: "" };
 
-// Reads saved headers back into the modal's auth mode: a lone
-// "Authorization: Bearer ..." is shown as a bearer token, anything else as custom headers.
+// An MCP server carries a single auth header. Reads it back into the modal's auth mode:
+// "Authorization: Bearer ..." is shown as a bearer token, any other header as a custom header.
 const authStateFromHeaders = (headers) => {
-  const entries = Object.entries(headers || {});
-  if (!entries.length) return { authType: "none", token: "", headerRows: [EMPTY_HEADER_ROW] };
-  const [key, value] = entries[0];
-  if (entries.length === 1 && key.toLowerCase() === "authorization" && /^bearer\s+/i.test(value || "")) {
-    return { authType: "bearer", token: value.replace(/^bearer\s+/i, ""), headerRows: [EMPTY_HEADER_ROW] };
+  const [entry] = Object.entries(headers || {});
+  if (!entry) return { authType: "none", token: "", header: EMPTY_HEADER };
+  const [key, value] = entry;
+  if (key.toLowerCase() === "authorization" && /^bearer\s+/i.test(value || "")) {
+    return { authType: "bearer", token: value.replace(/^bearer\s+/i, ""), header: EMPTY_HEADER };
   }
-  return { authType: "custom", token: "", headerRows: entries.map(([k, v]) => ({ key: k, value: v ?? "" })) };
+  return { authType: "custom", token: "", header: { key, value: value ?? "" } };
 };
 
 const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) => {
@@ -27,7 +27,7 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
   const [error, setError] = useState("");
   const [authType, setAuthType] = useState("none");
   const [token, setToken] = useState("");
-  const [headerRows, setHeaderRows] = useState([EMPTY_HEADER_ROW]);
+  const [header, setHeader] = useState(EMPTY_HEADER);
 
   const initialDataRef = useRef(initialData);
   initialDataRef.current = initialData;
@@ -42,7 +42,7 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
       const authState = authStateFromHeaders(initialDataRef.current?.headers);
       setAuthType(authState.authType);
       setToken(authState.token);
-      setHeaderRows(authState.headerRows);
+      setHeader(authState.header);
       setError("");
     };
 
@@ -61,17 +61,13 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
     setUrl("");
     setAuthType("none");
     setToken("");
-    setHeaderRows([EMPTY_HEADER_ROW]);
+    setHeader(EMPTY_HEADER);
     setError("");
   };
 
-  const updateHeaderRow = (index, field, value) => {
-    setHeaderRows((rows) => rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  const updateHeader = (field, value) => {
+    setHeader((prev) => ({ ...prev, [field]: value }));
     if (error) setError("");
-  };
-
-  const removeHeaderRow = (index) => {
-    setHeaderRows((rows) => (rows.length > 1 ? rows.filter((_, i) => i !== index) : [EMPTY_HEADER_ROW]));
   };
 
   // Returns { headers } or { error } for the selected auth mode.
@@ -82,17 +78,11 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
       return { headers: { Authorization: `Bearer ${trimmedToken}` } };
     }
     if (authType === "custom") {
-      const headers = {};
-      for (const row of headerRows) {
-        const key = row.key.trim();
-        const value = row.value.trim();
-        if (!key && !value) continue;
-        if (!key || !value) return { error: "Each header needs both a name and a value." };
-        if (!HEADER_NAME_PATTERN.test(key)) return { error: `"${key}" is not a valid header name.` };
-        headers[key] = value;
-      }
-      if (!Object.keys(headers).length) return { error: "Add at least one header or choose No auth." };
-      return { headers };
+      const key = header.key.trim();
+      const value = header.value.trim();
+      if (!key || !value) return { error: "Enter both a header name and a value, or choose No auth." };
+      if (!HEADER_NAME_PATTERN.test(key)) return { error: `"${key}" is not a valid header name.` };
+      return { headers: { [key]: value } };
     }
     return { headers: {} };
   };
@@ -221,7 +211,7 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
           >
             <option value="none">No auth</option>
             <option value="bearer">Bearer token</option>
-            <option value="custom">Custom headers</option>
+            <option value="custom">Custom header</option>
           </select>
         </div>
         {authType === "bearer" && (
@@ -247,49 +237,25 @@ const McpServerModal = ({ initialData, isEditing, onSave, isSaving = false }) =>
           </div>
         )}
         {authType === "custom" && (
-          <div className="flex flex-col gap-2" data-testid="mcp-server-modal-headers">
-            {headerRows.map((row, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  autoComplete="off"
-                  data-testid={`mcp-server-modal-header-key-${index}`}
-                  type="text"
-                  placeholder="Header name"
-                  className="input input-sm flex-1 min-w-0 focus:ring-1 ring-primary/40"
-                  value={row.key}
-                  onChange={(e) => updateHeaderRow(index, "key", e.target.value)}
-                  disabled={isSaving}
-                />
-                <McpSecretInput
-                  data-testid={`mcp-server-modal-header-value-${index}`}
-                  placeholder="Value or {{variable}}"
-                  className="flex-1 min-w-0"
-                  value={row.value}
-                  onChange={(e) => updateHeaderRow(index, "value", e.target.value)}
-                  disabled={isSaving}
-                />
-                <button
-                  type="button"
-                  data-testid={`mcp-server-modal-header-remove-${index}`}
-                  className="btn btn-ghost btn-sm p-1 hover:bg-red-100 hover:text-error"
-                  onClick={() => removeHeaderRow(index)}
-                  disabled={isSaving}
-                  title="Remove header"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              data-testid="mcp-server-modal-header-add"
-              className="btn btn-ghost btn-xs self-start gap-1"
-              onClick={() => setHeaderRows((rows) => [...rows, EMPTY_HEADER_ROW])}
+          <div className="flex items-center gap-2" data-testid="mcp-server-modal-header">
+            <input
+              autoComplete="off"
+              data-testid="mcp-server-modal-header-key"
+              type="text"
+              placeholder="Header name, e.g. X-Api-Key"
+              className="input input-sm flex-1 min-w-0 focus:ring-1 ring-primary/40"
+              value={header.key}
+              onChange={(e) => updateHeader("key", e.target.value)}
               disabled={isSaving}
-            >
-              <Plus size={12} />
-              Add header
-            </button>
+            />
+            <McpSecretInput
+              data-testid="mcp-server-modal-header-value"
+              placeholder="Value or {{variable}}"
+              className="flex-1 min-w-0"
+              value={header.value}
+              onChange={(e) => updateHeader("value", e.target.value)}
+              disabled={isSaving}
+            />
           </div>
         )}
         {authType !== "none" && (
