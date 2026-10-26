@@ -9,6 +9,7 @@ import { getServiceAction } from "@/store/action/serviceAction";
 import { getModelAction } from "@/store/action/modelAction";
 import { getServiceDisplayName } from "@/utils/utility";
 import ChatbotPreview from "./ChatbotPreview";
+import McpSecretInput from "@/components/configuration/configurationComponent/McpSecretInput";
 import { ExternalLink, Trash2, Save, Plus, Server } from "lucide-react";
 
 function ModelCustomization({ value = {}, onChange, onBlur }) {
@@ -274,6 +275,17 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
       [index]: true,
     }));
   }, []);
+
+  // Chatbot MCP auth is a single Authorization header; an empty value removes it.
+  const handleMcpAuthorizationChange = useCallback(
+    (index, value) => {
+      const current = formData.mcpConfig[index] || {};
+      const { Authorization: _previous, ...otherHeaders } = current.headers || {};
+      const headers = value ? { ...otherHeaders, Authorization: value } : otherHeaders;
+      handleMcpConfigChange(index, "headers", Object.keys(headers).length ? headers : undefined);
+    },
+    [formData.mcpConfig, handleMcpConfigChange]
+  );
 
   const handleAddMcpConfig = useCallback(() => {
     setFormData((prevFormData) => {
@@ -566,6 +578,11 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
 
             {formData.mcpConfig && formData.mcpConfig.length > 0 ? (
               <div className="space-y-3">
+                <p className="text-[11px] text-base-content/60">
+                  The chatbot config is visible in the browser, so don&apos;t paste a secret here. Use{" "}
+                  <code>{"Bearer {{mcp_token}}"}</code> and send the token as a chatbot variable, or send it with{" "}
+                  <code>{'SendDataToChatbot({ mcpAuth: { "<mcp name>": "<token>" } })'}</code>.
+                </p>
                 {(() => {
                   const hasUnsavedMcp = Object.values(mcpEdited).some((edited) => edited);
                   return (
@@ -626,6 +643,12 @@ const ChatbotConfigurationTab = ({ params, chatbotId, isInSidebar = false }) => 
                               value={config.url || ""}
                               onChange={(e) => handleMcpConfigChange(index, "url", e.target.value)}
                               required
+                            />
+                            <McpSecretInput
+                              placeholder="Authorization (optional), e.g. Bearer {{mcp_token}}"
+                              className="w-full"
+                              value={config.headers?.Authorization || ""}
+                              onChange={(e) => handleMcpAuthorizationChange(index, e.target.value)}
                             />
                           </div>
                         );
