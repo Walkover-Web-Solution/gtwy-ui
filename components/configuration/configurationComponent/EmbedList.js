@@ -85,7 +85,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     const toolsVersionData = builtInToolsEntry?.built_in_tools || [];
     const webSearchFilters = builtInToolsEntry?.web_search_filters || [];
     const gtwyWebSearchFilters = builtInToolsEntry?.gtwy_web_search_filters || [];
-    const browserAutoLogin = builtInToolsEntry?.auto_login === true;
+    const browserAutoLogin = activeData?.auto_login === true;
 
     // Build variables_path from individual tool entries
     const variablesPathFromTools = {};
@@ -338,14 +338,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
       updateBridgeVersionAction({
         bridgeId: params?.id,
         versionId: searchParams?.version,
-        dataToSend: {
-          connected_tool: {
-            type: "built_in_tools",
-            built_in_tools: toolsVersionData || [],
-            auto_login: enabled,
-          },
-          operation: 2,
-        },
+        dataToSend: { auto_login: enabled },
       })
     );
   };
