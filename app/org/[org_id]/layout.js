@@ -93,15 +93,9 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
-    // Tool variable paths live on each connected_tools "tools" entry, keyed here by function id
-    variablesPath: Object.fromEntries(
-      (
-        state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]
-          ?.connected_tools || []
-      )
-        .filter((t) => t?.type === "tools" && t?.id)
-        .map((t) => [t.id, t.variable_path || {}])
-    ),
+    variablesPath:
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.variables_path ||
+      {},
     organizations: state.userDetailsReducer.organizations,
     preTools: (
       state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.connected_tools ||
@@ -555,24 +549,18 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           }
           if (
             (e?.data?.action === "updated" || e?.data?.action === "published") &&
-            data?._id &&
+            data?.script_id &&
             path[5] &&
             resolvedSearchParams?.get("version")
           ) {
-            {
-              debugger;
-            }
-            const currentToolVariablesPath = variablesPath?.[data._id] || {};
+            const currentToolVariablesPath = variablesPath?.[data.script_id] || {};
             const cleanedToolVariablesPath = cleanVariablesPathByFields(currentToolVariablesPath, data?.fields || {});
             if (Object.keys(cleanedToolVariablesPath).length !== Object.keys(currentToolVariablesPath).length) {
               dispatch(
                 updateBridgeVersionAction({
                   bridgeId: path[5],
                   versionId: resolvedSearchParams?.get("version"),
-                  dataToSend: {
-                    connected_tool: { type: "tools", id: data._id, variable_path: cleanedToolVariablesPath },
-                    operation: 2,
-                  },
+                  dataToSend: { variables_path: { [data.script_id]: cleanedToolVariablesPath } },
                 })
               );
             }
