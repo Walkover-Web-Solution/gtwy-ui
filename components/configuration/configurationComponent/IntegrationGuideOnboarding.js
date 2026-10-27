@@ -37,6 +37,7 @@ import {
   getBatchResponseFormat,
   checkAgentHealth,
 } from "./IntegrationGuideOnboardingCodes";
+import { isJevService } from "@/utils/jevQuestions";
 
 const CATEGORIES = [
   { id: "curl", label: "cURL" },
@@ -104,7 +105,7 @@ const SegmentedControl = ({ items, activeId, onChange, testId, itemTestIdPrefix,
   </div>
 );
 
-const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = "" }) => {
+const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = "", service = "" }) => {
   const [category, setCategory] = useState("curl");
   const [example, setExample] = useState("api");
   const [gtwyLang, setGtwyLang] = useState("python");
@@ -112,6 +113,7 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
   const [health, setHealth] = useState({ status: "loading", data: null });
 
   const isBatch = example === "batch";
+  const isJev = isJevService(service);
 
   const activeGtwyLang = useMemo(
     () => GTWY_SDK_LANGUAGES.find((l) => l.id === gtwyLang) ?? GTWY_SDK_LANGUAGES[0],
@@ -124,15 +126,17 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
 
   const activeCode = useMemo(() => {
     if (category === "curl") {
-      return isBatch ? getCurlBatchCode(agentId, isEmbedUser) : getCurlCode(agentId, modelType, isEmbedUser, prompt);
+      return isBatch
+        ? getCurlBatchCode(agentId, isEmbedUser)
+        : getCurlCode(agentId, modelType, isEmbedUser, prompt, service);
     }
     if (category === "gtwy") {
       return isBatch ? getGtwySdkBatchCode(gtwyLang, agentId) : getGtwySdkCode(gtwyLang, agentId);
     }
     return isBatch
       ? OPENAI_BATCH_CODE_BY_LANG[openaiLang](agentId, isEmbedUser)
-      : OPENAI_CODE_BY_LANG[openaiLang](agentId, isEmbedUser, prompt);
-  }, [category, isBatch, gtwyLang, openaiLang, agentId, modelType, isEmbedUser, prompt]);
+      : OPENAI_CODE_BY_LANG[openaiLang](agentId, isEmbedUser, prompt, service);
+  }, [category, isBatch, gtwyLang, openaiLang, agentId, modelType, isEmbedUser, prompt, service]);
 
   const activePrism =
     category === "curl" ? "bash" : category === "gtwy" ? activeGtwyLang.prism : activeOpenaiLang.prism;
@@ -141,7 +145,7 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
     ? getBatchResponseFormat()
     : category === "openai"
       ? getSdkResponseFormat()
-      : getCurlResponseFormat();
+      : getCurlResponseFormat(service);
 
   const accessorSnippet = useMemo(
     () => (!isBatch && category === "gtwy" ? getGtwySdkAccessorSnippet(gtwyLang) : null),
@@ -257,6 +261,26 @@ const IntegrationGuideOnboarding = ({ agentId, modelType, isEmbedUser, prompt = 
               <p className="text-sm font-medium text-base-content">Batch API Limitations</p>
               <p className="text-xs text-base-content/70">
                 Tools call, Agent call and Knowledge base call are not supported when using the Batch API.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isJev && !isBatch && (
+          <div
+            data-testid="onboarding-jev-note"
+            className="flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3"
+          >
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-info" />
+            <div className="text-xs text-base-content/70">
+              <p className="text-sm font-medium text-base-content">Asking Jev questions</p>
+              <p>
+                Jev answers typed questions instead of writing text. Send the input to evaluate as the user message (it
+                becomes the <code>state</code>) and the questions in <code>configuration.questions</code>: a map of id
+                to a <code>choice</code> (<code>criteria</code> maps option to description), <code>score</code> (
+                <code>criteria</code> is an ordered list of levels) or <code>noul</code> (true/false, instructions only)
+                question. Answers come back in <code>response.data.answers</code>, and as a JSON string in{" "}
+                <code>content</code> / <code>output_text</code>.
               </p>
             </div>
           </div>

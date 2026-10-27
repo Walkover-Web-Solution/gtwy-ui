@@ -12,6 +12,7 @@ import { TOKEN_CATEGORIES } from "@/utils/enums";
 import AnthropicIcon from "@/icons/AnthropicIcon";
 import CsvIcon from "@/icons/CsvIcon";
 import DeepgramIcon from "@/icons/DeepgramIcon";
+import TypeSafeIcon from "@/icons/TypeSafeIcon";
 import DeepseekIcon from "@/icons/DeepseekIcon";
 import GeminiIcon from "@/icons/GeminiIcon";
 import GoogleDocIcon from "@/icons/GoogleDocIcon";
@@ -313,6 +314,8 @@ export const getIconOfService = (service, height, width) => {
       return <Grok height={height} width={width} />;
     case "deepgram":
       return <DeepgramIcon height={height} width={width} />;
+    case "typesafe":
+      return <TypeSafeIcon height={height} width={width} />;
     case "deepseek":
       return <DeepseekIcon height={height} width={width} />;
     case "moonshot":

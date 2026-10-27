@@ -50,6 +50,8 @@ import {
   setChatTestCaseIdAction,
 } from "@/store/action/chatAction";
 import RenderNode from "../richUI/RenderNode";
+import JevAnswers from "./JevAnswers";
+import { getJevAnswers } from "@/utils/jevQuestions";
 import ReasoningAccordion from "./ReasoningAccordion";
 import ReviewPhaseAccordion from "./ReviewPhaseAccordion";
 import BrowserToolPreview, { isBrowserTool } from "./BrowserToolPreview";
@@ -1428,6 +1430,10 @@ function Chat({ params, userMessage, isOrchestralModel = false, searchParams, is
                                             {extractErrorMessage(message.content)}
                                           </div>
                                         </div>
+                                      ) : message.sender === "assistant" &&
+                                        !message.testCaseResult &&
+                                        getJevAnswers(message.content) ? (
+                                        <JevAnswers answers={getJevAnswers(message.content)} />
                                       ) : (
                                         /* Regular message with markdown */
                                         <div className={message.sender === "assistant" ? mdProseClass.dark : undefined}>

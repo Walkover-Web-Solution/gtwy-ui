@@ -78,6 +78,15 @@ const PLACEHOLDERS = {
     knowledge_cutoff: "e.g., Jan 2026",
     usecase: "One per line, e.g., Real-time call transcription",
   },
+  typesafe: {
+    display_name: "e.g., Jev 1.13",
+    model_name: "e.g., jev-1.13.0",
+    input_cost: "e.g., 0.042",
+    output_cost: "e.g., 0",
+    description: "Answers typed questions (choice, score, yes/no) about an input with calibrated probabilities.",
+    knowledge_cutoff: "",
+    usecase: "One per line, e.g., Intent routing",
+  },
   deepseek: {
     display_name: "e.g., DeepSeek V3",
     model_name: "e.g., deepseek-chat",
