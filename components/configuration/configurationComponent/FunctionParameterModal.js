@@ -622,19 +622,16 @@ function FunctionParameterModal({
 
   // Only sync variablesPath when functionName changes (i.e., different function selected)
   // Don't sync when variables_path prop changes to avoid resetting user input
-  // For Pre Tool, always sync from the passed variablesPath prop
   const prevFunctionNameRef = useRef(functionName);
   useEffect(() => {
-    if (name === "Pre Tool" || name === "Post Tool") {
-      // For pre-tools and post-tools, use the passed variablesPath directly
-      setVariablesPath(variablesPath);
-    } else if (prevFunctionNameRef.current !== functionName) {
-      // For other tools, only sync when functionName changes
-      const newVariablesPath = variables_path[functionName] || {};
-      setVariablesPath(newVariablesPath);
+    if (prevFunctionNameRef.current !== functionName) {
+      if (name !== "Pre Tool" && name !== "Post Tool") {
+        const newVariablesPath = variables_path[functionName] || {};
+        setVariablesPath(newVariablesPath);
+      }
       prevFunctionNameRef.current = functionName;
     }
-  }, [functionName, variablesPath, variables_path, name]);
+  }, [functionName, variables_path, name]);
 
   useEffect(() => {
     if (!toolData || !function_details) {

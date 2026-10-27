@@ -54,21 +54,15 @@ const InputConfigComponent = memo(
   }) => {
     // Optimized Redux selector with memoization and shallow comparison
     const { prompt: reduxPrompt, oldContent } = usePromptSelector(params, searchParams);
-    const { showVariables, embedPromptConfig, connectedTools } = useCustomSelector((state) => {
+    const { showVariables, embedPromptConfig, bridge_pre_tools } = useCustomSelector((state) => {
       const eu = state.appInfoReducer.embedUserDetails;
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-      const activeData = isPublished ? state?.bridgeReducer?.allBridgesMap?.[params?.id] : versionData;
       return {
         showVariables: eu?.showVariables,
         embedPromptConfig: eu?.prompt,
-        connectedTools: activeData?.connected_tools,
+        bridge_pre_tools: versionData?.pre_tools || [],
       };
     });
-    // Pre-tools now live in connected_tools (type "pre_tool"); the legacy pre_tools field is empty after migration.
-    const bridge_pre_tools = useMemo(
-      () => (connectedTools || []).filter((t) => t?.type === "pre_tool").map((t) => ({ type: t.pre_tool_type })),
-      [connectedTools]
-    );
     // Variables used in the prompt, minus the built-in and pre-tool ones (listed under Default Variables)
     // and embed fields (listed under Hidden Fields).
     const customVariables = useMemo(() => {

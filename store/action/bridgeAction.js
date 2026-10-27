@@ -507,7 +507,7 @@ export const updateBridgeAction =
       dispatch(isPending());
       markUpdateInitiatedByCurrentTab(bridgeId);
       const data = await updateBridge({ bridgeId, dataToSend });
-      dispatch(updateBridgeReducer({ bridges: data.data.agent }));
+      dispatch(updateBridgeReducer({ bridges: data.data.agent, functionData: dataToSend?.functionData || null }));
       trackAgentEvent("updated", {
         agent_id: bridgeId,
         name: data.data.agent?.name,
@@ -640,6 +640,20 @@ export const updateBridgeVersionAction =
         };
       }
 
+      // Handle function_ids for EmbedList - update optimistically based on functionData
+      if (dataToSend.functionData) {
+        const currentFunctionIds = currentVersion.function_ids || [];
+        if (dataToSend.functionData.function_operation === "1") {
+          // Add function if not already present
+          if (!currentFunctionIds.includes(dataToSend.functionData.function_id)) {
+            optimisticData.function_ids = [...currentFunctionIds, dataToSend.functionData.function_id];
+          }
+        } else {
+          // Remove function
+          optimisticData.function_ids = currentFunctionIds.filter((id) => id !== dataToSend.functionData.function_id);
+        }
+      }
+
       // Handle doc_ids if present (complete array replacement)
       if (dataToSend.doc_ids !== undefined) {
         optimisticData.doc_ids = dataToSend.doc_ids;
@@ -669,6 +683,11 @@ export const updateBridgeVersionAction =
         optimisticData.web_search_filters = dataToSend.web_search_filters;
       }
 
+      // Handle post_tool if present (complete replacement, not added to function_ids)
+      if (dataToSend.post_tool !== undefined) {
+        optimisticData.post_tool = dataToSend.post_tool;
+      }
+
       // Handle settings if present (deep merge including nested objects like review_agent)
       if (dataToSend.settings) {
         optimisticData.settings = {
@@ -695,6 +714,7 @@ export const updateBridgeVersionAction =
       dispatch(
         updateBridgeVersionReducer({
           bridges: optimisticData,
+          functionData: dataToSend?.functionData || null,
         })
       );
 
@@ -891,7 +911,7 @@ export const archiveBridgeAction =
     try {
       dispatch(isPending());
       const response = await archiveBridgeApi(bridge_id, newStatus);
-      dispatch(updateBridgeReducer({ bridges: response?.agent }));
+      dispatch(updateBridgeReducer({ bridges: response?.agent, functionData: null }));
       return response?.agent?.status;
     } catch (error) {
       dispatch(isError());

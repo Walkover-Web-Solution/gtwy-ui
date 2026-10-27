@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import ConnectedAgentListSuggestion from "./ConnectAgentListSuggestion";
 import { useDispatch } from "react-redux";
-import { useCustomSelector } from "@/customHooks/customSelector";
+import isEqual, { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeAction, updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { AddIcon, SettingsIcon, TrashIcon, BotIcon } from "@/components/Icons";
 import { closeModal, openModal } from "@/utils/utility";
@@ -40,41 +40,14 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
     const modelTypeName = activeData?.configuration?.type?.toLowerCase();
     const modelName = activeData?.configuration?.model;
 
-    // Read from connected_tools array and filter by type "agent"
-    const connectedTools = activeData?.connected_tools || [];
-    const agentEntries = connectedTools.filter((t) => t?.type === "agent");
-
-    // Transform back to legacy object shape for compatibility with existing code
-    const connectedAgentsObj = {};
-    agentEntries.forEach((entry) => {
-      const bridgeId = entry.id;
-      const linked = bridges.find((b) => b._id === bridgeId);
-      const aliasName = linked?.name || bridgeId;
-      connectedAgentsObj[aliasName] = {
-        bridge_id: bridgeId,
-        thread_id: entry.thread_id ?? false,
-        version_id: entry.version_id,
-        ...(entry.environment && { environment: entry.environment }),
-        description: linked?.description,
-        variables: entry.variable_path || {},
-      };
-    });
-
-    // Build variables_path from individual agent entries, keyed by bridge id because
-    // FunctionParameterModal looks it up with functionName (= bridge id for agents)
-    const variablesPathFromAgents = {};
-    agentEntries.forEach((entry) => {
-      if (entry.id && entry.variable_path) {
-        variablesPathFromAgents[entry.id] = entry.variable_path;
-      }
-    });
-
     return {
       bridgeData: bridges,
-      connect_agents: connectedAgentsObj,
+      connect_agents: isPublished
+        ? bridgeDataFromState?.agents?.connected_agents || bridgeDataFromState?.connected_agents || {}
+        : versionData?.agents?.connected_agents || versionData?.connected_agents || {},
       shouldToolsShow: modelReducer?.[serviceName]?.[modelTypeName]?.[modelName]?.validationConfig?.tools,
       model: modelName,
-      variables_path: variablesPathFromAgents,
+      variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
     };
   });
   const handleSaveAgent = async (
@@ -95,14 +68,14 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            connected_tool: {
-              type: "agent",
-              id: sb?._id || sb?.bridge_id,
-              variable_path: {},
-              thread_id: false,
-              version_id: sb?.published_version_id || sb?.versions?.[0],
+            agents: {
+              connected_agents: {
+                [sb?._id || sb?.bridge_id]: {
+                  bridge_id: sb?._id || sb?.bridge_id,
+                },
+              },
+              agent_status: "1",
             },
-            operation: 1,
           },
         })
       );
@@ -160,16 +133,13 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         thread_id: item?.thread_id ?? false,
         environment: item?.environment ?? "",
       };
-      // Get variable_path from the agent's connected_tools entry
-      const agentVariablePath = item?.variables || {};
       flushSync(() => {
         setCurrentVariable(agentData);
         setAgentTools(agentData);
-        setVariablesPath(agentVariablePath);
       });
       openModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
     },
-    [bridgeData, openModal, setSelectedBridge, setCurrentVariable, setAgentTools, setVariablesPath]
+    [bridgeData, openModal, setSelectedBridge, setCurrentVariable, setAgentTools]
   );
 
   const handleRemoveAgent = async (item, name) => {
@@ -179,11 +149,13 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           bridgeId: params?.id,
           versionId: searchParams?.version,
           dataToSend: {
-            connected_tool: {
-              type: "agent",
-              id: item?.bridge_id,
+            agents: {
+              connected_agents: {
+                [name]: {
+                  bridge_id: item?.bridge_id,
+                },
+              },
             },
-            operation: 0,
           },
         })
       );
@@ -196,7 +168,6 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
 
   const handleSaveAgentVariable = async () => {
     try {
-      // Update agent connection with new connected_tool format
       const dataToSend = {
         agents: {
           connected_agents: {
@@ -216,19 +187,9 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: {
-            connected_tool: {
-              type: "agent",
-              id: selectedBridge?._id || selectedBridge?.bridge_id,
-              variable_path: variablesPath,
-              thread_id: agentTools?.thread_id ? agentTools?.thread_id : false,
-              version_id: selectedBridge?.published_version_id || selectedBridge?.versions?.[0],
-            },
-            operation: 2,
-          },
+          dataToSend,
         })
       );
-      // Update the agent's own agent_info (fields, required, description, thread_id)
       await dispatch(
         updateBridgeAction({
           bridgeId: selectedBridge?._id || selectedBridge?.bridge_id,
@@ -244,6 +205,15 @@ const ConnectedAgentList = ({ params, searchParams, isPublished, isEditor = true
           },
         })
       );
+      if (!isEqual(variablesPath, variables_path[selectedBridge?.bridge_id])) {
+        await dispatch(
+          updateBridgeVersionAction({
+            bridgeId: params.id,
+            versionId: searchParams?.version,
+            dataToSend: { variables_path: { [selectedBridge?.bridge_id]: variablesPath } },
+          })
+        );
+      }
       closeModal(MODAL_TYPE?.AGENT_VARIABLE_MODAL);
       setCurrentVariable(agentTools);
       setAgentTools(agentTools);

@@ -15,6 +15,7 @@ import {
   getAllFunctions,
   getPrebuiltToolsAction,
   integrationAction,
+  updateApiAction,
   updateBridgeVersionAction,
 } from "@/store/action/bridgeAction";
 import { getRichUiTemplatesAction } from "@/store/action/richUiTemplateAction";
@@ -93,27 +94,15 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
   } = useCustomSelector((state) => ({
     embedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.embed_token,
     alertingEmbedToken: state?.bridgeReducer?.org?.[resolvedParams?.org_id]?.alerting_embed_token,
-    // Tool variable paths live on each connected_tools "tools" entry, keyed here by function id
-    variablesPath: Object.fromEntries(
-      (
-        state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]
-          ?.connected_tools || []
-      )
-        .filter((t) => t?.type === "tools" && t?.id)
-        .map((t) => [t.id, t.variable_path || {}])
-    ),
+    variablesPath:
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.variables_path ||
+      {},
     organizations: state.userDetailsReducer.organizations,
-    preTools: (
-      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.connected_tools ||
-      []
-    ).filter((t) => t?.type === "pre_tool"),
+    preTools:
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.pre_tools || [],
     SERVICES: state?.serviceReducer?.services,
-    tools: (
-      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.connected_tools ||
-      []
-    )
-      .filter((t) => t?.type === "tools")
-      .map((t) => t.id),
+    tools:
+      state?.bridgeReducer?.bridgeVersionMapping?.[path[5]]?.[resolvedSearchParams?.get("version")]?.function_ids || [],
     currentUser: state.userDetailsReducer.userDetails,
     doctstar_embed_token: state?.bridgeReducer?.org?.[resolvedParams.org_id]?.doctstar_embed_token || "",
     currrentOrgDetail: state?.userDetailsReducer?.organizations?.[resolvedParams.org_id],
@@ -380,7 +369,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
     pathName,
   ]);
   async function handleMessage(e) {
-    if (e.data?.metadata?.type !== "tool" && e.data?.metadata?.type !== "pre_tool") return;
+    if (e.data?.metadata?.type !== "tool") return;
     // todo: need to make api call to update the name & description
     if (e?.data?.webhookurl) {
       const dataToSend = {
@@ -412,49 +401,32 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                 bridgeId: path[5],
                 versionId: resolvedSearchParams?.get("version"),
                 dataToSend: {
-                  connected_tool: {
-                    type: "tools",
-                    id: fnFromData._id,
+                  functionData: {
+                    function_id: fnFromData._id,
+                    script_id: fnFromData.script_id,
                   },
-                  operation: 0,
                 },
               })
             );
-            const matchingPreTool = Array.isArray(preTools) && preTools.find((tool) => tool?.id === fnFromData._id);
-            if (matchingPreTool) {
+            const isInPreTools =
+              Array.isArray(preTools) && preTools.some((tool) => tool?.config?.function_id === fnFromData._id);
+            if (isInPreTools) {
               dispatch(
-                updateBridgeVersionAction({
-                  bridgeId: path[5],
-                  versionId: resolvedSearchParams?.get("version"),
-                  dataToSend: {
-                    connected_tool: {
-                      type: "pre_tool",
-                      id: matchingPreTool.id,
-                      pre_tool_type: matchingPreTool.pre_tool_type,
-                    },
-                    operation: 0,
-                  },
+                updateApiAction(path[5], {
+                  pre_tools: preTools[0],
+                  status: "0",
+                  version_id: resolvedSearchParams?.get("version"),
                 })
               );
             }
           } else {
-            const matchingPreTool = Array.isArray(preTools) && preTools.find((tool) => tool?.id === fnFromData._id);
-            if (matchingPreTool) {
-              dispatch(
-                updateBridgeVersionAction({
-                  bridgeId: path[5],
-                  versionId: resolvedSearchParams?.get("version"),
-                  dataToSend: {
-                    connected_tool: {
-                      type: "pre_tool",
-                      id: matchingPreTool.id,
-                      pre_tool_type: matchingPreTool.pre_tool_type,
-                    },
-                    operation: 0,
-                  },
-                })
-              );
-            }
+            dispatch(
+              updateApiAction(path[5], {
+                pre_tools: preTools[0],
+                status: "0",
+                version_id: resolvedSearchParams?.get("version"),
+              })
+            );
           }
           dispatch(deleteFunctionAction({ script_id: e?.data?.id, orgId: path[2], functionId: fnFromData._id }));
         }
@@ -498,23 +470,22 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
             );
           } else if (pathName.includes("agents")) {
             if (e?.data?.metadata?.createFrom === "preFunction") {
-              // Only add as pre-tool if not already present (only one pre_tool entry is allowed at a time)
-              const alreadyPreTool = Array.isArray(preTools) && preTools.some((pt) => pt?.id === data?._id);
+              // Only add as pre-tool if not already present (preTools is an array of objects)
+              const alreadyPreTool =
+                Array.isArray(preTools) && preTools.some((pt) => pt?.config?.function_id === data?._id);
               if (!alreadyPreTool) {
                 dispatch(
-                  updateBridgeVersionAction({
-                    bridgeId: path[5],
-                    versionId: resolvedSearchParams?.get("version"),
-                    dataToSend: {
-                      connected_tool: {
-                        type: "pre_tool",
-                        pre_tool_type: "custom_function",
-                        id: data?._id,
-                        url: data?.url,
-                        variable_path: { required: data?.required || [] },
+                  updateApiAction(path[5], {
+                    pre_tools: {
+                      type: "custom_function",
+                      config: {
+                        function_id: data?._id,
+                        script_id: data?.script_id,
+                        required: data?.required || [],
                       },
-                      operation: 1,
                     },
+                    status: "1",
+                    version_id: resolvedSearchParams?.get("version"),
                   })
                 );
               }
@@ -525,12 +496,11 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                   bridgeId: path[5],
                   versionId: resolvedSearchParams?.get("version"),
                   dataToSend: {
-                    connected_tool: {
-                      type: "post_tool",
+                    post_tool: {
                       id: data?._id,
+                      script_id: data?.script_id,
                       args: {},
                     },
-                    operation: 1,
                   },
                 })
               );
@@ -542,11 +512,10 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
                     bridgeId: path[5],
                     versionId: resolvedSearchParams?.get("version"),
                     dataToSend: {
-                      connected_tool: {
-                        type: "tools",
-                        id: data?._id,
+                      functionData: {
+                        function_id: data?._id,
+                        function_operation: "1",
                       },
-                      operation: 1,
                     },
                   })
                 );
@@ -555,24 +524,18 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
           }
           if (
             (e?.data?.action === "updated" || e?.data?.action === "published") &&
-            data?._id &&
+            data?.script_id &&
             path[5] &&
             resolvedSearchParams?.get("version")
           ) {
-            {
-              debugger;
-            }
-            const currentToolVariablesPath = variablesPath?.[data._id] || {};
+            const currentToolVariablesPath = variablesPath?.[data.script_id] || {};
             const cleanedToolVariablesPath = cleanVariablesPathByFields(currentToolVariablesPath, data?.fields || {});
             if (Object.keys(cleanedToolVariablesPath).length !== Object.keys(currentToolVariablesPath).length) {
               dispatch(
                 updateBridgeVersionAction({
                   bridgeId: path[5],
                   versionId: resolvedSearchParams?.get("version"),
-                  dataToSend: {
-                    connected_tool: { type: "tools", id: data._id, variable_path: cleanedToolVariablesPath },
-                    operation: 2,
-                  },
+                  dataToSend: { variables_path: { [data.script_id]: cleanedToolVariablesPath } },
                 })
               );
             }

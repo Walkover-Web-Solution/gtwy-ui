@@ -32,12 +32,11 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
 
       const activeData = isPublished ? bridgeDataFromState : versionData;
       const modelName = activeData?.configuration?.model;
-      const postToolEntry = (activeData?.connected_tools || []).find((t) => t?.type === "post_tool") || null;
 
       return {
         integrationData: orgData?.integrationData || {},
         function_data: orgData?.functionData || {},
-        post_tool: postToolEntry ? { id: postToolEntry.id, args: postToolEntry.args || {} } : null,
+        post_tool: activeData?.post_tool || null,
         model: modelName,
         embedToken: orgData?.embed_token,
         variables_path: isPublished ? bridgeDataFromState?.variables_path || {} : versionData?.variables_path || {},
@@ -93,8 +92,11 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
         bridgeId: params?.id,
         versionId: searchParams?.version,
         dataToSend: {
-          connected_tool: { type: "post_tool", id, args: {}, url: fn?.url },
-          operation: 1,
+          post_tool: {
+            id: id,
+            script_id: fn?.script_id || id,
+            args: {},
+          },
         },
       })
     );
@@ -107,8 +109,11 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
         bridgeId: params?.id,
         versionId: searchParams?.version,
         dataToSend: {
-          connected_tool: { type: "post_tool", id, args: {}, url: fn?.url },
-          operation: 1,
+          post_tool: {
+            id: id,
+            script_id: fn?.script_id || id,
+            args: {},
+          },
         },
       })
     );
@@ -121,10 +126,7 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
         updateBridgeVersionAction({
           bridgeId: params?.id,
           versionId: searchParams?.version,
-          dataToSend: {
-            connected_tool: { type: "post_tool", id: post_tool_id },
-            operation: 0,
-          },
+          dataToSend: { post_tool: null },
         })
       );
     });
@@ -142,17 +144,19 @@ const PostEmbedList = ({ params, searchParams, isPublished, isEditor = true, isE
       setPostToolData("");
     }
 
-    // Save args in the post_tool connected_tools entry
+    // Save args in post_tool object with id and script_id
     const existingArgs = post_tool_args || {};
     if (!isEqual(variablesPath, existingArgs)) {
-      const fn = function_data?.[post_tool_id];
       dispatch(
         updateBridgeVersionAction({
           bridgeId: params.id,
           versionId: searchParams?.version,
           dataToSend: {
-            connected_tool: { type: "post_tool", id: post_tool_id, args: variablesPath, url: fn?.url },
-            operation: 1,
+            post_tool: {
+              id: post_tool_id,
+              script_id: post_tool?.script_id || postFunctionData?.script_id || postFunctionName,
+              args: variablesPath,
+            },
           },
         })
       );
