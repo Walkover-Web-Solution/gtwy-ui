@@ -57,11 +57,10 @@ const InputConfigComponent = memo(
     const { showVariables, embedPromptConfig, bridge_pre_tools } = useCustomSelector((state) => {
       const eu = state.appInfoReducer.embedUserDetails;
       const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-      const activeData = isPublished ? state?.bridgeReducer?.allBridgesMap?.[params?.id] : versionData;
       return {
         showVariables: eu?.showVariables,
         embedPromptConfig: eu?.prompt,
-        bridge_pre_tools: activeData?.pre_tools || [],
+        bridge_pre_tools: versionData?.pre_tools || [],
       };
     });
     // Variables used in the prompt, minus the built-in and pre-tool ones (listed under Default Variables)
