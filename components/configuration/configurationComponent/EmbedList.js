@@ -61,6 +61,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     showInbuiltTools,
     webSearchFilters,
     gtwyWebSearchFilters,
+    browserAutoLogin,
     embedUserDetails,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
@@ -90,6 +91,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
       gtwyWebSearchFilters: isPublished
         ? bridgeDataFromState?.gtwy_web_search_filters || []
         : versionData?.gtwy_web_search_filters || [],
+      browserAutoLogin: (isPublished ? bridgeDataFromState?.auto_login : versionData?.auto_login) === true,
       embedUserDetails,
     };
   });
@@ -271,6 +273,17 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
     }
   };
 
+  // Handle toggling auto login for the Gtwy Browser tool
+  const handleToggleBrowserAutoLogin = (enabled) => {
+    dispatch(
+      updateBridgeVersionAction({
+        bridgeId: params?.id,
+        versionId: searchParams?.version,
+        dataToSend: { auto_login: enabled },
+      })
+    );
+  };
+
   // Compute selected prebuilt tools (to render cards)
   const selectedPrebuiltTools = useMemo(() => {
     const byId = new Map((prebuiltToolsData || []).map((t) => [t.value, t]));
@@ -389,6 +402,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                     {selectedPrebuiltTools.map((item) => {
                       const missingDesc = !item?.description;
                       const isWebSearchTool = WEB_SEARCH_PREBUILT_TOOL_VALUES.has(item?.value);
+                      const isBrowserTool = item?.value === "Gtwy_Browser";
                       const isNotSupported =
                         !item?.isGtwyTool &&
                         (!showInbuiltTools ||
@@ -426,6 +440,23 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                               )}
                             </div>
                           </div>
+                          {isBrowserTool && (
+                            <label
+                              data-testid={`embed-list-prebuilt-tool-auto-login-${item?.value}`}
+                              id={`embed-list-prebuilt-tool-auto-login-${item?.value}`}
+                              className="flex items-center gap-1.5 pr-2 flex-shrink-0 cursor-pointer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="text-xs text-base-content/70">Auto login</span>
+                              <input
+                                type="checkbox"
+                                className="toggle toggle-xs toggle-primary"
+                                checked={browserAutoLogin}
+                                onChange={(e) => handleToggleBrowserAutoLogin(e.target.checked)}
+                                disabled={isReadOnly}
+                              />
+                            </label>
+                          )}
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 pr-2 flex-shrink-0">
                             {(item?.value === "web_search" || item?.value === "Gtwy_Web_Search") && (
                               <button
