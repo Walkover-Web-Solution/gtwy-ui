@@ -131,34 +131,22 @@ const normaliseDraftList = (list = []) =>
     required: item.required !== false,
   }));
 
-const collectPreToolVariableKeys = (connectedTools = []) => {
+const collectPreToolVariableKeys = (tools = []) => {
   const keys = new Set();
 
-  (connectedTools || []).forEach((tool) => {
-    if (tool?.type === "pre_tool" && tool?.pre_tool_type === "custom_function" && tool?.variable_path) {
-      Object.values(tool.variable_path).forEach((varValue) => {
-        const trimmedKey = typeof varValue === "string" ? varValue.trim() : "";
+  // Handle both array (pre_tools) and single object (post_tool)
+  const toolsArray = Array.isArray(tools) ? tools : [tools];
+
+  toolsArray.forEach((tool) => {
+    if (tool?.args) {
+      Object.values(tool.args).forEach((argValue) => {
+        const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
         if (trimmedKey) {
           keys.add(trimmedKey);
         }
       });
     }
   });
-
-  return keys;
-};
-
-const collectPostToolVariableKeys = (postTool) => {
-  const keys = new Set();
-
-  if (postTool?.args) {
-    Object.values(postTool.args).forEach((argValue) => {
-      const trimmedKey = typeof argValue === "string" ? argValue.trim() : "";
-      if (trimmedKey) {
-        keys.add(trimmedKey);
-      }
-    });
-  }
 
   return keys;
 };
@@ -223,28 +211,25 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
     variablesKeyValue,
     variablesPath,
     variable_state,
+    bridge_pre_tools,
     post_tool,
-    connectedTools,
   } = useCustomSelector((state) => {
     const versionState = state?.variableReducer?.VariableMapping?.[params?.id]?.[versionId] || {};
     const groups = versionState?.groups || [];
     const activeGroupId = versionState?.activeGroupId;
-    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId];
-
-    // Read connected_tools from the new structure
-    const connectedTools = versionData?.connected_tools || [];
 
     return {
-      prompt: versionData?.configuration?.prompt || "",
-      isJev: isJevService(versionData?.service),
+      prompt: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.configuration?.prompt || "",
+      isJev: isJevService(state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.service),
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
       variableGroups: groups,
       activeGroup: groups.find((group) => group.id === activeGroupId) || groups[0] || null,
       variablesKeyValue: versionState?.variables || [],
-      variablesPath: versionData?.variables_path || {},
-      variable_state: versionData?.agent_info?.variables_state || {},
-      post_tool: connectedTools.find((t) => t?.type === "post_tool") || null,
-      connectedTools: connectedTools,
+      variablesPath: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.variables_path || {},
+      variable_state:
+        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.agent_info?.variables_state || {},
+      bridge_pre_tools: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.pre_tools || [],
+      post_tool: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[versionId]?.post_tool || null,
     };
   });
 
@@ -264,11 +249,11 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
   const activeGroupId = activeGroup?.id;
 
   const preToolKeySet = useMemo(() => {
-    return collectPreToolVariableKeys(connectedTools);
-  }, [connectedTools]);
+    return collectPreToolVariableKeys(bridge_pre_tools);
+  }, [bridge_pre_tools]);
 
   const postToolKeySet = useMemo(() => {
-    return collectPostToolVariableKeys(post_tool);
+    return collectPreToolVariableKeys(post_tool);
   }, [post_tool]);
 
   const functionPathKeySet = useMemo(() => {
@@ -384,10 +369,9 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
         });
       });
 
-      // Add variables from connected_tools (pre-tools) and post_tool
-      const preToolKeys = collectPreToolVariableKeys(connectedTools);
-      const postToolKeys = collectPostToolVariableKeys(post_tool);
-      new Set([...preToolKeys, ...postToolKeys]).forEach((trimmedKey) => {
+      // Add variables from bridge_pre_tools and post_tool
+      const allTools = [...(bridge_pre_tools || []), ...(post_tool ? [post_tool] : [])];
+      collectPreToolVariableKeys(allTools).forEach((trimmedKey) => {
         const existsInSource = allVariables.find((v) => v.key === trimmedKey);
 
         if (!existsInSource) {
@@ -439,7 +423,15 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const { normalised } = validateVariables(filteredVariables, { suppressErrors: true });
       setDraftVariables(normalised);
     },
-    [isEmbedUser, variable_state, variablesKeyValue, variablesPath, connectedTools, post_tool, visibleEmbedFieldNameSet]
+    [
+      isEmbedUser,
+      variable_state,
+      variablesKeyValue,
+      variablesPath,
+      bridge_pre_tools,
+      post_tool,
+      visibleEmbedFieldNameSet,
+    ]
   );
 
   useEffect(() => {
@@ -764,19 +756,14 @@ const VariableCollectionSlider = ({ params, versionId, isEmbedUser }) => {
       const allVariables = normalised.filter((v) => v.key && v.key.trim());
 
       // Update all variables in Redux
-      if (allVariables.length > 0) {
-        // Defer dispatch to avoid calling during render
-        setTimeout(() => {
-          dispatch(
-            updateVariables({
-              data: allVariables,
-              bridgeId: params.id,
-              versionId,
-              groupId: activeGroupId,
-            })
-          );
-        }, 0);
-      }
+      dispatch(
+        updateVariables({
+          data: allVariables,
+          bridgeId: params.id,
+          versionId,
+          groupId: activeGroupId,
+        })
+      );
 
       // Check if variables have actually changed compared to DB data before making API calls
       if (!hasVariablesChanged(normalised)) {
