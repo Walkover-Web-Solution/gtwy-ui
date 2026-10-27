@@ -402,7 +402,7 @@ const EmbedList = ({ params, searchParams, isPublished, isEditor = true }) => {
                     {selectedPrebuiltTools.map((item) => {
                       const missingDesc = !item?.description;
                       const isWebSearchTool = WEB_SEARCH_PREBUILT_TOOL_VALUES.has(item?.value);
-                      const isBrowserTool = item?.value?.startsWith("Gtwy_Browser");
+                      const isBrowserTool = item?.value === "Gtwy_Browser";
                       const isNotSupported =
                         !item?.isGtwyTool &&
                         (!showInbuiltTools ||
