@@ -432,7 +432,7 @@ export const getStatsConfig = (summary) => {
       bg: "bg-emerald-500/10",
     },
     {
-      title: "Avg Successful Response",
+      title: "Avg Response",
       value: summary?.avg_response != null ? `${summary.avg_response}s` : "0s",
       change: "",
       trend: "down",
