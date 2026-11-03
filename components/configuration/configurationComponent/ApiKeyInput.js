@@ -24,22 +24,30 @@ const ApiKeyInput = ({
   const isReadOnly = isPublished || !isEditor;
   const dispatch = useDispatch();
 
-  const { bridge, apikeydata, bridgeApikey_object_id, currentService, bridgeType } = useCustomSelector((state) => {
-    const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
-    const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
-    const apikeys = state?.apiKeysReducer?.apikeys || {};
+  const { bridge, apikeydata, bridgeApikey_object_id, currentService, bridgeType, embedDefaultApiKeys } =
+    useCustomSelector((state) => {
+      const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
+      const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
+      const apikeys = state?.apiKeysReducer?.apikeys || {};
 
-    // Use bridgeData when isPublished=true, otherwise use versionData
-    const activeData = isPublished ? bridgeDataFromState : versionData;
+      // Use bridgeData when isPublished=true, otherwise use versionData
+      const activeData = isPublished ? bridgeDataFromState : versionData;
 
-    return {
-      bridge: activeData || {},
-      apikeydata: apikeys[params?.org_id] || [], // Ensure apikeydata is an array
-      bridgeApikey_object_id: isPublished ? bridgeDataFromState?.apikey_object_id : versionData?.apikey_object_id,
-      currentService: isPublished ? bridgeDataFromState?.service : versionData?.service,
-      bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
-    };
-  });
+      return {
+        bridge: activeData || {},
+        apikeydata: apikeys[params?.org_id] || [], // Ensure apikeydata is an array
+        bridgeApikey_object_id: isPublished ? bridgeDataFromState?.apikey_object_id : versionData?.apikey_object_id,
+        currentService: isPublished ? bridgeDataFromState?.service : versionData?.service,
+        bridgeType: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.bridgeType,
+        embedDefaultApiKeys: state?.appInfoReducer?.embedUserDetails?.addDefaultApiKeys
+          ? state?.appInfoReducer?.embedUserDetails?.apikey_object_id || {}
+          : {},
+      };
+    });
+
+  // Embed orgs can ship default keys per service; the agent falls back to it
+  // whenever it has no key of its own for that service.
+  const hasEmbedDefaultKey = isEmbedUser && !!embedDefaultApiKeys?.[bridge?.service];
 
   // Memoize filtered API keys
   const filteredApiKeys = useMemo(() => {
@@ -50,6 +58,19 @@ const ApiKeyInput = ({
     (selectedApiKeyId) => {
       if (selectedApiKeyId === "add_new") {
         openModal(MODAL_TYPE.API_KEY_MODAL);
+      } else if (selectedApiKeyId === "EMBED_DEFAULT_KEY") {
+        // Drop the agent's own key for this service so the embed default is used again
+        const service = bridge?.service;
+        const updated = { ...bridgeApikey_object_id };
+        delete updated[service];
+        dispatch(
+          updateBridgeVersionAction({
+            bridgeId: params?.id,
+            versionId: searchParams?.version,
+            dataToSend: { apikey_object_id: updated },
+          })
+        );
+        return;
       } else if (selectedApiKeyId !== "GPT5_NANO_DEFAULT_KEY") {
         const service = bridge?.service;
         const rawCurrentId = bridgeApikey_object_id?.[service];
@@ -104,8 +125,19 @@ const ApiKeyInput = ({
       return "GPT5_NANO_DEFAULT_KEY";
     }
 
+    if (hasEmbedDefaultKey && !currentApiKey) {
+      return "EMBED_DEFAULT_KEY";
+    }
+
     return currentApiKey?._id;
-  }, [apikeydata, bridgeApikey_object_id, bridge?.service, bridge?.configuration?.model, bridgeType]);
+  }, [
+    apikeydata,
+    bridgeApikey_object_id,
+    bridge?.service,
+    bridge?.configuration?.model,
+    bridgeType,
+    hasEmbedDefaultKey,
+  ]);
 
   // Build dropdown options
   const dropdownOptions = useMemo(() => {
@@ -116,6 +148,10 @@ const ApiKeyInput = ({
       opts.push({ value: "GPT5_NANO_DEFAULT_KEY", label: "GPT-5-Nano Default Key" });
     }
 
+    if (hasEmbedDefaultKey) {
+      opts.push({ value: "EMBED_DEFAULT_KEY", label: "Default API Key" });
+    }
+
     if (filteredApiKeys.length > 0) {
       filteredApiKeys.forEach((apiKey) => {
         opts.push({ value: apiKey._id, label: apiKey.name, status: apiKey?.status });
@@ -124,7 +160,7 @@ const ApiKeyInput = ({
       // Disabled informational option pattern can be represented by not adding an option here; placeholder will handle it
     }
     return opts;
-  }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType]);
+  }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType, hasEmbedDefaultKey]);
 
   // Nothing to pick from (no keys saved for this service, no default-key
   // fallback) — showing an always-empty selector just invites a dead click,

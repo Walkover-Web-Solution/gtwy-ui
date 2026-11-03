@@ -37,6 +37,8 @@ const ModelTab = () => {
     () => (!showDefaultApikeys && isEmbedUser) || !isEmbedUser,
     [isEmbedUser, showDefaultApikeys]
   );
+  // Embed users on default keys still get the key picker so they can swap in their own key
+  const shouldRenderApiKeyInput = shouldRenderApiKey || (isEmbedUser && showDefaultApikeys);
 
   const { planServices, isOnFreePlan } = useCustomSelector((state) => ({
     planServices: state?.planReducer?.services,
@@ -54,7 +56,7 @@ const ModelTab = () => {
   }, [planServices, service]);
 
   const apiKeyConfigButton = useMemo(() => {
-    if (!shouldRenderApiKey || !isServiceInPlan) return null;
+    if (!shouldRenderApiKeyInput || !isServiceInPlan) return null;
     return (
       <ApiKeyInput
         apiKeySectionRef={apiKeySectionRef}
@@ -69,7 +71,7 @@ const ModelTab = () => {
       />
     );
   }, [
-    shouldRenderApiKey,
+    shouldRenderApiKeyInput,
     isServiceInPlan,
     apiKeySectionRef,
     params,
@@ -148,7 +150,7 @@ const ModelTab = () => {
               </div>
             )}
 
-            {shouldRenderApiKey && !isServiceInPlan && (
+            {shouldRenderApiKeyInput && !isServiceInPlan && (
               <div className="space-y-2">
                 <label className="block text-base-content/70 text-sm font-medium">API Key</label>
                 <ApiKeyInput
