@@ -11,7 +11,7 @@ import {
   getBridgeVersionAction,
 } from "@/store/action/bridgeAction";
 import { setVersionSwitchingReducer } from "@/store/reducer/bridgeReducer";
-import { MODAL_TYPE } from "@/utils/enums";
+import { EMBED_ACCESS, MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, sendDataToParent, closeSidebar } from "@/utils/utility";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
@@ -54,16 +54,23 @@ function BridgeVersionDropdown({
   const { isDeleting, executeDelete } = useDeleteOperation(MODAL_TYPE.DELETE_VERSION_MODAL);
   const dropdownRef = useRef(null);
 
-  const { bridgeVersionsArray, publishedVersion, bridgeName, versionDescription, bridgeVersionMapping } =
-    useCustomSelector((state) => ({
-      bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions || [],
-      publishedVersion: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.published_version_id || null,
-      bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
-      versionDescription:
-        state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.get?.("version")]
-          ?.version_description || "",
-      bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id] || {},
-    }));
+  const {
+    bridgeVersionsArray,
+    publishedVersion,
+    bridgeName,
+    versionDescription,
+    bridgeVersionMapping,
+    isEmbedReadOnly,
+  } = useCustomSelector((state) => ({
+    bridgeVersionsArray: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.versions || [],
+    publishedVersion: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.published_version_id || null,
+    bridgeName: state?.bridgeReducer?.allBridgesMap?.[params?.id]?.name || "",
+    versionDescription:
+      state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.get?.("version")]?.version_description ||
+      "",
+    bridgeVersionMapping: state?.bridgeReducer?.bridgeVersionMapping?.[params?.id] || {},
+    isEmbedReadOnly: state?.appInfoReducer?.embedUserDetails?.access === EMBED_ACCESS.READ,
+  }));
 
   const bridgeVersionMappingRef = useRef(bridgeVersionMapping);
   useEffect(() => {
@@ -526,7 +533,7 @@ function BridgeVersionDropdown({
           const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
           const versionDisplayName = getVersionDisplayName(version);
           const versionDesc = getVersionDescription(version);
-          const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
+          const canDelete = bridgeVersionsArray.length > 1 && !isPublished && !isEmbedReadOnly;
           return (
             <div key={version} className="relative group">
               <div className={versionDesc ? "tooltip tooltip-bottom" : ""} data-tip={versionDesc}>
@@ -617,7 +624,7 @@ function BridgeVersionDropdown({
                     const isDrafted = bridgeVersionMapping?.[version]?.is_drafted;
                     const versionDisplayName = getVersionDisplayName(version);
                     const versionDesc = getVersionDescription(version);
-                    const canDelete = bridgeVersionsArray.length > 1 && !isPublished;
+                    const canDelete = bridgeVersionsArray.length > 1 && !isPublished && !isEmbedReadOnly;
 
                     return (
                       <div key={version} className="relative group">
@@ -688,7 +695,7 @@ function BridgeVersionDropdown({
         )}
 
         {/* Create New Version Button (available only after first publish) */}
-        {publishedVersion && (
+        {publishedVersion && !isEmbedReadOnly && (
           <button
             data-testid="create-new-version-button"
             id="create-new-version-button"
