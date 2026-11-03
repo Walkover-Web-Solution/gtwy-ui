@@ -16,7 +16,7 @@ import {
   deleteBridgeAction,
   fetchBridgeUsageMetricsAction,
 } from "@/store/action/bridgeAction";
-import { MODAL_TYPE } from "@/utils/enums";
+import { EMBED_ACCESS, MODAL_TYPE } from "@/utils/enums";
 import useTutorialVideos from "@/hooks/useTutorialVideos";
 import { getIconOfService, openModal, formatRelativeTime, formatDate } from "@/utils/utility";
 import ResourcePage from "@/components/folders/ResourcePage";
@@ -346,6 +346,7 @@ function Home({ params, searchParams, isEmbedUser }) {
     users,
     modelsConfig,
     showDeleteAgentOption,
+    isEmbedReadOnly,
   } = useCustomSelector((state) => {
     const orgData = state.bridgeReducer.org[resolvedParams.org_id] || {};
     const user = state.userDetailsReducer.userDetails;
@@ -369,6 +370,7 @@ function Home({ params, searchParams, isEmbedUser }) {
       currentOrgRole: orgRole || "Viewer",
       modelsConfig: state.appInfoReducer.embedUserDetails?.models || {},
       showDeleteAgentOption: state.appInfoReducer.embedUserDetails?.showDeleteAgentOption ?? false,
+      isEmbedReadOnly: state.appInfoReducer.embedUserDetails?.access === EMBED_ACCESS.READ,
     };
   });
   const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === "chatbot" ? "chatbot" : "api";
@@ -1207,7 +1209,7 @@ function Home({ params, searchParams, isEmbedUser }) {
               </div>
             ) : null}
           </div>
-          {(isEditor || (isEmbedUser && showDeleteAgentOption)) && (
+          {!isEmbedReadOnly && (isEditor || (isEmbedUser && showDeleteAgentOption)) && (
             <div className="bg-transparent">
               <div
                 role="button"
@@ -1334,17 +1336,19 @@ function Home({ params, searchParams, isEmbedUser }) {
                             </span>
                           </button>
 
-                          <button
-                            data-testid="create-new-agent-button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => openModal(MODAL_TYPE?.CREATE_BRIDGE_MODAL)}
-                          >
-                            {isEmbedUser
-                              ? "+ Create New Agent"
-                              : type === "api"
-                                ? " + Create New API Agent"
-                                : " + Create New Chatbot Agent"}
-                          </button>
+                          {!isEmbedReadOnly && (
+                            <button
+                              data-testid="create-new-agent-button"
+                              className="btn btn-primary btn-sm"
+                              onClick={() => openModal(MODAL_TYPE?.CREATE_BRIDGE_MODAL)}
+                            >
+                              {isEmbedUser
+                                ? "+ Create New Agent"
+                                : type === "api"
+                                  ? " + Create New API Agent"
+                                  : " + Create New Chatbot Agent"}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

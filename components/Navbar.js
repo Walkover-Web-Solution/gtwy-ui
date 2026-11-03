@@ -23,7 +23,7 @@ import { useDispatch } from "react-redux";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeAction, dicardBridgeVersionAction, deleteBridgeAction } from "@/store/action/bridgeAction";
 import { updateBridgeVersionReducer } from "@/store/reducer/bridgeReducer";
-import { MODAL_TYPE } from "@/utils/enums";
+import { EMBED_ACCESS, MODAL_TYPE } from "@/utils/enums";
 import { openModal, closeModal, toggleSidebar, sendDataToParent } from "@/utils/utility";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
@@ -91,6 +91,7 @@ const Navbar = ({ isEmbedUser, params }) => {
     isArchived,
     showHomeButton,
     showHistory,
+    isEmbedReadOnly,
     bridgeName,
     savingStatus,
     publishedVersionId,
@@ -129,6 +130,7 @@ const Navbar = ({ isEmbedUser, params }) => {
               : "configure",
       showHomeButton: state.appInfoReducer?.embedUserDetails?.showHomeButton ?? true,
       showHistory: state.appInfoReducer?.embedUserDetails?.showHistory,
+      isEmbedReadOnly: state.appInfoReducer?.embedUserDetails?.access === EMBED_ACCESS.READ,
       bridgeName: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.name || "",
       publishedVersionId: state?.bridgeReducer?.allBridgesMap?.[bridgeId]?.published_version_id || null,
       savingStatus: state?.bridgeReducer?.savingStatus || { status: null, timestamp: null },
@@ -252,9 +254,10 @@ const Navbar = ({ isEmbedUser, params }) => {
 
   // Agent name editing functions
   const handleNameEdit = useCallback(() => {
+    if (isEmbedReadOnly) return;
     setIsEditingName(true);
     setEditedName(agentName);
-  }, [agentName]);
+  }, [agentName, isEmbedReadOnly]);
 
   const handleNameSave = useCallback(() => {
     const trimmed = editedName.trim();
@@ -596,14 +599,16 @@ const Navbar = ({ isEmbedUser, params }) => {
                         data-testid="navbar-agent-name-display"
                         id="navbar-agent-name-display"
                         className="font-semibold text-sm text-base-content truncate flex-shrink"
-                        title={`${agentName} - Click to edit`}
+                        title={isEmbedReadOnly ? agentName : `${agentName} - Click to edit`}
                       >
                         {agentName}
                       </span>
-                      <Edit2
-                        size={12}
-                        className="text-base-content/40 group-hover:text-base-content/60 transition-colors flex-shrink-0"
-                      />
+                      {!isEmbedReadOnly && (
+                        <Edit2
+                          size={12}
+                          className="text-base-content/40 group-hover:text-base-content/60 transition-colors flex-shrink-0"
+                        />
+                      )}
                     </div>
                   ) : (
                     <input
@@ -777,7 +782,7 @@ const Navbar = ({ isEmbedUser, params }) => {
               </div>
 
               {/* Publish/Discard Dropdown - Fixed Position */}
-              {activeTab == "configure" && (
+              {activeTab == "configure" && !isEmbedReadOnly && (
                 <div className="flex items-center">
                   {canRevertDraft ? (
                     <div className="dropdown dropdown-end">

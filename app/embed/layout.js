@@ -10,7 +10,13 @@ import ServiceInitializer from "@/components/organization/ServiceInitializer";
 import { ThemeManager, useThemeManager } from "@/customHooks/useThemeManager";
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 import Protected from "@/components/Protected";
-import { EMBED_ARRAY_KEYS, EMBED_OBJECT_KEYS, EMBED_PASSTHROUGH_KEYS, EMBED_SKIP_KEYS } from "@/utils/enums";
+import {
+  EMBED_ACCESS,
+  EMBED_ARRAY_KEYS,
+  EMBED_OBJECT_KEYS,
+  EMBED_PASSTHROUGH_KEYS,
+  EMBED_SKIP_KEYS,
+} from "@/utils/enums";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
 
@@ -23,6 +29,7 @@ const Layout = ({ children, isEmbedUser }) => {
   const [embedUserId, setEmbedUserId] = useState(null);
   const [embedOrgId, setEmbedOrgId] = useState(null);
   const bridgesFetchedRef = useRef(false);
+  const isReadOnlyRef = useRef(false);
 
   const urlParamsObj = useMemo(() => {
     const interfaceDetailsParam = searchParams.get("interfaceDetails");
@@ -89,6 +96,11 @@ const Layout = ({ children, isEmbedUser }) => {
 
   const createNewAgent = useCallback(
     (agent_name, orgId, agent_purpose, meta) => {
+      // Read-only embed users can't create agents, so land them on the agent list instead
+      if (isReadOnlyRef.current) {
+        router.push(`/org/${orgId}/agents?isEmbedUser=true`);
+        return;
+      }
       setIsLoading(true);
       dispatch(
         createEmbedAgentAction({
@@ -124,7 +136,9 @@ const Layout = ({ children, isEmbedUser }) => {
         return;
       }
 
-      dispatch(setEmbedUserDetailsAction({ isEmbedUser: true }));
+      const access = urlParamsObj.access === EMBED_ACCESS.READ ? EMBED_ACCESS.READ : EMBED_ACCESS.WRITE;
+      isReadOnlyRef.current = access === EMBED_ACCESS.READ;
+      dispatch(setEmbedUserDetailsAction({ isEmbedUser: true, access }));
       sessionStorage.setItem("local_token", urlParamsObj.token);
       sessionStorage.setItem("gtwy_org_id", urlParamsObj.org_id);
       sessionStorage.setItem("gtwy_folder_id", urlParamsObj.folder_id);
@@ -141,7 +155,7 @@ const Layout = ({ children, isEmbedUser }) => {
       if (urlParamsObj.config) {
         const configUpdates = {};
         Object.entries(urlParamsObj.config).forEach(([key, value]) => {
-          if (value === undefined) return;
+          if (value === undefined || key === "access") return;
           if (key === "theme_config") {
             let parsedTheme = value;
             if (typeof value === "string") {
