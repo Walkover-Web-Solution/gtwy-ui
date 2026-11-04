@@ -145,8 +145,11 @@ utils/
 ├── interceptor.js        # Axios configuration
 ├── enums.js              # Application constants
 ├── posthog.js            # Analytics setup
+├── experiments.js        # Browser A/B variant assignment and event recording
 └── ...                   # Other utilities
 ```
+
+Pages import `mwVariant` and `mwSend` from `@/utils/experiments`. `mwVariant(experiment, variants)` picks a variant synchronously in the browser (the first entry is the control). `mwSend({ event, experiment, variant, goal })` records an exposure when that variant is shown, or a conversion when the goal is reached, and returns immediately. Nothing is sent when `NEXT_PUBLIC_MW_EVENTS_URL` or `NEXT_PUBLIC_MW_KEY` is unset.
 
 ## Data Flow Architecture
 

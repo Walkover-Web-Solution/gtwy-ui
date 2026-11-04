@@ -121,7 +121,9 @@ cd gtwy-frontend</code></pre>
 
 <p><b>Example</b> (<code>.env.local</code>):</p>
 <pre><code>NEXT_PUBLIC_PYTHON_SERVER_URL=
-NEXT_PUBLIC_SERVER_URL=</code></pre>
+NEXT_PUBLIC_SERVER_URL=
+NEXT_PUBLIC_MW_EVENTS_URL=
+NEXT_PUBLIC_MW_KEY=</code></pre>
 
 <blockquote>
   <p><b>Note:</b> Any variable starting with <code>NEXT_PUBLIC_</code> is exposed to the browser. Use it only for non-secret values.</p>
