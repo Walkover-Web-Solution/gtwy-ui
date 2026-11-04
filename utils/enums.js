@@ -319,7 +319,10 @@ export const HISTORY_FILTER_BY_FIELDS = {
 export const EMBED_OBJECT_KEYS = new Set(["theme_config", "prompt", "models", "apikey_object_id", "tools_id"]);
 export const EMBED_ARRAY_KEYS = new Set(["tools_id"]);
 export const EMBED_PASSTHROUGH_KEYS = new Set(["themeMode", "slide", "layout"]);
+// Access granted by the embed token through /api/embed/login; never taken from postMessage or config
+export const EMBED_ACCESS = { READ: "read", WRITE: "write" };
 export const EMBED_SKIP_KEYS = new Set([
+  "access",
   "agent_name",
   "agent_id",
   "agent_purpose",

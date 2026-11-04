@@ -8,6 +8,7 @@ import { Lock } from "lucide-react";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import useRtLayerEventHandler from "@/customHooks/useRtLayerEventHandler";
+import { EMBED_ACCESS } from "@/utils/enums";
 
 const ConfigurationPage = ({
   params,
@@ -54,7 +55,7 @@ const ConfigurationPage = ({
   const configState = useConfigurationState(params, searchParams);
 
   // Get user role to determine edit permissions
-  const { isAdminOrOwner, currentOrgRole, currentUser } = useCustomSelector((state) => {
+  const { isAdminOrOwner, currentOrgRole, currentUser, embedAccess } = useCustomSelector((state) => {
     const orgRole = state?.userDetailsReducer?.organizations?.[params.org_id]?.role_name;
     const isAdminOrOwner = orgRole === "Admin" || orgRole === "Owner";
 
@@ -62,15 +63,16 @@ const ConfigurationPage = ({
       isAdminOrOwner,
       currentOrgRole: orgRole || "",
       currentUser: state?.userDetailsReducer?.userDetails || {},
+      embedAccess: state?.appInfoReducer?.embedUserDetails?.access,
     };
   });
 
   // Determine if user has edit permissions for this agent
   const bridge = useCustomSelector((state) => state?.bridgeReducer?.allBridgesMap?.[params?.id]);
   const isEditor = useMemo(() => {
-    // For embed users, only check agent access (not org role)
+    // For embed users, the access sent in the embed token decides (not org role)
     if (isEmbedUser) {
-      return true;
+      return embedAccess !== EMBED_ACCESS.READ;
     }
 
     // Original logic for non-embed users
@@ -85,7 +87,7 @@ const ConfigurationPage = ({
       currentOrgRole === "Creator" ||
       isAdminOrOwner
     );
-  }, [currentOrgRole, currentUser, bridge?.settings?.editAccess, isAdminOrOwner, isEmbedUser]);
+  }, [currentOrgRole, currentUser, bridge?.settings?.editAccess, isAdminOrOwner, isEmbedUser, embedAccess]);
   // }, [bridgeType, currentView, params.org_id, params.id, searchParams.version, router]);
 
   const handleNavigation = useCallback(

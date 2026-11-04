@@ -14,6 +14,7 @@ const IntegrationTab = ({ data }) => {
   "org_id": "${data?.org_id}",
   "folder_id": "${data?.folder_id}",
   "unique_identifier": "Your_unique_identifier",
+  "access": "write",
   "meta": {
     "name": "Your_user_name",
     "email": "Your_user_email"
@@ -77,6 +78,11 @@ window.addEventListener('message', (event) => {
                 <span className="font-medium">JWT Payload</span>
               </label>
               <CodeBlock className="language-json">{jwtPayload}</CodeBlock>
+              <p className="text-sm text-base-content/70 mt-2">
+                <span className="font-mono">access</span> is optional: use <span className="font-mono">"read"</span> to
+                let the user only view agents, or <span className="font-mono">"write"</span> (default) to let them
+                create, edit and publish.
+              </p>
             </div>
 
             {/* Access Token */}
