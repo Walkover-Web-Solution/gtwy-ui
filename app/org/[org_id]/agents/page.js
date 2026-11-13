@@ -34,7 +34,7 @@ import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import usePortalDropdown from "@/customHooks/usePortalDropdown";
 import SearchItems from "@/components/UI/SearchItems";
-import AgentEmptyState from "@/components/AgentEmptyState";
+import AgentsListEmptyState from "@/components/agents/AgentsListEmptyState";
 import GtwySkillBanner from "@/components/gtwySkill/GtwySkillBanner";
 import DeleteModal from "@/components/UI/DeleteModal";
 import AccessManagementModal from "@/components/modals/AccessManagementModal";
@@ -346,6 +346,7 @@ function Home({ params, searchParams, isEmbedUser }) {
     users,
     modelsConfig,
     showDeleteAgentOption,
+    isOrgBlocked,
   } = useCustomSelector((state) => {
     const orgData = state.bridgeReducer.org[resolvedParams.org_id] || {};
     const user = state.userDetailsReducer.userDetails;
@@ -369,9 +370,20 @@ function Home({ params, searchParams, isEmbedUser }) {
       currentOrgRole: orgRole || "Viewer",
       modelsConfig: state.appInfoReducer.embedUserDetails?.models || {},
       showDeleteAgentOption: state.appInfoReducer.embedUserDetails?.showDeleteAgentOption ?? false,
+      isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(resolvedParams.org_id) || false,
     };
   });
   const bridgeTypeFilter = resolvedSearchParams?.type?.toLowerCase() === "chatbot" ? "chatbot" : "api";
+
+  const workspaceAgents = useMemo(
+    () =>
+      (allBridges || []).filter(
+        (bridge) => !bridge?.deletedAt && (bridge.status === 1 || bridge.status === undefined)
+      ),
+    [allBridges]
+  );
+  const hasWorkspaceAgents = workspaceAgents.length > 0;
+  const showAgentsListEmptyState = !isLoading && !hasWorkspaceAgents;
   const pageHeaderContent = useMemo(() => {
     if (bridgeTypeFilter === "chatbot") {
       return {
@@ -1287,21 +1299,18 @@ function Home({ params, searchParams, isEmbedUser }) {
             />
           )}
           <CreateNewBridge orgid={resolvedParams.org_id} defaultBridgeType={bridgeTypeFilter} />
-          {!typeFilteredBridges.length && isLoading && <LoadingSpinner />}
+          {isLoading && <LoadingSpinner />}
           <input autoComplete="off" id="my-drawer-2" type="checkbox" className="drawer-toggle" />
           <div className="drawer-content flex flex-col items-start justify-start">
             <div className="flex w-full justify-start gap-4 lg:gap-16 items-start">
               <div className="w-full">
-                {typeFilteredBridges.length === 0 ? (
-                  <AgentEmptyState
-                    orgid={resolvedParams.org_id}
+                {showAgentsListEmptyState ? (
+                  <AgentsListEmptyState
                     isEmbedUser={isEmbedUser}
-                    defaultBridgeType={bridgeTypeFilter}
-                    title={pageHeaderContent.title}
-                    description={pageHeaderContent.description}
-                    docLink={linksData?.find((link) => link.title === "Agents")?.blog_link}
+                    isBlocked={isOrgBlocked}
+                    onCreateAgent={() => openModal(MODAL_TYPE.CREATE_BRIDGE_MODAL)}
                   />
-                ) : (
+                ) : hasWorkspaceAgents ? (
                   <div className="flex flex-col lg:mx-0">
                     <div className="px-2 pt-4">
                       <MainLayout>
@@ -1443,7 +1452,7 @@ function Home({ params, searchParams, isEmbedUser }) {
                       </div>
                     )}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 
