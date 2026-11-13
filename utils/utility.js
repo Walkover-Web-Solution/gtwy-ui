@@ -297,6 +297,7 @@ export const getIconOfService = (service, height, width) => {
     case "openai":
       return <OpenAiIcon height={height} width={width} />;
     case "anthropic":
+    case "claude_code": // Anthropic models through the org's own Claude login
       return <AnthropicIcon height={height} width={width} />;
     case "groq":
       return <GroqIcon height={height} width={width} />;

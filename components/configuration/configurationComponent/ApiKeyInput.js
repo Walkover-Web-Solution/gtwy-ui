@@ -126,6 +126,33 @@ const ApiKeyInput = ({
     return opts;
   }, [filteredApiKeys, bridge.service, bridge?.configuration?.model, bridgeType]);
 
+  // claude_code needs no key per agent: every agent on it runs on the org's one Claude login.
+  // Show whether that login is connected, and let the user connect it from here.
+  if (bridge?.service === "claude_code") {
+    const connected = filteredApiKeys.length > 0;
+    return (
+      <div
+        data-testid="apikey-input-claude-login"
+        id="apikey-input-claude-login"
+        className="relative"
+        ref={apiKeySectionRef}
+      >
+        <button
+          type="button"
+          data-testid="apikey-input-claude-login-button"
+          id="apikey-input-claude-login-button"
+          className={`btn btn-sm btn-ghost border px-2 gap-2 ${hasError && !connected ? "border-error" : "border-base-300"}`}
+          disabled={isReadOnly}
+          onClick={() => openModal(MODAL_TYPE.API_KEY_MODAL)}
+        >
+          <KeyRound size={16} className={connected ? "text-warning" : "text-gray-400"} />
+          {!compact && <span>{connected ? "Claude connected" : "Connect Claude"}</span>}
+        </button>
+        <ApiKeyModal params={params} searchParams={searchParams} selectedService="claude_code" />
+      </div>
+    );
+  }
+
   // Nothing to pick from (no keys saved for this service, no default-key
   // fallback) — showing an always-empty selector just invites a dead click,
   // so hide it entirely instead of a disabled/placeholder state.

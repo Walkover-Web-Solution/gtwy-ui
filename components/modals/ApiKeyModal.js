@@ -12,6 +12,8 @@ import { FolderContext } from "@/components/folders/FolderContext";
 import { Key } from "lucide-react";
 import toast from "react-hot-toast";
 
+const CLAUDE_CODE_SERVICE = "claude_code";
+
 const ApiKeyModal = ({
   params,
   searchParams,
@@ -47,6 +49,9 @@ const ApiKeyModal = ({
     isOrgBlocked: state?.userDetailsReducer?.blockedOrgIds?.includes(orgId) || false,
   }));
   const lockedService = service || selectedService || "";
+  // claude_code takes a Claude login (the token `claude setup-token` prints), not an API key.
+  const [pickedService, setPickedService] = useState("");
+  const isClaudeLogin = (lockedService || pickedService || selectedApiKey?.service) === CLAUDE_CODE_SERVICE;
 
   // Reset ischanged state when modal opens/closes
   useEffect(() => {
@@ -61,6 +66,7 @@ const ApiKeyModal = ({
     (event) => {
       const form = event.target.form;
       const formData = new FormData(form);
+      setPickedService(formData.get("service") || "");
 
       const currentData = {
         name: formData.get("name") || "",
@@ -242,12 +248,26 @@ const ApiKeyModal = ({
     <Modal
       MODAL_ID={MODAL_TYPE?.API_KEY_MODAL}
       onClose={handleClose}
-      title={isEditing ? "Update API Key" : "Add New API Key"}
+      title={isClaudeLogin ? "Connect Claude" : isEditing ? "Update API Key" : "Add New API Key"}
       icon={<Key size={16} className="text-trace-gold" />}
       widthClass="w-[min(480px,92vw)]"
       footer={footerContent}
     >
       <form id="apikey-modal-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {isClaudeLogin && (
+          <div
+            id="apikey-modal-claude-login-help"
+            data-testid="apikey-modal-claude-login-help"
+            className="text-sm border border-base-300 p-3 flex flex-col gap-1"
+          >
+            <span>Connect your organization's Claude account once. Every agent set to Claude Code will use it.</span>
+            <span>
+              1. On your computer, run <code className="font-mono">claude setup-token</code> and sign in.
+            </span>
+            <span>2. Paste the token it prints into the field below and save.</span>
+            <span className="opacity-70">The token works for one year. Saving a new one replaces the old one.</span>
+          </div>
+        )}
         {API_KEY_MODAL_INPUT.filter((field) => field !== "apikey_limit").map((field) => {
           const displayLabel = field.includes("_")
             ? field
@@ -258,7 +278,7 @@ const ApiKeyModal = ({
           return (
             <div id={`apikey-modal-field-${field}`} key={field} className="flex flex-col gap-2">
               <label className="label">
-                {displayLabel}
+                {field === "apikey" && isClaudeLogin ? "Claude login token" : displayLabel}
                 {isRequired && RequiredItem()} <span className="opacity-55">{field === "apikey_limit" && "in $"}</span>
               </label>
               <input
@@ -272,7 +292,11 @@ const ApiKeyModal = ({
                 className="input input-sm"
                 name={field}
                 key={field}
-                placeholder={`Enter ${displayLabel}`}
+                placeholder={
+                  field === "apikey" && isClaudeLogin
+                    ? "Paste the token from claude setup-token"
+                    : `Enter ${displayLabel}`
+                }
                 defaultValue={
                   field === "apikey_limit"
                     ? selectedApiKey
