@@ -131,7 +131,12 @@ const ApiKeyInput = ({
   if (bridge?.service === "claude_code") {
     const connected = filteredApiKeys.length > 0;
     return (
-      <div data-testid="apikey-input-claude-login" id="apikey-input-claude-login" className="relative" ref={apiKeySectionRef}>
+      <div
+        data-testid="apikey-input-claude-login"
+        id="apikey-input-claude-login"
+        className="relative"
+        ref={apiKeySectionRef}
+      >
         <button
           type="button"
           data-testid="apikey-input-claude-login-button"

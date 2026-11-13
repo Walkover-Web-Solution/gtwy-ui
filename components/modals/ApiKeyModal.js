@@ -292,7 +292,11 @@ const ApiKeyModal = ({
                 className="input input-sm"
                 name={field}
                 key={field}
-                placeholder={field === "apikey" && isClaudeLogin ? "Paste the token from claude setup-token" : `Enter ${displayLabel}`}
+                placeholder={
+                  field === "apikey" && isClaudeLogin
+                    ? "Paste the token from claude setup-token"
+                    : `Enter ${displayLabel}`
+                }
                 defaultValue={
                   field === "apikey_limit"
                     ? selectedApiKey
