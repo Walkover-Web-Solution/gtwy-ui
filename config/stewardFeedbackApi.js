@@ -1,7 +1,7 @@
 const DEFAULT_STEWARD_FEEDBACK_URL = "https://steward.embarko.app/api/v1/feedback";
 const DEFAULT_STEWARD_FEEDBACK_KEY = "pk_eecf8f6a6ffe754bf82856b3877d60f706e2";
 
-export function getStewardFeedbackConfig() {
+function getStewardFeedbackConfig() {
   return {
     url: process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_URL?.trim() || DEFAULT_STEWARD_FEEDBACK_URL,
     key: process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_KEY?.trim() || DEFAULT_STEWARD_FEEDBACK_KEY,
