@@ -1,16 +1,24 @@
-const STEWARD_FEEDBACK_URL = "https://steward.embarko.app/api/v1/feedback";
-const STEWARD_FEEDBACK_KEY = "pk_eecf8f6a6ffe754bf82856b3877d60f706e2";
+const DEFAULT_STEWARD_FEEDBACK_URL = "https://steward.embarko.app/api/v1/feedback";
+const DEFAULT_STEWARD_FEEDBACK_KEY = "pk_eecf8f6a6ffe754bf82856b3877d60f706e2";
+
+export function getStewardFeedbackConfig() {
+  return {
+    url: process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_URL?.trim() || DEFAULT_STEWARD_FEEDBACK_URL,
+    key: process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_KEY?.trim() || DEFAULT_STEWARD_FEEDBACK_KEY,
+  };
+}
 
 /**
  * Submit builder feedback to Steward (native panel form; no third-party script).
  * @returns {Promise<void>}
  */
 export async function submitStewardPanelFeedback({ text, user, meta = {} }) {
-  const response = await fetch(STEWARD_FEEDBACK_URL, {
+  const { url, key } = getStewardFeedbackConfig();
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Steward-Key": STEWARD_FEEDBACK_KEY,
+      "X-Steward-Key": key,
     },
     body: JSON.stringify({
       text,
