@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { getFromCookies } from "@/utils/utility";
-import packageJson from "../package.json";
 
 /** Exact Steward embed from product settings (publishable pk_* key). */
 const STEWARD_WIDGET_SCRIPT_SRC = "https://steward.embarko.app/widget.js";
@@ -65,7 +64,7 @@ export default function StewardFeedbackProvider({ enabled = true }) {
 
     stewardCall("identify", identifyPayload);
 
-    const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || packageJson.version;
+    const appVersion = process.env.NEXT_PUBLIC_APP_VERSION;
     if (appVersion) {
       stewardCall("meta", { app_version: appVersion });
     }

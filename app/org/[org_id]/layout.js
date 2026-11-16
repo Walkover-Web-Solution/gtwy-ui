@@ -41,6 +41,7 @@ import { getAllIntegrationDataAction } from "@/store/action/integrationAction";
 import { getPrebuiltPromptsAction } from "@/store/action/prebuiltPromptAction";
 import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
+import StewardFeedbackProvider from "@/components/StewardFeedbackProvider";
 import { getAllAuthData } from "@/store/action/authkeyAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
 import { getBlockedOrgs } from "@/config/organizationApi";
@@ -55,8 +56,6 @@ const ChatDetails = dynamic(() => import("@/components/historyPageComponents/Cha
 const KeyboardShortcutsModal = dynamic(() => import("@/components/modals/KeyboardShortcutsModal"), {
   loading: () => <LoadingSpinner />,
 });
-const StewardFeedbackProvider = dynamic(() => import("@/components/StewardFeedbackProvider"), { ssr: false });
-
 function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus }) {
   const dispatch = useDispatch();
   const pathName = usePathname();
