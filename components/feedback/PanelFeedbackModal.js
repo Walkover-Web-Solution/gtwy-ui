@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, getFromCookies } from "@/utils/utility";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { submitStewardPanelFeedback } from "@/config/stewardFeedbackApi";
+import { submitStewardPanelFeedback } from "@/utils/stewardFeedbackApi";
 import Modal from "../UI/Modal";
 import LoadingSpinner from "../LoadingSpinner";
 
