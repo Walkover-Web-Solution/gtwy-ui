@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { MODAL_TYPE } from "@/utils/enums";
 import { closeModal, getFromCookies } from "@/utils/utility";
 import { useCustomSelector } from "@/customHooks/customSelector";
-import { submitStewardPanelFeedback } from "@/utils/stewardFeedbackApi";
+import { isStewardPanelFeedbackEnabled, submitStewardPanelFeedback } from "@/utils/stewardFeedbackApi";
 import Modal from "../UI/Modal";
 import LoadingSpinner from "../LoadingSpinner";
 
@@ -110,7 +110,7 @@ const PanelFeedbackModal = () => {
       </div>
     );
 
-  if (!signedIn) {
+  if (!isStewardPanelFeedbackEnabled() || !signedIn) {
     return (
       <dialog data-testid={MODAL_TYPE.PANEL_FEEDBACK_MODAL} id={MODAL_TYPE.PANEL_FEEDBACK_MODAL} className="modal" />
     );

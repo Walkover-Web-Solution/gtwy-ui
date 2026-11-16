@@ -2,6 +2,7 @@
 
 import { MessageSquareMore } from "lucide-react";
 import { MODAL_TYPE } from "@/utils/enums";
+import { isStewardPanelFeedbackEnabled } from "@/utils/stewardFeedbackApi";
 import { getFromCookies, openModal } from "@/utils/utility";
 
 function isPanelUserSignedIn() {
@@ -11,7 +12,7 @@ function isPanelUserSignedIn() {
 
 /** Floating entry when the panel has no persistent sidebar (e.g. /org org picker). */
 export default function PanelFeedbackFloatingButton() {
-  if (!isPanelUserSignedIn()) return null;
+  if (!isStewardPanelFeedbackEnabled() || !isPanelUserSignedIn()) return null;
 
   return (
     <button
