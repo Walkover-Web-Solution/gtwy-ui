@@ -13,6 +13,7 @@
 - **Icons**: Lucide React
 - **Real-time**: RTLayer Client
 - **Analytics**: PostHog
+- **Builder feedback**: Steward feedback widget (signed-in org panel shell)
 
 ## Project Structure
 

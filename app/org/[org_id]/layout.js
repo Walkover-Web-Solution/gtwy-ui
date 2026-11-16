@@ -55,6 +55,7 @@ const ChatDetails = dynamic(() => import("@/components/historyPageComponents/Cha
 const KeyboardShortcutsModal = dynamic(() => import("@/components/modals/KeyboardShortcutsModal"), {
   loading: () => <LoadingSpinner />,
 });
+const StewardFeedbackProvider = dynamic(() => import("@/components/StewardFeedbackProvider"), { ssr: false });
 
 function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus }) {
   const dispatch = useDispatch();
@@ -601,6 +602,7 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         <ChatDetails selectedItem={selectedItem} setIsSliderOpen={setIsSliderOpen} isSliderOpen={isSliderOpen} />
         <ServiceInitializer />
         <KeyboardShortcutsModal />
+        <StewardFeedbackProvider enabled />
       </div>
     );
   } else {

@@ -1049,6 +1049,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                 )}
               </div>
             </div>
+            <div id="steward-feedback" />
           </div>
         </div>
 
