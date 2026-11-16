@@ -41,7 +41,6 @@ import { getAllIntegrationDataAction } from "@/store/action/integrationAction";
 import { getPrebuiltPromptsAction } from "@/store/action/prebuiltPromptAction";
 import { useEmbedScriptLoader } from "@/customHooks/embedScriptLoader";
 import ServiceInitializer from "@/components/organization/ServiceInitializer";
-import StewardFeedbackProvider from "@/components/StewardFeedbackProvider";
 import { getAllAuthData } from "@/store/action/authkeyAction";
 import { getAllChatBotAction } from "@/store/action/chatBotAction";
 import { getBlockedOrgs } from "@/config/organizationApi";
@@ -601,7 +600,6 @@ function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus })
         <ChatDetails selectedItem={selectedItem} setIsSliderOpen={setIsSliderOpen} isSliderOpen={isSliderOpen} />
         <ServiceInitializer />
         <KeyboardShortcutsModal />
-        <StewardFeedbackProvider enabled />
       </div>
     );
   } else {

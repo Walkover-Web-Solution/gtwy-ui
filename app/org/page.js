@@ -14,6 +14,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import PanelFeedbackFloatingButton from "@/components/feedback/PanelFeedbackFloatingButton";
 
 /**
  * The organizations page that displays all the organizations
@@ -102,6 +103,7 @@ function Page() {
         />
         <CreateOrg handleSwitchOrg={handleSwitchOrg} />
       </div>
+      <PanelFeedbackFloatingButton />
     </div>
   );
 }

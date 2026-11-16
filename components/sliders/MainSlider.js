@@ -954,7 +954,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                         id="main-slider-feedback-button"
                         type="button"
                         onClick={() => {
-                          guardedNavigate(`/org/${orgId}/feedback`);
+                          openModal(MODAL_TYPE.PANEL_FEEDBACK_MODAL);
                           if (isMobile) setIsMobileVisible(false);
                         }}
                         onMouseEnter={(e) => onItemEnter("feedback", e)}
@@ -1012,7 +1012,7 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                       id="main-slider-feedback-button"
                       type="button"
                       onClick={() => {
-                        guardedNavigate(`/org/${orgId}/feedback`);
+                        openModal(MODAL_TYPE.PANEL_FEEDBACK_MODAL);
                         if (isMobile) setIsMobileVisible(false);
                       }}
                       onMouseEnter={(e) => onItemEnter("feedback", e)}
@@ -1049,7 +1049,6 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                 )}
               </div>
             </div>
-            <div id="steward-feedback" />
           </div>
         </div>
 
