@@ -136,8 +136,29 @@ function AiConfigPanel({ config }) {
 // Main modal component
 // ---------------------------------------------------------------------------
 
+function FullConfigCopyFooter({ copied, onCopy }) {
+  return (
+    <div className="flex gap-2 justify-end w-full">
+      <button
+        type="button"
+        data-testid="ai-config-full-copy-button"
+        onClick={onCopy}
+        className="btn btn-sm btn-ghost text-warning gap-1 flex items-center"
+      >
+        <CopyIcon size={14} />
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
 const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
   const [copied, setCopied] = useState(false);
+
+  const fullConfigJson = useMemo(
+    () => (modalContent != null ? JSON.stringify(modalContent, null, 2) : ""),
+    [modalContent]
+  );
 
   const isLatencyView = modalTitle === "Latency Details" || modalTitle === "Latency";
 
@@ -202,6 +223,7 @@ const ChatAiConfigDeatilViewModal = ({ modalContent, modalTitle }) => {
         title={modalTitle || "AI Configuration"}
         icon={<SlidersHorizontal size={16} className="text-trace-gold" />}
         widthClass="w-[min(720px,92vw)]"
+        footer={<FullConfigCopyFooter copied={copied} onCopy={() => handleCopy(fullConfigJson)} />}
       >
         <AiConfigPanel config={modalContent} />
       </Modal>
