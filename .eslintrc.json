@@ -47,7 +47,15 @@
       {
         "unusedExports": true,
         "missingExports": false,
-        "ignoreExports": ["app/**/*", "components/**/*", "hooks/**/*", "customHooks/**/*", "store/**/*", "utils/**/*"]
+        "ignoreExports": [
+          "app/**/*",
+          "components/**/*",
+          "config/**/*",
+          "hooks/**/*",
+          "customHooks/**/*",
+          "store/**/*",
+          "utils/**/*"
+        ]
       }
     ],
     // Prevent leaving commented-out code in the repo
@@ -63,6 +71,7 @@
     {
       "files": [
         "components/**/*.{js,jsx,ts,tsx}",
+        "config/**/*.{js,jsx,ts,tsx}",
         "hooks/**/*.{js,jsx,ts,tsx}",
         "customHooks/**/*.{js,jsx,ts,tsx}",
         "store/**/*.{js,jsx,ts,tsx}",
