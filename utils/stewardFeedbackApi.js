@@ -1,16 +1,16 @@
+export const STEWARD_PANEL_FEEDBACK_URL = "https://steward.embarko.app/api/v1/feedback";
+
 export function isStewardPanelFeedbackEnabled() {
-  const url = process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_URL?.trim();
   const key = process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_KEY?.trim();
-  return Boolean(url && key);
+  return Boolean(key);
 }
 
 function getStewardFeedbackConfig() {
-  const url = process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_URL?.trim();
   const key = process.env.NEXT_PUBLIC_STEWARD_FEEDBACK_KEY?.trim();
-  if (!url || !key) {
+  if (!key) {
     throw new Error("Feedback is not configured.");
   }
-  return { url, key };
+  return { url: STEWARD_PANEL_FEEDBACK_URL, key };
 }
 
 /**
