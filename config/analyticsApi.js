@@ -14,9 +14,11 @@ export const getAgentAnalyticsApi = async (bridge_id, queryParams = {}, org_id) 
   }
 };
 
-export const getAgentAnalyticsFiltersApi = async (bridge_id) => {
+export const getAgentAnalyticsFiltersApi = async (bridge_id, params = {}) => {
   try {
-    const response = await axios.get(`${URL}/api/analytics/agent/${encodeURIComponent(bridge_id)}/filters`);
+    const response = await axios.get(`${URL}/api/analytics/agent/${encodeURIComponent(bridge_id)}/filters`, {
+      params,
+    });
     return response.data;
   } catch (error) {
     console.error("Error fetching agent analytics filters:", error);

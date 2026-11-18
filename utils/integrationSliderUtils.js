@@ -1,6 +1,6 @@
 import defaultUserTheme from "@/public/themes/default-user-theme.json";
 
-// Configuration Schema - easily extensible
+// Configuration  Schema - easily extensible
 // ---------------------------------------------
 export const CONFIG_SCHEMA = [
   {

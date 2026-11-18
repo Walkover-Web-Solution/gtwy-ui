@@ -4,7 +4,7 @@ import { AlertIcon, ChevronDownIcon, ChevronUpIcon } from "@/components/Icons";
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import InfoTooltip from "@/components/InfoTooltip";
-import { getIconOfService } from "@/utils/utility";
+import { getIconOfService, CLAUDE_CODE_SERVICE } from "@/utils/utility";
 import { CircleQuestionMark } from "lucide-react";
 import { ModelPreview } from "./ModelDropdown";
 import Dropdown from "@/components/UI/Dropdown";
@@ -474,7 +474,10 @@ const FallbackModel = ({
                   <div
                     className={`bg-base-100 z-low max-h-80 overflow-y-auto p-2 transition-all ${showApiKeysToggle ? "rounded-x-lg border-base-content/20 border-t-0 rounded-t-none rounded-b-lg duration-300 ease-in-out" : ""}`}
                   >
-                    {SERVICES?.filter((service) => service?.value !== bridge?.service).map((service) => (
+                    {SERVICES?.filter(
+                      // The Claude login is org-wide, not a per-agent key, so it has no fallback key to set.
+                      (service) => service?.value !== bridge?.service && service?.value !== CLAUDE_CODE_SERVICE
+                    ).map((service) => (
                       <div key={service?.value} className="p-2 border-b last:border-b-0">
                         <div className="font-semibold capitalize mb-2 text-sm">{service?.displayName}</div>
 

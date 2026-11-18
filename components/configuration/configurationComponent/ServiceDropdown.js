@@ -5,7 +5,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { getServiceAction } from "@/store/action/serviceAction";
 import Protected from "@/components/Protected";
-import { getIconOfService, closeModal } from "@/utils/utility";
+import {
+  getIconOfService,
+  closeModal,
+  CLAUDE_CODE_SERVICE,
+  ANTHROPIC_SERVICE,
+  toDisplayService,
+} from "@/utils/utility";
 import InfoTooltip from "@/components/InfoTooltip";
 import Dropdown from "@/components/UI/Dropdown";
 import { toast } from "react-hot-toast";
@@ -80,7 +86,8 @@ const ServiceDropdown = ({
     [planServices]
   );
 
-  const [selectedService, setSelectedService] = useState(service);
+  // claude_code shows as Anthropic: the key picker chooses between an Anthropic key and the Claude login.
+  const [selectedService, setSelectedService] = useState(toDisplayService(service));
   const dispatch = useDispatch();
 
   const resetBorder = (ref, selector) => {
@@ -109,7 +116,7 @@ const ServiceDropdown = ({
   }, [bridgeApiKey, prompt, apiKeySectionRef, promptTextAreaRef]);
   useEffect(() => {
     if (service) {
-      setSelectedService(service);
+      setSelectedService(toDisplayService(service));
     }
   }, [service]);
 
@@ -143,10 +150,15 @@ const ServiceDropdown = ({
     // Free-plan services (or ones this bridge already has its own key for) are
     // usable without upgrading — surface them first and leave the rest locked,
     // same rule ModelDropdown applies to models within a service.
-    const isUnlocked = (svcValue) => isServiceInPlan(svcValue) || !!bridgeApikeyObjectId?.[svcValue];
+    const isUnlocked = (svcValue) =>
+      isServiceInPlan(svcValue) ||
+      !!bridgeApikeyObjectId?.[svcValue] ||
+      (svcValue === ANTHROPIC_SERVICE && (service === CLAUDE_CODE_SERVICE || isServiceInPlan(CLAUDE_CODE_SERVICE)));
 
     return availableServices
-      .map((svc, index) => (svc && typeof svc === "object" && svc.value ? { svc, index } : null))
+      .map((svc, index) =>
+        svc && typeof svc === "object" && svc.value && svc.value !== CLAUDE_CODE_SERVICE ? { svc, index } : null
+      )
       .filter(Boolean)
       .sort((a, b) => {
         const diff = Number(isUnlocked(b.svc.value)) - Number(isUnlocked(a.svc.value));
@@ -178,7 +190,7 @@ const ServiceDropdown = ({
           ),
         };
       });
-  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData, isServiceInPlan, bridgeApikeyObjectId]);
+  }, [SERVICES, isEmbedUser, showDefaultApikeys, apiKeyObjectIdData, isServiceInPlan, bridgeApikeyObjectId, service]);
 
   const [pendingService, setPendingService] = useState(null);
 
@@ -211,6 +223,8 @@ const ServiceDropdown = ({
   const handleServiceChange = useCallback(
     (serviceValue) => {
       const newService = serviceValue;
+      // Already Anthropic (on an API key or the Claude login): keep the service and model.
+      if (newService === toDisplayService(service)) return;
       const defaultModel = DEFAULT_MODEL?.[newService]?.model;
 
       const hasApiKeyForNewService = !!bridgeApikeyObjectId?.[newService];
@@ -229,7 +243,16 @@ const ServiceDropdown = ({
         })
       );
     },
-    [dispatch, params.id, searchParams?.version, DEFAULT_MODEL, bridgeApikeyObjectId, configuration, serviceModels]
+    [
+      dispatch,
+      params.id,
+      searchParams?.version,
+      DEFAULT_MODEL,
+      bridgeApikeyObjectId,
+      configuration,
+      serviceModels,
+      service,
+    ]
   );
 
   const isDisabled = bridgeType === "batch" && service === "openai";
