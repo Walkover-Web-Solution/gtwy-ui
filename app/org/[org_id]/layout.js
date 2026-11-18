@@ -55,7 +55,6 @@ const ChatDetails = dynamic(() => import("@/components/historyPageComponents/Cha
 const KeyboardShortcutsModal = dynamic(() => import("@/components/modals/KeyboardShortcutsModal"), {
   loading: () => <LoadingSpinner />,
 });
-
 function layoutOrgPage({ children, params, searchParams, isEmbedUser, isFocus }) {
   const dispatch = useDispatch();
   const pathName = usePathname();

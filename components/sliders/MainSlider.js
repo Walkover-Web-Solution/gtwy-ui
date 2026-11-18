@@ -40,6 +40,9 @@ import { logoutUser } from "../../config/authApi";
 import unsavedPromptGuard from "@/utils/unsavedPromptGuard";
 import ConfirmationModal from "@/components/UI/ConfirmationModal";
 import WalletSidebarWidget from "@/components/wallet/WalletSidebarWidget";
+import { isStewardPanelFeedbackEnabled } from "@/utils/stewardFeedbackApi";
+
+const stewardPanelFeedbackEnabled = isStewardPanelFeedbackEnabled();
 
 /* -------------------------------------------------------------------------- */
 /*                                  Component                                 */
@@ -950,20 +953,22 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                         <span className="text-[10px] leading-none">Speak</span>
                       </button>
 
-                      <button
-                        id="main-slider-feedback-button"
-                        type="button"
-                        onClick={() => {
-                          guardedNavigate(`/org/${orgId}/feedback`);
-                          if (isMobile) setIsMobileVisible(false);
-                        }}
-                        onMouseEnter={(e) => onItemEnter("feedback", e)}
-                        onMouseLeave={onItemLeave}
-                        className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
-                      >
-                        {ITEM_ICONS.feedbackAdmin}
-                        <span className="text-[10px] leading-none">Feedback</span>
-                      </button>
+                      {stewardPanelFeedbackEnabled ? (
+                        <button
+                          id="main-slider-feedback-button"
+                          type="button"
+                          onClick={() => {
+                            openModal(MODAL_TYPE.PANEL_FEEDBACK_MODAL);
+                            if (isMobile) setIsMobileVisible(false);
+                          }}
+                          onMouseEnter={(e) => onItemEnter("feedback", e)}
+                          onMouseLeave={onItemLeave}
+                          className="flex flex-col items-center justify-center gap-1 rounded-md p-1.5 hover:bg-base-200 transition-colors text-base-content/80"
+                        >
+                          {ITEM_ICONS.feedbackAdmin}
+                          <span className="text-[10px] leading-none">Feedback</span>
+                        </button>
+                      ) : null}
 
                       <button
                         id="main-slider-keyboard-shortcuts-button"
@@ -1008,19 +1013,21 @@ function MainSlider({ isEmbedUser, openDetails, userdetailsfromOrg, orgIdFromHea
                       {ITEM_ICONS.speakToUs}
                     </button>
 
-                    <button
-                      id="main-slider-feedback-button"
-                      type="button"
-                      onClick={() => {
-                        guardedNavigate(`/org/${orgId}/feedback`);
-                        if (isMobile) setIsMobileVisible(false);
-                      }}
-                      onMouseEnter={(e) => onItemEnter("feedback", e)}
-                      onMouseLeave={onItemLeave}
-                      className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
-                    >
-                      {ITEM_ICONS.feedbackAdmin}
-                    </button>
+                    {stewardPanelFeedbackEnabled ? (
+                      <button
+                        id="main-slider-feedback-button"
+                        type="button"
+                        onClick={() => {
+                          openModal(MODAL_TYPE.PANEL_FEEDBACK_MODAL);
+                          if (isMobile) setIsMobileVisible(false);
+                        }}
+                        onMouseEnter={(e) => onItemEnter("feedback", e)}
+                        onMouseLeave={onItemLeave}
+                        className="w-full flex items-center justify-center p-2.5 rounded-lg hover:bg-base-200 transition-colors"
+                      >
+                        {ITEM_ICONS.feedbackAdmin}
+                      </button>
+                    ) : null}
 
                     <button
                       id="main-slider-keyboard-shortcuts-button"

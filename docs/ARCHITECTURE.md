@@ -13,6 +13,7 @@
 - **Icons**: Lucide React
 - **Real-time**: RTLayer Client
 - **Analytics**: PostHog
+- **Builder feedback**: Native panel feedback form → Steward API at `https://steward.embarko.app/api/v1/feedback` (signed-in users; publishable key via `NEXT_PUBLIC_STEWARD_FEEDBACK_KEY` only)
 
 ## Project Structure
 
