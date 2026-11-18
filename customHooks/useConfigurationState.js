@@ -1,4 +1,5 @@
 import { useCustomSelector } from "./customSelector";
+import { keyOrClaudeLogin } from "@/utils/utility";
 
 export const useConfigurationState = (params, searchParams) => {
   return useCustomSelector((state) => {
@@ -27,9 +28,14 @@ export const useConfigurationState = (params, searchParams) => {
       showConfigType: state.appInfoReducer.embedUserDetails.showConfigType,
       showDefaultApikeys: state.appInfoReducer.embedUserDetails.addDefaultApiKeys,
       shouldToolsShow: validationConfig?.tools,
-      bridgeApiKey: isPublished
-        ? bridgeDataFromState?.apikey_object_id?.[service === "openai_response" ? "openai" : service]
-        : versionData?.apikey_object_id?.[service === "openai_response" ? "openai" : service],
+      bridgeApiKey: keyOrClaudeLogin(
+        state,
+        params?.org_id,
+        service,
+        isPublished
+          ? bridgeDataFromState?.apikey_object_id?.[service === "openai_response" ? "openai" : service]
+          : versionData?.apikey_object_id?.[service === "openai_response" ? "openai" : service]
+      ),
       shouldPromptShow: validationConfig?.system_prompt,
       bridge_functions: isPublished ? bridgeDataFromState?.function_ids || [] : versionData?.function_ids || [],
       connect_agents: isPublished ? bridgeDataFromState?.connected_agents || {} : versionData?.connected_agents || {},
