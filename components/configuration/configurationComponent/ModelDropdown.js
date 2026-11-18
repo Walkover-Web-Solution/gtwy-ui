@@ -1,7 +1,7 @@
 import { useCustomSelector } from "@/customHooks/customSelector";
 import { updateBridgeVersionAction } from "@/store/action/bridgeAction";
 import { MODAL_TYPE, AUTO_MODEL_TRADEOFF_OPTIONS } from "@/utils/enums";
-import { openModal, closeModal } from "@/utils/utility";
+import { openModal, closeModal, keyOrClaudeLogin } from "@/utils/utility";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { createPortal } from "react-dom";
@@ -162,6 +162,7 @@ const ModelDropdown = ({
     serviceModels,
     planServices,
     bridgeApikeyObjectId,
+    claudeLoginId,
   } = useCustomSelector((state) => {
     const versionData = state?.bridgeReducer?.bridgeVersionMapping?.[params?.id]?.[searchParams?.version];
     const bridgeDataFromState = state?.bridgeReducer?.allBridgesMap?.[params?.id];
@@ -189,6 +190,8 @@ const ModelDropdown = ({
       serviceModels: state?.modelReducer?.serviceModels,
       planServices: state?.planReducer?.services,
       bridgeApikeyObjectId: activeData?.apikey_object_id || {},
+      // claude_code runs on the org's Claude login, which counts as the agent's own key
+      claudeLoginId: keyOrClaudeLogin(state, params?.org_id, activeData?.service, null),
     };
   });
 
@@ -200,7 +203,7 @@ const ModelDropdown = ({
 
   const isServiceFullyInPlan = planEntryForService === "*";
   const planAllowedModels = Array.isArray(planEntryForService) ? planEntryForService : null;
-  const hasOwnApiKey = !!bridgeApikeyObjectId?.[service];
+  const hasOwnApiKey = !!bridgeApikeyObjectId?.[service] || !!claudeLoginId;
 
   const isFallbackEnabled = !!fallbackModel?.is_enable;
   const fallbackServiceName = fallbackModel?.service || service || "Not set";

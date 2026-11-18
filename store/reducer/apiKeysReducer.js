@@ -26,7 +26,10 @@ export const apiKeysReducer = createSlice({
     createApiKeyReducer: (state, action) => {
       const { org_id, data } = action.payload;
       if (state.apikeys[org_id]) {
-        state.apikeys[org_id].push(data);
+        // Saving a Claude login again replaces the same row, so update it instead of listing it twice.
+        const index = state.apikeys[org_id].findIndex((apikey) => apikey?._id === data?._id);
+        if (index !== -1) state.apikeys[org_id][index] = data;
+        else state.apikeys[org_id].push(data);
       } else {
         state.apikeys[org_id] = [data];
       }

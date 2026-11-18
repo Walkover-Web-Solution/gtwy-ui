@@ -8,7 +8,7 @@ import {
 } from "@/store/action/bridgeAction";
 import { convertAgentToTemplate } from "@/config/bridgeApi";
 import { MODAL_TYPE } from "@/utils/enums";
-import { closeModal, openModal, sendDataToParent } from "@/utils/utility";
+import { closeModal, openModal, sendDataToParent, keyOrClaudeLogin } from "@/utils/utility";
 import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import Modal from "../UI/Modal";
@@ -47,7 +47,9 @@ function PublishBridgeVersionModal({ params, searchParams, agent_name, agent_des
     const rawService = activeData?.service || bridgeDataFromState?.service || "";
     const serviceKey = typeof rawService === "string" ? rawService.toLowerCase() : "";
     const serviceApiKeyMap = activeData?.apikey_object_id || bridgeDataFromState?.apikey_object_id || {};
-    const hasApiKey = !!(serviceKey && serviceApiKeyMap?.[serviceKey]);
+    const hasApiKey = !!(
+      serviceKey && keyOrClaudeLogin(state, params?.org_id, serviceKey, serviceApiKeyMap?.[serviceKey])
+    );
     const services = state?.serviceReducer?.services || [];
     const serviceLabel =
       (Array.isArray(services) ? services.find((s) => s?.value === serviceKey)?.displayName : "") || serviceKey;
