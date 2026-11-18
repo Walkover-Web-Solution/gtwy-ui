@@ -297,6 +297,7 @@ export const getIconOfService = (service, height, width) => {
     case "openai":
       return <OpenAiIcon height={height} width={width} />;
     case "anthropic":
+    case "claude_code": // Anthropic models through the org's own Claude login
       return <AnthropicIcon height={height} width={width} />;
     case "groq":
       return <GroqIcon height={height} width={width} />;
@@ -329,7 +330,22 @@ export const getIconOfService = (service, height, width) => {
   }
 };
 
+// claude_code is its own service on the backend (Anthropic models through the org's Claude login),
+// but the UI shows it as Anthropic: the agent picks an Anthropic API key or the Claude login
+// in the key picker, and that choice switches the agent between the two services.
+export const CLAUDE_CODE_SERVICE = "claude_code";
+export const ANTHROPIC_SERVICE = "anthropic";
+export const isAnthropicFamily = (service) => service === ANTHROPIC_SERVICE || service === CLAUDE_CODE_SERVICE;
+export const toDisplayService = (service) => (service === CLAUDE_CODE_SERVICE ? ANTHROPIC_SERVICE : service);
+// A claude_code agent needs no key of its own: the gateway runs it on the org's Claude login.
+// Returns the agent's own key id, or for claude_code the org's login id, so "has a key" checks pass.
+export const keyOrClaudeLogin = (state, orgId, service, ownKeyId) => {
+  if (ownKeyId || service !== CLAUDE_CODE_SERVICE) return ownKeyId;
+  return (state?.apiKeysReducer?.apikeys?.[orgId] || []).find((key) => key?.service === CLAUDE_CODE_SERVICE)?._id;
+};
+
 export const getServiceDisplayName = (serviceKey, services = []) => {
+  if (serviceKey === CLAUDE_CODE_SERVICE) return "Anthropic (Claude login)";
   return Array.isArray(services)
     ? services.find((svc) => svc?.value === serviceKey)?.displayName || serviceKey
     : serviceKey;
